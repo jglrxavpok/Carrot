@@ -18,12 +18,43 @@ namespace Carrot::ECS {
 
     void SystemParticles::onFrame(Carrot::Render::Context renderContext) {
         for (auto& [_, pStorage] : particles) {
-            pStorage->particleSystem.onFrame(renderContext);
+            if (pStorage->pParticleSystem)
+                pStorage->pParticleSystem->onFrame(renderContext);
         }
     }
 
     void SystemParticles::tick(double dt) {
+        // check the loading of pending blueprints
+        bool hasLoadedBlueprint = false;
+        for (auto keyIter = blueprintsToCheckNextFrame.begin(); keyIter != blueprintsToCheckNextFrame.end();) {
+            auto iter = particles.find(*keyIter);
+            if (iter == particles.end()) {
+                keyIter = blueprintsToCheckNextFrame.erase(keyIter);
+                continue;
+            }
+
+            ParticleSystemStorage& storage = *iter->second;
+            if (storage.pBlueprint.isReady()) {
+                if (auto pLoadedBlueprint = storage.pBlueprint.get()) { // can be null if loading failed
+                    storage.pParticleSystem = Carrot::makeUnique<Carrot::ParticleSystem>(allocator, GetEngine(), *pLoadedBlueprint, storage.maxParticles);
+                    hasLoadedBlueprint = true;
+                }
+
+                keyIter = blueprintsToCheckNextFrame.erase(keyIter);
+                continue;
+            }
+
+            ++keyIter;
+        }
+        if (hasLoadedBlueprint) {
+            recreateEmitters();
+        }
+
+        std::atomic_bool needReload = false;
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ParticleEmitterComponent& emitter) {
+            if (emitter.fileWasModified) {
+                needReload = true;
+            }
             if (!emitter.emitter) {
                 return;
             }
@@ -31,8 +62,14 @@ namespace Carrot::ECS {
             emitter.emitter->setPosition(transform.computeFinalPosition());
             emitter.emitter->setRotation(transform.computeFinalOrientation());
         });
+
+        if (needReload) { // a particle component was modified and the filepath has changed -> need to reload its particle system
+            reloadParticleSystems();
+        }
         for (auto& [_, pStorage] : particles) {
-            pStorage->particleSystem.tick(dt);
+            if (pStorage->pParticleSystem) {
+                pStorage->pParticleSystem->tick(dt);
+            }
         }
     }
 
@@ -62,6 +99,7 @@ namespace Carrot::ECS {
         particles.clear();
         forEachEntity([&](Entity& entity, TransformComponent& transform, ParticleEmitterComponent& emitter) {
             emitter.emitter = nullptr; // reset in case of error
+            emitter.fileWasModified = false;
 
             // load each particle system
             const IO::VFS::Path& particleFile = emitter.particleFile;
@@ -77,10 +115,38 @@ namespace Carrot::ECS {
                 iter->second = Carrot::makeUnique<ParticleSystemStorage>(allocator, particleFile, MaxParticles);
             }
 
-            // make the component reference an emitter inside the system
-            emitter.emitter = iter->second->particleSystem.createEmitter();
-            emitter.emitter->setRate(emitter.getSpawnRatePerSecond());
-            emitter.emitter->setEmittingInWorldSpace(emitter.isInWorldSpace());
+            ParticleSystemStorage& storage = *iter->second;
+            if (!storage.pBlueprint.isReady()) {
+                blueprintsToCheckNextFrame.insert(particleFile);
+            }
+        });
+
+        recreateEmitters();
+    }
+
+    void SystemParticles::recreateEmitters() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, ParticleEmitterComponent& emitter) {
+            emitter.emitter = nullptr; // reset in case of error
+
+            // load each particle system
+            const IO::VFS::Path& particleFile = emitter.particleFile;
+            if (particleFile.isEmpty()) {
+                return;
+            }
+            if (!GetVFS().exists(particleFile)) {
+                return;
+            }
+            auto iter = particles.find(particleFile);
+            if (iter == particles.end()) {
+                return;
+            }
+
+            if (ParticleSystem* pParticleSystem = iter->second->pParticleSystem.get()) {
+                // make the component reference an emitter inside the system
+                emitter.emitter = pParticleSystem->createEmitter();
+                emitter.emitter->setRate(emitter.getSpawnRatePerSecond());
+                emitter.emitter->setEmittingInWorldSpace(emitter.isInWorldSpace());
+            }
         });
     }
 
@@ -93,7 +159,7 @@ namespace Carrot::ECS {
     }
 
     SystemParticles::ParticleSystemStorage::ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles)
-    : blueprint(particleFile.toString()), particleSystem(GetEngine(), blueprint, maxParticles)
-    {}
+        : pBlueprint(GetAssetServer().loadParticleBlueprintTask(particleFile)), maxParticles(maxParticles) {
+    }
 
 }

@@ -1,4 +1,5 @@
 set(CoreRoot "core/")
+
 set(CORE-SOURCES
 
         ${CoreRoot}allocators/MallocAllocator.cpp
@@ -13,6 +14,7 @@ set(CORE-SOURCES
         ${CoreRoot}async/OSThreads.cpp
 
         ${CoreRoot}data/Hashes.cpp
+        ${CoreRoot}data/ParticleBlueprint.cpp
         ${CoreRoot}data/ShaderMetadata.cpp
 
         ${CoreRoot}expressions/Expressions.cpp
@@ -78,6 +80,18 @@ set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
 
         ${ProjectRoot}thirdparty/tribox3/tribox3.cpp
+
+        ${ProjectRoot}thirdparty/imgui/imgui.cpp
+        ${ProjectRoot}thirdparty/imgui/imgui_draw.cpp
+        ${ProjectRoot}thirdparty/imgui/imgui_demo.cpp
+        ${ProjectRoot}thirdparty/imgui/imgui_widgets.cpp
+        ${ProjectRoot}thirdparty/imgui/imgui_tables.cpp
+        ${ProjectRoot}thirdparty/imgui/misc/cpp/imgui_stdlib.cpp
+
+        ${ProjectRoot}thirdparty/imgui-node-editor/crude_json.cpp
+        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_canvas.cpp
+        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor.cpp
+        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
         )
 
 # TODO: Seems like my Release build of Mono is broken?
@@ -144,7 +158,7 @@ function(add_core_includes Target)
 
 endfunction()
 
-set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp)
+set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp spirv-cross-core spirv-cross-glsl spirv-cross-reflect glm)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})

@@ -65,7 +65,7 @@ namespace Peeler {
         std::vector<Carrot::BufferView> cameraUniformBufferViews;
         std::vector<vk::DescriptorSet> cameraDescriptorSets;
         Carrot::Render::Viewport& previewViewport;
-        std::unique_ptr<Carrot::ParticleBlueprint> previewBlueprint = nullptr;
+        std::unique_ptr<Carrot::RenderableParticleBlueprint> previewBlueprint = nullptr;
         std::unique_ptr<Carrot::ParticleSystem> previewSystem = nullptr;
 
         bool hasUnsavedChanges = false;

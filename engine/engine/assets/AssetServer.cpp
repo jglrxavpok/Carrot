@@ -12,6 +12,7 @@
 #include <core/io/FileSystemOS.h>
 #include <Fertilizer.h>
 #include <engine/ecs/Prefab.h>
+#include <engine/render/particles/RenderableParticleBlueprint.h>
 
 namespace Carrot {
     namespace fs = std::filesystem;
@@ -224,6 +225,38 @@ namespace Carrot {
             return std::make_shared<Render::AnimatedModel>(pModel);
         });
         return pAnimatedModel->requestHandle();
+    }
+
+    AssetServer::LoadTaskProc<Carrot::RenderableParticleBlueprint> AssetServer::loadParticleBlueprintTask(const Carrot::IO::VFS::Path& path) {
+        return [this, path](TaskHandle& task) {
+            return loadParticleBlueprintTask(task, path);
+        };
+    }
+
+    std::shared_ptr<Carrot::RenderableParticleBlueprint> AssetServer::loadParticleBlueprintTask(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path) {
+        return particleBlueprints.getOrCompute(path.toString(), [&]() -> std::shared_ptr<RenderableParticleBlueprint> {
+            loadingCount++;
+            CLEANUP(loadingCount--);
+            Carrot::IO::Resource from;
+            try {
+                fs::path convertedPath = convert(path);
+                if(convertedPath.empty()) {
+                    from = path; // probably won't work, but at least the error message will be readable
+                } else {
+                    from = Carrot::IO::Resource{ path, convertedPath };
+                }
+            } catch(std::runtime_error& e) {
+                Carrot::Log::error("Could not open particle '%s'", path.toString().c_str());
+                // in case file could not be opened
+                return nullptr; // TODO: default blueprint?
+            } catch(AssetConversionException& e) {
+                Carrot::Log::error("Could not import '%s': %s", path.toString().c_str(), e.what());
+                // in case file could not be converted
+                return nullptr; // TODO: default blueprint?
+            }
+
+            return std::make_shared<RenderableParticleBlueprint>(from);
+        });
     }
 
     std::shared_ptr<ECS::Prefab> AssetServer::loadPrefab(const Carrot::IO::VFS::Path& path) {

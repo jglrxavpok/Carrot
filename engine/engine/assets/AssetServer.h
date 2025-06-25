@@ -12,6 +12,7 @@
 #include <engine/render/animation/AnimatedModel.h>
 
 namespace Carrot {
+    class RenderableParticleBlueprint;
     class Model;
     class Pipeline;
 
@@ -69,6 +70,9 @@ namespace Carrot {
         LoadTaskProc<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstanceTask(const Carrot::IO::VFS::Path& path);
         std::shared_ptr<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstance(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
+        LoadTaskProc<Carrot::RenderableParticleBlueprint> loadParticleBlueprintTask(const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<Carrot::RenderableParticleBlueprint> loadParticleBlueprintTask(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
+
         std::shared_ptr<ECS::Prefab> loadPrefab(const Carrot::IO::VFS::Path& path);
 
         /// Intended for use by Prefab only: next call to loadPrefab with the VFS path will return the input prefab.
@@ -100,6 +104,7 @@ namespace Carrot {
 
         Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
         Async::ParallelMap<std::string, std::shared_ptr<Render::AnimatedModel>> animatedModels{};
+        Async::ParallelMap<std::string, std::shared_ptr<RenderableParticleBlueprint>> particleBlueprints{};
         Async::ParallelMap<std::string, std::shared_ptr<ECS::Prefab>> prefabs{};
 
     private: // migration stuff

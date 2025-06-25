@@ -16,6 +16,7 @@ namespace Carrot::ECS {
     public:
         // references to the .particle file
         Carrot::IO::VFS::Path particleFile;
+        bool fileWasModified = false; //< used to tell systems to reload the particle file
 
         std::shared_ptr<Carrot::ParticleEmitter> emitter;
 

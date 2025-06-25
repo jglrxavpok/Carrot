@@ -12,8 +12,9 @@
 #include <engine/render/ComputePipeline.h>
 #include <engine/render/resources/BufferAllocation.h>
 
-#include "ParticleBlueprint.h"
+#include "RenderableParticleBlueprint.h"
 #include "engine/render/BasicRenderable.h"
+#include "engine/render/resources/Pipeline.h"
 
 namespace Carrot {
     class ParticleSystem;
@@ -90,7 +91,7 @@ namespace Carrot {
 
     class ParticleSystem: public SwapchainAware, public Render::BasicRenderable {
     public:
-        explicit ParticleSystem(Carrot::Engine& engine, ParticleBlueprint& blueprint, std::uint64_t maxParticleCount);
+        explicit ParticleSystem(Carrot::Engine& engine, RenderableParticleBlueprint& blueprint, std::uint64_t maxParticleCount);
 
         std::shared_ptr<ParticleEmitter> createEmitter();
 
@@ -124,7 +125,7 @@ namespace Carrot {
         void pushDataToGPU();
 
     private:
-        ParticleBlueprint& blueprint;
+        RenderableParticleBlueprint& blueprint;
         Carrot::Engine& engine;
 
         Carrot::TrackingAllocator allocator { Carrot::Allocator::getDefault() };

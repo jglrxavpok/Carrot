@@ -30,7 +30,7 @@ target_include_directories(fertilizer-lib PUBLIC ./)
 target_include_directories(fertilizer-lib PUBLIC ${ProjectRoot}thirdparty/bc7enc_rdo)
 
 add_core_includes(fertilizer-lib)
-target_link_libraries(fertilizer-lib PUBLIC CarrotCore meshoptimizer glslang)
+target_link_libraries(fertilizer-lib PUBLIC CarrotCore meshoptimizer glslang SPIRV)
 add_core_precompiled_headers(fertilizer-lib)
 
 add_executable(fertilizer

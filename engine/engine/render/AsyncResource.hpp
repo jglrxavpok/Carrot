@@ -9,7 +9,10 @@
 #include <engine/utils/Macros.h>
 #include <engine/task/TaskScheduler.h>
 #include <engine/render/Model.h>
-#include <core/async/Coroutines.hpp>
+
+namespace Carrot {
+    class RenderableParticleBlueprint;
+}
 
 namespace Carrot {
     template<typename T, bool WaitOnAccess>
@@ -131,4 +134,5 @@ namespace Carrot {
     };
 
     using AsyncModelResource = AsyncResource<Carrot::Model, false>;
+    using AsyncParticleBlueprint = AsyncResource<Carrot::RenderableParticleBlueprint, false>;
 }

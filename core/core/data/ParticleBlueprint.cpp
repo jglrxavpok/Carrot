@@ -4,12 +4,8 @@
 
 #include "ParticleBlueprint.h"
 
-#include <engine/Engine.h>
-
 #include "core/io/IO.h"
 #include "core/io/Resource.h"
-#include "engine/render/ComputePipeline.h"
-#include "engine/render/GBuffer.h"
 
 struct Header {
     char magic[16];
@@ -23,9 +19,13 @@ Carrot::ParticleBlueprint::ParticleBlueprint(std::vector<uint32_t>&& computeCode
     version = 1;
 }
 
-Carrot::ParticleBlueprint::ParticleBlueprint(const std::string& filename) {
-    auto load = [this, filename]() {
-        auto bytes = IO::readFile(filename);
+Carrot::ParticleBlueprint::ParticleBlueprint(const IO::Resource& file) {
+    auto load = [this, file]() {
+        std::vector<u8> bytes;
+
+        // attempt to load in VFS first. Legacy because ParticleEditor does not use VFS (yet)
+        bytes.resize(file.getSize());
+        file.read(bytes);
 
         if(bytes.size() < sizeof(Header)) {
             throw std::runtime_error("File is too small!");
@@ -58,7 +58,7 @@ Carrot::ParticleBlueprint::ParticleBlueprint(const std::string& filename) {
 
     pFileWatcher = Carrot::makeUnique<IO::FileWatcher>(Carrot::Allocator::getDefault(), [&, load](std::filesystem::path path) {
         readyForHotReload = true;
-    }, std::vector{std::filesystem::path{filename}});
+    }, std::vector{std::filesystem::path{file.getFilepath()}});
 }
 
 std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBlueprint& blueprint) {
@@ -73,25 +73,6 @@ std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBluepr
     out.write(reinterpret_cast<const char*>(blueprint.computeShaderCode.data()), h.computeLength);
     out.write(reinterpret_cast<const char*>(blueprint.fragmentShaderCode.data()), h.fragmentLength);
     return out;
-}
-
-std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statisticsBuffer) const {
-    // TODO: replace with Carrot::Pipeline
-    return ComputePipelineBuilder(engine)
-            .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 0, particleBuffer)
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 1, statisticsBuffer)
-            .build();
-}
-
-std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipeline(Carrot::Engine& engine) const {
-    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles.pipeline") };
-
-    desc.type = PipelineType::Particles;
-    desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
-
-    return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), desc);
 }
 
 bool Carrot::ParticleBlueprint::hasHotReloadPending() {

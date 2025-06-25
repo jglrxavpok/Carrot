@@ -18,7 +18,7 @@
 #include "core/io/IO.h"
 #include "core/utils/JSON.h"
 #include "node_based/generators/ParticleShaderGenerator.h"
-#include "engine/render/particles/ParticleBlueprint.h"
+#include <core/data/ParticleBlueprint.h>
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
 
@@ -79,74 +79,10 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
 
     settings.useMostRecent();
 
-    {
-        NodeLibraryMenuScope s1("Operators", &updateGraph);
-        NodeLibraryMenuScope s2("Operators", &renderGraph);
-        NodeLibraryMenuScope s3("Operators", &templateEditor.getGraph());
-        Nodes::addCommonOperators(updateGraph);
-        Nodes::addCommonOperators(renderGraph);
-        Nodes::addCommonOperators(templateEditor.getGraph());
-    }
-    {
-        NodeLibraryMenuScope s1("Logic", &updateGraph);
-        NodeLibraryMenuScope s2("Logic", &renderGraph);
-        NodeLibraryMenuScope s3("Logic", &templateEditor.getGraph());
-        Nodes::addCommonLogic(updateGraph);
-        Nodes::addCommonLogic(renderGraph);
-        Nodes::addCommonLogic(templateEditor.getGraph());
-    }
-
-    {
-        NodeLibraryMenuScope s1("Functions", &updateGraph);
-        NodeLibraryMenuScope s2("Functions", &renderGraph);
-        NodeLibraryMenuScope s3("Functions", &templateEditor.getGraph());
-        Nodes::addCommonMath(updateGraph);
-        Nodes::addCommonMath(renderGraph);
-        Nodes::addCommonMath(templateEditor.getGraph());
-    }
-
-    {
-        NodeLibraryMenuScope s1("Inputs", &updateGraph);
-        NodeLibraryMenuScope s2("Inputs", &renderGraph);
-        NodeLibraryMenuScope s3("Inputs", &templateEditor.getGraph());
-        Nodes::addCommonInputs(updateGraph);
-        Nodes::addCommonInputs(renderGraph);
-        Nodes::addCommonInputs(templateEditor.getGraph());
-    }
-
-    {
-        NodeLibraryMenuScope s1("Update Inputs", &updateGraph);
-        NodeLibraryMenuScope s2("Render Inputs", &renderGraph);
-        NodeLibraryMenuScope s3("Update/Render Inputs", &templateEditor.getGraph());
-        updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
-        templateEditor.getGraph().addVariableToLibrary<VariableNodeType::GetDeltaTime>();
-
-        renderGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
-        templateEditor.getGraph().addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
-    }
-    {
-        NodeLibraryMenuScope s1("Update Outputs", &updateGraph);
-        updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
-        updateGraph.addToLibrary<TerminalNodeType::SetSize>();
-
-        NodeLibraryMenuScope s2("Render Outputs", &renderGraph);
-        renderGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
-        renderGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
-
-        NodeLibraryMenuScope s3("Render/Update Outputs", &templateEditor.getGraph());
-        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetOutputColor>();
-        templateEditor.getGraph().addToLibrary<TerminalNodeType::DiscardPixel>();
-        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetVelocity>();
-        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
-    }
-
-    updateGraph.addToLibrary<CommentNode>("comment", "Comment");
-    renderGraph.addToLibrary<CommentNode>("comment", "Comment");
-
-    renderGraph.addTemplatesToLibrary();
-    updateGraph.addTemplatesToLibrary();
-    renderGraph.addTemplateSupport();
-    updateGraph.addTemplateSupport();
+    Nodes::addParticleEditorNodesForRenderGraph(renderGraph);
+    Nodes::addParticleEditorNodesForRenderGraph(templateEditor.getGraph());
+    Nodes::addParticleEditorNodesForUpdateGraph(updateGraph);
+    Nodes::addParticleEditorNodesForUpdateGraph(templateEditor.getGraph());
 
     ProjectMenuHolder::attachSettings(settings);
 
@@ -356,7 +292,7 @@ void Peeler::ParticleEditor::reloadPreview() {
     auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
     bool isOpaque = false; // TODO: determine via render graph
 
-    previewBlueprint = std::make_unique<Carrot::ParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque);
+    previewBlueprint = std::make_unique<Carrot::RenderableParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque);
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
 
     auto& emitter = *previewSystem->createEmitter();

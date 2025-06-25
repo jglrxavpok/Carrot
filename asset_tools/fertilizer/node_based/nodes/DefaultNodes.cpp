@@ -7,6 +7,7 @@
 
 #include "Arithmetics.hpp"
 #include "BuiltinFunctions.h"
+#include "CommentNode.h"
 #include "Constants.hpp"
 #include "Logics.hpp"
 
@@ -54,5 +55,59 @@ namespace Fertilizer::Nodes {
         graph.addVariableToLibrary<VariableNodeType::GetEmissionID>();
         graph.addVariableToLibrary<VariableNodeType::GetVelocity>();
         graph.addVariableToLibrary<VariableNodeType::GetPosition>();
+    }
+
+    void addCommonParticleEditorNodes(EditorGraph& graph) {
+        {
+            NodeLibraryMenuScope s1("Operators", &graph);
+            Nodes::addCommonOperators(graph);
+        }
+        {
+            NodeLibraryMenuScope s1("Logic", &graph);
+            Nodes::addCommonLogic(graph);
+        }
+
+        {
+            NodeLibraryMenuScope s1("Functions", &graph);
+            Nodes::addCommonMath(graph);
+        }
+
+        {
+            NodeLibraryMenuScope s1("Inputs", &graph);
+            Nodes::addCommonInputs(graph);
+        }
+
+        graph.addToLibrary<CommentNode>("comment", "Comment");
+
+        graph.addTemplatesToLibrary();
+        graph.addTemplateSupport();
+    }
+
+    void addParticleEditorNodesForUpdateGraph(EditorGraph& graph) {
+        addCommonParticleEditorNodes(graph);
+
+        {
+            NodeLibraryMenuScope s1("Update Inputs", &graph);
+            graph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
+        }
+        {
+            NodeLibraryMenuScope s1("Update Outputs", &graph);
+            graph.addToLibrary<TerminalNodeType::SetVelocity>();
+            graph.addToLibrary<TerminalNodeType::SetSize>();
+        }
+    }
+
+    void addParticleEditorNodesForRenderGraph(EditorGraph& graph) {
+        addCommonParticleEditorNodes(graph);
+
+        {
+            NodeLibraryMenuScope s2("Render Inputs", &graph);
+            graph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
+        }
+        {
+            NodeLibraryMenuScope s2("Render Outputs", &graph);
+            graph.addToLibrary<TerminalNodeType::SetOutputColor>();
+            graph.addToLibrary<TerminalNodeType::DiscardPixel>();
+        }
     }
 }

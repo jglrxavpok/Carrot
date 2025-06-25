@@ -25,7 +25,7 @@ Fertilizer::EditorGraph::EditorGraph(std::string name): name(std::move(name)) {
     rootMenu = std::make_unique<NodeLibraryMenu>("<root>");
     currentMenu = rootMenu.get();
 
-    TODO;
+    //TODO;
     /*
     imguiTextures.expressionTypes[Carrot::ExpressionTypes::Bool] = std::make_unique<Carrot::Render::Texture>(engine.getVulkanDriver(), "resources/textures/icons/boolean.png");
     imguiTextures.expressionTypes[Carrot::ExpressionTypes::Float] = std::make_unique<Carrot::Render::Texture>(engine.getVulkanDriver(), "resources/textures/icons/float.png");

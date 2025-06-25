@@ -117,7 +117,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}render/particles/ParticleSystem.cpp
         ${EngineRoot}render/particles/ParticleEmitter.cpp
-        ${EngineRoot}render/particles/ParticleBlueprint.cpp
+        ${EngineRoot}render/particles/RenderableParticleBlueprint.cpp
 
         ${EngineRoot}render/RenderGraph.cpp
         ${EngineRoot}render/RenderPass.cpp
@@ -303,17 +303,6 @@ set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/co
 set(THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_vulkan.cpp
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_glfw.cpp
-        ${ProjectRoot}thirdparty/imgui/imgui.cpp
-        ${ProjectRoot}thirdparty/imgui/imgui_draw.cpp
-        ${ProjectRoot}thirdparty/imgui/imgui_demo.cpp
-        ${ProjectRoot}thirdparty/imgui/imgui_widgets.cpp
-        ${ProjectRoot}thirdparty/imgui/imgui_tables.cpp
-        ${ProjectRoot}thirdparty/imgui/misc/cpp/imgui_stdlib.cpp
-
-        ${ProjectRoot}thirdparty/imgui-node-editor/crude_json.cpp
-        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_canvas.cpp
-        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor.cpp
-        ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
         )
 
 set(ALL_BASE_LIBS

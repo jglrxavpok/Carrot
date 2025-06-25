@@ -14,6 +14,7 @@ namespace Peeler {
             },
             +[](Carrot::ECS::ParticleEmitterComponent& c, const Carrot::IO::VFS::Path& path) {
                 c.particleFile = path;
+                c.fileWasModified = true;
             },
             Helpers::Limits<Carrot::IO::VFS::Path> {
                 .validityChecker = [](const auto& path) { return Carrot::IO::getFileFormat(path.toString().c_str()) == Carrot::IO::FileFormat::PARTICLE; }

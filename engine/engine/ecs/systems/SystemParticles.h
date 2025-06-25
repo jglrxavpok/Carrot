@@ -6,6 +6,7 @@
 #include <core/allocators/TrackingAllocator.h>
 #include <engine/ecs/components/ParticleEmitterComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
+#include <engine/render/AsyncResource.hpp>
 #include <engine/render/particles/Particles.h>
 
 #include "System.h"
@@ -41,15 +42,20 @@ namespace Carrot::ECS {
         // From the current entities, fill 'particles' with the systems used by these entities
         void reloadParticleSystems();
 
+        // From the current entities, recreate their emitters. Do not attempt to load new particle systems
+        void recreateEmitters();
+
         struct ParticleSystemStorage {
-            Carrot::ParticleBlueprint blueprint; // need to be kept alive for 'particleSystem'
-            Carrot::ParticleSystem particleSystem;
+            AsyncParticleBlueprint pBlueprint; // need to be kept alive for 'particleSystem'
+            Carrot::UniquePtr<Carrot::ParticleSystem> pParticleSystem = nullptr;
+            u64 maxParticles = 0;
 
             explicit ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles);
         };
 
         Carrot::TrackingAllocator allocator { Carrot::Allocator::getDefault() }; // used for allocations below
         std::unordered_map<Carrot::IO::VFS::Path /* path of particle files */, Carrot::UniquePtr<ParticleSystemStorage>> particles;
+        std::unordered_set<Carrot::IO::VFS::Path> blueprintsToCheckNextFrame; // keys of particle blueprints to check for loading finish on next frame
 
     };
 }

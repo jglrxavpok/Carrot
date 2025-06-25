@@ -15,7 +15,7 @@
 
 #define DEBUG_PARTICLES 1
 
-Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleBlueprint& blueprint, std::uint64_t maxParticleCount):
+Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::RenderableParticleBlueprint& blueprint, std::uint64_t maxParticleCount):
         engine(engine), blueprint(blueprint), maxParticleCount(maxParticleCount),
         particleBuffer(engine.getResourceAllocator().allocateBuffer(
             sizeof(Particle) * maxParticleCount,

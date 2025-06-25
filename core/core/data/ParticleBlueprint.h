@@ -5,11 +5,9 @@
 #pragma once
 
 #include <vector>
-#include <iostream>
-#include <memory>
-#include <engine/render/resources/Pipeline.h>
-#include <core/expressions/Expressions.h>
 #include <core/UniquePtr.hpp>
+#include <core/io/FileWatcher.h>
+#include <core/io/Resource.h>
 
 namespace Carrot {
     struct Engine;
@@ -22,15 +20,12 @@ namespace Carrot {
     public:
         static constexpr char Magic[] = "carrot particle";
 
-        explicit ParticleBlueprint(const std::string& filename);
+        explicit ParticleBlueprint(const IO::Resource& filename);
         explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque);
 
         friend std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
 
     public:
-        std::unique_ptr<ComputePipeline> buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statsBuffer) const;
-        std::unique_ptr<Pipeline> buildRenderingPipeline(Carrot::Engine& engine) const;
-
         /// Set to true if particle file has changed, and the file could be read
         bool hasHotReloadPending();
 
@@ -43,7 +38,7 @@ namespace Carrot {
 
         bool isOpaque() const { return opaque; }
 
-    private:
+    protected:
         std::uint32_t version = 0;
         std::vector<std::uint32_t> computeShaderCode;
         std::vector<std::uint32_t> fragmentShaderCode;
