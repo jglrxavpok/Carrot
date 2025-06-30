@@ -22,6 +22,10 @@ layout(rgba32f, set = 2, binding = 3) uniform writeonly image2D historyLengthIma
 layout(rgba32f, set = 2, binding = 4) uniform readonly image2D lastFrameHistoryLengthImage;
 layout(set = 2, binding = 5) uniform texture2D previousViewPos;
 
+layout(push_constant) uniform PushConstant {
+    bool isAO;
+} push;
+
 vec4 AdjustHDRColor(vec4 color)
 {
     /*float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
@@ -82,12 +86,13 @@ void main() {
 
     vec4 outColor = vec4(0);
 
-    #if 0 // does not really make sense for AO
+    const int clampRadius = push.isAO ? 5 : 1;
+
     vec3 minColor = vec3(100000);
     vec3 maxColor = vec3(-100000);
 
-    for(int x = -1; x <= 1; x++) {
-        for(int y = -1; y <= 1; y++) {
+    for(int x = -clampRadius; x <= clampRadius; x++) {
+        for(int y = -clampRadius; y <= clampRadius; y++) {
             vec4 color = AdjustHDRColor(imageLoad(noisyInputImage, coords + ivec2(x, y)));
             minColor = min(minColor, color.rgb);
             maxColor = max(maxColor, color.rgb);
@@ -95,23 +100,6 @@ void main() {
     }
     vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions + 0.5)));
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
-    #elif 0
-    vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions + 0.5)));
-    vec3 previousFrameColorClamped = previousFrameColor.rgb;
-    #else
-    vec3 minColor = vec3(100000);
-    vec3 maxColor = vec3(-100000);
-
-    for(int x = -5; x <= 5; x++) {
-        for(int y = -5; y <= 5; y++) {
-            vec4 color = AdjustHDRColor(imageLoad(noisyInputImage, coords + ivec2(x, y)));
-            minColor = min(minColor, color.rgb);
-            maxColor = max(maxColor, color.rgb);
-        }
-    }
-    vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions + 0.5)));
-    vec3 previousFrameColorClamped = mix(previousFrameColor.rgb, clamp(previousFrameColor.rgb, minColor, maxColor), 0.125);
-    #endif
     // TODO: downsample and/or variance?
 
     float historyLength = momentHistoryHistoryLength.b * (reprojected ? 1 : 0) + 1.0;

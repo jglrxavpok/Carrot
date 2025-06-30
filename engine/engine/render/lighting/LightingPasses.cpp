@@ -201,6 +201,8 @@ namespace Carrot::Render {
 
             const PassData::Denoising& data,
             std::uint8_t index,
+
+            bool isAO, // has different neighbor clamping
             vk::CommandBuffer& cmds) {
                auto& renderer = GetRenderer();
 
@@ -278,6 +280,7 @@ namespace Carrot::Render {
 
                    // first iteration
                    {
+                       renderer.pushConstants("push", *temporalDenoisePipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, isAO ? (u32)1 : (u32)0);
                        temporalDenoisePipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
@@ -650,9 +653,9 @@ namespace Carrot::Render {
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
 
-                   applyDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusion, 0, cmds);
-                   applyDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, cmds);
-                   applyDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.reflectionsFirstBounceViewPositions, data.reflectionsFirstBounceViewNormalsTangents, data.reflections, 2, cmds);
+                   applyDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusion, 0, true, cmds);
+                   applyDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, false, cmds);
+                   applyDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.reflectionsFirstBounceViewPositions, data.reflectionsFirstBounceViewNormalsTangents, data.reflections, 2, false, cmds);
                },
                [&](const CompiledPass& pass, const PassData::LightingResources& data) {
                }
@@ -765,7 +768,7 @@ namespace Carrot::Render {
 
                 {
                     TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoise GI");
-                    applyDenoising(pass, frame, "lighting/denoise-direct", data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, cmds);
+                    applyDenoising(pass, frame, "lighting/denoise-direct", data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, false, cmds);
                 }
             });
 
