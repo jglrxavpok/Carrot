@@ -62,7 +62,7 @@ void main() {
     vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
 
-    vec2 reprojectedUV = uv + (gbuffer.motionVector.xy/2);//(prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
+    vec2 reprojectedUV = uv + gbuffer.motionVector.xy;
     vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, gNearestSampler), reprojectedUV).xyz, 1);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 

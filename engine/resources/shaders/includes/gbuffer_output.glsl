@@ -51,5 +51,8 @@ void outputGBuffer(in GBuffer o, mat4 modelview) {
     intProperty = o.intProperty;
     entityID = o.entityID;
     metallicRoughnessVelocityXY = vec4(o.metallicness, o.roughness, o.motionVector.x, o.motionVector.y);
+    // convert to UV space
+    metallicRoughnessVelocityXY.zw *= vec2(0.5, 0.5);
+
     emissiveVelocityZ = vec4(o.emissiveColor, o.motionVector.z);
 }

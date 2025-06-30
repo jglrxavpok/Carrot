@@ -89,7 +89,7 @@ uint getReprojectedProbeIndex(vec2 uv, vec2 motionVector) {
     const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
 
     // reproject temporally, and check if pixel is reusable
-    const vec2 reprojectedUV = uv + motionVector/2;
+    const vec2 reprojectedUV = uv + motionVector;
     const bool reprojectionInBounds = reprojectedUV.x >= 0.0f && reprojectedUV.x < 1.0f && reprojectedUV.y >= 0.0f && reprojectedUV.y < 1.0f;
     if(reprojectionInBounds) {
         const vec2 size = vec2(push.frameWidth, push.frameHeight);

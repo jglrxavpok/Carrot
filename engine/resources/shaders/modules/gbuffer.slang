@@ -29,7 +29,7 @@ public struct GBuffer {
     public float roughness;
 
     public vec3 emissiveColor;
-    public vec3 motionVector;
+    public vec3 motionVector; // motion vector, in clip space
 
     public __init() {
         albedo = vec4(0.0);
@@ -80,6 +80,10 @@ public struct EncodedGBuffer {
         intProperty = gbuffer.intProperty;
         entityID = gbuffer.entityID;
         metallicRoughnessVelocityXY = vec4(gbuffer.metallicness, gbuffer.roughness, gbuffer.motionVector.xy);
+
+        // convert to UV space
+        metallicRoughnessVelocityXY.zw *= vec2(0.5, 0.5);
+
         emissiveVelocityZ = vec4(gbuffer.emissiveColor, gbuffer.motionVector.z);
 
         bool nSign = false;
