@@ -470,10 +470,13 @@ namespace Carrot::Render {
 
             pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
 
-
             auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
 
-            context.renderer.bindTexture(*pipeline, context, inputImage, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+            const vk::ImageLayout targetLayout = vk::ImageLayout::eGeneral;
+            const bool isDepth = inputImage.getImage().getFormat() == context.renderer.getVulkanDriver().getDepthFormat();
+            const vk::ImageAspectFlags aspect = isDepth ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
+
+            context.renderer.bindTexture(*pipeline, context, inputImage, 0, 0, nullptr, aspect, vk::ImageViewType::e2D, 0, targetLayout);
             context.renderer.bindSampler(*pipeline, context, driver.getLinearSampler(), 0, 1);
             context.renderer.bindSampler(*pipeline, context, driver.getNearestSampler(), 0, 2);
             context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
@@ -482,8 +485,8 @@ namespace Carrot::Render {
             destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
             // transition source resource to a sampling format
-            if(sourceResource.layout != vk::ImageLayout::eGeneral)
-                inputImage.getImage().transitionLayoutInline(cmds, sourceResource.layout, vk::ImageLayout::eGeneral); // TODO: aspect?
+            if(targetLayout != sourceResource.layout)
+                inputImage.getImage().transitionLayoutInline(cmds, sourceResource.layout, targetLayout, aspect);
 
             // copy/transform
             std::size_t groupCountX = (destinationTexture->getSize().width+31) / 32;
@@ -491,8 +494,8 @@ namespace Carrot::Render {
             cmds.dispatch(groupCountX, groupCountY, 1);
 
             // transition source resource back to its expected format
-            if(sourceResource.layout != vk::ImageLayout::eGeneral)
-                inputImage.getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, sourceResource.layout); // TODO: aspect?
+            if(targetLayout != sourceResource.layout)
+                inputImage.getImage().transitionLayoutInline(cmds, targetLayout, sourceResource.layout, aspect);
 
             // transition destination resource into sampling format
             destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
