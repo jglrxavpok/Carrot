@@ -115,15 +115,9 @@ namespace Fertilizer {
 
     class NodeLibraryMenu;
 
-    struct ImGuiTextures {
-        //std::unique_ptr<Carrot::Render::Texture> empty = nullptr;
-        //std::unordered_map<Carrot::ExpressionType, std::unique_ptr<Carrot::Render::Texture>> expressionTypes;
-
-        ImTextureID getExpressionType(const Carrot::ExpressionType& type) {
-            TODO;
-            return nullptr;
-          //  return expressionTypes[type]->getImguiID();
-        }
+    struct ImGuiTexturesProvider {
+        virtual ~ImGuiTexturesProvider() = default;
+        virtual ImTextureID getExpressionType(const Carrot::ExpressionType& type) = 0;
     };
 
     class EditorGraph {
@@ -145,7 +139,7 @@ namespace Fertilizer {
         ed::EditorContext* g_Context = nullptr;
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
         NodeLibraryMenu* currentMenu = nullptr;
-        ImGuiTextures imguiTextures;
+        ImGuiTexturesProvider* pImguiTextures = nullptr;
 
         std::chrono::time_point<std::chrono::steady_clock> lastChangeTime{};
         bool hasUnsavedChanges = false;
@@ -220,7 +214,9 @@ namespace Fertilizer {
 
         void recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu);
 
-        ImGuiTextures& getImGuiTextures() { return imguiTextures; };
+        ImGuiTexturesProvider* getImGuiTextures() { return pImguiTextures; };
+
+        void setImGuiTexturesProvider(ImGuiTexturesProvider*);
 
     public:
         template<class T, typename... Args> requires IsNode<T>

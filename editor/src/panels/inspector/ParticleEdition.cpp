@@ -33,8 +33,7 @@ namespace Peeler {
         ImGui::SameLine();
         ImGui::BeginDisabled(!allSame);
         if (ImGui::Button(ICON_FA_EDIT "  Edit")) {
-            Carrot::IO::VFS::Path projectPath = firstParticleFile;
-            projectPath = { projectPath.getRoot(), projectPath.getPath().withExtension(".json") };
+            const Carrot::IO::VFS::Path projectPath = firstParticleFile;
             edition.editor.requestOpenParticleEditor(projectPath);
         }
         ImGui::EndDisabled();

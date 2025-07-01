@@ -4,6 +4,8 @@
 
 #include "SystemParticles.h"
 
+#include <Fertilizer.h>
+#include <core/io/Logging.hpp>
 #include <engine/Engine.h>
 #include <engine/render/particles/Particles.h>
 
@@ -69,6 +71,11 @@ namespace Carrot::ECS {
         for (auto& [_, pStorage] : particles) {
             if (pStorage->pParticleSystem) {
                 pStorage->pParticleSystem->tick(dt);
+
+                if (pStorage->readyForReload) {
+                    pStorage->pParticleSystem->reload();
+                    pStorage->readyForReload = false;
+                }
             }
         }
     }
@@ -160,6 +167,22 @@ namespace Carrot::ECS {
 
     SystemParticles::ParticleSystemStorage::ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles)
         : pBlueprint(GetAssetServer().loadParticleBlueprintTask(particleFile)), maxParticles(maxParticles) {
+
+        auto vfsPath = GetVFS().resolve(particleFile);
+        pFileWatcher = GetEngine().createFileWatcher([particleFile, this](std::filesystem::path file) {
+            if (!pBlueprint.isReady())
+                return;
+            const std::filesystem::path outputPath = Fertilizer::makeOutputPath(file);
+            const Fertilizer::ConversionResult conversionResult = Fertilizer::convert(file, outputPath, true);
+            if (conversionResult.errorCode != Fertilizer::ConversionResultError::Success) {
+                Carrot::Log::error("Hot reload for %s failed: %s", file.string().c_str(), conversionResult.errorMessage.c_str());
+                return;
+            }
+
+            pBlueprint->load(IO::Resource{ particleFile, outputPath });
+            readyForReload = true;
+        }, {vfsPath});
+
     }
 
 }

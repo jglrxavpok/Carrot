@@ -20,45 +20,41 @@ Carrot::ParticleBlueprint::ParticleBlueprint(std::vector<uint32_t>&& computeCode
 }
 
 Carrot::ParticleBlueprint::ParticleBlueprint(const IO::Resource& file) {
-    auto load = [this, file]() {
-        std::vector<u8> bytes;
+    load(file);
+    readyForHotReload = false;
+}
 
-        // attempt to load in VFS first. Legacy because ParticleEditor does not use VFS (yet)
-        bytes.resize(file.getSize());
-        file.read(bytes);
+void Carrot::ParticleBlueprint::load(const IO::Resource& file) {
+    std::vector<u8> bytes;
 
-        if(bytes.size() < sizeof(Header)) {
-            throw std::runtime_error("File is too small!");
-        }
-        auto* header = (Header*)bytes.data();
-        if(std::string("carrot particle") != header->magic) throw std::runtime_error("Invalid magic header.");
-        if(header->version < 0 || header->version > 2) throw std::runtime_error("Unsupported version: " + std::to_string(version));
+    bytes.resize(file.getSize());
+    file.read(bytes);
 
-        uint32_t expectedTotalSize = sizeof(Header) + header->computeLength + header->fragmentLength;
-        if(bytes.size() != expectedTotalSize) {
-            std::cout << "Size of header: " << sizeof(Header) << std::endl;
-            throw std::runtime_error("File is too small (" + std::to_string(bytes.size()) + "), cannot fit compute and render shaders as advertised in header (" + std::to_string(expectedTotalSize) + ")!");
-        }
+    if(bytes.size() < sizeof(Header)) {
+        throw std::runtime_error("File is too small!");
+    }
+    auto* header = (Header*)bytes.data();
+    if(std::string("carrot particle") != header->magic) throw std::runtime_error("Invalid magic header.");
+    if(header->version < 0 || header->version > 2) throw std::runtime_error("Unsupported version: " + std::to_string(version));
 
-        if(header->computeLength % sizeof(std::uint32_t) != 0) {
-            throw std::runtime_error("computeLength is not a multiple of sizeof(uint32) !");
-        }
-        if(header->fragmentLength % sizeof(std::uint32_t) != 0) {
-            throw std::runtime_error("fragmentLength is not a multiple of sizeof(uint32) !");
-        }
-        version = header->version;
-        opaque = header->opaque;
-        computeShaderCode.resize(header->computeLength / sizeof(std::uint32_t));
-        fragmentShaderCode.resize(header->fragmentLength / sizeof(std::uint32_t));
-        std::memcpy(computeShaderCode.data(), bytes.data() + sizeof(Header), header->computeLength);
-        std::memcpy(fragmentShaderCode.data(), bytes.data() + sizeof(Header) + header->computeLength, header->fragmentLength);
-    };
+    uint32_t expectedTotalSize = sizeof(Header) + header->computeLength + header->fragmentLength;
+    if(bytes.size() != expectedTotalSize) {
+        std::cout << "Size of header: " << sizeof(Header) << std::endl;
+        throw std::runtime_error("File is too small (" + std::to_string(bytes.size()) + "), cannot fit compute and render shaders as advertised in header (" + std::to_string(expectedTotalSize) + ")!");
+    }
 
-    load();
-
-    pFileWatcher = Carrot::makeUnique<IO::FileWatcher>(Carrot::Allocator::getDefault(), [&, load](std::filesystem::path path) {
-        readyForHotReload = true;
-    }, std::vector{std::filesystem::path{file.getFilepath()}});
+    if(header->computeLength % sizeof(std::uint32_t) != 0) {
+        throw std::runtime_error("computeLength is not a multiple of sizeof(uint32) !");
+    }
+    if(header->fragmentLength % sizeof(std::uint32_t) != 0) {
+        throw std::runtime_error("fragmentLength is not a multiple of sizeof(uint32) !");
+    }
+    version = header->version;
+    opaque = header->opaque;
+    computeShaderCode.resize(header->computeLength / sizeof(std::uint32_t));
+    fragmentShaderCode.resize(header->fragmentLength / sizeof(std::uint32_t));
+    std::memcpy(computeShaderCode.data(), bytes.data() + sizeof(Header), header->computeLength);
+    std::memcpy(fragmentShaderCode.data(), bytes.data() + sizeof(Header) + header->computeLength, header->fragmentLength);
 }
 
 std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBlueprint& blueprint) {

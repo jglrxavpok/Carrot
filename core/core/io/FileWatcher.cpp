@@ -29,7 +29,7 @@ namespace Carrot::IO {
     void FileWatcher::tick() {
         for(const auto& p : files) {
             auto timestamp = std::filesystem::last_write_time(p);
-            if(timestamp > timestamps[p]) {
+            if(timestamp != timestamps[p]) {
                 timestamps[p] = timestamp;
                 action(p);
             }

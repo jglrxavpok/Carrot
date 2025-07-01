@@ -1925,13 +1925,13 @@ namespace Peeler {
     }
 
     void Application::requestOpenParticleEditor(const Carrot::IO::VFS::Path& particleFile) {
-        if (!pParticleEditor) {
-            pParticleEditor = Carrot::makeUnique<Peeler::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
-        }
-
         std::optional<std::filesystem::path> path = GetVFS().safeResolve(particleFile);
         if (!path.has_value()) {
             return;
+        }
+
+        if (!pParticleEditor) {
+            pParticleEditor = Carrot::makeUnique<Peeler::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
         }
 
         pParticleEditor->scheduleLoad(path.value());

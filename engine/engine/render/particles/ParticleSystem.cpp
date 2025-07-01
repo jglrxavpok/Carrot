@@ -110,10 +110,7 @@ void Carrot::ParticleSystem::pushDataToGPU() {
 void Carrot::ParticleSystem::tick(double deltaTime) {
     // reload if changed
     if (blueprint.hasHotReloadPending()) {
-        renderingPipeline = blueprint.buildRenderingPipeline(engine);
-        updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
-
-        blueprint.clearHotReloadFlag();
+        reload();
     }
 
     pullDataFromGPU();
@@ -218,6 +215,18 @@ void Carrot::ParticleSystem::renderTransparentGBuffer(vk::RenderPass pass, const
 bool Carrot::ParticleSystem::isOpaque() const {
     return blueprint.isOpaque();
 }
+
+void Carrot::ParticleSystem::reload() {
+    renderingPipeline = blueprint.buildRenderingPipeline(engine);
+    updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
+
+    // TODO: what if multiple systems use the same blueprint?
+    blueprint.clearHotReloadFlag();
+    usedParticleCount = 0;
+
+    onSwapchainImageCountChange(engine.getSwapchainImageCount()); // writes binding sets for the new pipelines
+}
+
 
 void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
     renderingPipeline->onSwapchainImageCountChange(newCount);

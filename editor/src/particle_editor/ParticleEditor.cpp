@@ -94,6 +94,10 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
     templateEditor.scheduleLoad(testPath);
 
     templateEditor.open();
+
+    templateEditor.getGraph().setImGuiTexturesProvider(this);
+    renderGraph.setImGuiTexturesProvider(this);
+    updateGraph.setImGuiTexturesProvider(this);
 }
 
 void Peeler::ParticleEditor::updateUpdateGraph(Carrot::Render::Context renderContext) {
@@ -361,6 +365,15 @@ void Peeler::ParticleEditor::onSwapchainImageCountChange(size_t newCount) {
 void Peeler::ParticleEditor::onSwapchainSizeChange(Carrot::Window& w, int newWidth, int newHeight) {
     previewRenderGraph->onSwapchainSizeChange(w, newWidth, newHeight);
 }
+
+ImTextureID Peeler::ParticleEditor::getExpressionType(const Carrot::ExpressionType& type) {
+    auto iter = expressionTypesTextures.find(type);
+    if (iter == expressionTypesTextures.end()) {
+        return nullptr;
+    }
+    return iter->second->getImguiID();
+}
+
 
 void Peeler::ParticleEditor::onCutShortcut(const Carrot::Render::Context& frame) {
     switch(focusedGraph) {

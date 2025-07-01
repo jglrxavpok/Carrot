@@ -23,6 +23,9 @@ namespace Carrot {
         explicit ParticleBlueprint(const IO::Resource& filename);
         explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque);
 
+        // (re)loads the blueprint from the given file
+        void load(const IO::Resource& file);
+
         friend std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
 
     public:
@@ -45,7 +48,6 @@ namespace Carrot {
         bool opaque = false;
 
         bool readyForHotReload = false;
-        Carrot::UniquePtr<Carrot::IO::FileWatcher> pFileWatcher;
     };
 
     std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);

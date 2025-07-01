@@ -16,7 +16,7 @@
 #include <engine/render/resources/BufferView.h>
 
 namespace Peeler {
-    class ParticleEditor: public SwapchainAware, public Tools::ProjectMenuHolder {
+    class ParticleEditor: public SwapchainAware, public Tools::ProjectMenuHolder, public Fertilizer::ImGuiTexturesProvider {
     public:
         enum class Graph {
             None,
@@ -50,6 +50,8 @@ namespace Peeler {
 
         void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 
+        ImTextureID getExpressionType(const Carrot::ExpressionType& type) override;
+
     private:
         Carrot::Engine& engine;
         Graph focusedGraph;
@@ -67,6 +69,9 @@ namespace Peeler {
         Carrot::Render::Viewport& previewViewport;
         std::unique_ptr<Carrot::RenderableParticleBlueprint> previewBlueprint = nullptr;
         std::unique_ptr<Carrot::ParticleSystem> previewSystem = nullptr;
+
+        std::unique_ptr<Carrot::Render::Texture> emptyTexture = nullptr;
+        std::unordered_map<Carrot::ExpressionType, std::unique_ptr<Carrot::Render::Texture>> expressionTypesTextures;
 
         bool hasUnsavedChanges = false;
 

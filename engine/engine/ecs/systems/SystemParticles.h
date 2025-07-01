@@ -46,8 +46,10 @@ namespace Carrot::ECS {
         void recreateEmitters();
 
         struct ParticleSystemStorage {
+            bool readyForReload = false;
             AsyncParticleBlueprint pBlueprint; // need to be kept alive for 'particleSystem'
             Carrot::UniquePtr<Carrot::ParticleSystem> pParticleSystem = nullptr;
+            std::shared_ptr<IO::FileWatcher> pFileWatcher;
             u64 maxParticles = 0;
 
             explicit ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles);

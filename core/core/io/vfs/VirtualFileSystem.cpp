@@ -112,7 +112,7 @@ namespace Carrot::IO {
                     return p;
                 }
             }
-            return std::filesystem::path{};
+            return std::optional<std::filesystem::path>{};
         } else {
             const std::filesystem::path* rootPath = roots.find(path.getRoot());
             if(rootPath != nullptr) {

@@ -754,3 +754,7 @@ void Fertilizer::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu&
     }
 
 }
+
+void Fertilizer::EditorGraph::setImGuiTexturesProvider(ImGuiTexturesProvider* provider) {
+    pImguiTextures = provider;
+}

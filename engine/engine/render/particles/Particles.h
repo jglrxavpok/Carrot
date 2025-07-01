@@ -115,6 +115,9 @@ namespace Carrot {
 
         bool isOpaque() const;
 
+        /// Reload render & update pipelines from the blueprint, used for hot reloading inside the editor
+        void reload();
+
     private:
         /// Data on the GPU for a given emitter. Not pointer-stable, do not store
         Carrot::EmitterData& getEmitterData(u32 emitterID);

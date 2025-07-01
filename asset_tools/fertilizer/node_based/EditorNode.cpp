@@ -194,9 +194,17 @@ void Fertilizer::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
         ImGui::Dummy(ImVec2(circleRadius/2, 1));
     }
     ImGui::TextUnformatted(pin.name.c_str());
-    auto icon = graph.getImGuiTextures().getExpressionType(pin.getExpressionType());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x/2 /*remove some spacing, icon is too fat otherwise*/);
-    ImGui::Image(icon, ImVec2(lineHeight, lineHeight));
+    const ImVec2 iconSize { lineHeight, lineHeight };
+    if (auto* pProvider = graph.getImGuiTextures()) {
+        if (auto icon = pProvider->getExpressionType(pin.getExpressionType())) {
+            ImGui::Image(icon, iconSize);
+        } else {
+            ImGui::Dummy(iconSize);
+        }
+    } else {
+        ImGui::Dummy(iconSize);
+    }
     if (isOutput) {
         ImGui::Dummy(ImVec2(circleRadius/2, 1));
     }
