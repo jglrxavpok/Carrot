@@ -45,7 +45,5 @@ namespace Carrot::Render {
         void renderWireframeCuboid(const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCapsule(const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void render(const Render::Packet& packet);
-
-        static void registerUsertype(sol::state& destination);
     };
 }

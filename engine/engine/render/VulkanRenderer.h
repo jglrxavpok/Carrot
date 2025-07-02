@@ -314,9 +314,6 @@ namespace Carrot {
             return renderDebugType;
         }
 
-    public:
-        static void registerUsertype(sol::state& destination);
-
     private:
         VulkanDriver& driver;
         Configuration config;

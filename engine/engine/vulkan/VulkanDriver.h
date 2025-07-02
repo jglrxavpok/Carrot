@@ -212,9 +212,6 @@ namespace Carrot {
         /// Create a command pool for compute operations
         vk::UniqueCommandPool createComputeCommandPool();
 
-    public:
-        static void registerUsertype(sol::state& destination);
-
     private:
         struct DeferredCommandBufferDestruction {
             vk::CommandPool pool;

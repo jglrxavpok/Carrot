@@ -33,7 +33,7 @@ namespace Carrot::Exceptions {
 // TODO: use std::unreachable when switching to C++23
 
 // from https://en.cppreference.com/w/cpp/utility/unreachable.html
-#ifdef defined(_MSV_VER) && !defined(__clang__)
+#if defined(_MSC_VER) && !defined(__clang__)
 #define UNREACHABLE __assume(false)
 #else
 #define UNREACHABLE __builtin_unreachable()

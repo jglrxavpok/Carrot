@@ -95,9 +95,6 @@ namespace Carrot::Render {
     public:
         glm::vec<4, std::uint32_t> sampleUVec4(float u, float v) const;
 
-    public:
-        static void registerUsertype(sol::state& destination);
-
     protected:
         void setDebugNames(const std::string& name) override;
 

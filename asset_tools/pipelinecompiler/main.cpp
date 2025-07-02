@@ -21,17 +21,7 @@ void printUsage() {
                  "Inputs filepaths (pipeline and shader paths) are relative to [base path] and outputs are relative to [output base path]" << std::endl;
 }
 
-bool hasShaderCompiler() {
-    return Carrot::IO::hasExecutableInWorkingDirectory("shadercompiler");
-}
-
 int main(int argc, char** argv) {
-    if(!hasShaderCompiler()) {
-        std::cerr << "Missing shadercompiler.exe in working dir, won't be able to launch" << std::endl;
-        printUsage();
-        return -1;
-    }
-
     if(argc != 4) {
         printUsage();
         return -2;

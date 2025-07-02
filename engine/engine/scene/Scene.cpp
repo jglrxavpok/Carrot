@@ -455,7 +455,8 @@ namespace Carrot {
                     auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
                     world.addRenderSystem(std::move(system));
                 } else {
-                    TODO; // dummy system
+                    // TODO: dummy system
+                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
                 }
             }
 
@@ -465,7 +466,8 @@ namespace Carrot {
                     auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
                     world.addLogicSystem(std::move(system));
                 } else {
-                    TODO; // dummy system
+                    // TODO: dummy system
+                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
                 }
             }
         } catch (std::exception& e) {

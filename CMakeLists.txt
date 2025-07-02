@@ -73,8 +73,6 @@ else()
 endif()
 
 
-find_package(Lua REQUIRED)
-
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ALSOFT_NO_CONFIG_UTIL ON CACHE BOOL "" FORCE)
 set(ALSOFT_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -176,7 +174,6 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/dr_libs/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/VulkanMemoryAllocator/include/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/robin-hood-hashing/src/include/)
     target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})

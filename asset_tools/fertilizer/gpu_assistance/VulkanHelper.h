@@ -20,13 +20,8 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_hash.hpp>
 
-#ifdef _MSC_VER
-#define VK_DISPATCHER_TYPE vk::DispatchLoaderDynamic
-#define VK_LOADER_TYPE vk::DynamicLoader
-#else
 #define VK_DISPATCHER_TYPE vk::detail::DispatchLoaderDynamic
 #define VK_LOADER_TYPE vk::detail::DynamicLoader
-#endif
 
 namespace Fertilizer {
     struct GPUBuffer {

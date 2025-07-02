@@ -408,8 +408,6 @@ namespace Carrot {
         Audio::AudioManager& getAudioManager();
         AssetServer& getAssetServer();
 
-        static void registerUsertype(sol::state& destination);
-
     private:
         IO::VFS vfs;
 

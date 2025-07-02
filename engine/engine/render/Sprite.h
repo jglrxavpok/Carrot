@@ -62,8 +62,6 @@ namespace Carrot::Render {
     public:
         static void cleanup();
 
-        static void registerUsertype(sol::state& destination);
-
     private:
         Carrot::Render::Texture::Ref texture;
         Carrot::Math::Rect2Df textureRegion;

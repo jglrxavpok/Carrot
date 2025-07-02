@@ -52,7 +52,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/Component.cpp
         ${EngineRoot}ecs/components/ErrorComponent.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
-        ${EngineRoot}ecs/components/LuaScriptComponent.cpp
         ${EngineRoot}ecs/components/MissingComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/NavMeshComponent.cpp
@@ -69,7 +68,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/BillboardSystem.cpp
         ${EngineRoot}ecs/systems/CameraSystem.cpp
         ${EngineRoot}ecs/systems/CSharpLogicSystem.cpp
-        ${EngineRoot}ecs/systems/LuaSystems.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/PhysicsCharacterSystem.cpp
         ${EngineRoot}ecs/systems/System.cpp
@@ -159,29 +157,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/ComponentProperty.cpp
         ${EngineRoot}scripting/CSharpBindings.cpp
         ${EngineRoot}scripting/CSharpReflectionHelper.cpp
-        ${EngineRoot}scripting/LuaScript.cpp
 
         ${EngineRoot}scripting/bindings/ModelBindings.cpp
         ${EngineRoot}scripting/bindings/PrefabBindings.cpp
-
-        ${EngineRoot}scripting/bindings/all.cpp
-        ${EngineRoot}scripting/bindings/glm.cpp
-        ${EngineRoot}scripting/bindings/Engine.cpp
-
-        ${EngineRoot}scripting/bindings/ecs/ECS.cpp
-
-        ${EngineRoot}scripting/bindings/io/InputSystem.cpp
-
-        ${EngineRoot}scripting/bindings/math/bindings.cpp
-
-        ${EngineRoot}scripting/bindings/vulkan/VulkanDriver.cpp
-        ${EngineRoot}scripting/bindings/vulkan/vulkan.cpp
-
-        ${EngineRoot}scripting/bindings/render/RenderContext.cpp
-        ${EngineRoot}scripting/bindings/render/Sprite.cpp
-        ${EngineRoot}scripting/bindings/render/VulkanRenderer.cpp
-
-        ${EngineRoot}scripting/bindings/render/resources/Texture.cpp
 
         ${EngineRoot}edition/DragDropTypes.cpp
         ${EngineRoot}edition/EditorSettings.cpp
@@ -307,7 +285,7 @@ set(THIRDPARTY-SOURCES
 
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV ${LUA_LIBRARIES} Jolt
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV Jolt
         OpenXR::headers
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
@@ -349,7 +327,6 @@ function(add_engine_precompiled_headers Target)
     target_precompile_headers(${Target} PRIVATE
             <engine/vulkan/includes.h>
             <engine/vr/includes.h>
-            <sol/sol.hpp>
             <Jolt/Jolt.h>
             )
 endfunction()
