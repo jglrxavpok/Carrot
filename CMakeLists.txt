@@ -85,6 +85,8 @@ set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 
 set(CMAKE_DEBUG_POSTFIX "")
 set(OPENEXR_FORCE_INTERNAL_IMATH ON CACHE BOOL "" FORCE)
+set(OPENEXR_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(OPENEXR_INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
 SET(ASSIMP_BUILD_FBX_IMPORTER TRUE)
@@ -111,6 +113,10 @@ SET(ASSIMP_BUILD_STEP_EXPORTER FALSE)
 
 set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_STATIC_LIBRARY OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+
+set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
+set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(thirdparty/KTX-Software)
 
@@ -154,7 +160,8 @@ set(OPENXR_SDK_SRC_DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source)
 set(OPENXR_SDK_BUILD_DIR ${CMAKE_BINARY_DIR}/thirdparty/OpenXR-SDK-Source)
 add_subdirectory(thirdparty/OpenXR-Hpp)
 
-set(MI_OVERRIDE FALSE)
+set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/mimalloc)
 add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
@@ -164,6 +171,12 @@ add_subdirectory(thirdparty/tomlplusplus)
 # symbol lookup error: /usr/local/bin/slangc: undefined symbol: _Z29slang_createGlobalSessionImplPK22SlangGlobalSessionDescPKN5Slang25GlobalSessionInternalDescEPPN5slang14IGlobalSessionE
 set(SLANG_LIB_TYPE STATIC)
 set(SLANG_ENABLE_SLANG_GLSLANG FALSE)
+set(SLANG_ENABLE_EXAMPLES FALSE)
+set(SLANG_ENABLE_REPLAYER FALSE)
+set(SLANG_ENABLE_TESTS FALSE)
+set(SLANG_ENABLE_SLANGC FALSE)
+set(SLANG_ENABLE_SLANGI FALSE)
+set(SLANG_ENABLE_GFX FALSE)
 add_subdirectory(thirdparty/slang)
 
 function(add_includes Target)

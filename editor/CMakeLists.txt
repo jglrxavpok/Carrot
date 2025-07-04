@@ -77,13 +77,6 @@ add_editor_defines(Peeler-Lib)
 target_include_directories(Peeler-Lib PUBLIC ${EditorIncludes})
 target_link_libraries(Peeler-Lib PUBLIC Engine-Base ${EditorLibs})
 
-add_library(Peeler-Renderdoc-Lib ${EditorSources} ${ImGuizmoSources})
-add_includes(Peeler-Renderdoc-Lib)
-add_editor_defines(Peeler-Renderdoc-Lib)
-target_compile_definitions(Peeler-Renderdoc-Lib PRIVATE DEBUG_MARKERS=1)
-target_include_directories(Peeler-Renderdoc-Lib PUBLIC ${EditorIncludes})
-target_link_libraries(Peeler-Renderdoc-Lib PUBLIC Engine-Base-Renderdoc ${EditorLibs})
-
 add_library(Peeler-ASAN-Lib ${EditorSources} ${ImGuizmoSources})
 make_asan_target(Peeler-ASAN-Lib)
 add_includes(Peeler-ASAN-Lib)
@@ -97,7 +90,6 @@ add_editor_defines(Peeler)
 target_link_libraries(Peeler PUBLIC Peeler-Lib)
 
 add_engine_precompiled_headers(Peeler-Lib)
-add_engine_precompiled_headers(Peeler-Renderdoc-Lib)
 add_engine_precompiled_headers(Peeler-ASAN-Lib)
 add_engine_precompiled_headers(Peeler)
 

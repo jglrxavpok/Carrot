@@ -131,7 +131,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     changeTickRate(config.tickRate);
 
 #if USE_LIVEPP
-    if (settings.useLivePP) {
+    if (settings.useCppHotReloading) {
         std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
         optLPPAgent = lpp::LppCreateSynchronizedAgent(nullptr, livePPPath.wstring().c_str());
 

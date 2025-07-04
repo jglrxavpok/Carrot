@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <core/utils/Assert.h>
+#include <core/utils/PortabilityHelper.h>
 
 #include "FileIncluder.h"
 #include "ShaderCompiler.h"
@@ -53,7 +54,7 @@ namespace GlslCompiler {
     }
 
     int compileToSpirv(const char* basePath, ShaderCompiler::Stage stageCarrot, const char* entryPointName, std::filesystem::path inputFile, std::vector<std::uint32_t>& spirv, ShaderCompiler::FileIncluder& includer) {
-        verify(strcasecmp(entryPointName, ShaderCompiler::InferEntryPointName) != 0, "GLSL compiler cannot infer entry point names");
+        verify(stricmp(entryPointName, ShaderCompiler::InferEntryPointName) != 0, "GLSL compiler cannot infer entry point names");
         EShLanguage stage = convertToGLSLang(stageCarrot);
         const char* stageStr = convertToStr(stageCarrot);
 

@@ -309,12 +309,6 @@ target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation
 
-add_library(Engine-Base-Renderdoc ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
-target_link_libraries(Engine-Base-Renderdoc PUBLIC ${ALL_BASE_LIBS})
-target_compile_definitions(Engine-Base-Renderdoc PRIVATE DEBUG_MARKERS=1)
-add_includes(Engine-Base-Renderdoc)
-add_dependencies(Engine-Base-Renderdoc generate_headers) # OpenXR-Hpp header generation
-
 add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
@@ -332,7 +326,6 @@ function(add_engine_precompiled_headers Target)
 endfunction()
 
 add_engine_precompiled_headers(Engine-Base)
-add_engine_precompiled_headers(Engine-Base-Renderdoc)
 add_engine_precompiled_headers(Engine-ASAN)
 
 # TODO: move to post-build

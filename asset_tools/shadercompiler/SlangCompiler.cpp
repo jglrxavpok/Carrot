@@ -8,6 +8,7 @@
 #include <slang-com-ptr.h>
 #include <core/Macros.h>
 #include <slang.h>
+#include <core/utils/PortabilityHelper.h>
 
 #include "FileIncluder.h"
 
@@ -40,7 +41,7 @@ namespace SlangCompiler {
     }
 
     int compileToSpirv(const char* basePath, ShaderCompiler::Stage stageCarrot, const char* entryPointName, std::filesystem::path inputFile, std::vector<std::uint32_t>& spirv, ShaderCompiler::FileIncluder& includer) {
-        const bool inferEntryPointName = strcasecmp(entryPointName, ShaderCompiler::InferEntryPointName) == 0;
+        const bool inferEntryPointName = stricmp(entryPointName, ShaderCompiler::InferEntryPointName) == 0;
 
         // create global session. This probably wastes some time recreating it for each compiled shader, but each shader is considered independent from a build-system point-of-view
         Slang::ComPtr<IGlobalSession> globalSession;
