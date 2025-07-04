@@ -113,14 +113,14 @@ namespace Carrot::Render {
         cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.swapchainIndex]}, {});
     }
 
-    void Lighting::beginFrame(const Context& renderContext) {
+    void Lighting::drawDebug() {
         if(DebugFogConfig) {
             bool open = true;
             if(ImGui::Begin("Fog config", &open)) {
                 ImGui::DragFloat("Distance", &fogDistance);
                 ImGui::DragFloat("Depth", &fogDepth);
                 float color[3] = { fogColor.x, fogColor.y, fogColor.z };
-                if(ImGui::DragFloat3("Depth", color)) {
+                if(ImGui::DragFloat3("Color", color)) {
                     fogColor = { color[0], color[1], color[2] };
                 }
             }
@@ -130,7 +130,9 @@ namespace Carrot::Render {
                 DebugFogConfig.setValue(false);
             }
         }
+    }
 
+    void Lighting::beginFrame(const Context& renderContext) {
         lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto& handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
         data->lightCount = lightBufferSize;
         data->ambient = ambientColor;

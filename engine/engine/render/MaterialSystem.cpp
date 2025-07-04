@@ -370,9 +370,7 @@ namespace Carrot::Render {
         }
     }
 
-    void MaterialSystem::endFrame(const Context& renderContext) {
-        Async::LockGuard g { accessLock };
-
+    void MaterialSystem::drawDebug() {
         if(ShowDebug) {
             bool isOpen = true;
             if(ImGui::Begin("Material debug", &isOpen)) {
@@ -438,6 +436,10 @@ namespace Carrot::Render {
             }
             ImGui::End();
         }
+    }
+
+    void MaterialSystem::endFrame(const Context& renderContext) {
+        Async::LockGuard g { accessLock };
 
         if(materialHandles.getRequiredStorageCount() >= materialBufferSize) {
             reallocateMaterialBuffer(Carrot::Math::nextPowerOf2(materialHandles.getRequiredStorageCount()));

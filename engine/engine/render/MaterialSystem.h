@@ -112,6 +112,7 @@ namespace Carrot::Render {
     public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
         void endFrame(const Context& renderContext);
+        void drawDebug();
 
     public:
         const vk::DescriptorSetLayout& getDescriptorSetLayout() const { return *descriptorSetLayout; }

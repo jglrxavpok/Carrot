@@ -36,7 +36,6 @@
 #include <engine/assets/AssetServer.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 16 * 1024 * 1024; // 16MiB per frame-in-flight
-static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
 static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 
 static thread_local Carrot::VulkanRenderer::ThreadPackets* threadLocalRenderPackets = nullptr;
@@ -839,15 +838,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
 
     Async::LockGuard lk { threadRegistrationLock };
 
-    bool open = true;
-    bool debugRender = false;
     std::size_t totalPacketCount = 0;
-    if(DebugRenderPacket) {
-        debugRender = ImGui::Begin("Debug Render Packets", &open);
-        if(!open) {
-            DebugRenderPacket.setValue(false);
-        }
-    }
 
     static robin_hood::unordered_flat_map<PacketKey, std::vector<Carrot::Render::Packet>> packetBins;
     auto snapshot = threadRenderPackets.snapshot();
@@ -871,11 +862,6 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     for(const auto& [threadID, packets] : snapshot) {
         {
             ZoneScopedN("Move thread local packets to global bins");
-            if(debugRender) {
-                std::size_t packetCount = packets->unsorted.size();
-                ImGui::Text("%llu packets from thread", packetCount);
-                totalPacketCount += packetCount;
-            }
             for(auto& p : packets->unsorted[currentIndex]) {
                 placeInBin(std::move(p));
             }
@@ -912,23 +898,6 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
 
     sortRenderPackets(preparedRenderPackets);
 
-    if(debugRender) {
-        ImGui::Text("Render packet bin count: %llu", packetBins.size());
-        ImGui::Text("Total render packets count: %llu", totalPacketCount);
-        ImGui::Text("Merged render packets count: %llu", preparedRenderPackets.size());
-        float ratio = static_cast<float>(preparedRenderPackets.size()) / static_cast<float>(totalPacketCount);
-        ImGui::Separator();
-        // TODO: add sorting time
-//        ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
-        ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
-        ImGui::Text("Instance buffer size this frame: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeThisFrame()).c_str());
-        ImGui::Text("Instance buffer size total: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeAllFrames()).c_str());
-    }
-
-    if(DebugRenderPacket) {
-        ImGui::End();
-    }
-
     hasBlinked = true;
     renderThreadReady.increment(); // render thread has started working
     renderThreadKickoff.decrement(); // tell render thread to start working
@@ -954,8 +923,15 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
     {
         static DebugBufferObject obj{};
         auto& buffer = debugBuffers[renderContext.swapchainIndex];
-        
-        if(ShowGBuffer && renderContext.pViewport == &GetEngine().getMainViewport()) {
+
+        const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
+
+        if (isMainViewport) {
+            lighting.drawDebug();
+            materialSystem.drawDebug();
+        }
+
+        if(ShowGBuffer && isMainViewport) {
             bool open = true;
             if(ImGui::Begin("GBuffer debug", &open)) {
                 ImGui::RadioButton("Disable debug", &renderDebugType, DEBUG_GBUFFER_DISABLED);
