@@ -102,8 +102,7 @@ Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
     Carrot::Engine::instance = e;
     Carrot::IO::Resource::vfsToUse = &e->vfs;
     auto exePath = Carrot::IO::getExecutablePath();
-    e->vfs.addRoot("engine", exePath.parent_path());
-    std::filesystem::current_path(exePath.parent_path());
+    e->vfs.addRoot("engine", std::filesystem::current_path());
 }
 
 Carrot::Engine::Engine(int argc, char** argv, Configuration config):
