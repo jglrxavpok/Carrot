@@ -49,13 +49,15 @@ namespace Carrot::Scripting {
 
             fs::path configPath = monoInstallPath;
             configPath /= "etc/mono/config";
-            mono_set_dirs((fs::path{monoInstallPath} / "lib").c_str(), (fs::path{monoInstallPath} / "etc").c_str());
+            mono_set_dirs(
+                Carrot::toString((fs::path{monoInstallPath} / "lib").u8string()).c_str(),
+                Carrot::toString((fs::path{monoInstallPath} / "etc").u8string()).c_str());
             mono_config_parse(nullptr);
 
 #ifdef __linux__
             // Necessary for loading libmono-native, otherwise complains about undefined symbols
             std::filesystem::path dynamicLibPath = monoInstallPath / "lib/libmonosgen-2.0.so";
-            libMonoDynamicLib = dlopen(dynamicLibPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
+            libMonoDynamicLib = dlopen(Carrot::toString(dynamicLibPath.u8string()).c_str(), RTLD_NOW | RTLD_GLOBAL);
             verify(libMonoDynamicLib, "Could not load 'mono-install/lib/libmonosgen-2.0.so'");
 #endif
 
