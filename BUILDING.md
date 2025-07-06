@@ -6,11 +6,9 @@
 3. (Linux) You may need to install `libgtk-3-dev` for nativefiledialog.
 4. (Linux) You may need to install `libxcb-glx0-dev` for OpenXR.
 5. (Linux) You may need to install `libpulse-dev` for OpenAL.
-6. You need a Mono installation. Path is expected to be inside MONO_SDK_PATH environment variable. (https://www.mono-project.com/download/stable/)
-   * For instance, I have to use "C:\Program Files\Mono" after running an installer from the Mono download page.
-7. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
+6. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
 Go into `thirdparty/OpenXR-Hpp` and run `generate-openxr-hpp.sh` (or .ps1). If you have the error ` cannot import name 'soft_unicode' from 'markupsafe'`, you need to remove markupsafe & jinja2 from your installed packages on Linux (see https://github.com/KhronosGroup/OpenXR-SDK-Source/issues/416).
-8. Then you can open the CMake project with your IDE, or generate the project via the command line.
+7. Then you can open the CMake project with your IDE, or generate the project via the command line.
 
 TODO: automate and remove dependencies where possible
 
