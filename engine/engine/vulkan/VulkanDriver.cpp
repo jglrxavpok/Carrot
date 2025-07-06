@@ -383,6 +383,12 @@ void Carrot::VulkanDriver::pickPhysicalDevice() {
     }
 
     physicalDeviceFeatures = physicalDevice.getFeatures();
+    auto properties = physicalDevice.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceVulkan12Properties>();
+    const std::string deviceName = properties.get<vk::PhysicalDeviceProperties2>().properties.deviceName;
+    const std::string driverName = properties.get<vk::PhysicalDeviceVulkan12Properties>().driverName;
+    const std::string driverInfo = properties.get<vk::PhysicalDeviceVulkan12Properties>().driverInfo;
+
+    Carrot::Log::info("Selected %s / %s (%s) as the GPU", deviceName.c_str(), driverName.c_str(), driverInfo.c_str());
 }
 
 int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
@@ -566,7 +572,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             vk::PhysicalDeviceVulkan12Features {
                 .storageBuffer8BitAccess = true,
                 .uniformAndStorageBuffer8BitAccess = true,
-                .storagePushConstant8 = true,
+                .storagePushConstant8 = true, // TODO: not on AMD Windows?
                 .shaderBufferInt64Atomics = true,
                 .shaderInt8 = true,
                 .shaderSampledImageArrayNonUniformIndexing  = true,
@@ -602,8 +608,12 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     }
 #endif
 
+    vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+    std::string_view deviceName = properties.deviceName;
+    const bool isNVIDIA = deviceName.find("NVIDIA") != std::string_view::npos;
+
 #ifdef AFTERMATH_ENABLE
-    bool useAftermath = engine->getSettings().useAftermath;
+    bool useAftermath = engine->getSettings().useAftermath && isNVIDIA;
     vk::DeviceDiagnosticsConfigCreateInfoNV aftermath;
     if (useAftermath) {
         initAftermath();
