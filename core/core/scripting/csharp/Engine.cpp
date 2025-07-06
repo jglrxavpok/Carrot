@@ -35,7 +35,10 @@ namespace Carrot::Scripting {
         if(!runtimeReady.test_and_set()) {
             //mono_trace_set_level_string("debug");
 
-            mono_set_assemblies_path("monolib");
+            std::filesystem::path monoInstallPath = std::filesystem::current_path();
+            monoInstallPath /= "mono-install";
+            std::filesystem::path monoLibsPath = monoInstallPath / "lib/mono/4.5";
+            mono_set_assemblies_path(monoLibsPath.c_str());
 
             static const char* options[] = {
                     "--soft-breakpoints",
@@ -44,18 +47,16 @@ namespace Carrot::Scripting {
 
             mono_jit_parse_options(sizeof(options)/sizeof(char*), (char**)options);
 
-            const char* sdkPath = std::getenv("MONO_SDK_PATH");
-            verify(sdkPath != nullptr, "No Mono SDK found, make sure the 'MONO_SDK_PATH' environment variable is set, pointing to the root folder of a Mono installation");
-#ifdef __linux__
-            fs::path configPath = sdkPath;
+            fs::path configPath = monoInstallPath;
             configPath /= "etc/mono/config";
-
-            mono_set_dirs((fs::path{sdkPath} / "lib").c_str(), (fs::path{sdkPath} / "etc").c_str());
+            mono_set_dirs((fs::path{monoInstallPath} / "lib").c_str(), (fs::path{monoInstallPath} / "etc").c_str());
             mono_config_parse(nullptr);
 
+#ifdef __linux__
             // Necessary for loading libmono-native, otherwise complains about undefined symbols
-            libMonoDynamicLib = dlopen("monolib/libmonosgen-2.0.so", RTLD_NOW | RTLD_GLOBAL);
-            verify(libMonoDynamicLib, "Could not load 'monolib/libmonosgen-2.0.so'");
+            std::filesystem::path dynamicLibPath = monoInstallPath / "lib/libmonosgen-2.0.so";
+            libMonoDynamicLib = dlopen(dynamicLibPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
+            verify(libMonoDynamicLib, "Could not load 'mono-install/lib/libmonosgen-2.0.so'");
 #endif
 
             mono_debug_init(MONO_DEBUG_FORMAT_MONO);

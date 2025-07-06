@@ -11,7 +11,12 @@ list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(Arch "x64")
-set(Platform "win64") # TODO: auto-detect
+
+if(WIN32)
+    set(Platform "Windows")
+else()
+    set(Platform "Linux")
+endif()
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 
 # Hot reloading support
@@ -51,7 +56,6 @@ include(FetchContent)
 find_package(Vulkan REQUIRED)
 
 find_package(NsightAftermath)
-find_package(MonoNETLibraries)
 if(NsightAftermath_FOUND)
     message("Found Aftermath SDK")
     set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} NsightAftermath::NsightAftermath)
@@ -63,14 +67,10 @@ if(NsightAftermath_FOUND)
     file(COPY ${DLL_PATH} DESTINATION "${CMAKE_BINARY_DIR}")
 endif()
 
-if(MonoNETLibraries_FOUND)
-    file(COPY "${MonoNETLibraries_PATH}/" DESTINATION "${CMAKE_BINARY_DIR}/monolib")
-    if(NOT WIN32)
-        file(COPY "${ProjectRoot}thirdparty/mono/bin/${Arch}/Linux/Debug/" DESTINATION "${CMAKE_BINARY_DIR}/monolib")
-    endif ()
-else()
-    message( SEND_ERROR "Missing Mono .NET libraries!")
-endif()
+file(COPY "${ProjectRoot}thirdparty/mono-install/${Platform}/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/")
+if(NOT WIN32)
+    file(COPY "${ProjectRoot}thirdparty/mono/bin/${Arch}/Linux/Debug/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/lib")
+endif ()
 
 
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -117,6 +117,8 @@ set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 
 set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANGRT OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(thirdparty/KTX-Software)
 
