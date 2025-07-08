@@ -152,10 +152,10 @@ add_subdirectory(thirdparty/cider)
 add_subdirectory(thirdparty/meshoptimizer)
 
 # OpenXR config & projects
-set(BUILD_API_LAYERS FALSE)
-set(BUILD_TESTS FALSE)
-set(BUILD_TOOLS FALSE)
-set(BUILD_CONFORMANCE_TESTS FALSE)
+set(BUILD_API_LAYERS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(BUILD_CONFORMANCE_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/OpenXR-SDK-Source)
 
 set(OPENXR_SDK_SRC_DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source)
