@@ -13,7 +13,7 @@ namespace Carrot::ECS {
     struct RigidBodyComponent: IdentifiableComponent<RigidBodyComponent> {
         Physics::RigidBody rigidbody;
 
-        explicit RigidBodyComponent(Entity entity): IdentifiableComponent<RigidBodyComponent>(std::move(entity)) {}
+        explicit RigidBodyComponent(Entity entity);
 
         explicit RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity);
 

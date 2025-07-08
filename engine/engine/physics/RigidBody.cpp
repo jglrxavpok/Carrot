@@ -13,6 +13,7 @@
 namespace Carrot::Physics {
     RigidBody::RigidBody() {
         bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+        bodyTemplate.mMassPropertiesOverride.mMass = 1.0f;
     }
 
     RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
@@ -181,6 +182,9 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setBodyType(BodyType type) {
+        if (type == BodyType::Static) {
+            setActive(false);
+        }
         BodyAccessWrite body{bodyID};
         bodyType = type;
         if(body) {

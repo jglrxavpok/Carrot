@@ -19,6 +19,9 @@
 
 namespace Carrot::ECS {
 
+    RigidBodyComponent::RigidBodyComponent(Entity entity): IdentifiableComponent<RigidBodyComponent>(std::move(entity)) {
+    }
+
     RigidBodyComponent::RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity): RigidBodyComponent(std::move(entity)) {
         rigidbody.setBodyType(getTypeFromName(std::string{doc["body_type"].getAsString()}));
         rigidbody.setMass(doc["mass"].getAsDouble());
