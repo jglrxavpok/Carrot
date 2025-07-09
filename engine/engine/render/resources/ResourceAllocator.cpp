@@ -13,6 +13,9 @@ static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", fals
 
 namespace Carrot {
     ResourceAllocator::ResourceAllocator(VulkanDriver& device): device(device) {
+        physicalLimits = device.getPhysicalDeviceLimits();
+        accelerationStructureProperties = device.getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceAccelerationStructurePropertiesKHR>().get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
+
         stagingHeap = std::make_unique<Buffer>(device, HeapSize,
                                         vk::BufferUsageFlagBits::eTransferSrc
                                         | vk::BufferUsageFlagBits::eTransferDst
@@ -76,7 +79,7 @@ namespace Carrot {
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
         allocInfo.size = size;
-        allocInfo.alignment = std::lcm(alignment, GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+        allocInfo.alignment = std::lcm(alignment, physicalLimits.minStorageBufferOffsetAlignment);
         {
             Carrot::Async::LockGuard g{stagingAccess};
             BufferAllocation alloc = allocateInHeap(allocInfo, stagingVirtualBlock, *stagingHeap, makeDedicated);
@@ -108,16 +111,7 @@ namespace Carrot {
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
 
-        if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
-            allocInfo.alignment = 256;
-        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
-            // TODO: which value is valid?
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
-        }
+        allocInfo.alignment = computeAlignment(usageFlags);
 
         {
             Carrot::Async::LockGuard g{deviceAccess};
@@ -148,16 +142,7 @@ namespace Carrot {
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
 
-        if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
-            allocInfo.alignment = 256;
-        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
-            // TODO: which value is valid?
-            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
-        }
+        allocInfo.alignment = computeAlignment(usageFlags);
 
         {
             Carrot::Async::LockGuard g{deviceAccess};
@@ -229,6 +214,20 @@ namespace Carrot {
     void ResourceAllocator::freeBufferView(BufferView& view) {
         // TODO: proper allocation algorithm
         allocatedBuffers.removeIf([&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); });
+    }
+
+    vk::DeviceSize ResourceAllocator::computeAlignment(vk::BufferUsageFlags usageFlags) const {
+        if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
+            return accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment;
+        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
+            return physicalLimits.minUniformBufferOffsetAlignment;
+        } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
+            return physicalLimits.minStorageBufferOffsetAlignment;
+        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
+            // TODO: which value is valid?
+            return std::max(static_cast<vk::DeviceSize>(16), physicalLimits.minStorageBufferOffsetAlignment);
+        }
+        return 0;
     }
 
     void ResourceAllocator::freeStagingBuffer(BufferAllocation* buffer) {

@@ -200,6 +200,8 @@ Carrot::ASBuilder::PerThreadCommandObjects::~PerThreadCommandObjects() {
 
 Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     enabled = GetCapabilities().supportsRaytracing;
+    vk::PhysicalDeviceAccelerationStructurePropertiesKHR properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceAccelerationStructurePropertiesKHR>().get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
+    scratchBufferAlignment = properties.minAccelerationStructureScratchOffsetAlignment;
 
     onSwapchainImageCountChange(GetEngine().getSwapchainImageCount());
 
@@ -293,7 +295,6 @@ void Carrot::ASBuilder::createSemaphores() {
     preCompactBLASSemaphore.resize(imageCount);
     blasBuildSemaphore.resize(imageCount);
     tlasBuildSemaphore.resize(imageCount);
-    geometryUploadSemaphore.resize(imageCount);
     instanceUploadSemaphore.resize(imageCount);
     serializedCopySemaphore.resize(imageCount);
 
@@ -301,14 +302,12 @@ void Carrot::ASBuilder::createSemaphores() {
         preCompactBLASSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         blasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         tlasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
-        geometryUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         instanceUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         serializedCopySemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
 
         DebugNameable::nameSingle("Precompact BLAS build", *preCompactBLASSemaphore[i]);
-        DebugNameable::nameSingle("BLAS build", *blasBuildSemaphore[i]);
+        DebugNameable::nameSingle(Carrot::sprintf("BLAS build %d", (int)i), *blasBuildSemaphore[i]);
         DebugNameable::nameSingle("TLAS build", *tlasBuildSemaphore[i]);
-        DebugNameable::nameSingle("Geometry upload", *geometryUploadSemaphore[i]);
         DebugNameable::nameSingle("Instance upload", *instanceUploadSemaphore[i]);
         DebugNameable::nameSingle("SerializedAS copy", *serializedCopySemaphore[i]);
     }
@@ -465,6 +464,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         return;
 
     auto& device = renderer.getLogicalDevice();
+    const std::size_t semaphoreIndex = renderContext.frameCount % tlasBuildCommands.size();
 
     // add a bottom level AS for each geometry entry
     std::size_t blasCount = toBuild.size();
@@ -592,7 +592,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                     verify(blas.pPrecomputedBLAS->getHeader().accelerationStructureSerializedSize == blas.pPrecomputedBLAS->blasBytes.size(), "Header and actual data don't have the same size?");
                     perBlas[index].allocationSize = blas.pPrecomputedBLAS->getHeader().accelerationStructureRuntimeSize;
                     perBlas[index].serializedSize = blas.pPrecomputedBLAS->getHeader().accelerationStructureSerializedSize;
-                    perBlas[index].storageOffset = totalSerializedSize.fetch_add(Carrot::Math::alignUp(perBlas[index].serializedSize, static_cast<vk::DeviceSize>(256)) /* ensure all offsets are aligned to 256 bytes */);
+                    perBlas[index].storageOffset = totalSerializedSize.fetch_add(Carrot::Math::alignUp(perBlas[index].serializedSize, scratchBufferAlignment) /* ensure all offsets are aligned */);
                     perBlas[index].compatiblePrecomputed = true;
                     return;
                 }
@@ -630,7 +630,10 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         }
 
         perBlas[index].allocationSize = sizeInfo.accelerationStructureSize;
-        perBlas[index].storageOffset = scratchSize.fetch_add(perBlas[index].firstBuild ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize);
+
+        // allocate slightly more to ensure all offsets are aligned to 'scratchBufferAlignment'
+        vk::DeviceSize requiredSize = Carrot::Math::alignUp(perBlas[index].firstBuild ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize, scratchBufferAlignment);
+        perBlas[index].storageOffset = scratchSize.fetch_add(requiredSize);
 
     }, blasGranularity);
 
@@ -792,7 +795,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     if(totalSerializedSize > 0) {
         renderer.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& cmds) {
             serializedASStorageStaging.view.cmdCopyTo(cmds, serializedASStorage.view);
-        }, false, {}, {}, *serializedCopySemaphore[renderContext.swapchainIndex]);
+        }, false, {}, {}, *serializedCopySemaphore[semaphoreIndex]);
     }
 
     {
@@ -811,7 +814,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
         if(totalSerializedSize > 0) {
             waitSemaphoreList.emplaceBack(vk::SemaphoreSubmitInfo {
-                .semaphore = *serializedCopySemaphore[renderContext.swapchainIndex],
+                .semaphore = *serializedCopySemaphore[semaphoreIndex],
                 .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
             });
         }
@@ -830,7 +833,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             }
         }
         vk::SemaphoreSubmitInfo signalInfo {
-            .semaphore = hasASToCompact ? (*preCompactBLASSemaphore[renderContext.swapchainIndex]) : (*blasBuildSemaphore[renderContext.swapchainIndex]),
+            .semaphore = hasASToCompact ? (*preCompactBLASSemaphore[semaphoreIndex]) : (*blasBuildSemaphore[semaphoreIndex]),
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         };
         GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -886,11 +889,11 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             });
         }
         vk::SemaphoreSubmitInfo waitInfo {
-            .semaphore = (*preCompactBLASSemaphore[renderContext.swapchainIndex]),
+            .semaphore = (*preCompactBLASSemaphore[semaphoreIndex]),
             .stageMask = waitStage,
         };
         vk::SemaphoreSubmitInfo signalInfo {
-            .semaphore = (*blasBuildSemaphore[renderContext.swapchainIndex]),
+            .semaphore = (*blasBuildSemaphore[semaphoreIndex]),
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         };
         GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -916,10 +919,12 @@ Carrot::BufferView Carrot::ASBuilder::getIdentityMatrixBufferView() const {
 }
 
 void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
+    ScopedMarker("ASBuilder::buildTopLevelAS");
     if(!enabled)
         return;
+ //   Carrot::Log::debug("buildTopLevelAS %llu", renderContext.frameCount);
+    const std::size_t semaphoreIndex = renderContext.frameCount % tlasBuildCommands.size();
     static int prevPrimitiveCount = 0;
-    ScopedMarker("ASBuilder::buildTopLevelAS");
     ZoneValue(update ? 1 : 0);
 
     auto& device = renderer.getLogicalDevice();
@@ -993,7 +998,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
             }
             {
                 ZoneScopedN("RT Instances upload");
-                rtInstancesBuffer->view.stageUpload(*instanceUploadSemaphore[renderContext.swapchainIndex], vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
+                rtInstancesBuffer->view.stageUpload(*instanceUploadSemaphore[semaphoreIndex], vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
             }
         }
 
@@ -1065,7 +1070,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     std::vector<vk::SemaphoreSubmitInfo> waitSemaphores;
 
     waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
-        .semaphore = *instanceUploadSemaphore[renderContext.swapchainIndex],
+        .semaphore = *instanceUploadSemaphore[semaphoreIndex],
         .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
     });
     waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
@@ -1075,7 +1080,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     });
     if(builtBLASThisFrame) {
         waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
-            .semaphore = *blasBuildSemaphore[renderContext.swapchainIndex],
+            .semaphore = *blasBuildSemaphore[semaphoreIndex],
             .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
         });
     }
@@ -1084,7 +1089,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .commandBuffer = buildCommand,
     };
     vk::SemaphoreSubmitInfo signalInfo {
-        .semaphore = (*tlasBuildSemaphore[renderContext.swapchainIndex]),
+        .semaphore = (*tlasBuildSemaphore[semaphoreIndex]),
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -1098,7 +1103,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .pSignalSemaphoreInfos = &signalInfo,
     });
 
-    GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[renderContext.swapchainIndex]);
+    GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[semaphoreIndex]);
 
     prevPrimitiveCount = vkInstances.size();
 }

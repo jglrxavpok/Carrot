@@ -65,6 +65,8 @@ namespace Carrot {
         void beginFrame(const Carrot::Render::Context& renderContext);
 
     private:
+        vk::DeviceSize computeAlignment(vk::BufferUsageFlags usageFlags) const;
+
         void freeStagingBuffer(BufferAllocation* buffer);
 
         BufferAllocation allocateInHeap(const VmaVirtualAllocationCreateInfo& allocInfo,
@@ -85,6 +87,9 @@ namespace Carrot {
         Vector<Pair<std::uint32_t, UniquePtr<Buffer>>> dedicatedBufferGraveyard;
 
         std::uint32_t currentFrame = 0;
+
+        vk::PhysicalDeviceLimits physicalLimits;
+        vk::PhysicalDeviceAccelerationStructurePropertiesKHR accelerationStructureProperties;
 
         std::unique_ptr<Carrot::Buffer> stagingHeap;
         std::unique_ptr<Carrot::Buffer> deviceHeap;

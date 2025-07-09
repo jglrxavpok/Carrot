@@ -333,7 +333,6 @@ namespace Carrot {
 
         bool builtBLASThisFrame = false;
         std::vector<vk::UniqueSemaphore> instanceUploadSemaphore;
-        std::vector<vk::UniqueSemaphore> geometryUploadSemaphore;
         std::vector<vk::UniqueSemaphore> tlasBuildSemaphore;
         std::vector<vk::UniqueSemaphore> preCompactBLASSemaphore;
         std::vector<vk::UniqueSemaphore> blasBuildSemaphore;
@@ -344,6 +343,7 @@ namespace Carrot {
         std::atomic_bool dirtyInstances = false;
 
         std::vector<SceneDescription::Geometry> allGeometries;
+        vk::DeviceSize scratchBufferAlignment = 0;
 
         std::size_t lastFrameIndexForTLAS = 0;
         Carrot::BufferAllocation identityMatrixForBLASes;
