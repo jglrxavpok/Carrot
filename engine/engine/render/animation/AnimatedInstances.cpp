@@ -360,8 +360,9 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
                     const AnimatedInstanceData& animatedInstanceData = getInstance(instanceIndex);
                     instance->transform = animatedInstanceData.transform;
 
-                    instance->enabled = instanceIndex < currentInstanceCount && animatedInstanceData.raytraced;
-                    if(instance->enabled) {
+                    const bool isEnabled = instanceIndex < currentInstanceCount && animatedInstanceData.raytraced;
+                    instance->enabled = isEnabled;
+                    if(isEnabled) {
                         blas->setDirty();
                     }
                 } else {

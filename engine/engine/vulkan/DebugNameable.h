@@ -39,7 +39,7 @@ namespace Carrot {
 
         virtual ~DebugNameable() = default;
 
-        static std::unordered_map<vk::DebugReportObjectTypeEXT, std::unordered_map<std::uint64_t, std::string>> objectNames;
+        static std::unordered_map<vk::ObjectType, std::unordered_map<std::uint64_t, std::string>> objectNames;
     };
 }
 

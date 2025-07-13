@@ -307,8 +307,8 @@ void Carrot::ASBuilder::createSemaphores() {
 
         DebugNameable::nameSingle("Precompact BLAS build", *preCompactBLASSemaphore[i]);
         DebugNameable::nameSingle(Carrot::sprintf("BLAS build %d", (int)i), *blasBuildSemaphore[i]);
-        DebugNameable::nameSingle("TLAS build", *tlasBuildSemaphore[i]);
-        DebugNameable::nameSingle("Instance upload", *instanceUploadSemaphore[i]);
+        DebugNameable::nameSingle(Carrot::sprintf("TLAS build, %d", (int)i), *tlasBuildSemaphore[i]);
+        DebugNameable::nameSingle(Carrot::sprintf("Instance upload, %d", (int)i), *instanceUploadSemaphore[i]);
         DebugNameable::nameSingle("SerializedAS copy", *serializedCopySemaphore[i]);
     }
 
@@ -474,7 +474,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     resetBlasBuildCommands(renderContext);
 
-    for(auto& storagePerBucket : prebuiltBLASStorages[renderContext.swapchainIndex]) {
+    for(auto& storagePerBucket : prebuiltBLASStorages[semaphoreIndex]) {
         storagePerBucket = {};
     }
     struct BLASDeserialization {
@@ -632,14 +632,14 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         perBlas[index].allocationSize = sizeInfo.accelerationStructureSize;
 
         // allocate slightly more to ensure all offsets are aligned to 'scratchBufferAlignment'
-        vk::DeviceSize requiredSize = Carrot::Math::alignUp(perBlas[index].firstBuild ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize, scratchBufferAlignment);
+        vk::DeviceSize requiredSize = Carrot::Math::alignUp(/*perBlas[index].firstBuild ? */sizeInfo.buildScratchSize/* : sizeInfo.updateScratchSize*/, scratchBufferAlignment);
         perBlas[index].storageOffset = scratchSize.fetch_add(requiredSize);
 
     }, blasGranularity);
 
     // From what I understand from the Vulkan spec, the buffer containing the data for the serialized AS must already be on device, so we have an intermediate copy
-    Carrot::BufferAllocation& serializedASStorage = prebuiltBLASStorages[renderContext.swapchainIndex][0];
-    Carrot::BufferAllocation& serializedASStorageStaging = prebuiltBLASStorages[renderContext.swapchainIndex][1];
+    Carrot::BufferAllocation& serializedASStorage = prebuiltBLASStorages[semaphoreIndex][0];
+    Carrot::BufferAllocation& serializedASStorageStaging = prebuiltBLASStorages[semaphoreIndex][1];
     {
         ZoneScopedN("Allocate memory for BLASes");
         GetResourceAllocator().multiAllocateDeviceBuffer(perBlas.size(), sizeof(PerBlas),
@@ -822,7 +822,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         // TODO: reuse memory
         std::unordered_set<vk::Semaphore> alreadyWaitedOn;
         for(auto& blas : toBuild) {
-            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameCount);
+            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(semaphoreIndex);
             if(boundSemaphore != VK_NULL_HANDLE) {
                 auto [_, isNew] = alreadyWaitedOn.emplace(boundSemaphore);
                 if (isNew) {
@@ -953,6 +953,11 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     if(vkInstances.empty()) {
         currentTLAS = nullptr;
         instancesBuffer = nullptr;
+
+        if (builtBLASThisFrame) {
+            // ensure *someone* waits for the blas build
+            GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *blasBuildSemaphore[semaphoreIndex]);
+        }
         return;
     }
 
