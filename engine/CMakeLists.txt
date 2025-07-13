@@ -340,6 +340,7 @@ endif()
 
 file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
 file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
+file(COPY "${EngineRoot}../resources/default-imgui.ini" DESTINATION "${CMAKE_BINARY_DIR}/")
 
 # SteamDeck support
 if(WIN32)
