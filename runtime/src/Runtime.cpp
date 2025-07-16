@@ -131,7 +131,7 @@ public:
         GetPhysics().resume();
     }
 
-    void setupCamera(Carrot::Render::Context renderContext) override {
+    void setupCamera(const Carrot::Render::Context& renderContext) override {
         scene.setupCamera(renderContext);
     }
 
@@ -143,11 +143,11 @@ public:
         scene.postPhysics();
     }
 
-    void onFrame(Carrot::Render::Context renderContext) {
+    void onFrame(const Carrot::Render::Context& renderContext) override {
         scene.onFrame(renderContext);
     }
 
-    void tick(double frameTime) {
+    void tick(double frameTime) override {
         scene.tick(frameTime);
     }
 
