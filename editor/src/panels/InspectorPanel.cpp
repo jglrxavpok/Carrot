@@ -123,7 +123,7 @@ namespace Peeler {
         }
 
         if(multipleEntities) {
-            ImGui::Text("%d selected entities", app.selectedEntityIDs.size());
+            ImGui::Text("%ld selected entities", app.selectedEntityIDs.size());
         }
 
         std::string displayedName = world.getName(firstEntityID);
@@ -152,16 +152,24 @@ namespace Peeler {
 
         Carrot::Vector<std::string> toRemoveNames;
         Carrot::Vector<Carrot::ComponentID> toRemoveIDs;
-        for(auto& [componentID, componentList] : componentsInCommon) {
+        Carrot::Vector<Carrot::Pair<Carrot::ComponentID, Carrot::Vector<Carrot::ECS::Component*>*>> sortedComponentsList;
+        for (auto& [componentID, componentList] : componentsInCommon) {
+            sortedComponentsList.emplaceBack(componentID, &componentList);
+        }
+        sortedComponentsList.sort([](const Carrot::Pair<Carrot::ComponentID, Carrot::Vector<Carrot::ECS::Component*>*>& a, const Carrot::Pair<Carrot::ComponentID, Carrot::Vector<Carrot::ECS::Component*>*>& b) {
+            return strcmp((*a.second)[0]->getName(), (*b.second)[0]->getName()) < 0;
+        });
+
+        for(auto& [componentID, pComponentList] : sortedComponentsList) {
             EditContext editContext {
                 .editor = app,
                 .inspector = *this,
                 .renderContext = renderContext
             };
-            editComponents(editContext, componentID, componentList);
+            editComponents(editContext, componentID, *pComponentList);
             if(editContext.shouldBeRemoved) {
                 toRemoveIDs.pushBack(componentID);
-                toRemoveNames.pushBack(componentList[0]->getName());
+                toRemoveNames.pushBack((*pComponentList)[0]->getName());
             }
 
             if(editContext.hasModifications) {

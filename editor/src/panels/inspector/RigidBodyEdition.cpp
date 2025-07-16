@@ -442,8 +442,8 @@ namespace Peeler {
                     break; // TODO
             }
             const ImTextureID textureID = textureRef->getImguiID();
-            bool wasLocked = *pTristate != State::UNLOCKED;
-            const bool changed = ImGui::ImageToggleButton(id, textureID, &wasLocked, buttonSize);
+            bool newIsLocked = *pTristate != State::UNLOCKED;
+            const bool changed = ImGui::ImageToggleButton(id, textureID, &newIsLocked, buttonSize);
             if(ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 switch(*pTristate) {
@@ -462,7 +462,7 @@ namespace Peeler {
                 ImGui::EndTooltip();
             }
             if(changed) {
-                *pTristate = wasLocked ? State::UNLOCKED : State::LOCKED;
+                *pTristate = newIsLocked ? State::LOCKED : State::UNLOCKED;
             }
             return changed;
         };
