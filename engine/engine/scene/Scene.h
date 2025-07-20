@@ -42,7 +42,7 @@ namespace Carrot {
     public:
         static bool isValidSceneFolder(const Carrot::IO::VFS::Path& sceneFolder);
 
-        void deserialise(const Carrot::IO::VFS::Path& sceneFolder);
+        void deserialise(const Carrot::IO::VFS::Path& sceneFolder, bool loadSystems = true);
         void serialise(const std::filesystem::path& sceneFolder) const;
 
     public:

@@ -266,7 +266,7 @@ namespace Carrot {
         fs::remove_all(backupFolder);
     }
 
-    void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder) {
+    void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder, bool loadSystems) {
         try { // TODO: remove try catch
             auto& vfs = GetVFS();
             auto& componentLib = Carrot::ECS::getComponentLibrary();
@@ -449,25 +449,28 @@ namespace Carrot {
                 world.repairLinks(remap);
             }
 
-            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {
-                const std::string systemName { systemPath.getPath().getStem() };
-                if (systemLib.has(systemName)) {
-                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
-                    world.addRenderSystem(std::move(system));
-                } else {
-                    // TODO: dummy system
-                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
-                }
-            }
+            if (loadSystems) {
 
-            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".LogicSystems")) {
-                const std::string systemName { systemPath.getPath().getStem() };
-                if (systemLib.has(systemName)) {
-                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
-                    world.addLogicSystem(std::move(system));
-                } else {
-                    // TODO: dummy system
-                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
+                for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {
+                    const std::string systemName { systemPath.getPath().getStem() };
+                    if (systemLib.has(systemName)) {
+                        auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                        world.addRenderSystem(std::move(system));
+                    } else {
+                        // TODO: dummy system
+                        Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
+                    }
+                }
+
+                for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".LogicSystems")) {
+                    const std::string systemName { systemPath.getPath().getStem() };
+                    if (systemLib.has(systemName)) {
+                        auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                        world.addLogicSystem(std::move(system));
+                    } else {
+                        // TODO: dummy system
+                        Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
+                    }
                 }
             }
         } catch (std::exception& e) {

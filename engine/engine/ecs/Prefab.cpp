@@ -39,7 +39,7 @@ namespace Carrot::ECS {
 
     void Prefab::load(const Carrot::IO::VFS::Path& prefabAsset) {
         path = prefabAsset;
-        internalScene.deserialise(prefabAsset);
+        internalScene.deserialise(prefabAsset, false);
         internalScene.world.flushEntityCreationAndRemoval(); // ensure entities are properly added
         internalScene.unload(); // deactivate default-active elements (like animated model handles)
     }

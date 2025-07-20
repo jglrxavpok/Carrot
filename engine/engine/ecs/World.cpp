@@ -686,6 +686,7 @@ namespace Carrot::ECS {
 
     std::vector<Entity> World::getAllEntities() const {
         std::vector<Entity> list;
+        list.reserve(entities.size());
         for(const auto& ent : entities) {
             list.emplace_back(ent, const_cast<World&>(*this));
         }
