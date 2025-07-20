@@ -296,7 +296,7 @@ namespace Peeler {
             }
         }
 
-        checkErrors();
+        //checkErrors();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -364,24 +364,19 @@ namespace Peeler {
                 ImGui::BeginDisabled(incomplete);
                 {
                     if(ImGui::Button("Create")) {
-                        GetTaskScheduler().schedule(Carrot::TaskDescription {
-                            .name = "Load new project",
-                            .task = [=, this](Carrot::TaskHandle& h) {
-                                if (deferredLoad(h.getFiberHandle())) {
-                                    std::filesystem::path projectFolder = projectPath;
-                                    projectFolder /= projectName;
-                                    std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
+                        if (deferredLoad()) {
+                            std::filesystem::path projectFolder = projectPath;
+                            projectFolder /= projectName;
+                            std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
 
-                                    settings.currentProject = projectFile;
-                                    settings.addToRecentProjects(projectFile);
-                                    hasUnsavedChanges = true;
+                            settings.currentProject = projectFile;
+                            settings.addToRecentProjects(projectFile);
+                            hasUnsavedChanges = true;
 
-                                    wantsToLoadProject = false;
-                                    GetVFS().addRoot("game", projectFolder);
-                                    projectToLoad = std::filesystem::path{};
-                                }
-                            }
-                        }, Carrot::TaskScheduler::MainLoop);
+                            wantsToLoadProject = false;
+                            GetVFS().addRoot("game", projectFolder);
+                            projectToLoad = std::filesystem::path{};
+                        }
                     }
                 }
                 ImGui::EndDisabled();
@@ -1300,22 +1295,72 @@ namespace Peeler {
         resourcePanel.updateCurrentFolder("game://");
     }
 
+    void Application::checkForOutdatedFormat() {
+        checkedForOutdatedFormat = true;
+        rapidjson::Document description;
+        try {
+            description.Parse(Carrot::IO::readFileAsText(projectToLoad.string()).c_str());
+        } catch(std::runtime_error& e) {
+            Carrot::Log::error("Failed to load project %s: %s", Carrot::toString(projectToLoad.u8string().c_str()).c_str(), e.what());
+            projectToLoad = EmptyProject;
+        }
+
+        if (description.HasMember("scenes")) {
+            const auto scenesArray = description["scenes"].GetArray();
+            outdatedScenePaths.ensureReserve(scenesArray.Size());
+            for (const auto& sceneElement : scenesArray) {
+                std::string_view path { sceneElement.GetString(), sceneElement.GetStringLength() };
+                if (path.ends_with(".json")) {
+                    outdatedScenePaths.pushBack(std::string{path});
+                }
+            }
+        }
+    }
+
+    void Application::displayOutdatedFormatPopup() {
+        if (!outdatedScenePaths.empty()) {
+            auto result = Carrot::Widgets::drawMessageBox("Outdated scenes",
+                "You have scenes in an outdated format. Do you want to convert them to the new format?\n"
+                "Refusing will cancel the load of your project.", Carrot::Widgets::MessageBoxIcon::Warning, Carrot::Widgets::MessageBoxButtons::Yes | Carrot::Widgets::MessageBoxButtons::No);
+            if (result.has_value()) {
+                switch (result.value()) {
+                    case Carrot::Widgets::MessageBoxButtons::Yes:
+                        userConfirmedUpdateToNewFormat = true;
+                        break;
+
+                    case Carrot::Widgets::MessageBoxButtons::No: {
+                        // cancel loading
+                        projectToLoad = EmptyProject;
+                        deferredLoad();
+                        return;
+                    }
+
+                    default: TODO;
+                }
+            }
+        } else {
+            userConfirmedUpdateToNewFormat = true;
+        }
+    }
+
     void Application::tick(double frameTime) {
         if(wantsToLoadProject && projectToLoad != EmptyProject) {
-            /*if (loadStateMachineReady.isIdle()) {
-                loadStateMachineReady.increment();
-                projectLoadStateMachine = std::make_unique<Cider::Fiber>([this](Cider::FiberHandle& f) {*/
-                    if (deferredLoad(*(Cider::FiberHandle*)nullptr)) {
-                        wantsToLoadProject = false;
-                        projectToLoad = std::filesystem::path{};
-                    }
-                    /*loadStateMachineReady.decrement();
-                }, loadStateMachineStack.asSpan());
+            if (!checkedForOutdatedFormat) {
+                checkForOutdatedFormat();
+                checkedForOutdatedFormat = true;
+            }
 
-            }*/
-        }
-        if(!loadStateMachineReady.isIdle()) {
-            return;
+            if (projectToLoadHasOutdatedFormat) {
+                displayOutdatedFormatPopup();
+                if (!userConfirmedUpdateToNewFormat) {
+                    return;
+                }
+            }
+
+            if (deferredLoad()) {
+                wantsToLoadProject = false;
+                projectToLoad = std::filesystem::path{};
+            }
         }
         if(isPlaying && requestedSingleStep) {
             if(!hasDoneSingleStep) {
@@ -1371,6 +1416,10 @@ namespace Peeler {
     void Application::performLoad(std::filesystem::path fileToOpen) {
         projectToLoad = fileToOpen;
         wantsToLoadProject = true;
+        checkedForOutdatedFormat = false;
+        projectToLoadHasOutdatedFormat = false;
+        userConfirmedUpdateToNewFormat = false;
+        outdatedScenePaths.clear();
     }
 
     static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {
@@ -1500,8 +1549,11 @@ namespace Peeler {
         rootChecker.finalise(errorReport);
     }
 
-    bool Application::deferredLoad(Cider::FiberHandle& f) {
+    bool Application::deferredLoad() {
         wantsToLoadProject = false;
+        projectToLoadHasOutdatedFormat = false;
+        checkedForOutdatedFormat = false;
+        userConfirmedUpdateToNewFormat = false;
         GetVFS().removeRoot("game");
         if(projectToLoad == EmptyProject) {
             currentScene.clear();
@@ -1522,55 +1574,34 @@ namespace Peeler {
         } catch(std::runtime_error& e) {
             Carrot::Log::error("Failed to load project %s: %s", Carrot::toString(projectToLoad.u8string().c_str()).c_str(), e.what());
             projectToLoad = EmptyProject;
-            return deferredLoad(f);
+            return deferredLoad();
         }
 
+        // find outdated scenes
         Carrot::Vector<Carrot::IO::VFS::Path> scenePaths;
-        Carrot::Vector<i64> indicesOfOutdatedScenes;
+        bool needToSave = false;
         if (description.HasMember("scenes")) {
             const auto scenesArray = description["scenes"].GetArray();
             scenePaths.ensureReserve(scenesArray.Size());
-            indicesOfOutdatedScenes.ensureReserve(scenesArray.Size());
             for (const auto& sceneElement : scenesArray) {
                 std::string_view path { sceneElement.GetString(), sceneElement.GetStringLength() };
-                if (path.ends_with(".json")) {
-                    indicesOfOutdatedScenes.pushBack(scenePaths.size());
+                const bool isOutdated = path.ends_with(".json");
+                Carrot::IO::VFS::Path scenePath = path;
+                scenePaths.emplaceBack(scenePath);
+
+                // update outdated scenes
+                if (isOutdated)
+                {
+                    const fs::path realScenePath = GetVFS().resolve(scenePath);
+                    const fs::path sceneFolder = realScenePath.parent_path();
+                    Carrot::Log::info("Converting scene in '%s'...", Carrot::toString(realScenePath.u8string()));
+                    Carrot::SceneConverter::convert(realScenePath, sceneFolder);
+                    Carrot::Log::info("Finished!");
+
+                    fs::remove(realScenePath);
+                    scenePath = Carrot::IO::VFS::Path{ scenePath.getRoot(), scenePath.getPath().withExtension("") };
+                    needToSave = true;
                 }
-                scenePaths.emplaceBack(path);
-            }
-        }
-
-        bool needToSave = false;
-        if (!indicesOfOutdatedScenes.empty()) {
-            while (true) {
-                auto result = Carrot::Widgets::drawMessageBox("Outdated scenes",
-                    "You have scenes in an outdated format. Do you want to convert them to the new format?\n"
-                    "Refusing will cancel the load of your project.", Carrot::Widgets::MessageBoxIcon::Warning, Carrot::Widgets::MessageBoxButtons::Yes | Carrot::Widgets::MessageBoxButtons::No);
-                if (result.has_value()) {
-                    switch (result.value()) {
-                        case Carrot::Widgets::MessageBoxButtons::Yes:
-                            for (i64 sceneIndex : indicesOfOutdatedScenes) {
-                                Carrot::IO::VFS::Path& scenePath = scenePaths[sceneIndex];
-                                const fs::path realScenePath = GetVFS().resolve(scenePath);
-                                const fs::path sceneFolder = realScenePath.parent_path();
-                                Carrot::Log::info("Converting scene in '%s'...", Carrot::toString(realScenePath.u8string()));
-                                Carrot::SceneConverter::convert(realScenePath, sceneFolder);
-                                Carrot::Log::info("Finished!");
-
-                                fs::remove(realScenePath);
-                                scenePath = Carrot::IO::VFS::Path{ scenePath.getRoot(), scenePath.getPath().withExtension("") };
-                                needToSave = true;
-                            }
-                            break;
-
-                        case Carrot::Widgets::MessageBoxButtons::No:
-                            return false;
-
-                        default: TODO;
-                    }
-                    break;
-                }
-                f.yield();
             }
         }
 

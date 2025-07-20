@@ -87,7 +87,9 @@ namespace Peeler {
         Cider::GrowingStack loadStateMachineStack { 1 * 1024 * 1024 };
         Carrot::Async::Counter loadStateMachineReady;
         std::unique_ptr<Cider::Fiber> projectLoadStateMachine;
-        bool deferredLoad(Cider::FiberHandle& f);
+        bool deferredLoad();
+        void checkForOutdatedFormat();
+        void displayOutdatedFormatPopup();
 
     public:
         void markDirty();
@@ -205,6 +207,10 @@ namespace Peeler {
         ImGuiID mainDockspace;
 
         bool wantsToLoadProject = false;
+        bool checkedForOutdatedFormat = false;
+        bool projectToLoadHasOutdatedFormat = false;
+        bool userConfirmedUpdateToNewFormat = false;
+        Carrot::Vector<std::string> outdatedScenePaths;
         std::filesystem::path projectToLoad;
 
         Tools::EditorSettings settings;
