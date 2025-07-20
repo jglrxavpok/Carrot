@@ -12,7 +12,7 @@
 #include <glm/glm.hpp>
 #include <engine/physics/Types.h>
 #include <engine/physics/CollisionLayers.h>
-#include <engine/physics/DebugRenderer.h>
+#include <engine/physics/JoltDebugRenderer.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace Carrot {
@@ -170,7 +170,7 @@ namespace Carrot::Physics {
 
     private: // debug rendering
         Carrot::Render::Viewport* debugViewport = nullptr;
-        std::unique_ptr<Physics::DebugRenderer> debugRenderer;
+        std::unique_ptr<Physics::JoltDebugRenderer> debugRenderer;
 
         CollisionLayers collisionLayers;
 

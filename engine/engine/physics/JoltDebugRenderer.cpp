@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 26/06/2023.
 //
 
-#include "DebugRenderer.h"
+#include "JoltDebugRenderer.h"
 #include <engine/Engine.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/render/Viewport.h>
@@ -20,13 +20,13 @@ namespace Carrot::Physics {
         std::atomic<std::uint32_t> mRefCount = 0;
     };
 
-    DebugRenderer::DebugRenderer(Carrot::Render::Viewport& debugViewport): debugViewport(debugViewport) {
+    JoltDebugRenderer::JoltDebugRenderer(Carrot::Render::Viewport& debugViewport): debugViewport(debugViewport) {
         debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("unlitGBuffer");
 
         Initialize();
     }
 
-    void DebugRenderer::render(const Carrot::Render::Context& renderContext) {
+    void JoltDebugRenderer::render(const Carrot::Render::Context& renderContext) {
         if(vertices.empty()) {
             return;
         }
@@ -60,12 +60,12 @@ namespace Carrot::Physics {
         indices.clear();
     }
 
-    void DebugRenderer::DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) {
+    void JoltDebugRenderer::DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) {
 
     }
 
     void
-    DebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, ECastShadow inCastShadow /*unused*/) {
+    JoltDebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, ECastShadow inCastShadow /*unused*/) {
         std::size_t index = vertices.size();
         vertices.resize(vertices.size() + 3);
         indices.resize(indices.size() + 3);
@@ -84,8 +84,8 @@ namespace Carrot::Physics {
         }
     }
 
-    DebugRenderer::Batch
-    DebugRenderer::CreateTriangleBatch(const DebugRenderer::Triangle *inTriangles, int inTriangleCount) {
+    JPH::DebugRenderer::Batch
+    JoltDebugRenderer::CreateTriangleBatch(const DebugRenderer::Triangle *inTriangles, int inTriangleCount) {
         std::vector<Carrot::Vertex> batchVertices;
         std::vector<std::uint32_t> batchIndices;
         batchVertices.resize(inTriangleCount * 3);
@@ -112,7 +112,7 @@ namespace Carrot::Physics {
         return {triangleMesh};
     }
 
-    DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(const DebugRenderer::Vertex *inVertices, int inVertexCount,
+    JPH::DebugRenderer::Batch JoltDebugRenderer::CreateTriangleBatch(const DebugRenderer::Vertex *inVertices, int inVertexCount,
                                                             const JPH::uint32 *inIndices, int inIndexCount) {
         std::vector<Carrot::Vertex> batchVertices;
         std::vector<std::uint32_t> batchIndices;
@@ -138,7 +138,7 @@ namespace Carrot::Physics {
         return {triangleMesh};
     }
 
-    void DebugRenderer::DrawGeometry(const JPH::Mat44& inModelMatrix, const JPH::AABox& inWorldSpaceBounds,
+    void JoltDebugRenderer::DrawGeometry(const JPH::Mat44& inModelMatrix, const JPH::AABox& inWorldSpaceBounds,
                                      float inLODScaleSq, JPH::ColorArg inModelColor,
                                      const DebugRenderer::GeometryRef& inGeometry, DebugRenderer::ECullMode inCullMode,
                                      DebugRenderer::ECastShadow inCastShadow, DebugRenderer::EDrawMode inDrawMode) {
@@ -170,7 +170,7 @@ namespace Carrot::Physics {
         GetRenderer().render(renderPacket);
     }
 
-    void DebugRenderer::DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor,
+    void JoltDebugRenderer::DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor,
                                    float inHeight) {
 
     }

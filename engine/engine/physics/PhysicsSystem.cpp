@@ -240,7 +240,7 @@ namespace Carrot::Physics {
 
         if(debugViewport != nullptr) {
             if(debugRenderer == nullptr) {
-                debugRenderer = std::make_unique<Physics::DebugRenderer>(*debugViewport);
+                debugRenderer = std::make_unique<Physics::JoltDebugRenderer>(*debugViewport);
             }
         } else {
             if(debugRenderer != nullptr) {

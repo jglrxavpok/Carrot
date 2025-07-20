@@ -15,9 +15,9 @@ namespace Carrot::Render {
 }
 
 namespace Carrot::Physics {
-    class DebugRenderer: public ::JPH::DebugRenderer {
+    class JoltDebugRenderer: public ::JPH::DebugRenderer {
     public:
-        DebugRenderer(Carrot::Render::Viewport& debugViewport);
+        JoltDebugRenderer(Carrot::Render::Viewport& debugViewport);
 
         // do the actual rendering
         void render(const Carrot::Render::Context& renderContext);
