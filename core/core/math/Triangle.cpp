@@ -9,6 +9,33 @@
 
 namespace Carrot::Math {
 
+    glm::vec3& Triangle::getPoint(u8 index) {
+        switch (index) {
+            case 0:
+                return a;
+            case 1:
+                return b;
+            case 2:
+                return c;
+
+            default:
+                TODO;
+        }
+    }
+    const glm::vec3& Triangle::getPoint(u8 index) const {
+        switch (index) {
+            case 0:
+                return a;
+            case 1:
+                return b;
+            case 2:
+                return c;
+
+            default:
+                TODO;
+        }
+    }
+
     glm::vec3 Triangle::getClosestPoint(const glm::vec3& p) const {
         Plane plane = Plane::fromTriangle(a, b, c);
         glm::vec3 projected = plane.project(p);

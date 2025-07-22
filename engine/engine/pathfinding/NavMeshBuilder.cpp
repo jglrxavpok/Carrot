@@ -1220,6 +1220,8 @@ namespace Carrot::AI {
     }
 
     void NavMeshBuilder::makeNavMesh(const Graph& rawMesh, NavMesh& navMesh) {
+        debugStep = "Preparing final navmesh";
+
         Render::LoadedScene tmpScene;
         // single node with a single mesh
         tmpScene.nodeHierarchy = std::make_unique<Render::Skeleton>(glm::mat4(1.0f));

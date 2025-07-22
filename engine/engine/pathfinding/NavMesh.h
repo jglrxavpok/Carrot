@@ -11,6 +11,10 @@
 #include <core/io/Resource.h>
 #include <core/io/Serialisation.h>
 
+namespace Carrot::Render {
+    struct Context;
+}
+
 namespace Carrot::AI {
 
     /// Static navigation mesh. Can be used by AI agents to navigate between points inside a level
@@ -33,6 +37,8 @@ namespace Carrot::AI {
         void serialize(Carrot::IO::FileHandle& output) const;
 
         bool hasTriangles() const;
+
+        void debugDraw();
 
     private:
         /// Position inside the nav mesh

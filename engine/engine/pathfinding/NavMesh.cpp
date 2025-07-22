@@ -12,6 +12,10 @@
 #include <engine/render/resources/model_loading/SceneLoader.h>
 #include <core/io/FileFormats.h>
 #include <core/io/Serialisation.h>
+#include <engine/render/RenderContext.h>
+#include <engine/render/VulkanRenderer.h>
+#include <engine/utils/Macros.h>
+#include <glm/gtx/vector_query.hpp>
 
 static constexpr std::array<char, 4> CNAVMagic = { 'C', 'N', 'A', 'V' };
 static constexpr std::uint32_t CNAVVersion = 0;
@@ -65,7 +69,6 @@ namespace Carrot::AI {
         std::vector<NavMeshTriangle> triangles;
 
         std::vector<glm::vec3> allVertices;
-        std::unordered_map<std::size_t, std::vector<std::size_t>> vertexToTriangles; // all triangles sharing a given vertex
         for(const auto& primitive : scene.primitives) {
             std::size_t indexCount = primitive.indices.size();
 
@@ -93,37 +96,78 @@ namespace Carrot::AI {
                 newTriangle.globalVertexIndices[2] = index2 + vertexIndexOffset;
 
                 newTriangle.center = (newTriangle.triangle.a + newTriangle.triangle.b + newTriangle.triangle.c) / 3.0f;
-
-                vertexToTriangles[newTriangle.globalVertexIndices[0]].push_back(newTriangle.index);
-                vertexToTriangles[newTriangle.globalVertexIndices[1]].push_back(newTriangle.index);
-                vertexToTriangles[newTriangle.globalVertexIndices[2]].push_back(newTriangle.index);
             }
         }
+
+        // Due to the way regions are generated, it is possible that the triangles of two regions have overlapping edges,
+        //  but no shared vertex (or a single one). Therefore we need to find all edges which are overlapping.
 
         // triangle index -> connected triangles
         std::unordered_map<std::size_t, std::vector<std::size_t>> adjacency;
 
-        // triangle -> other triangle -> shared vertices
-        std::vector<std::unordered_map<std::size_t, std::vector<glm::vec3>>> allSharedVertices;
-        allSharedVertices.resize(triangles.size());
-        for(const auto& triangle : triangles) {
-            auto& connected = adjacency[triangle.index];
-            auto& sharedVertices = allSharedVertices[triangle.index];
-
-            for (std::size_t vertexIndex : triangle.globalVertexIndices) {
-                for(const auto& triangleIndex : vertexToTriangles[vertexIndex]) {
-                    if(triangleIndex != triangle.index) {
-                        sharedVertices[triangleIndex].push_back(allVertices[vertexIndex]);
-                    }
+        for(const auto& triangle1 : triangles) {
+            for(const auto& triangle2 : triangles) { // TODO: no need to redo triangles with index < self
+                if (triangle1.index == triangle2.index) {
+                    continue;
                 }
-            }
 
-            for(const auto& [otherTriangle, sharedVertexList] : sharedVertices) {
-                if(sharedVertexList.size() >= 2) {
-                    connected.push_back(otherTriangle);
-                    auto& portal = portalVertices[triangle.index][otherTriangle];
-                    portal[0] = sharedVertexList[0];
-                    portal[1] = sharedVertexList[1];
+                // TODO: might be able to optimize this (using the bounding boxes of triangles?)
+
+                // go over all edges of both triangles
+                for (i32 vertex1 = 0; vertex1 < 3; vertex1++) {
+                    for (i32 vertex2 = 0; vertex2 < 3; vertex2++) {
+                        const glm::vec3& point1A = triangle1.triangle.getPoint((vertex1+0) % 3);
+                        const glm::vec3& point1B = triangle1.triangle.getPoint((vertex1+1) % 3);
+                        const glm::vec3& point2A = triangle2.triangle.getPoint((vertex2+0) % 3);
+                        const glm::vec3& point2B = triangle2.triangle.getPoint((vertex2+1) % 3);
+
+                        const glm::vec3 dir1 = point1B - point1A;
+                        const glm::vec3 dir2 = point2B - point2A;
+
+                        if (glm::areCollinear(dir1, dir2, 10e-6f)) {
+                            const glm::vec3 normalizedDir1 = glm::normalize(dir1);
+                            // project points of edge 2 on edge 1, and see if projection is very close to the actual point
+                            auto proj = [&](const glm::vec3& v) {
+                                return glm::dot((v - point1A), normalizedDir1);
+                            };
+                            const float tA = proj(point2A);
+                            const float tB = proj(point2B);
+                            const glm::vec3 point2AProjected = tA * normalizedDir1 + point1A;
+                            const glm::vec3 point2BProjected = tB * normalizedDir1 + point1A;
+
+                            if (glm::all(glm::epsilonEqual(point2A, point2AProjected, 10e-6f))
+                                && glm::all(glm::epsilonEqual(point2B, point2BProjected, 10e-6f))) {
+                                // if projections are veryyy close to the actual point, this means the two edges are aligned
+                                // now we check that they intersect
+                                // points A and B of triangle 1 are implicitly at t=0 and t=1
+
+                                bool intersect = !(
+                                    (tA < 0 && tB < 0) // completely to the 'left' of edge1
+                                    || (tA > 1 && tB > 1) // completely to the 'right' of edge1
+                                    );
+                                if (intersect) {
+                                    adjacency[triangle1.index].push_back(triangle2.index);
+                                    // TODO: adjacency[triangle2.index].push_back(triangle1.index);
+
+                                    auto& portal = portalVertices[triangle1.index][triangle2.index];
+
+                                    // sort vertices along dir1, and take the #1 and #2 of the sorted list, we need to find the opening
+                                    std::array<glm::vec3, 4> sortedAlongDir1{};
+                                    sortedAlongDir1[0] = point1A;
+                                    sortedAlongDir1[1] = point1B;
+                                    sortedAlongDir1[2] = point2A;
+                                    sortedAlongDir1[3] = point2B;
+
+                                    std::ranges::sort(sortedAlongDir1, [&](const glm::vec3& a, const glm::vec3& b) {
+                                        return proj(b) - proj(a) < 0;
+                                    });
+
+                                    portal[0] = sortedAlongDir1[1];
+                                    portal[1] = sortedAlongDir1[2];
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -248,6 +292,18 @@ namespace Carrot::AI {
 
     bool NavMesh::hasTriangles() const {
         return !pathfinder.getVertices().empty();
+    }
+
+    void NavMesh::debugDraw() {
+        const glm::vec4 color{ 0, 0, 0, 1 };
+        Render::DebugRenderer& debugRenderer = GetRenderer().getDebugRenderer();
+        const auto& vertices = pathfinder.getVertices();
+        for (const auto& [indexA, indexB] : pathfinder.getEdges()) {
+            const glm::vec3& a = vertices[indexA].center;
+            const glm::vec3& b = vertices[indexB].center;
+
+            debugRenderer.drawLine(a, b, color);
+        }
     }
 
     // Comment from http://jceipek.com/Olin-Coding-Tutorials/pathing.html#funnel-algorithm :

@@ -43,6 +43,7 @@
         <Compile Include="Audio\SoundSource.cs" />
         <Compile Include="CameraComponent.cs" />
         <Compile Include="CharacterComponent.cs" />
+        <Compile Include="Color.cs" />
         <Compile Include="ComponentPropertyAttributes\Display.cs" />
         <Compile Include="ComponentPropertyAttributes\FloatDefault.cs" />
         <Compile Include="ComponentPropertyAttributes\IntDefault.cs" />
@@ -51,6 +52,8 @@
         <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
         <Compile Include="Components\AnimatedModelComponent.cs" />
         <Compile Include="Components\ModelComponent.cs" />
+        <Compile Include="Components\NavMeshTestComponent.cs" />
+        <Compile Include="Debug.cs" />
         <Compile Include="ECS.cs" />
         <Compile Include="Entity.cs" />
         <Compile Include="Carrot.cs" />
@@ -71,6 +74,7 @@
         <Compile Include="Scenes\Scene.cs" />
         <Compile Include="Scenes\SceneManager.cs" />
         <Compile Include="SoundSourceComponent.cs" />
+        <Compile Include="Systems\NavMeshTestSystem.cs" />
         <Compile Include="Systems\SoundSourceUpdaterSystem.cs" />
         <Compile Include="TextComponent.cs" />
         <Compile Include="TransformComponent.cs" />
