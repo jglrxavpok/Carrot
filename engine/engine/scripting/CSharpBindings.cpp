@@ -35,6 +35,7 @@
 #include <engine/utils/Profiling.h>
 #include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
+#include <engine/render/DebugRenderer.h>
 
 #include "engine/ecs/components/ModelComponent.h"
 #include "engine/ecs/systems/RigidBodySystem.h"
@@ -187,6 +188,24 @@ namespace Carrot::Scripting {
         Carrot::removeIf(carrotObjects, [&](auto& pObj) {
             return !pObj->isAlive();
         });
+
+        // get lines drawn by c#
+        {
+            CSObject resultArray = DebugGetDrawnLinesMethod->staticInvoke({});
+            MonoArray* monoArray = (MonoArray*)resultArray.toMono();
+            Carrot::Vector<Render::DebugRenderer::LineDesc> lines;
+            auto size = mono_array_length(monoArray);
+            lines.resize(size);
+            for (i32 i = 0; i < size; i++) {
+                Render::DebugRenderer::LineDesc obj = mono_array_get(monoArray, Render::DebugRenderer::LineDesc, i);
+                /*if (obj != nullptr) {
+                    lines[i] = CSObject{obj}.unbox<Render::DebugRenderer::LineDesc>();
+                }*/
+                lines[i] = obj;
+            }
+
+            GetRenderer().getDebugRenderer().drawLines(lines);
+        }
     }
 
     void CSharpBindings::loadGameAssembly(const IO::VFS::Path& gameDLL) {
@@ -480,6 +499,11 @@ namespace Carrot::Scripting {
             LOAD_CLASS_NS("Carrot.Input", BoolInputAction);
             LOAD_CLASS_NS("Carrot.Input", FloatInputAction);
             LOAD_CLASS_NS("Carrot.Input", Vec2InputAction);
+        }
+
+        {
+            LOAD_CLASS(Debug);
+            LOAD_METHOD(Debug, GetDrawnLines);
         }
 
         {

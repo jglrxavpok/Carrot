@@ -126,6 +126,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}render/AnimatedSprite.cpp
         ${EngineRoot}render/BillboardRenderer.cpp
+        ${EngineRoot}render/DebugRenderer.cpp
         ${EngineRoot}render/ImGuiBackend.cpp
         ${EngineRoot}render/MaterialSystem.cpp
         ${EngineRoot}render/RenderContext.cpp

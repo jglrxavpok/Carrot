@@ -62,7 +62,8 @@ struct ForwardFrameInfo {
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
                                                                                     recordingRenderContext(*this, nullptr),
                                                                                     singleFrameAllocator(SingleFrameAllocatorSize),
-                                                                                    imGuiBackend(*this)
+                                                                                    imGuiBackend(*this),
+                                                                                    debugRenderer(*this)
 {
     ZoneScoped;
     renderThreadKickoff.increment();
@@ -922,6 +923,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
     ZoneScoped;
 
     clusterManager->render(renderContext);
+    debugRenderer.render(renderContext);
 
     {
         static DebugBufferObject obj{};
@@ -985,6 +987,10 @@ vk::Device& Carrot::VulkanRenderer::getLogicalDevice() {
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
     return driver.getEngine();
+}
+
+Carrot::Render::DebugRenderer& Carrot::VulkanRenderer::getDebugRenderer() {
+    return debugRenderer;
 }
 
 Carrot::Render::ImGuiBackend& Carrot::VulkanRenderer::getImGuiBackend() {

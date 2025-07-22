@@ -87,6 +87,9 @@ namespace Carrot::Scripting {
         CSClass* FloatInputActionClass = nullptr;
         CSClass* Vec2InputActionClass = nullptr;
 
+        CSClass* DebugClass = nullptr;
+        CSMethod* DebugGetDrawnLinesMethod = nullptr;
+
     public:
         CSharpBindings();
 

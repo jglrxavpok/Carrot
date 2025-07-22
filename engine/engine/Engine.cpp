@@ -1438,6 +1438,7 @@ void Carrot::Engine::tick(double deltaTime) {
     auto postPhysics = [&]() {
         game->postPhysics();
     };
+    csBindings->tick(deltaTime);
     GetPhysics().tick(deltaTime, prePhysics, postPhysics);
 }
 

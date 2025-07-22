@@ -308,6 +308,9 @@ namespace Carrot::Render {
                 verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null if there are indexed draw commands");
             } break;
 
+            case PacketType::DrawUnindexedInstanced:
+                break;
+
             case PacketType::Compute:
             case PacketType::Mesh:
             case PacketType::Procedural:

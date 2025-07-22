@@ -37,6 +37,8 @@
 #include <engine/render/VisibilityBuffer.h>
 #include <engine/utils/DeferredDestruction.h>
 
+#include "DebugRenderer.h"
+
 namespace sol {
     class state;
 }
@@ -168,6 +170,7 @@ namespace Carrot {
         const Configuration& getConfiguration() { return config; }
 
         Engine& getEngine();
+        Render::DebugRenderer& getDebugRenderer();
 
         Render::ImGuiBackend& getImGuiBackend();
 
@@ -427,6 +430,8 @@ namespace Carrot {
         Render::SemaphorePool semaphorePool;
         ThreadSafeQueue<vk::Semaphore> semaphoresQueueForCurrentFrame;
         Render::PerFrame<vk::UniqueSemaphore> asyncCopySemaphores;
+
+        Render::DebugRenderer debugRenderer;
 
     private:
         bool hasBlinked = false;
