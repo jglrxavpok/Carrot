@@ -17,7 +17,7 @@ namespace Carrot::Render {
 
     // keep in sync with hash-grid.include.glsl
     static constexpr std::uint64_t HashGridCellsPerBucket = 8;
-    static constexpr std::uint64_t HashGridBucketCount = 1024*256*4;
+    static constexpr std::uint64_t HashGridBucketCount = 1024*256;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
     struct HashGrid {
@@ -131,7 +131,7 @@ namespace Carrot::Render {
                 data.hashGrid = HashGrid::createResources(graph);
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Reuse GI cells");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Reuse GI cells");
                 if (frame.frameCount == 0) {
                     return; // nothing to do
                 }
@@ -272,7 +272,7 @@ namespace Carrot::Render {
                    std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                    std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
 
-                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoising passes");
+                   GPUZoneColored(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoising passes", glm::vec4(0,0,1,1));
 
                    struct Block {
                        std::uint32_t iterationIndex;
@@ -309,7 +309,7 @@ namespace Carrot::Render {
                            .pMemoryBarriers = &memoryBarrier,
                    };
                    {
-                       TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier between a-trous filter iterations");
+                       GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier between a-trous filter iterations");
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
                }
@@ -322,7 +322,7 @@ namespace Carrot::Render {
                 data.hashGrid = HashGrid::write(graph, reuseWorldSpaceGICells.getData().hashGrid);
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Decay GI cells");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Decay GI cells");
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
@@ -466,7 +466,7 @@ namespace Carrot::Render {
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);
             },
             [preparePushConstant, bindBaseGIUpdateInputs, bindGIRayBuffers](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Spawn GI screen probes");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Spawn GI screen probes");
 
                 if (frame.frameCount == 0) {
                     return;
@@ -494,7 +494,7 @@ namespace Carrot::Render {
             },
             [countMultiplier, bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant, pipelineFullName = Carrot::sprintf("lighting/gi/%s", pipelineName.c_str())]
             (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "GI pass");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "GI pass");
 
                 auto pipeline = frame.renderer.getOrCreatePipeline(pipelineFullName, (std::uint64_t)&pass);
 
@@ -542,7 +542,7 @@ namespace Carrot::Render {
                },
                [framebufferSize, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::LightingResources& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph lighting");
-                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "lighting");
+                   GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "lighting");
                    bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
 
                    auto& renderer = frame.renderer;
@@ -615,7 +615,7 @@ namespace Carrot::Render {
                    };
 
                    {
-                       TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "RT passes");
+                       GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "RT passes");
                        const std::uint8_t localSizeX = 32;
                        const std::uint8_t localSizeY = 32;
                        std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
@@ -651,7 +651,7 @@ namespace Carrot::Render {
                            .pMemoryBarriers = &memoryBarrier,
                    };
                    {
-                       TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier before denoising");
+                       GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier before denoising");
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
 
@@ -709,7 +709,7 @@ namespace Carrot::Render {
                 data.reprojectedProbes = graph.write(traceGIRays.getData().reprojectedProbes, {}, {});
             },
             [preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Debug GI cells");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Debug GI cells");
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/debug-gi", (std::uint64_t)&pass);
                 auto& outputTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
@@ -748,7 +748,7 @@ namespace Carrot::Render {
             },
             [preparePushConstant, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
                 {
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Final GI");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Final GI");
 
                     auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/apply-gi", (std::uint64_t)&pass);
                     auto& outputTexture = pass.getGraph().getTexture(data.output.noisy, frame.swapchainIndex);
@@ -769,7 +769,7 @@ namespace Carrot::Render {
                 }
 
                 {
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoise GI");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoise GI");
                     applyDenoising(pass, frame, "lighting/denoise-direct", data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, false, cmds);
                 }
             });

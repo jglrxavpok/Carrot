@@ -102,7 +102,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph temporal-denoise");
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "temporal-denoise");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "temporal-denoise");
                     auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass.getRenderPass());
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.swapchainIndex), 0, 0, nullptr);
 
@@ -331,7 +331,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 },
                 [this, &input, framebufferSize](const Render::CompiledPass& pass, const Render::Context& frame, const SpatialDenoise& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph spatial denoise");
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "spatial denoise");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "spatial denoise");
 
                     auto& originalVariance = pass.getGraph().getTexture(data.originalVariance, frame.swapchainIndex);
                     auto& temporalTexture = pass.getGraph().getTexture(data.postTemporal, frame.swapchainIndex);
@@ -478,7 +478,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             },
             [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph merge-lighting");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "merge-lighting");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "merge-lighting");
                 auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/merge-lighting", pass.getRenderPass());
 
                 struct PushConstant {
@@ -528,7 +528,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const UnlitDraw& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph draw-unlit");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "draw-unlit");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "draw-unlit");
                 GetRenderer().recordPassPackets(Render::PassEnum::Unlit, pass.getRenderPass(), frame, buffer);
             });
 
@@ -547,7 +547,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph post-process");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
                 auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass.getRenderPass());
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
 
@@ -570,13 +570,13 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
     return fillInDefaultPipeline(mainGraph, eye,
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-                                                TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
+                                                GPUZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
                                                 ZoneScopedN("CPU RenderGraph Opaque GPass");
                                                 game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                                 renderer.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                             },
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-                                                TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Transparent Rendering");
+                                                GPUZone(tracyCtx[frame.swapchainIndex], cmds, "Transparent Rendering");
                                                 ZoneScopedN("CPU RenderGraph Transparent GPass");
                                                 game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                                 renderer.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);

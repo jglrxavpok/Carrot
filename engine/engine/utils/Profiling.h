@@ -5,4 +5,3 @@
 #pragma once
 
 #include <core/utils/Profiling.h>
-#include <tracy/TracyVulkan.hpp>

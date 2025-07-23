@@ -6,7 +6,14 @@
 #include "core/io/Logging.hpp"
 #include "core/async/Locks.h"
 #include <unordered_map>
+#include <core/Macros.h>
 #include <tracy/TracyC.h>
+
+// Must match with engine/vulkan/includes.h
+#undef VULKAN_HPP_DISABLE_ENHANCED_MODE
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#include <vulkan/vulkan.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -60,6 +67,20 @@ namespace Carrot::Profiling {
 
     ScopedPixMarker::~ScopedPixMarker() {
         PIXEndEvent();
+    }
+
+    ScopedGPUMarker::ScopedGPUMarker(vk::CommandBuffer& cmds, const char* msg, const glm::vec4& color): cmds(cmds) {
+        vk::DebugUtilsLabelEXT labelInfo{};
+        labelInfo.pLabelName = msg;
+        labelInfo.color[0] = color[0];
+        labelInfo.color[1] = color[1];
+        labelInfo.color[2] = color[2];
+        labelInfo.color[3] = color[3];
+        cmds.beginDebugUtilsLabelEXT(labelInfo);
+    }
+
+    ScopedGPUMarker::~ScopedGPUMarker() {
+        cmds.endDebugUtilsLabelEXT();
     }
 
 

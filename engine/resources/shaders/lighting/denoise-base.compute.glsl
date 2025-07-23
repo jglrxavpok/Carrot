@@ -127,8 +127,6 @@ void main() {
     sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = extractUsefulInfo(unpackGBufferLight(currentUV), currentUV);
     #define currentGBuffer (sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y])
 
-    barrier();
-
     if(currentGBuffer.albedo.a <= 1.0f / 256.0f) {
         imageStore(outputImage, coords, PIXEL_CONVERT_TO_VEC4(finalPixel));
         return;
@@ -140,6 +138,7 @@ void main() {
 
     const int STEP_SIZE = 1 << push.iterationIndex;
 
+    bool firstIter = true;
     for(int dy = -FILTER_RADIUS; dy <= FILTER_RADIUS; dy++) {
         const float yKernelWeight = KERNEL_WEIGHTS[dy+FILTER_RADIUS];
         for(int dx = -FILTER_RADIUS; dx <= FILTER_RADIUS; dx++) {
@@ -155,6 +154,10 @@ void main() {
             }
 
             const float filterWeight = KERNEL_WEIGHTS[dx+FILTER_RADIUS] * yKernelWeight;
+            if(firstIter) {
+                firstIter = false;
+                barrier(); // barrier put right before actually needing the data
+            }
             const ExtractedGBuffer filterGBuffer = readGBuffer(dCoord);
             // TODO: use index for mesh on top of entity (for instance curtains of Sponza)
             PIXEL_TYPE filterPixel = PIXEL_SWIZZLE(imageLoad(inputImage, filterCoord));

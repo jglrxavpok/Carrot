@@ -752,18 +752,18 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                     .pInheritanceInfo = nullptr,
                 });
                 {
-                    TracyVkZone(tracyCtx, cmds, "Build BLAS");
+                    GPUZone(tracyCtx, cmds, "Build BLAS");
 
                     GetVulkanDriver().setMarker(cmds, "Begin AS build");
 
                     if(!bucket.buildInfos.empty()) {
                         ZoneScopedN("Record AS build");
-                        TracyVkZone(tracyCtx, cmds, "AS build");
+                        GPUZone(tracyCtx, cmds, "AS build");
                         cmds.buildAccelerationStructuresKHR(bucket.buildInfos, bucket.pBuildRanges);
                     }
                     if(!bucket.prebuiltContents.empty()) {
                         ZoneScopedN("Record AS copies");
-                        TracyVkZone(tracyCtx, cmds, "AS copies");
+                        GPUZone(tracyCtx, cmds, "AS copies");
 
                         vk::BufferMemoryBarrier barrier{};
                         barrier.buffer = serializedASStorage.view.getVulkanBuffer();
@@ -968,7 +968,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     });
     std::uint64_t tlasValueToWait = 0;
     {
-        TracyVkZone(tlasBuildTracyCtx[renderContext.swapchainIndex], buildCommand, "TLAS build or update");
+        GPUZone(tlasBuildTracyCtx[renderContext.swapchainIndex], buildCommand, "TLAS build or update");
 
         GetVulkanDriver().setFormattedMarker(buildCommand, "Start of command buffer for TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
         // upload instances to the device

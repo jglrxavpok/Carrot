@@ -13,6 +13,10 @@
 #include <string_view>
 #include <tracy/TracyC.h>
 
+namespace vk {
+    class CommandBuffer;
+}
+
 namespace Carrot::Profiling {
     class ScopedTimer {
     public:
@@ -40,8 +44,21 @@ namespace Carrot::Profiling {
         ~ScopedPixMarker();
     };
 
-#define ScopedMarkerNamed(markerText, markerName) ZoneScopedN(markerText); Profiling::ScopedPixMarker markerName { markerText }
+    /**
+     * Scoped marker for gpu work
+     */
+    struct ScopedGPUMarker {
+        explicit ScopedGPUMarker(vk::CommandBuffer& cmds, const char* msg, const glm::vec4& color = {1,0,0,1});
+        ~ScopedGPUMarker();
+
+    private:
+        vk::CommandBuffer& cmds;
+    };
+
+#define ScopedMarkerNamed(markerText, markerName) ZoneScopedN(markerText); Carrot::Profiling::ScopedPixMarker markerName { markerText }
 #define ScopedMarker(markerText) ScopedMarkerNamed(markerText, _)
+#define GPUZoneColored(ctx /*tracy vkcontext*/, cmds /*command buffer*/, markerText, color) TracyVkZone(ctx, cmds, markerText); Carrot::Profiling::ScopedGPUMarker gpuMarker { cmds, markerText, (color) }
+#define GPUZone(ctx /*tracy vkcontext*/, cmds /*command buffer*/, markerText) TracyVkZone(ctx, cmds, markerText); Carrot::Profiling::ScopedGPUMarker gpuMarker { cmds, markerText }
 
     void beginFrame();
     const std::unordered_map<std::string, std::chrono::duration<float>>& getLastFrameTimes();

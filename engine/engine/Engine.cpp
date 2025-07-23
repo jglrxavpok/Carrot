@@ -752,7 +752,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "begin command buffer");
         }
 
-        TracyVkZone(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex], "Main command buffer");
+        GPUZone(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex], "Main command buffer");
 
         if(config.runInVR) {
             {

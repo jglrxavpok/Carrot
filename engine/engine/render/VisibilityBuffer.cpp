@@ -53,7 +53,7 @@ namespace Carrot::Render {
 
                 // Record all render packets (~= draw commands) with the tag "PrePassVisibilityBuffer" then "VisibilityBuffer"
                 {
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Pre pass visibility buffer");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Pre pass visibility buffer");
                     frame.renderer.recordPassPackets(Render::PassEnum::PrePassVisibilityBuffer, {}, frame, cmds);
                 }
             });
@@ -66,7 +66,7 @@ namespace Carrot::Render {
                     },
                     [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                         ZoneScopedN("CPU RenderGraph visibility buffer clear");
-                        TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "clear buffer rasterize");
+                        GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "clear buffer rasterize");
                         auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
 
                         // clear visibility buffer to reset depth
@@ -89,7 +89,7 @@ namespace Carrot::Render {
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                 ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
+                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
                 auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
@@ -97,7 +97,7 @@ namespace Carrot::Render {
                 renderer.bindStorageImage(*pipeline, frame, texture, 0, 3,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 {
-                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Visibility buffer");
+                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Visibility buffer");
                     frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
                 }
             }
@@ -119,7 +119,7 @@ namespace Carrot::Render {
                [this, pipelineName = Carrot::sprintf("post-process/visibility-buffer-debug/%s", shaderNameSuffix.c_str())]
                (const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph visibility buffer debug view");
-                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
+                   GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline(pipelineName, pass.getRenderPass());
 
                    Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);
