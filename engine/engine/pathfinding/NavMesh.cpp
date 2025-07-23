@@ -192,8 +192,6 @@ namespace Carrot::AI {
     }
 
     NavPath NavMesh::computePath(const glm::vec3& pointA, const glm::vec3& pointB) {
-        Profiling::PrintingScopedTimer _t("NavMesh::computePath");
-
         NavMeshPosition posA = getClosestPosition(pointA);
         NavMeshPosition posB = getClosestPosition(pointB);
 
