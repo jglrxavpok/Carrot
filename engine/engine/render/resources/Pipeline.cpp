@@ -113,7 +113,9 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
         module->addPushConstants(stage, pushConstantMap);
     }
     for(const auto& [_, range] : pushConstantMap) {
-        pushConstants.push_back(range);
+        if (range.offset != std::numeric_limits<std::uint32_t>::max()) { // if == (u32)-1, this means the push constant exists in the shader source, but is not used at all, don't bind anything
+            pushConstants.push_back(range);
+        }
     }
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{

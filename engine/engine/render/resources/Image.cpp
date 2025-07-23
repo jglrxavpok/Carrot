@@ -310,7 +310,8 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                 }
                 totalSize *= faceCount;
 
-                Carrot::BufferAllocation stagingData = GetResourceAllocator().allocateStagingBuffer(totalSize);
+                // vkCmdCopyBufferToImage needs the buffer offset to be a multiple of the block size, so align the data properly
+                Carrot::BufferAllocation stagingData = GetResourceAllocator().allocateStagingBuffer(totalSize, ImageFormats::getBlockSize(static_cast<VkFormat>(vkFormat)));
                 std::uint8_t* pImageData = stagingData.view.map<std::uint8_t>();
                 std::size_t destinationOffset = 0;
                 for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {

@@ -18,10 +18,6 @@ layout(push_constant) uniform PushConstant {
     uint64_t pCells;
 };
 
-layout(buffer_reference, scalar) buffer BufferToUint {
-    uint v;
-};
-
 void decayCells() {
     uint cellIndex = gl_GlobalInvocationID.x;
 
@@ -30,7 +26,7 @@ void decayCells() {
     }
 
     const uint decayTime = 10;
-    if(BufferToUint(pLastTouchedFrame+cellIndex*4).v+decayTime < frameCount) {
+    if(BufferToUints(pLastTouchedFrame).v[cellIndex]+decayTime < frameCount) {
         hashGridClear(HashGrid(pCells), cellIndex);
     }
 }

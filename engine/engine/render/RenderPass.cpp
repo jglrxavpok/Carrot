@@ -105,7 +105,7 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
         }
 
         if (!bufferBarriers.empty()) {
-            cmds.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe, static_cast<vk::DependencyFlags>(0), {},
+            cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0), {},
                 bufferBarriers, {});
         }
     }
@@ -338,10 +338,12 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
                 auto& frameImageViews = attachmentImageViews[i];
 
+                bool hasOnlyStorageBuffers = true;
                 for (const auto& output : outputs) {
                     if(output.resource.type == ResourceType::StorageBuffer) {
                         DISCARD(graph.getOrCreateBuffer(output.resource, i));
                     } else {
+                        hasOnlyStorageBuffers = false;
                         auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
 
                         if(output.resource.type == ResourceType::RenderTarget) {
@@ -352,6 +354,8 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                         maxHeight = std::max(texture.getSize().height, maxHeight);
                     }
                 }
+
+                verify(!hasOnlyStorageBuffers, "Pass has no render targets nor storage images, are you sure you want rasterization?");
 
                 Carrot::Log::info("Creating framebuffer of size %lux%lu (pass %s)", maxWidth, maxHeight, pass.getName().data());
 

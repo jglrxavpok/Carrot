@@ -21,4 +21,7 @@ namespace Carrot::ImageFormats {
 	std::uint8_t computeMipCount(std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat);
 
 	VkExtent3D computeMipDimensions(std::uint32_t mipLevel, std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat);
+
+	/// Size in bytes of a 'block' (smallest element of the format, could be a single pixel, or a 4x4 block, or whatever the format wants)
+	std::size_t getBlockSize(VkFormat imageFormat);
 } // Carrot::ImageFormats

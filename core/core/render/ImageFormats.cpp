@@ -313,4 +313,9 @@ namespace Carrot::ImageFormats {
         }
         return VkExtent3D { imageWidth, imageHeight, imageDepth };
     }
+
+    std::size_t getBlockSize(VkFormat imageFormat) {
+        const ImageFormat& format = getFormat(imageFormat);
+        return format.blockSize;
+    }
 } // Carrot
