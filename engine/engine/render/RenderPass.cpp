@@ -101,6 +101,15 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
                     .offset = buffer.view.getStart(),
                     .size = buffer.view.getSize(),
                 });
+            } else if (outputs[i].type == ResourceType::StorageBuffer) {
+                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameCount);
+                bufferBarriers.emplaceBack(vk::BufferMemoryBarrier {
+                    .srcAccessMask = vk::AccessFlagBits::eMemoryWrite,
+                    .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+                    .buffer = buffer.view.getVulkanBuffer(),
+                    .offset = buffer.view.getStart(),
+                    .size = buffer.view.getSize(),
+                });
             }
         }
 

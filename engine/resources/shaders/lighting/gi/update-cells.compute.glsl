@@ -104,7 +104,6 @@ uint getReprojectedProbeIndex(vec2 uv, vec2 motionVector) {
 // KERNEL
 void spawnScreenProbes() {
     reprojectionScore = (packHalf(65504.0f) << 16)/*score*/ | 0xFFFFu/*lane ID*/;
-    barrier();
 
     // a single workgroup covers an entire tile, but there are as many groups as there are tiles.
     // this means the global invocation ID is pixel coords
@@ -121,6 +120,7 @@ void spawnScreenProbes() {
     const vec4 hWorldPosCurrentPixel = (cbo.inverseView * vec4(gbuffer.viewPosition, 1));
     const vec3 worldPosCurrentPixel = hWorldPosCurrentPixel.xyz / hWorldPosCurrentPixel.w;
     const vec3 normalCurrentPixel = inverseNormalView * gbuffer.viewTBN[2];
+    barrier();
 
     // check if not sky
     if(gbuffer.albedo.a >= 0.001f) {
