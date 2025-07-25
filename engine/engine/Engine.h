@@ -137,7 +137,7 @@ namespace Carrot {
         vk::Device& getLogicalDevice();
 
         /// Queue families used by the engine
-        const Carrot::QueueFamilies& getQueueFamilies();
+        const Carrot::QueuePartition& getQueueFamilies();
 
         /// Vulkan Allocator
         vk::Optional<const vk::AllocationCallbacks> getAllocator();

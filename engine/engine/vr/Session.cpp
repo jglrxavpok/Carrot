@@ -43,7 +43,7 @@ namespace Carrot::VR {
         vulkanBindings.device = vr.getEngine().getVulkanDriver().getLogicalDevice();
         vulkanBindings.instance = vr.getEngine().getVulkanDriver().getInstance();
         vulkanBindings.physicalDevice = vr.getEngine().getVulkanDriver().getPhysicalDevice();
-        vulkanBindings.queueFamilyIndex = vr.getEngine().getVulkanDriver().getQueueFamilies().graphicsFamily.value();
+        vulkanBindings.queueFamilyIndex = vr.getEngine().getVulkanDriver().getQueuePartitioning().graphicsFamily.value();
         vulkanBindings.queueIndex = vr.getEngine().getVulkanDriver().getGraphicsQueueIndex();
 
         createInfo.next = &vulkanBindings;
@@ -113,7 +113,7 @@ namespace Carrot::VR {
         auto& driver = vr.getEngine().getVulkanDriver();
         blitCommandPool = driver.getLogicalDevice().createCommandPoolUnique(vk::CommandPoolCreateInfo {
                 .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                .queueFamilyIndex = driver.getQueueFamilies().graphicsFamily.value(),
+                .queueFamilyIndex = driver.getQueuePartitioning().graphicsFamily.value(),
         });
 
         renderFences.resize(xrSwapchainTextures.size());

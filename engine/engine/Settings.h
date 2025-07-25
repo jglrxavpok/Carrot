@@ -28,5 +28,10 @@ namespace Carrot {
          * Enable the use of Aftermath (crash reporting on Nvidia GPUs)
          */
         bool useAftermath = true;
+
+        /**
+         * Force the engine to use a single Vulkan queue. Slow and maybe unstable, only for debug
+         */
+        bool singleQueue = false;
     };
 }

@@ -392,7 +392,7 @@ void Carrot::VulkanDriver::pickPhysicalDevice() {
 }
 
 int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
-    QueueFamilies families = findQueueFamilies(device);
+    QueuePartition families = findQueuePartition(device);
     if(!families.isComplete()) // must be able to generate graphics
         return 0;
 
@@ -437,42 +437,88 @@ int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
     return score;
 }
 
-Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice const &device) {
-    // TODO: check raytracing capabilities
+Carrot::QueuePartition Carrot::VulkanDriver::findQueuePartition(vk::PhysicalDevice const &device) {
     std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
-    uint32_t index = 0;
 
-    QueueFamilies families;
-    for(const auto& family : queueFamilies) {
-        if(family.queueFlags & vk::QueueFlagBits::eGraphics) {
-            families.graphicsFamily = index;
+    // not hot path, so code is written for readability
+    QueuePartition partition;
+
+    struct QueueList {
+        u32 nextIndex = 0;
+        u32 count = 0;
+
+        std::optional<u32> allocateOne() {
+            if (nextIndex >= count) {
+                return std::optional<u32>{};
+            }
+            return nextIndex++;
         }
+    };
 
-        if(family.queueFlags & vk::QueueFlagBits::eTransfer && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
-            families.transferFamily = index;
+    Vector<QueueList> queuesPerFamily;
+    queuesPerFamily.resize(queueFamilies.size());
+
+    // 1. sort queues based on their properties
+    for(i32 index = 0; index < queueFamilies.size(); index++) {
+        vk::QueueFamilyProperties& family = queueFamilies[index];
+        queuesPerFamily[index].count = family.queueCount;
+
+        if (family.queueFlags & vk::QueueFlagBits::eGraphics) {
+            partition.graphicsFamily = index;
+        } else if (family.queueFlags & vk::QueueFlagBits::eCompute) {
+            partition.computeFamily = index; // dedicated compute queues
+        } else if (family.queueFlags & vk::QueueFlagBits::eTransfer) {
+            partition.transferFamily = index; // dedicated copy queues
         }
-
-        if(family.queueFlags & vk::QueueFlagBits::eCompute && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
-            families.computeFamily = index;
-        }
-
-        bool presentSupport = device.getSurfaceSupportKHR(index, mainWindow.getSurface());
-        if(presentSupport) {
-            families.presentFamily = index;
-        }
-
-        index++;
     }
 
-    // graphics queue implicitly support transfer & compute operations
-    if(!families.transferFamily.has_value()) {
-        families.transferFamily = families.graphicsFamily;
-    }
-    if(!families.computeFamily.has_value()) {
-        families.computeFamily = families.graphicsFamily;
+    if (!partition.graphicsFamily.has_value()) {
+        return {}; // stop here, no graphics queue found, unusable device for Carrot
     }
 
-    return families;
+    if (engine->getSettings().singleQueue) {
+        partition.presentFamily = partition.graphicsFamily;
+        partition.transferFamily = partition.graphicsFamily;
+        partition.computeFamily = partition.graphicsFamily;
+        partition.graphicsQueueIndex = 0;
+        partition.presentQueueIndex = partition.graphicsQueueIndex;
+        partition.transferQueueIndex = partition.graphicsQueueIndex;
+        partition.computeQueueIndex = partition.graphicsQueueIndex;
+        return partition;
+    }
+
+    if (!partition.computeFamily.has_value()) { // no dedicated compute :c
+        partition.computeFamily = partition.graphicsFamily;
+    }
+    if (!partition.transferFamily.has_value()) { // no dedicated copy :c
+        partition.transferFamily = partition.computeFamily;
+    }
+
+    partition.graphicsQueueIndex = 0; // always 0 in Carrot, we ensure we always select a device with at least one graphics queue
+
+    // allocate a queue for dedicated compute
+    QueueList& queuesForCompute = queuesPerFamily[partition.computeFamily.value()];
+    if (std::optional<u32> queueIndex = queuesForCompute.allocateOne()) { // attempt to allocate a queue for dedicated compute
+        partition.computeQueueIndex = queueIndex.value();
+    } else { // no dedicated compute queue available, fallback to graphics queue
+        partition.computeFamily = partition.graphicsFamily;
+        partition.computeQueueIndex = partition.graphicsQueueIndex;
+    }
+
+    // allocate a queue for dedicated transfer
+    QueueList& queuesForTransfer = queuesPerFamily[partition.transferFamily.value()];
+    if (std::optional<u32> queueIndex = queuesForTransfer.allocateOne()) { // attempt to allocate a queue for dedicated compute
+        partition.transferQueueIndex = queueIndex.value();
+    } else { // no dedicated transfer queue available, fallback to compute queue (which may in turn fallback to graphics queue)
+        partition.transferFamily = partition.computeFamily;
+        partition.transferQueueIndex = partition.computeQueueIndex;
+    }
+
+    // use graphics queue for presentation
+    partition.presentFamily = partition.graphicsFamily;
+    partition.presentQueueIndex = partition.graphicsQueueIndex;
+
+    return partition;
 }
 
 void Carrot::VulkanDriver::fillRenderingCapabilities() {
@@ -512,22 +558,12 @@ void Carrot::VulkanDriver::fillRenderingCapabilities() {
 }
 
 void Carrot::VulkanDriver::createLogicalDevice() {
-    queueFamilies = findQueueFamilies(physicalDevice);
+    queuePartition = findQueuePartition(physicalDevice);
 
-    float priority = 1.0f;
+    Carrot::Vector<vk::DeviceQueueCreateInfo> queueCreateInfoStructs{};
 
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfoStructs{};
-    std::set<std::uint32_t> uniqueQueueFamilies = { queueFamilies.presentFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.transferFamily.value() };
-
-    for(std::uint32_t queueFamily : uniqueQueueFamilies) {
-        vk::DeviceQueueCreateInfo queueCreateInfo{
-                .queueFamilyIndex = queueFamily,
-                .queueCount = 1,
-                .pQueuePriorities = &priority,
-        };
-
-        queueCreateInfoStructs.emplace_back(queueCreateInfo);
-    }
+    Carrot::Vector<float> priorities;
+    queuePartition.toCreateInfo(queueCreateInfoStructs, priorities);
 
     vk::StructureChain deviceFeatures {
             vk::PhysicalDeviceFeatures2 {
@@ -661,17 +697,16 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-    transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
+    transferQueue = device->getQueue(queuePartition.transferFamily.value(), queuePartition.transferQueueIndex);
     transferQueue.name("Transfer queue");
 
-    graphicsQueueIndex = 0;
-    graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), graphicsQueueIndex);
+    graphicsQueue = device->getQueue(queuePartition.graphicsFamily.value(), queuePartition.graphicsQueueIndex);
     graphicsQueue.name("Graphics queue");
 
-    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), 0);
+    computeQueue = device->getQueue(queuePartition.computeFamily.value(), queuePartition.computeQueueIndex);
     graphicsQueue.name("Compute queue");
 
-    presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
+    presentQueue = device->getQueue(queuePartition.presentFamily.value(), queuePartition.presentQueueIndex);
     graphicsQueue.name("Present queue");
 }
 
@@ -706,6 +741,11 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
     return required.empty();
 }
 
+std::uint32_t Carrot::VulkanDriver::getGraphicsQueueIndex() {
+    return queuePartition.graphicsQueueIndex;
+}
+
+
 Carrot::SwapChainSupportDetails Carrot::VulkanDriver::querySwapChainSupport(const vk::PhysicalDevice& device) {
     return mainWindow.getSwapChainSupport(device);
 }
@@ -724,7 +764,7 @@ std::uint32_t Carrot::VulkanDriver::findMemoryType(std::uint32_t typeFilter, vk:
 vk::UniqueCommandPool Carrot::VulkanDriver::createGraphicsCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            .queueFamilyIndex = getQueueFamilies().graphicsFamily.value(),
+            .queueFamilyIndex = getQueuePartitioning().graphicsFamily.value(),
     };
 
     return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
@@ -733,7 +773,7 @@ vk::UniqueCommandPool Carrot::VulkanDriver::createGraphicsCommandPool() {
 vk::UniqueCommandPool Carrot::VulkanDriver::createTransferCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eTransient, // short lived buffer (single use)
-            .queueFamilyIndex = getQueueFamilies().transferFamily.value(),
+            .queueFamilyIndex = getQueuePartitioning().transferFamily.value(),
     };
 
     return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
@@ -742,7 +782,7 @@ vk::UniqueCommandPool Carrot::VulkanDriver::createTransferCommandPool() {
 vk::UniqueCommandPool Carrot::VulkanDriver::createComputeCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, // short lived buffer (single use)
-            .queueFamilyIndex = getQueueFamilies().computeFamily.value(),
+            .queueFamilyIndex = getQueuePartitioning().computeFamily.value(),
     };
 
     return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
@@ -750,8 +790,8 @@ vk::UniqueCommandPool Carrot::VulkanDriver::createComputeCommandPool() {
 
 std::set<std::uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() {
     return {
-            getQueueFamilies().graphicsFamily.value(),
-            getQueueFamilies().transferFamily.value(),
+            getQueuePartitioning().graphicsFamily.value(),
+            getQueuePartitioning().transferFamily.value(),
     };
 }
 
@@ -835,9 +875,38 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands,
     });
 }
 
-bool Carrot::QueueFamilies::isComplete() const {
+bool Carrot::QueuePartition::isComplete() const {
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
+
+void Carrot::QueuePartition::toCreateInfo(Vector<vk::DeviceQueueCreateInfo>& output, Carrot::Vector<float>& priorities) {
+    verify(isComplete(), "Partition is not valid!");
+    std::unordered_map<u32, u32> familyToCount; // how many queues per family?
+    familyToCount[graphicsFamily.value()]++;
+    familyToCount[presentFamily.value()]++;
+    familyToCount[computeFamily.value()]++;
+    familyToCount[transferFamily.value()]++;
+
+    output.ensureReserve(familyToCount.size());
+
+    u32 totalQueueCount = 0;
+    for (const auto& [familyIndex, queueCount] : familyToCount) {
+        totalQueueCount += queueCount;
+    }
+    priorities.resize(totalQueueCount);
+    priorities.fill(1.0f);
+
+    u32 createdQueueCount = 0;
+    for (const auto& [familyIndex, queueCount] : familyToCount) {
+        vk::DeviceQueueCreateInfo& createInfo = output.emplaceBack();
+        createInfo.queueCount = queueCount;
+        createInfo.queueFamilyIndex = familyIndex;
+        createInfo.pQueuePriorities = &priorities[createdQueueCount];
+
+        createdQueueCount += queueCount;
+    }
+}
+
 
 void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
     /*re-*/ createUniformBuffers();

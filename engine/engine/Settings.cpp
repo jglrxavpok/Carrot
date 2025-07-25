@@ -15,6 +15,9 @@ namespace Carrot {
             if (s == "-noaftermath") {
                 useAftermath = false;
             }
+            if (s == "-singlevkqueue") {
+                singleQueue = true;
+            }
         }
     }
 }

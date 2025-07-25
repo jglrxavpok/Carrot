@@ -464,7 +464,7 @@ Carrot::VulkanDriver& Carrot::Render::CompiledPass::getVulkanDriver() const {
 void Carrot::Render::CompiledPass::createCommandPool() {
     commandPool = getVulkanDriver().getLogicalDevice().createCommandPoolUnique(vk::CommandPoolCreateInfo {
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            .queueFamilyIndex = getVulkanDriver().getQueueFamilies().graphicsFamily.value(),
+            .queueFamilyIndex = getVulkanDriver().getQueuePartitioning().graphicsFamily.value(),
     });
 }
 

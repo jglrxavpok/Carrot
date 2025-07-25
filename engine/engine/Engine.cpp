@@ -1243,8 +1243,8 @@ void Carrot::Engine::onWindowResize(Window& which) {
     framebufferResized = true;
 }
 
-const Carrot::QueueFamilies& Carrot::Engine::getQueueFamilies() {
-    return vkDriver.getQueueFamilies();
+const Carrot::QueuePartition& Carrot::Engine::getQueueFamilies() {
+    return vkDriver.getQueuePartitioning();
 }
 
 vk::Device& Carrot::Engine::getLogicalDevice() {

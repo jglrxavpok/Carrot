@@ -43,13 +43,23 @@ namespace Carrot {
     class Engine;
     class VulkanRenderer;
 
-    struct QueueFamilies {
+    struct QueuePartition {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
         std::optional<uint32_t> transferFamily;
         std::optional<uint32_t> computeFamily;
 
+        // indices of the queues inside their respective family
+        u32 graphicsQueueIndex = std::numeric_limits<u32>::max();
+        u32 presentQueueIndex = std::numeric_limits<u32>::max();
+        u32 transferQueueIndex = std::numeric_limits<u32>::max();
+        u32 computeQueueIndex = std::numeric_limits<u32>::max();
+
         bool isComplete() const;
+
+        // Fills 'output' with info required to create the queues used by this partition.
+        // Priorities is also filled with the priority of each queue
+        void toCreateInfo(Vector<vk::DeviceQueueCreateInfo>& output, Carrot::Vector<float>& priorities);
     };
 
     using DeferredImageDestruction = DeferredDestruction<vk::UniqueImage>;
@@ -70,7 +80,7 @@ namespace Carrot {
         virtual ~VulkanDriver();
 
         /// Gets the queue indices of a given physical device
-        QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);
+        QueuePartition findQueuePartition(const vk::PhysicalDevice& device);
 
         vk::Device& getLogicalDevice() { return *device; };
 
@@ -78,14 +88,14 @@ namespace Carrot {
 
         vk::Instance& getInstance() { return *instance; };
 
-        [[nodiscard]] const QueueFamilies& getQueueFamilies() const { return queueFamilies; };
+        [[nodiscard]] const QueuePartition& getQueuePartitioning() const { return queuePartition; };
 
         const vk::AllocationCallbacks* getAllocationCallbacks() { return allocator; };
 
         Vulkan::SynchronizedQueue& getPresentQueue() { return presentQueue; };
         Vulkan::SynchronizedQueue& getTransferQueue() { return transferQueue; };
         Vulkan::SynchronizedQueue& getGraphicsQueue() { return graphicsQueue; };
-        std::uint32_t getGraphicsQueueIndex() { return graphicsQueueIndex; };
+        std::uint32_t getGraphicsQueueIndex();
         Vulkan::SynchronizedQueue& getComputeQueue() { return computeQueue; };
 
         /// Queries the format and present modes from a given physical device
@@ -234,9 +244,8 @@ namespace Carrot {
         vk::UniqueDebugUtilsMessengerEXT callback{};
         vk::PhysicalDevice physicalDevice{};
         vk::UniqueDevice device{};
-        QueueFamilies queueFamilies{};
+        QueuePartition queuePartition{};
 
-        std::uint32_t graphicsQueueIndex = -1;
         Vulkan::SynchronizedQueue graphicsQueue;
         Vulkan::SynchronizedQueue presentQueue;
         Vulkan::SynchronizedQueue transferQueue;

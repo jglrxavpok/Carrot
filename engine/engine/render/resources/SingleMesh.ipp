@@ -4,7 +4,7 @@
 template<typename VertexType>
 Carrot::SingleMesh::SingleMesh(const std::vector<VertexType>& vertices, const std::vector<std::uint32_t>& indices): Carrot::Mesh::Mesh() {
     sizeofVertex = sizeof(VertexType);
-    const auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
+    const auto& queueFamilies = GetVulkanDriver().getQueuePartitioning();
     // create and allocate underlying buffer
     std::set<std::uint32_t> families = {
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.computeFamily.value()/* when creating raytracing AS */

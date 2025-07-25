@@ -131,9 +131,9 @@ namespace Carrot {
 
         // image info
         auto& driver = engine.getVulkanDriver();
-        uint32_t indices[] = { driver.getQueueFamilies().graphicsFamily.value(), driver.getQueueFamilies().presentFamily.value() };
+        uint32_t indices[] = { driver.getQueuePartitioning().graphicsFamily.value(), driver.getQueuePartitioning().presentFamily.value() };
 
-        if(driver.getQueueFamilies().presentFamily != driver.getQueueFamilies().graphicsFamily) {
+        if(driver.getQueuePartitioning().presentFamily != driver.getQueuePartitioning().graphicsFamily) {
             // image will be shared between the 2 queues, without explicit transfers
             createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
             createInfo.queueFamilyIndexCount = 2;

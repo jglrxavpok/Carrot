@@ -20,7 +20,7 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
 
     usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
-    auto& queueFamilies = driver.getQueueFamilies();
+    auto& queueFamilies = driver.getQueuePartitioning();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
     }
@@ -71,7 +71,7 @@ void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk:
 
 void Carrot::Buffer::copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, out.size(), vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(driver, out.size(), vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueuePartitioning().transferFamily.value()});
 
     // download data to staging buffer
     driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {

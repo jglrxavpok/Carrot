@@ -677,7 +677,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         geometriesBuffer->view.uploadForFrame(std::span<const SceneDescription::Geometry> { allGeometries });
     }
 
-    auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
+    auto& queueFamilies = GetVulkanDriver().getQueuePartitioning();
     // TODO: reuse
     // TODO: VkPhysicalDeviceAccelerationStructurePropertiesKHR::minAccelerationStructureScratchOffsetAlignment
     UniquePtr<Buffer> pBlasBuildScratchBuffer = scratchSize > 0

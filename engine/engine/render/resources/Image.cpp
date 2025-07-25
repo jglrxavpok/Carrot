@@ -40,7 +40,7 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
         .initialLayout = vk::ImageLayout::eUndefined,
     };
 
-    auto& queueFamilies = driver.getQueueFamilies();
+    auto& queueFamilies = driver.getQueuePartitioning();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
     }
@@ -142,7 +142,7 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
                                         static_cast<vk::DeviceSize>(data.size_bytes()),
                                         vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                                        {driver.getQueueFamilies().transferFamily.value()});
+                                        {driver.getQueuePartitioning().transferFamily.value()});
 
     stagingBuffer.setDebugNames("Image upload staging");
 
