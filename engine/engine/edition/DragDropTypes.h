@@ -8,6 +8,6 @@ namespace Carrot::Edition {
     // TODO: move to editor
     struct DragDropTypes {
         static const char* FilePath;
-        static const char* EntityUUID;
+        static const char* EntityUUIDs;
     };
 }

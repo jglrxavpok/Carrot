@@ -20,7 +20,7 @@ namespace Peeler::ECS {
 
         std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
-        void setSelected(const Carrot::Vector<Carrot::ECS::EntityID>& selection);
+        void setSelected(const std::unordered_set<Carrot::ECS::EntityID>& selection);
 
         virtual bool shouldBeSerialized() const override {
             return false;
@@ -34,6 +34,6 @@ namespace Peeler::ECS {
         std::shared_ptr<Carrot::Model> sphereMesh;
         std::shared_ptr<Carrot::Pipeline> pipeline;
         std::shared_ptr<Carrot::Render::MaterialHandle> material;
-        Carrot::Vector<Carrot::UUID> selectedIDs;
+        std::unordered_set<Carrot::UUID> selectedIDs;
     };
 }

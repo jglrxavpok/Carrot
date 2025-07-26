@@ -178,7 +178,7 @@ namespace Peeler {
                 return;
             }
 
-            auto selectedEntity = editor.currentScene.world.wrap(editor.selectedEntityIDs[0]);
+            auto selectedEntity = editor.currentScene.world.wrap(*editor.selectedEntityIDs.begin());
             if (!selectedEntity) {
                 remove();
                 return;

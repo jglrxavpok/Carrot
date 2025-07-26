@@ -50,8 +50,9 @@ namespace Peeler {
             };
             ConstantBlock block;
             std::size_t i = 0;
-            for(; i < this->selectedEntityIDs.size() && i < 16; i++) {
-                block.selectedEntities[i] = this->selectedEntityIDs[i];
+            auto iter = selectedEntityIDs.begin();
+            for(; iter != selectedEntityIDs.end() && i < 16; i++) {
+                block.selectedEntities[i] = *iter;
             }
             // fill remaining slots with 0,0,0,1 (not null because that's the default value when rendering content)
             for(;i < 16; i++) {

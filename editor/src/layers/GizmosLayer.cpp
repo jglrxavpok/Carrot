@@ -176,7 +176,7 @@ namespace Peeler {
                 // TODO: undo command
             }
         } else if (editor.selectedEntityIDs.size() == 1) {
-            auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(editor.selectedEntityIDs[0]);
+            auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(*editor.selectedEntityIDs.begin());
             if (transformRef) {
                 glm::mat4 parentMatrix = glm::identity<glm::mat4>();
                 auto parentEntity = transformRef->getEntity().getParent();

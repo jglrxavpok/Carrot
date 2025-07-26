@@ -130,8 +130,8 @@ namespace Peeler {
         void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});
 
     public:
-        void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
-        void removeEntity(const Carrot::ECS::Entity& entity);
+        void duplicateSelectedEntities();
+        void removeSelectedEntities();
         void convertEntityToPrefab(Carrot::ECS::Entity& entity);
 
     private:
@@ -230,7 +230,7 @@ namespace Peeler {
             System,
         } inspectorType = InspectorType::Entities;
 
-        Carrot::Vector<Carrot::ECS::EntityID> selectedEntityIDs;
+        std::unordered_set<Carrot::ECS::EntityID> selectedEntityIDs;
         Carrot::Vector<Carrot::IO::VFS::Path> selectedAssetPaths;
         // TODO: Carrot::Vector<Carrot::ECS::System*> selectedSystems;
 

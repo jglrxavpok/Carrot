@@ -24,16 +24,19 @@ namespace Peeler {
 
         Carrot::ComponentID componentID;
 
-        UpdateComponentValues(Application &app, const std::string& desc, std::span<Carrot::ECS::EntityID> _entityList, std::span<TValue> _newValues,
+        UpdateComponentValues(Application &app, const std::string& desc, std::unordered_set<Carrot::ECS::EntityID> _entityList, std::span<TValue> _newValues,
             std::function<TValue(TComponent& comp)> _getter, std::function<void(TComponent& comp, const TValue& value)> _setter,
             Carrot::ComponentID _componentID)
             : ICommand(app, desc)
-            , entityList(_entityList)
             , newValues(_newValues)
             , getter(_getter)
             , setter(_setter)
             , componentID(_componentID)
         {
+            entityList.ensureReserve(_entityList.size());
+            for (auto& ent : _entityList) {
+                entityList.emplaceBack() = ent;
+            }
             oldValues.ensureReserve(newValues.size());
             for(const auto& entityID : _entityList) {
                 oldValues.pushBack(getter(reinterpret_cast<TComponent&>(app.currentScene.world.getComponent(entityID, componentID).asRef())));

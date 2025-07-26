@@ -8,9 +8,13 @@
 
 namespace Peeler {
 
-    RenameEntitiesCommand::RenameEntitiesCommand(Application& app, std::span<Carrot::ECS::EntityID> _entityList, const std::string& _newName)
+    RenameEntitiesCommand::RenameEntitiesCommand(Application& app, std::unordered_set<Carrot::ECS::EntityID> _entityList, const std::string& _newName)
     : ICommand(app, Carrot::sprintf("Rename entities to '%s'", _newName.c_str())) {
-        entityList = _entityList;
+        entityList.ensureReserve(_entityList.size());
+        for (auto& ent : _entityList) {
+            entityList.emplaceBack() = ent;
+        }
+
         newName = _newName;
         oldNames.ensureReserve(_entityList.size());
         for(const auto& entityID : _entityList) {

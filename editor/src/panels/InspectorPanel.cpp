@@ -81,7 +81,8 @@ namespace Peeler {
 
         const bool multipleEntities = app.selectedEntityIDs.size() > 1;
         std::unordered_map<Carrot::ComponentID, Carrot::Vector<Carrot::ECS::Component*>> componentsInCommon;
-        auto& firstEntityID = app.selectedEntityIDs[0];
+        auto firstEntityIter = app.selectedEntityIDs.begin();
+        auto& firstEntityID = *firstEntityIter;
         auto& world = app.currentScene.world;
         if(!world.exists(firstEntityID)) {
             ImGui::Text("First selected entity no longer exists?!");
@@ -95,8 +96,8 @@ namespace Peeler {
         }
 
         // remove all components that are not inside in the other entities, and append those who are in common
-        for(std::size_t i = 1; i < app.selectedEntityIDs.size(); i++) {
-            auto& entityID = app.selectedEntityIDs[i];
+        for(auto entityIter = firstEntityIter; entityIter != app.selectedEntityIDs.end(); entityIter++) {
+            auto& entityID = *entityIter;
             if(!world.exists(entityID)) {
                 continue;
             }
@@ -128,8 +129,9 @@ namespace Peeler {
 
         std::string displayedName = world.getName(firstEntityID);
         if(multipleEntities) {
-            for(std::size_t i = 1; i < app.selectedEntityIDs.size(); i++) {
-                const std::string& entityName = world.getName(app.selectedEntityIDs[i]);
+            for(auto entityIter = firstEntityIter; entityIter != app.selectedEntityIDs.end(); entityIter++) {
+                auto& entityID = *entityIter;
+                const std::string& entityName = world.getName(entityID);
                 if(entityName != displayedName) {
                     displayedName = "<VARIOUS>";
                     break;
@@ -197,7 +199,7 @@ namespace Peeler {
                 id += "##add component menu item inspector";
                 if(ImGui::MenuItem(id.c_str())) {
                     // TODO: find more graceful way to find component ID
-                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(app.selectedEntityIDs[0]));
+                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(firstEntityID));
 
                     app.undoStack.push<AddComponentsCommand>(app.selectedEntityIDs, Carrot::Vector{compID}, Carrot::Vector{unusedComp->getComponentTypeID()});
                 }

@@ -67,9 +67,13 @@ namespace Peeler {
         ImGui::InputText("##entity name display", entityName, ImGuiInputTextFlags_ReadOnly);
 
         if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID)) {
-                verify(payload->DataSize == sizeof(Carrot::UUID), "Invalid payload for EntityUUID");
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs)) {
+                verify(payload->DataSize % sizeof(Carrot::UUID) == 0, "Invalid payload for EntityUUIDs");
                 static_assert(sizeof(Carrot::ECS::EntityID) == sizeof(Carrot::UUID), "Assumes EntityID = UUID");
+                const u32 entityCount = payload->DataSize / sizeof(Carrot::UUID);
+                verify(entityCount >= 1, "Needs at least one entity");
+
+                // just one first entity
                 std::uint32_t* data = reinterpret_cast<std::uint32_t*>(payload->Data);
                 Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
 

@@ -8,14 +8,14 @@
 #include <engine/ecs/Prefab.h>
 
 namespace Peeler {
-    AddComponentsCommand::AddComponentsCommand(Application& app, std::span<Carrot::ECS::EntityID> _entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs)
+    AddComponentsCommand::AddComponentsCommand(Application& app, std::unordered_set<Carrot::ECS::EntityID> _entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs)
     : ICommand(app, "Add entity components")
     , componentNames(componentNames)
     , componentIDs(componentIDs) {
         verify(componentIDs.size() == componentNames.size(), "Must be as many names as ids");
         entityList.ensureReserve(_entityList.size());
-        for (std::int64_t entityIndex = 0; entityIndex < _entityList.size(); ++entityIndex) {
-            Carrot::ECS::Entity e = editor.currentScene.world.wrap(_entityList[entityIndex]);
+        for (auto iter = _entityList.begin(); iter != _entityList.end(); ++iter) {
+            Carrot::ECS::Entity e = editor.currentScene.world.wrap(*iter);
             for(std::int64_t i = 0; i < componentNames.size(); i++) {
                 // don't override if there is already a component with this ID
                 // (case where we try to add to multiple entities at once, and one of them already has the component)

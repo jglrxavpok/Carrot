@@ -577,11 +577,14 @@ namespace Peeler {
         ImGui::TableSetupColumn("Warnings", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
+        bool requestRemoveEntities = false;
+        bool requestDuplicateEntities = false;
+
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
                 return;
             ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if(std::find(selectedEntityIDs.begin(), selectedEntityIDs.end(), entity.getID()) != selectedEntityIDs.end()) {
+            if(selectedEntityIDs.contains(entity.getID())) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
             auto children = currentScene.world.getChildren(entity, Carrot::ShouldRecurse::NoRecursion);
@@ -594,22 +597,33 @@ namespace Peeler {
                 std::string id = "##add child to entity ";
                 id += std::to_string(entity.getID().hash());
                 if(ImGui::BeginPopupContextItem(id.c_str())) {
-                    if(ImGui::BeginMenu("Add child##add child to entity world hierarchy")) {
-                        addEntityMenu(entity);
-                        ImGui::EndMenu();
+                    bool isSingleEntity = selectedEntityIDs.size() <= 1;
+                    if (!selectedEntityIDs.contains(entity.getID())) {
+                        selectEntity(entity.getID(), false);
+                        isSingleEntity = true;
                     }
-                    if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy")) {
-                        duplicateEntity(entity);
-                    }
-                    if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
-                        removeEntity(entity);
-                    }
-                    ImGui::Separator();
-                    if(ImGui::MenuItem("Convert to prefab##convert to prefab entity world hierarchy")) {
-                        convertEntityToPrefab(entity);
+                    if (isSingleEntity) {
+                        if(ImGui::BeginMenu("Add child##add child to entity world hierarchy")) {
+                            addEntityMenu(entity);
+                            ImGui::EndMenu();
+                        }
                     }
 
+                    if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy")) {
+                        requestDuplicateEntities = true;
+                    }
+                    if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
+                        requestRemoveEntities = true;
+                    }
                     ImGui::Separator();
+
+                    if (isSingleEntity) {
+                        if(ImGui::MenuItem("Convert to prefab##convert to prefab entity world hierarchy")) {
+                            convertEntityToPrefab(entity);
+                        }
+                        ImGui::Separator();
+                    }
+
                     if(ImGui::MenuItem("Apply transform to colliders")) {
                         for(const auto& selectedID : selectedEntityIDs) {
                             Carrot::ECS::Entity selectedEntity = currentScene.world.wrap(selectedID);
@@ -630,22 +644,36 @@ namespace Peeler {
             };
 
             auto dragAndDrop = [&]() {
-                bool dragging = ImGui::BeginDragDropSource();
-                if(dragging) {
-                    ImGui::Text("%s", entity.getName().c_str());
-                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID, &entity.getID(), sizeof(Carrot::ECS::EntityID));
-                    ImGui::EndDragDropSource();
+                bool dragging = false;
+                if (selectedEntityIDs.contains(entity.getID())) {
+                    dragging = ImGui::BeginDragDropSource();
+                    if(dragging) {
+                        Carrot::Vector<Carrot::ECS::EntityID> draggedEntities;
+                        draggedEntities.ensureReserve(selectedEntityIDs.size());
+                        for (const auto& selectedEntity : selectedEntityIDs) {
+                            draggedEntities.emplaceBack() = selectedEntity;
+                            ImGui::Text("%s", currentScene.world.getName(selectedEntity).c_str());
+                        }
+                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs, draggedEntities.cdata(), draggedEntities.bytes_size());
+                        ImGui::EndDragDropSource();
+                    }
                 }
 
                 if(ImGui::BeginDragDropTarget()) {
-                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID)) {
-                        verify(payload->DataSize == sizeof(Carrot::UUID), "Invalid payload for EntityUUID");
+                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs)) {
+                        verify(payload->DataSize % sizeof(Carrot::UUID) == 0, "Invalid payload for EntityUUIDs");
                         static_assert(sizeof(Carrot::ECS::EntityID) == sizeof(Carrot::UUID), "Assumes EntityID = UUID");
+                        const u32 entityCount = payload->DataSize / sizeof(Carrot::UUID);
                         std::uint32_t* data = reinterpret_cast<std::uint32_t*>(payload->Data);
-                        Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
 
-                        if(currentScene.world.exists(uuid)) {
-                            changeEntityParent(uuid, entity/*new parent*/);
+                        for (u32 entityIndex = 0; entityIndex < entityCount; entityIndex++) {
+                            Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
+
+                            if(currentScene.world.exists(uuid)) {
+                                changeEntityParent(uuid, entity/*new parent*/);
+                            }
+
+                            data += 4; // go to next UUID
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -691,21 +719,47 @@ namespace Peeler {
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
+
+            auto handleSelection = [&](bool isDragging) {
+                // behavior based on behavior of file explorer on Linux Mint (probably close to Windows Explorer too)
+
+                const bool isControlHeld = ImGui::GetIO().KeyCtrl;
+                const bool isAltHeld = ImGui::GetIO().KeyAlt;
+
+                if (isDragging) {
+                    return;
+                }
+
+                if(!ImGui::IsItemHovered()) {
+                    return;
+                }
+
+                if (isAltHeld && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                    recursivelySelect = true;
+                    return;
+                }
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                    if (!isControlHeld) {
+                        selectEntity(entity.getID(), false); // only select this entity, clear previous selection
+                    } else {
+                        if (selectedEntityIDs.contains(entity.getID())) {
+                            selectedEntityIDs.erase(entity.getID());
+                        } else {
+                            selectEntity(entity.getID(), true);
+                        }
+                    }
+                }
+            };
             if(!children.empty()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, getEntityNameColor(entity).Value);
                 bool showChildren = ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
                 ImGui::PopStyleColor();
-                bool dragging = dragAndDrop();
+
+                const bool isDragging = dragAndDrop();
+                handleSelection(isDragging);
 
                 addChildMenu();
-                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
-                    bool additive = ImGui::GetIO().KeyCtrl;
-                    if(ImGui::GetIO().KeyAlt) {
-                        recursivelySelect = true; // will select children too
-                    }
-                    selectEntity(entity.getID(), additive);
-                }
-
                 drawErrorsColumn();
                 drawWarningsColumn();
                 drawSettingsColumn();
@@ -721,14 +775,10 @@ namespace Peeler {
                 ImGui::PushStyleColor(ImGuiCol_Text, getEntityNameColor(entity).Value);
                 ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
                 ImGui::PopStyleColor();
-
-                bool dragging = dragAndDrop();
+                const bool isDragging = dragAndDrop();
+                handleSelection(isDragging);
 
                 addChildMenu();
-                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
-                    bool additive = ImGui::GetIO().KeyCtrl;
-                    selectEntity(entity.getID(), additive);
-                }
 
                 drawErrorsColumn();
                 drawWarningsColumn();
@@ -743,23 +793,36 @@ namespace Peeler {
         ImGui::EndTable();
 
         if(auto* payload = ImGui::GetDragDropPayload()) {
-            if(payload->IsDataType(Carrot::Edition::DragDropTypes::EntityUUID)) {
+            if(payload->IsDataType(Carrot::Edition::DragDropTypes::EntityUUIDs)) {
                 ImGui::TextDisabled("Make it a root entity");
 
                 if(ImGui::BeginDragDropTarget()) {
-                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID)) {
-                        verify(payload->DataSize == sizeof(Carrot::UUID), "Invalid payload for EntityUUID");
+                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs)) {
+                        verify(payload->DataSize % sizeof(Carrot::UUID) == 0, "Invalid payload for EntityUUIDs");
                         static_assert(sizeof(Carrot::ECS::EntityID) == sizeof(Carrot::UUID), "Assumes EntityID = UUID");
+                        const u32 entityCount = payload->DataSize / sizeof(Carrot::UUID);
                         std::uint32_t* data = reinterpret_cast<std::uint32_t*>(payload->Data);
-                        Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
 
-                        if(currentScene.world.exists(uuid)) {
-                            changeEntityParent(uuid, std::optional<Carrot::ECS::Entity>{} /*no parent*/);
+                        for (u32 entityIndex = 0; entityIndex < entityCount; entityIndex++) {
+                            Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
+
+                            if(currentScene.world.exists(uuid)) {
+                                changeEntityParent(uuid, std::optional<Carrot::ECS::Entity>{} /*no parent*/);
+                            }
+
+                            data += 4; // next entity
                         }
                     }
                     ImGui::EndDragDropTarget();
                 }
             }
+        }
+
+        if (requestRemoveEntities) {
+            removeSelectedEntities();
+        }
+        if (requestDuplicateEntities) {
+            duplicateSelectedEntities();
         }
     }
 
@@ -1673,7 +1736,7 @@ namespace Peeler {
             for(const auto& selectedIDValue : description["selectedIDs"].GetArray()) {
                 auto wantedSelection = Carrot::UUID::fromString(selectedIDValue.GetString());
                 if(currentScene.world.exists(wantedSelection)) {
-                    selectedEntityIDs.emplaceBack(wantedSelection);
+                    selectedEntityIDs.insert(wantedSelection);
                 }
             }
         }
@@ -1865,22 +1928,24 @@ namespace Peeler {
         entityToChange.reparent(newParent);
     }
 
-    void Application::duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent) {
-        auto clone = currentScene.world.duplicate(entity, parent);
+    void Application::duplicateSelectedEntities() {
+        std::unordered_set<Carrot::ECS::EntityID> newSelectedEntities;
+        for (const auto& selectedEntityID : selectedEntityIDs) {
+            auto entity = currentScene.world.wrap(selectedEntityID);
+            auto clone = currentScene.world.duplicate(entity, entity.getParent());
+            newSelectedEntities.insert(clone.getID());
+        }
 
-        selectEntity(clone.getID(), false);
+        selectedEntityIDs = newSelectedEntities;
         markDirty();
     }
 
     void Application::selectEntity(const Carrot::ECS::EntityID& entity, bool additive) {
         inspectorType = InspectorType::Entities;
-        if(additive) {
-            // TODO: make sure there are no duplicates
-            selectedEntityIDs.emplaceBack(entity);
-        } else {
+        if(!additive) {
             selectedEntityIDs.clear();
-            selectedEntityIDs.emplaceBack(entity);
         }
+        selectedEntityIDs.insert(entity);
 
         auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
         if(shapeRenderer) {
@@ -1897,13 +1962,11 @@ namespace Peeler {
         }
     }
 
-    void Application::removeEntity(const Carrot::ECS::Entity& entity) {
-        for (std::int64_t i = selectedEntityIDs.size()-1; i >= 0; i--) {
-            if(selectedEntityIDs[i] == entity.getID()) {
-                selectedEntityIDs.remove(i);
-            }
+    void Application::removeSelectedEntities() {
+        for (const auto& selectedEntityID : selectedEntityIDs) {
+            currentScene.world.removeEntity(currentScene.world.wrap(selectedEntityID));
         }
-        currentScene.world.removeEntity(entity);
+        selectedEntityIDs.clear();
         markDirty();
     }
 

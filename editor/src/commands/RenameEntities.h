@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <unordered_set>
 #include <commands/UndoStack.h>
 #include <engine/ecs/EntityTypes.h>
 
@@ -11,7 +12,7 @@ namespace Peeler {
 
     class RenameEntitiesCommand: public ICommand {
     public:
-        RenameEntitiesCommand(Application& app, std::span<Carrot::ECS::EntityID> entityList, const std::string& newName);
+        RenameEntitiesCommand(Application& app, std::unordered_set<Carrot::ECS::EntityID> entityList, const std::string& newName);
 
         virtual void undo() override;
         virtual void redo() override;

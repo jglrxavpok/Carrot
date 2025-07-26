@@ -8,6 +8,7 @@
 #include <core/io/Document.h>
 #include <engine/ecs/EntityTypes.h>
 #include <rapidjson/document.h>
+#include <unordered_set>
 
 namespace Peeler {
     /**
@@ -17,7 +18,7 @@ namespace Peeler {
      */
     class RemoveComponentsCommand: public ICommand {
     public:
-        RemoveComponentsCommand(Application& app, std::span<Carrot::ECS::EntityID> entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs);
+        RemoveComponentsCommand(Application& app, std::unordered_set<Carrot::ECS::EntityID> entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs);
 
         virtual void undo() override;
         virtual void redo() override;

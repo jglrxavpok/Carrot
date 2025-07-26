@@ -8,11 +8,16 @@
 #include <engine/ecs/Prefab.h>
 
 namespace Peeler {
-    RemoveComponentsCommand::RemoveComponentsCommand(Application& app, std::span<Carrot::ECS::EntityID> entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs)
+    RemoveComponentsCommand::RemoveComponentsCommand(Application& app, std::unordered_set<Carrot::ECS::EntityID> _entityList, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs)
     : ICommand(app, "Remove entity components")
     , componentNames(componentNames)
     , componentIDs(componentIDs)
-    , entityList(entityList) {
+    {
+        entityList.ensureReserve(_entityList.size());
+        for (auto& ent : _entityList) {
+            entityList.emplaceBack() = ent;
+        }
+
         verify(componentIDs.size() == componentNames.size(), "Must be as many names as ids");
         savedComponents.resize(entityList.size() * componentNames.size());
         for (std::int64_t entityIndex = 0; entityIndex < entityList.size(); ++entityIndex) {
