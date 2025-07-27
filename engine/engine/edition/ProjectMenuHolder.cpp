@@ -11,11 +11,13 @@ namespace Tools {
         copy.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_C));
         paste.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_V));
         duplicate.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_D));
+        deleteShortcut.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_DELETE));
 
         shortcuts.add(cut);
         shortcuts.add(copy);
         shortcuts.add(duplicate);
         shortcuts.add(paste);
+        shortcuts.add(deleteShortcut);
         shortcuts.activate();
     }
 
@@ -28,6 +30,8 @@ namespace Tools {
             onDuplicateShortcut(frame);
         } else if (paste.wasJustPressed()) {
             onPasteShortcut(frame);
+        } else if (deleteShortcut.wasJustPressed()) {
+            onDeleteShortcut(frame);
         }
     }
 
@@ -38,5 +42,7 @@ namespace Tools {
     void ProjectMenuHolder::onPasteShortcut(const Carrot::Render::Context& frame) {}
 
     void ProjectMenuHolder::onDuplicateShortcut(const Carrot::Render::Context& frame) {}
+
+    void ProjectMenuHolder::onDeleteShortcut(const Carrot::Render::Context& frame) {}
 
 }

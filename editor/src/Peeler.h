@@ -59,6 +59,7 @@ namespace Peeler {
         void onCopyShortcut(const Carrot::Render::Context& frame) override;
         void onPasteShortcut(const Carrot::Render::Context& frame) override;
         void onDuplicateShortcut(const Carrot::Render::Context& frame) override;
+        void onDeleteShortcut(const Carrot::Render::Context& frame) override;
 
         // scene management
         void addCurrentSceneToSceneList();

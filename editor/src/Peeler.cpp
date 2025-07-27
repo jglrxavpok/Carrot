@@ -586,8 +586,9 @@ namespace Peeler {
         ImGui::TableSetupColumn("Warnings", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
-        bool requestRemoveEntities = deleteShortcutRequested;
-        bool requestDuplicateEntities = (ImGui::IsWindowFocused() || gameViewportFocused) && duplicateShortcutRequested;
+        const bool canModifyHierarchyViaShorcuts = ImGui::IsWindowFocused() || gameViewportFocused;
+        bool requestRemoveEntities = canModifyHierarchyViaShorcuts && deleteShortcutRequested;
+        bool requestDuplicateEntities = canModifyHierarchyViaShorcuts && duplicateShortcutRequested;
 
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
@@ -621,7 +622,7 @@ namespace Peeler {
                     if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy", "CTRL + D" /*could BoolInputAction provide the shortcut text?*/)) {
                         requestDuplicateEntities = true;
                     }
-                    if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
+                    if(ImGui::MenuItem("Remove##remove entity world hierarchy", "Delete")) {
                         requestRemoveEntities = true;
                     }
                     ImGui::Separator();
@@ -2094,6 +2095,10 @@ namespace Peeler {
 
     void Application::onDuplicateShortcut(const Carrot::Render::Context& frame) {
         duplicateShortcutRequested = true;
+    }
+
+    void Application::onDeleteShortcut(const Carrot::Render::Context& frame) {
+        deleteShortcutRequested = true;
     }
 
 }
