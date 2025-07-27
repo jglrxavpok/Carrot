@@ -143,6 +143,12 @@ namespace Peeler {
             tryToClose = false;
         }
 
+        cutShortcutRequested = false;
+        copyShortcutRequested = false;
+        pasteShortcutRequested = false;
+        duplicateShortcutRequested = false;
+        handleShortcuts(renderContext);
+
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -303,6 +309,9 @@ namespace Peeler {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         if(ImGui::Begin("Game view", nullptr, ImGuiWindowFlags_NoBackground)) {
             UIGameView(renderContext);
+            gameViewportFocused = ImGui::IsWindowFocused();
+        } else {
+            gameViewportFocused = false;
         }
         ImGui::End();
         ImGui::PopStyleVar(3);
@@ -577,8 +586,8 @@ namespace Peeler {
         ImGui::TableSetupColumn("Warnings", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
-        bool requestRemoveEntities = false;
-        bool requestDuplicateEntities = false;
+        bool requestRemoveEntities = deleteShortcutRequested;
+        bool requestDuplicateEntities = (ImGui::IsWindowFocused() || gameViewportFocused) && duplicateShortcutRequested;
 
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
@@ -609,7 +618,7 @@ namespace Peeler {
                         }
                     }
 
-                    if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy")) {
+                    if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy", "CTRL + D" /*could BoolInputAction provide the shortcut text?*/)) {
                         requestDuplicateEntities = true;
                     }
                     if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
@@ -1929,6 +1938,8 @@ namespace Peeler {
     }
 
     void Application::duplicateSelectedEntities() {
+        // TODO: make it a command
+
         std::unordered_set<Carrot::ECS::EntityID> newSelectedEntities;
         for (const auto& selectedEntityID : selectedEntityIDs) {
             auto entity = currentScene.world.wrap(selectedEntityID);
@@ -2067,6 +2078,22 @@ namespace Peeler {
             return false;
         }
         return true;
+    }
+
+    void Application::onCutShortcut(const Carrot::Render::Context& frame) {
+        cutShortcutRequested = true;
+    }
+
+    void Application::onCopyShortcut(const Carrot::Render::Context& frame) {
+        copyShortcutRequested = true;
+    }
+
+    void Application::onPasteShortcut(const Carrot::Render::Context& frame) {
+        pasteShortcutRequested = true;
+    }
+
+    void Application::onDuplicateShortcut(const Carrot::Render::Context& frame) {
+        duplicateShortcutRequested = true;
     }
 
 }

@@ -55,7 +55,12 @@ namespace Peeler {
 
         bool onCloseButtonPressed() override;
 
-    public: // scene management
+        void onCutShortcut(const Carrot::Render::Context& frame) override;
+        void onCopyShortcut(const Carrot::Render::Context& frame) override;
+        void onPasteShortcut(const Carrot::Render::Context& frame) override;
+        void onDuplicateShortcut(const Carrot::Render::Context& frame) override;
+
+        // scene management
         void addCurrentSceneToSceneList();
         void newScene(const Carrot::IO::VFS::Path& path);
         void openScene(const Carrot::IO::VFS::Path& path);
@@ -288,12 +293,20 @@ namespace Peeler {
         bool startSimulationRequested = false;
 
         bool tryToClose = false;
+        bool gameViewportFocused = false;
 
     private: // simulation state
         bool isPlaying = false;
         bool isPaused = false;
         bool requestedSingleStep = false;
         bool hasDoneSingleStep = false;
+
+    private: // shortcuts
+        bool cutShortcutRequested = false;
+        bool copyShortcutRequested = false;
+        bool pasteShortcutRequested = false;
+        bool duplicateShortcutRequested = false;
+        bool deleteShortcutRequested = false;
     };
 
 }
