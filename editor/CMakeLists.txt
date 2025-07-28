@@ -8,6 +8,8 @@ set(EditorSources
         ${EditorRoot}EntityWarnings.cpp
 
         ${EditorRoot}commands/AddComponentsCommand.cpp
+        ${EditorRoot}commands/DeleteEntitiesCommand.cpp
+        ${EditorRoot}commands/DuplicateEntitiesCommand.cpp
         ${EditorRoot}commands/ModifySystemsCommands.cpp
         ${EditorRoot}commands/RemoveComponentsCommand.cpp
         ${EditorRoot}commands/RenameEntities.cpp

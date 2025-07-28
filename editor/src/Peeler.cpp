@@ -45,6 +45,8 @@
 
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
+#include <commands/DeleteEntitiesCommand.h>
+#include <commands/DuplicateEntitiesCommand.h>
 #include <commands/ModifySystemsCommands.h>
 #include <core/allocators/StackAllocator.h>
 #include <engine/ecs/Prefab.h>
@@ -147,6 +149,7 @@ namespace Peeler {
         copyShortcutRequested = false;
         pasteShortcutRequested = false;
         duplicateShortcutRequested = false;
+        deleteShortcutRequested = false;
         handleShortcuts(renderContext);
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1939,17 +1942,11 @@ namespace Peeler {
     }
 
     void Application::duplicateSelectedEntities() {
-        // TODO: make it a command
-
-        std::unordered_set<Carrot::ECS::EntityID> newSelectedEntities;
-        for (const auto& selectedEntityID : selectedEntityIDs) {
-            auto entity = currentScene.world.wrap(selectedEntityID);
-            auto clone = currentScene.world.duplicate(entity, entity.getParent());
-            newSelectedEntities.insert(clone.getID());
+        if (selectedEntityIDs.empty()) {
+            return;
         }
 
-        selectedEntityIDs = newSelectedEntities;
-        markDirty();
+        undoStack.push<DuplicateEntitiesCommand>(selectedEntityIDs);
     }
 
     void Application::selectEntity(const Carrot::ECS::EntityID& entity, bool additive) {
@@ -1975,11 +1972,11 @@ namespace Peeler {
     }
 
     void Application::removeSelectedEntities() {
-        for (const auto& selectedEntityID : selectedEntityIDs) {
-            currentScene.world.removeEntity(currentScene.world.wrap(selectedEntityID));
+        if (selectedEntityIDs.empty()) {
+            return;
         }
-        selectedEntityIDs.clear();
-        markDirty();
+
+        undoStack.push<DeleteEntitiesCommand>(selectedEntityIDs);
     }
 
     void Application::convertEntityToPrefab(Carrot::ECS::Entity& entity) {

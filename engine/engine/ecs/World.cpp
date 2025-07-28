@@ -526,16 +526,24 @@ namespace Carrot::ECS {
 
     Carrot::ECS::Entity World::duplicate(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> newParent) {
         std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
+        return duplicateWithRemap(entity, std::move(newParent), remap);
+    }
+
+    Carrot::ECS::Entity World::duplicateWithRemap(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> _newParent, std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap) {
         std::function<Carrot::ECS::Entity(const Carrot::ECS::Entity&, std::optional<Carrot::ECS::Entity> newParent)> duplicateEntity =
             [&](const Carrot::ECS::Entity& toClone, std::optional<Carrot::ECS::Entity> newParent) {
-                auto clone = newEntity(std::string(toClone.getName())+" (Copy)");
+                Carrot::ECS::EntityID newID;
+                if (auto iter = remap.find(entity.getID()); iter != remap.end()) {
+                    newID = iter->second;
+                }
+                auto clone = newEntityWithID(newID, std::string(toClone.getName())+" (Copy)");
                 remap[toClone.getID()] = clone.getID();
                 for(const auto* comp : toClone.getAllComponents()) {
                     clone.addComponent(std::move(comp->duplicate(clone)));
                 }
 
                 for(const auto& child : getChildren(toClone)) {
-                    duplicateEntity(child, clone);
+                    duplicateWithRemap(child, clone, remap);
                 }
 
                 if(newParent) {
@@ -546,7 +554,7 @@ namespace Carrot::ECS {
                 return clone;
             };
 
-        auto clone = duplicateEntity(entity, std::move(newParent));
+        auto clone = duplicateEntity(entity, std::move(_newParent));
 
         repairLinks(clone, remap);
         return clone;
@@ -595,7 +603,7 @@ namespace Carrot::ECS {
         return iterateChildren(parent);
     }
 
-    void World::removeEntity(const Entity& ent) {
+    void World::removeEntity(const EntityID& ent) {
         entitiesToRemove.push_back(ent);
         auto childrenCopy = entityChildren[ent];
         for(const auto& child : childrenCopy) {

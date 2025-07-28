@@ -76,7 +76,7 @@ namespace Carrot::ECS {
         /// /!\ Unsafe! Adds an entity with the given ID, should probably only used for deserialization/networking purposes.
         Entity newEntityWithID(EntityID id, std::string_view name = "<unnamed>");
 
-        void removeEntity(const Entity& ent);
+        void removeEntity(const EntityID& ent);
 
         bool exists(EntityID ent) const;
 
@@ -155,7 +155,14 @@ namespace Carrot::ECS {
         /// Sets the parent, but also modify the entity's tranform (if any) to keep the same world transform after changing the parent
         void reparent(Entity& toSet, std::optional<Entity> parent);
 
+        /// Duplicates this entity and its children
+        /// Returns the clone of this entity
         Carrot::ECS::Entity duplicate(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> newParent = {});
+
+        /// Duplicates this entity, using 'remap' to find the new ID of each clone (this entity and its children, recursively).
+        /// If no ID exists for an entity, a new one will be generated and added to 'remap'.
+        /// Returns the clone of this entity
+        Carrot::ECS::Entity duplicateWithRemap(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> newParent, std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);
 
         /// Gets the parent of 'of'. Can return nullptr if no parent exists
         std::optional<Entity> getParent(const Entity& of) const;
