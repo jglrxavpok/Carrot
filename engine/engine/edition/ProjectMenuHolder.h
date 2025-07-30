@@ -41,6 +41,8 @@ namespace Tools {
         virtual void onPasteShortcut(const Carrot::Render::Context& frame);
         virtual void onDuplicateShortcut(const Carrot::Render::Context& frame);
         virtual void onDeleteShortcut(const Carrot::Render::Context& frame);
+        virtual void onUndoShortcut(const Carrot::Render::Context& frame);
+        virtual void onRedoShortcut(const Carrot::Render::Context& frame);
 
         void drawProjectMenu() {
             assert(settings);
@@ -283,6 +285,8 @@ namespace Tools {
         Carrot::IO::BoolInputAction cut{"cut"};
         Carrot::IO::BoolInputAction paste{"paste"};
         Carrot::IO::BoolInputAction deleteShortcut{"delete"};
+        Carrot::IO::BoolInputAction undoShortcut{"undo"};
+        Carrot::IO::BoolInputAction redoShortcut{"redo"};
 
     private: // popup control
         bool tryingToOpenFile = false;

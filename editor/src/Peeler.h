@@ -60,6 +60,8 @@ namespace Peeler {
         void onPasteShortcut(const Carrot::Render::Context& frame) override;
         void onDuplicateShortcut(const Carrot::Render::Context& frame) override;
         void onDeleteShortcut(const Carrot::Render::Context& frame) override;
+        void onUndoShortcut(const Carrot::Render::Context& frame) override;
+        void onRedoShortcut(const Carrot::Render::Context& frame) override;
 
         // scene management
         void addCurrentSceneToSceneList();
@@ -303,11 +305,15 @@ namespace Peeler {
         bool hasDoneSingleStep = false;
 
     private: // shortcuts
-        bool cutShortcutRequested = false;
-        bool copyShortcutRequested = false;
-        bool pasteShortcutRequested = false;
-        bool duplicateShortcutRequested = false;
-        bool deleteShortcutRequested = false;
+        struct {
+            bool cutRequested = false;
+            bool copyRequested = false;
+            bool pasteRequested = false;
+            bool duplicateRequested = false;
+            bool deleteRequested = false;
+            bool undoRequested = false;
+            bool redoRequested = false;
+        } shortcuts;
     };
 
 }

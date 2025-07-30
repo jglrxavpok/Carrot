@@ -145,12 +145,15 @@ namespace Peeler {
             tryToClose = false;
         }
 
-        cutShortcutRequested = false;
-        copyShortcutRequested = false;
-        pasteShortcutRequested = false;
-        duplicateShortcutRequested = false;
-        deleteShortcutRequested = false;
+        shortcuts = {}; // reset shortcut state
         handleShortcuts(renderContext);
+
+        if (shortcuts.undoRequested) {
+            undoStack.undo();
+        }
+        if (shortcuts.redoRequested) {
+            undoStack.redo();
+        }
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -590,8 +593,8 @@ namespace Peeler {
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
         const bool canModifyHierarchyViaShorcuts = ImGui::IsWindowFocused() || gameViewportFocused;
-        bool requestRemoveEntities = canModifyHierarchyViaShorcuts && deleteShortcutRequested;
-        bool requestDuplicateEntities = canModifyHierarchyViaShorcuts && duplicateShortcutRequested;
+        bool requestRemoveEntities = canModifyHierarchyViaShorcuts && shortcuts.deleteRequested;
+        bool requestDuplicateEntities = canModifyHierarchyViaShorcuts && shortcuts.duplicateRequested;
 
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
@@ -2079,23 +2082,31 @@ namespace Peeler {
     }
 
     void Application::onCutShortcut(const Carrot::Render::Context& frame) {
-        cutShortcutRequested = true;
+        shortcuts.cutRequested = true;
     }
 
     void Application::onCopyShortcut(const Carrot::Render::Context& frame) {
-        copyShortcutRequested = true;
+        shortcuts.copyRequested = true;
     }
 
     void Application::onPasteShortcut(const Carrot::Render::Context& frame) {
-        pasteShortcutRequested = true;
+        shortcuts.pasteRequested = true;
     }
 
     void Application::onDuplicateShortcut(const Carrot::Render::Context& frame) {
-        duplicateShortcutRequested = true;
+        shortcuts.duplicateRequested = true;
     }
 
     void Application::onDeleteShortcut(const Carrot::Render::Context& frame) {
-        deleteShortcutRequested = true;
+        shortcuts.deleteRequested = true;
+    }
+
+    void Application::onUndoShortcut(const Carrot::Render::Context& frame) {
+        shortcuts.undoRequested = true;
+    }
+
+    void Application::onRedoShortcut(const Carrot::Render::Context& frame) {
+        shortcuts.redoRequested = true;
     }
 
 }
