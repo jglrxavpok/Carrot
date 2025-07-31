@@ -242,6 +242,7 @@ namespace Carrot::Scripting {
         static glm::vec4 _GetTextColor(MonoObject* textComponent);
         static void _SetTextColor(MonoObject* textComponent, glm::vec4 value);
 
+        static glm::vec3 _GetRigidBodyAngularVelocityInLocalSpace(MonoObject* comp);
         static glm::vec3 _GetRigidBodyVelocity(MonoObject* comp);
         static void _SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value);
         static void _RigidBodyRegisterForContacts(MonoObject* comp);

@@ -15,6 +15,9 @@ namespace Carrot {
             get => _GetVelocity();
             set => _SetVelocity(value);
         }
+        public Vec3 AngularVelocityInLocalSpace {
+            get => _GetAngularVelocityInLocalSpace();
+        }
 
         private class Listeners {
             public List<Action<Entity>> contactAddedListeners = new List<Action<Entity>>();
@@ -59,6 +62,9 @@ namespace Carrot {
                 _RegisterForContacts();
             }
         }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec3 _GetAngularVelocityInLocalSpace();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern Vec3 _GetVelocity();

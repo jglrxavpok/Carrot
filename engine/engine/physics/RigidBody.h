@@ -79,6 +79,7 @@ namespace Carrot::Physics {
         float getLinearDamping() const;
         void setLinearDamping(float newValue);
 
+        glm::vec3 getAngularVelocityInLocalSpace() const;
         glm::vec3 getVelocity() const;
         void setVelocity(const glm::vec3& velocity);
 

@@ -15,7 +15,7 @@ namespace Carrot::Physics {
         //bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
         bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         bodyTemplate.mMassPropertiesOverride.mMass = 1.0f;
-        bodyTemplate.mMaxLinearVelocity = 3000.0f;
+        bodyTemplate.mMaxLinearVelocity = 300.0f/3.6f;
 
         /*bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(0) = {48531.0f,-1320.0f, 0.0f};
         bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(1) = {-1320.0f, 256608.0f, 0.0f};
@@ -262,6 +262,11 @@ namespace Carrot::Physics {
         if(body) {
             body->GetMotionProperties()->SetInverseMass(1.0f / mass);
         }
+    }
+
+    glm::vec3 RigidBody::getAngularVelocityInLocalSpace() const {
+        BodyAccessRead body{bodyID};
+        return Carrot::joltToCarrot(body->GetRotation().InverseRotate(body->GetAngularVelocity()));
     }
 
     glm::vec3 RigidBody::getVelocity() const {

@@ -132,6 +132,7 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.RigidBodyComponent::GetColliderCount", (void*)GetRigidBodyColliderCount);
         mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", (void*)GetRigidBodyCollider);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetAngularVelocityInLocalSpace", (void*)_GetRigidBodyAngularVelocityInLocalSpace);
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", (void*)_GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", (void*)_SetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", (void*)_RigidBodyRegisterForContacts);
@@ -905,6 +906,12 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::TextComponent>()->setColor(value);
+    }
+
+    glm::vec3 CSharpBindings::_GetRigidBodyAngularVelocityInLocalSpace(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.getAngularVelocityInLocalSpace();
     }
 
     glm::vec3 CSharpBindings::_GetRigidBodyVelocity(MonoObject* comp) {
