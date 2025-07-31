@@ -17,6 +17,8 @@ namespace Carrot::ECS {
         ~CSharpLogicSystem();
 
         virtual void tick(double dt) override;
+        virtual void prePhysics() override;
+        virtual void postPhysics() override;
 
         virtual void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -51,6 +53,8 @@ namespace Carrot::ECS {
     private:
         std::shared_ptr<Scripting::CSObject> csSystem;
         Scripting::CSMethod* csTickMethod = nullptr;
+        Scripting::CSMethod* csPrePhysicsTickMethod = nullptr;
+        Scripting::CSMethod* csPostPhysicsTickMethod = nullptr;
         std::shared_ptr<Scripting::CSArray> csEntities = nullptr; // array of Carrot::System.EntityWithComponents
 
         std::string namespaceName;

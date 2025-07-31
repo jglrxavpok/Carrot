@@ -95,6 +95,16 @@ namespace Carrot {
         }
         
         public abstract void Tick(double deltaTime);
+
+        /**
+         * Called at a fixed rate, just before physics simulation
+         */
+        public virtual void PrePhysicsTick(double deltaTime) {}
+        
+        /**
+         * Called at a fixed rate, just after physics simulation
+         */
+        public virtual void PostPhysicsTick(double deltaTime) {}
         
         // TODO: Render
         

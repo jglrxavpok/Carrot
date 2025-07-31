@@ -133,6 +133,16 @@ namespace Carrot {
         public static Vec3 operator /(float s, Vec3 a) {
             return new Vec3(s / a.X, s / a.Y, s / a.Z);
         }
+
+        public Vec3 Cross(Vec3 other)
+        {
+            return new Vec3
+            {
+                X = Y * other.Z - Z * other.Y,
+                Y = Z * other.X - X * other.Z,
+                Z = X * other.Y - Y * other.X,
+            };
+        }
     }
     
     public struct Vec4 {

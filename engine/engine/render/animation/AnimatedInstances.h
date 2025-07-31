@@ -71,6 +71,7 @@ namespace Carrot {
         vk::UniquePipeline computePipeline{};
         std::vector<vk::CommandBuffer> skinningCommandBuffers{};
         std::vector<vk::UniqueSemaphore> skinningSemaphores{};
+        bool submitAtLeastOneSkinningCompute = false;
 
         void createSkinningComputePipeline();
     };

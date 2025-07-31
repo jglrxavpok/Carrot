@@ -12,7 +12,7 @@ namespace Carrot::ECS {
 
     }
 
-    void RigidBodySystem::tick(double dt) {
+    void RigidBodySystem::prePhysics() {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transformComponent, RigidBodyComponent& rigidBodyComp) {
             rigidBodyComp.rigidbody.setUserData((void *) &entity.getID());
 

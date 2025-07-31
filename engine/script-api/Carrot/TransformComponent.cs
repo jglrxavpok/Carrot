@@ -18,6 +18,7 @@ namespace Carrot {
 
         /**
          * Allows to set the rotation with euler angles (in radians).
+         * Order is around X axis, Y axis, and Z axis
          */
         public Vec3 EulerAngles {
             get => _GetEulerAngles();

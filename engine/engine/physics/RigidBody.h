@@ -58,6 +58,11 @@ namespace Carrot::Physics {
         const Collider& getCollider(std::size_t index) const;
 
     public:
+        glm::vec3 getPointVelocity(const glm::vec3& point);
+        void addForceAtPoint(const glm::vec3& force, const glm::vec3& point);
+        void addRelativeForce(const glm::vec3& force);
+
+    public:
         BodyType getBodyType() const;
         void setBodyType(BodyType type);
 

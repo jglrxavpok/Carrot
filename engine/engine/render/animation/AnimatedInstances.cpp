@@ -332,16 +332,6 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         skinningSemaphores.emplace_back(std::move(engine.getLogicalDevice().createSemaphoreUnique({})));
         DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphores[i]);
     }
-
-    Render::PerFrame<vk::Semaphore> semaphores;
-    semaphores.reserve(skinningSemaphores.size());
-    for(auto& pSemaphore : skinningSemaphores) {
-        semaphores.emplace_back(*pSemaphore);
-    }
-
-    for(auto& blas : raytracingBLASes) {
-        blas->bindSemaphores(semaphores);
-    }
 }
 
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
@@ -381,6 +371,22 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
         .semaphore = *skinningSemaphores[modFrameIndex],
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
+
+    // do not bind the semaphore earlier, it is possible the creation of the AnimatedInstances finishes and ASBuilder kicks off, without the skinning semaphore ever signaled
+    if (!submitAtLeastOneSkinningCompute)
+    {
+        submitAtLeastOneSkinningCompute = true;
+        Render::PerFrame<vk::Semaphore> semaphores;
+        semaphores.reserve(skinningSemaphores.size());
+        for(auto& pSemaphore : skinningSemaphores) {
+            semaphores.emplace_back(*pSemaphore);
+        }
+
+        for(auto& blas : raytracingBLASes) {
+            blas->bindSemaphores(semaphores);
+        }
+    }
+
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
             .waitSemaphoreInfoCount = 0,
             .pWaitSemaphoreInfos = nullptr,

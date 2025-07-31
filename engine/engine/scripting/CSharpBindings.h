@@ -166,6 +166,7 @@ namespace Carrot::Scripting {
         static std::int32_t _GetMaxComponentCountUncached();
         static void BeginProfilingZone(MonoString* zoneName);
         static void EndProfilingZone(MonoString* zoneName);
+        static glm::vec3 EulerToForwardVector(float pitch, float yaw, float roll);
 
         static ComponentID GetComponentID(MonoString* namespaceStr, MonoString* classStr);
         static ComponentID GetComponentIndex(MonoString* namespaceStr, MonoString* classStr);
@@ -250,6 +251,10 @@ namespace Carrot::Scripting {
 
         static MonoObject* _RigidBodyGetCallbacksHolder(MonoObject* comp);
         static void _RigidBodySetCallbacksHolder(MonoObject* comp, MonoObject* holder);
+
+        static glm::vec3 _RigidBodyGetPointVelocity(MonoObject* comp, glm::vec3 point);
+        static void _RigidBodyAddForceAtPoint(MonoObject* comp, glm::vec3 force, glm::vec3 point);
+        static void _RigidBodyAddRelativeForce(MonoObject* comp, glm::vec3 force);
 
         static std::uint64_t GetRigidBodyColliderCount(MonoObject* comp);
         static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);

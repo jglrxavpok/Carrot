@@ -12,8 +12,14 @@
 
 namespace Carrot::Physics {
     RigidBody::RigidBody() {
+        //bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
         bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         bodyTemplate.mMassPropertiesOverride.mMass = 1.0f;
+        bodyTemplate.mMaxLinearVelocity = 3000.0f;
+
+        /*bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(0) = {48531.0f,-1320.0f, 0.0f};
+        bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(1) = {-1320.0f, 256608.0f, 0.0f};
+        bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(2) = {0.0f, 0.0f, 211333.0f};*/
     }
 
     RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
@@ -126,6 +132,25 @@ namespace Carrot::Physics {
         return *colliders[index];
     }
 
+    glm::vec3 RigidBody::getPointVelocity(const glm::vec3& point) {
+        BodyAccessRead r {bodyID};
+        verify(!glm::any(glm::isnan(point)), "NaN point!");
+        return joltToCarrot(r->GetRotation().InverseRotate(r->GetPointVelocity(r->GetPosition() + r->GetRotation() * carrotToJolt(point))));
+    }
+
+    void RigidBody::addForceAtPoint(const glm::vec3& force, const glm::vec3& point) {
+        BodyAccessWrite w {bodyID};
+        verify(!glm::any(glm::isnan(force)), "NaN force!");
+        verify(!glm::any(glm::isnan(point)), "NaN point!");
+        w->AddForce(w->GetRotation() * carrotToJolt(force), w->GetPosition() + w->GetRotation() * carrotToJolt(point));
+    }
+
+    void RigidBody::addRelativeForce(const glm::vec3& force) {
+        BodyAccessWrite w {bodyID};
+        verify(!glm::any(glm::isnan(force)), "NaN force!");
+        w->AddForce(w->GetRotation() * carrotToJolt(force));
+    }
+
     Carrot::Math::Transform RigidBody::getTransform() const {
         BodyAccessRead body{bodyID};
         Carrot::Math::Transform transform;
@@ -140,8 +165,14 @@ namespace Carrot::Physics {
         bool needUpdate = bodyTemplate.mPosition != joltPos;
             needUpdate |= bodyTemplate.mRotation != joltRot;
             needUpdate &= !bodyID.IsInvalid();
+        needUpdate |= true; // TODO: find why this is necessary to place player correctly on first frame
         bodyTemplate.mPosition = joltPos;
         bodyTemplate.mRotation = joltRot;
+        if (!bodyID.IsInvalid()) {
+            BodyAccessRead r { bodyID };
+            bodyTemplate.mLinearVelocity = r->GetLinearVelocity();
+            bodyTemplate.mAngularVelocity = r->GetAngularVelocity();
+        }
         if(needUpdate) {
             recreateBodyIfNeeded();
         }

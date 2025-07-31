@@ -37,6 +37,9 @@ namespace Carrot {
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern Vec3 EulerToForwardVector(float pitch, float yaw, float roll);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern void BeginProfilingZone(string name);
         
         [MethodImpl(MethodImplOptions.InternalCall)]

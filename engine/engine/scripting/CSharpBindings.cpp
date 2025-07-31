@@ -89,6 +89,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Utilities::_GetMaxComponentCountUncached", (void*)_GetMaxComponentCountUncached);
         mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", (void*)BeginProfilingZone);
         mono_add_internal_call("Carrot.Utilities::EndProfilingZone", (void*)EndProfilingZone);
+        mono_add_internal_call("Carrot.Utilities::EulerToForwardVector", (void*)EulerToForwardVector);
         mono_add_internal_call("Carrot.Signature::GetComponentIndex", (void*)GetComponentIndex);
         mono_add_internal_call("Carrot.System::LoadEntities", (void*)LoadEntities);
         mono_add_internal_call("Carrot.System::_Query", (void*)_QueryECS);
@@ -134,6 +135,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", (void*)_GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", (void*)_SetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", (void*)_RigidBodyRegisterForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetPointVelocity", (void*)_RigidBodyGetPointVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::AddForceAtPoint", (void*)_RigidBodyAddForceAtPoint);
+        mono_add_internal_call("Carrot.RigidBodyComponent::AddRelativeForce", (void*)_RigidBodyAddRelativeForce);
 
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetRegisteredForContacts", (void*)_RigidBodyGetRegisteredForContacts);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetRegisteredForContacts", (void*)_RigidBodySetRegisteredForContacts);
@@ -674,6 +678,11 @@ namespace Carrot::Scripting {
 #endif
     }
 
+    glm::vec3 CSharpBindings::EulerToForwardVector(float pitch, float yaw, float roll) {
+        glm::vec3 forward { 0, 1, 0 };
+        return glm::quat(glm::vec3(pitch, yaw, roll)) * forward;
+    }
+
     ComponentID CSharpBindings::GetComponentID(MonoString* namespaceStr, MonoString* classStr) {
         char* namespaceChars = mono_string_to_utf8(namespaceStr);
         char* classChars = mono_string_to_utf8(classStr);
@@ -980,6 +989,26 @@ namespace Carrot::Scripting {
         pHolder = std::make_shared<CSObject>(holder);
     }
 
+    glm::vec3 CSharpBindings::_RigidBodyGetPointVelocity(MonoObject* comp, glm::vec3 point) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        return rigidBody.getPointVelocity(point);
+    }
+
+    void CSharpBindings::_RigidBodyAddForceAtPoint(MonoObject* comp, glm::vec3 force, glm::vec3 point) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        return rigidBody.addForceAtPoint(force, point);
+    }
+
+    void CSharpBindings::_RigidBodyAddRelativeForce(MonoObject* comp, glm::vec3 force) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        return rigidBody.addRelativeForce(force);
+    }
 
     std::uint64_t CSharpBindings::GetRigidBodyColliderCount(MonoObject* comp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));

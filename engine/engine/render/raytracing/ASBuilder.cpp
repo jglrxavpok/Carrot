@@ -822,7 +822,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         // TODO: reuse memory
         std::unordered_set<vk::Semaphore> alreadyWaitedOn;
         for(auto& blas : toBuild) {
-            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(semaphoreIndex);
+            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameCount);
             if(boundSemaphore != VK_NULL_HANDLE) {
                 auto [_, isNew] = alreadyWaitedOn.emplace(boundSemaphore);
                 if (isNew) {
