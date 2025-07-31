@@ -96,6 +96,7 @@ namespace Peeler {
         }
 
         // remove all components that are not inside in the other entities, and append those who are in common
+        ++firstEntityIter;
         for(auto entityIter = firstEntityIter; entityIter != app.selectedEntityIDs.end(); entityIter++) {
             auto& entityID = *entityIter;
             if(!world.exists(entityID)) {
