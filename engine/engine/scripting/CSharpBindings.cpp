@@ -117,6 +117,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", (void*)_GetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", (void*)_SetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", (void*)_GetWorldPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_GetWorldUpForwardVectors", (void*)_GetWorldUpForwardVectors);
 
         mono_add_internal_call("Carrot.CharacterComponent::Teleport", (void*)TeleportCharacter);
         mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", (void*)_GetCharacterVelocity);
@@ -828,6 +829,17 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         return entity.getComponent<ECS::TransformComponent>()->computeFinalPosition();
+    }
+
+    MonoArray* CSharpBindings::_GetWorldUpForwardVectors(MonoObject* transformComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        glm::vec3 forward, up;
+        entity.getComponent<ECS::TransformComponent>()->computeGlobalUpForward(up, forward);
+        auto array = instance().Vec3Class->newArray(2);
+        mono_array_set(array->toMono(), glm::vec3, 0, up);
+        mono_array_set(array->toMono(), glm::vec3, 1, forward);
+        return array->toMono();
     }
 
     void CSharpBindings::_SetKinematicsLocalVelocity(MonoObject* transformComp, glm::vec3 value) {

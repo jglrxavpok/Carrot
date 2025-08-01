@@ -54,10 +54,22 @@ namespace Carrot::ECS {
         glm::quat computeFinalOrientation() const;
 
         /**
-        * Computes the global forward of the entity based on the parent orientation and this entity's orientation.
-        * @return World-space forward of the entity
+        * Computes the global forward vector of the entity based on the parent orientation and this entity's orientation.
+        * @return World-space forward vector of the entity
         */
         glm::vec3 computeGlobalForward() const;
+
+        /**
+        * Computes the global up vector of the entity based on the parent orientation and this entity's orientation.
+        * @return World-space up vector of the entity
+        */
+        glm::vec3 computeGlobalUp() const;
+
+        /**
+        * Computes the global up and forward vectors of the entity based on the parent orientation and this entity's orientation.
+        * Slightly more efficient than calling computeGlobalForward and computeGlobalUp
+        */
+        void computeGlobalUpForward(glm::vec3& up, glm::vec3& forward) const;
 
         /// Computes the global transform of this entity, taking into account the hierarchy
         Carrot::Math::Transform computeGlobalPhysicsTransform() const;

@@ -57,6 +57,15 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern Vec3 _GetWorldPosition();
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec3[] _GetWorldUpForwardVectors();
 
+        public void GetWorldUpForwardVectors(ref Vec3 up, ref Vec3 forward)
+        {
+            Vec3[] array = _GetWorldUpForwardVectors();
+            up = array[0];
+            forward = array[1];
+        }
     }
 }

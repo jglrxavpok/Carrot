@@ -87,6 +87,17 @@ namespace Carrot::ECS {
         return computeFinalOrientation() * forward;
     }
 
+    glm::vec3 TransformComponent::computeGlobalUp() const {
+        constexpr glm::vec3 up = glm::vec3{ 0.0f, 0.0f, 1.0f };
+        return computeFinalOrientation() * up;
+    }
+
+    void TransformComponent::computeGlobalUpForward(glm::vec3& up, glm::vec3& forward) const {
+        glm::quat orientation = computeFinalOrientation();
+        up = orientation * glm::vec3{0,0,1};
+        forward = orientation * glm::vec3{0,1,0};
+    }
+
     Carrot::Math::Transform TransformComponent::computeGlobalPhysicsTransform() const {
         auto parent = getEntity().getParent();
         if(parent) {
