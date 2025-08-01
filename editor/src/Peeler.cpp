@@ -661,6 +661,7 @@ namespace Peeler {
 
             auto dragAndDrop = [&]() {
                 bool dragging = false;
+                // TODO: makes drag and drop into editor complicated
                 if (selectedEntityIDs.contains(entity.getID())) {
                     dragging = ImGui::BeginDragDropSource();
                     if(dragging) {

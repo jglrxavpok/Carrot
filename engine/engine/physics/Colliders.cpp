@@ -11,7 +11,10 @@
 #include <engine/utils/conversions.h>
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/physics/RigidBody.h>
+#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+
+#include <stb_image.h>
 
 using namespace JPH;
 
@@ -65,6 +68,10 @@ namespace Carrot::Physics {
 
             case ColliderType::Capsule:
                 collisionShape = std::make_unique<CapsuleCollisionShape>(object);
+                break;
+
+            case ColliderType::Heightmap:
+                collisionShape = std::make_unique<HeightmapCollisionShape>(object);
                 break;
 
             case ColliderType::StaticConcaveTriangleMesh:
@@ -264,4 +271,94 @@ namespace Carrot::Physics {
 
     CapsuleCollisionShape::~CapsuleCollisionShape() {
     }
+
+    HeightmapCollisionShape::HeightmapCollisionShape() {
+        samples.resize(16);
+        samples.fill(0.0f);
+    }
+
+    HeightmapCollisionShape::HeightmapCollisionShape(const Carrot::DocumentElement& element) {
+        sourceMap = element["path"].getAsString();
+        if (element.contains("scale")) {
+            scale = DocumentHelpers::read<3, float>(element["scale"]);
+        }
+        recreateShape();
+        reattachCollider();
+    }
+
+    HeightmapCollisionShape::HeightmapCollisionShape(const Carrot::IO::VFS::Path& sourceMapPath, const glm::vec3& scale): samples(Carrot::Allocator::getDefault()), scale(scale) {}
+
+    HeightmapCollisionShape::HeightmapCollisionShape(const Carrot::IO::VFS::Path& sourceMapPath, const glm::vec3& scale, const Carrot::Vector<float>& samples) {
+        sourceMap = sourceMapPath;
+        this->scale = scale;
+        this->samples = samples;
+        recreateShape();
+        reattachCollider();
+    }
+
+    HeightmapCollisionShape::~HeightmapCollisionShape() {
+
+    }
+
+    void HeightmapCollisionShape::recreateShape() {
+        if (samples.empty() && !sourceMap.isEmpty()) {
+            // TODO: share with Image.cpp?
+            int width;
+            int height;
+            int channels;
+            Carrot::IO::Resource resource { sourceMap };
+            auto buffer = resource.readAll();
+            stbi_us* pixels = stbi_load_16_from_memory(buffer.get(), resource.getSize(), &width, &height, &channels, STBI_grey);
+            if(!pixels) {
+                throw std::runtime_error("Failed to load image "+resource.getName());
+            }
+            verify(channels == 1, "Expected grey image");
+
+            samples.resize(width * height);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    samples[y * width + x] = (float)(pixels[y * width + x] / (double)0xFFFF);
+                }
+            }
+
+            stbi_image_free(pixels);
+        }
+        shape = HeightFieldShapeSettings{ samples.data(), JPH::Vec3::sZero(), carrotToJolt(scale), (u32)sqrt(samples.size()) }.Create().Get();
+    }
+
+    ColliderType HeightmapCollisionShape::getType() const {
+        return ColliderType::Heightmap;
+    }
+
+    std::unique_ptr<CollisionShape> HeightmapCollisionShape::duplicate() const {
+        std::unique_ptr<HeightmapCollisionShape> cloned = std::make_unique<HeightmapCollisionShape>(sourceMap, scale, samples);
+        return cloned;
+    }
+
+    void HeightmapCollisionShape::serialiseTo(Carrot::DocumentElement& target) const {
+        target["path"] = sourceMap.toString();
+        target["scale"] = DocumentHelpers::write(scale);
+    }
+
+    void HeightmapCollisionShape::changeShapeScale(const glm::vec3& scale) {
+        this->scale = scale;
+        recreateShape();
+        reattachCollider();
+    }
+
+    const Carrot::IO::VFS::Path& HeightmapCollisionShape::getSourcePath() const {
+        return sourceMap;
+    }
+
+    const glm::vec3& HeightmapCollisionShape::getScale() const {
+        return scale;
+    }
+
+    void HeightmapCollisionShape::setSourcePath(const Carrot::IO::VFS::Path& sourcePath) {
+        samples.clear();
+        sourceMap = sourcePath;
+        recreateShape();
+        reattachCollider();
+    }
+
 }

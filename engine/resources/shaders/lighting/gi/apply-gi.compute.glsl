@@ -82,7 +82,7 @@ void main() {
     average += readProbe(probePositionTopLeft) * w12;
     average += readProbe(probePositionTopRight) * w22;
 
-    const float denominator = (probePositionTopRight.x*ScreenProbeSize - probePositionTopLeft.x*ScreenProbeSize) * (probePositionTopRight.y*ScreenProbeSize - probePositionBottomRight.y*ScreenProbeSize);
+    const float denominator = w11 + w12 + w21 + w22;
     const float invDenominator = 1.0f / denominator;
     average *= invDenominator;
 

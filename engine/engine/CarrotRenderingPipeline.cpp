@@ -108,7 +108,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
                     auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) {
                         Render::Texture* lastFrameTexture = nullptr;
-                        if(frame.lastSwapchainIndex >= 0) {
+                        if(frame.lastSwapchainIndex != (std::size_t)-1) {
                             lastFrameTexture = &pass.getGraph().getTexture(resource, frame.lastSwapchainIndex);
                         } else {
                             lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();

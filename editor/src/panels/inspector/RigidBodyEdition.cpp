@@ -93,6 +93,12 @@ namespace Peeler {
                 }
                     break;
 
+                case ColliderType::Heightmap: {
+                    auto& heightmap = dynamic_cast<HeightmapCollisionShape&>(shape);
+                    localTransform.scale = heightmap.getScale();
+                }
+                    break;
+
                 default:
                     TODO; // not implemented yet
             }
@@ -155,6 +161,12 @@ namespace Peeler {
                                 verify(scalingY, "Must be scaling at least once axis to end up here!");
                                 dynamic_cast<CapsuleCollisionShape&>(shape).setHeight(scale[1]);
                             }
+                        }
+                            break;
+
+                        case ColliderType::Heightmap: {
+                            dynamic_cast<HeightmapCollisionShape&>(shape).changeShapeScale(
+                                    glm::vec3(scale[0], scale[1], scale[2]));
                         }
                             break;
 
@@ -351,6 +363,28 @@ namespace Peeler {
                     modified = true;
                     capsule.setHeight(height);
                 }
+            }
+                break;
+
+            case Carrot::Physics::ColliderType::Heightmap: {
+                auto& heightmap = static_cast<Carrot::Physics::HeightmapCollisionShape&>(shape);
+
+                Carrot::IO::VFS::Path path = heightmap.getSourcePath();
+                if (editVFSPath("Heightmap path", path, Helpers::Limits<Carrot::IO::VFS::Path> {
+                    .validityChecker = [](auto& p) { return Carrot::IO::getFileFormat(p.toString().c_str()) == Carrot::IO::FileFormat::PNG; }
+                })) {
+                    edition.hasModifications = true;
+                    modified = true;
+                    heightmap.setSourcePath(path);
+                }
+
+                float scaleArray[3] = { heightmap.getScale().x, heightmap.getScale().y, heightmap.getScale().z };
+                if(ImGui::SliderFloat3("Scale", scaleArray, 0.001f, 10000)) {
+                    edition.hasModifications = true;
+                    modified = true;
+                    heightmap.changeShapeScale({ scaleArray[0], scaleArray[1], scaleArray[2] });
+                }
+
             }
                 break;
 
@@ -595,6 +629,10 @@ namespace Peeler {
                     }
                     if(ImGui::MenuItem("Capsule Collider##rigidbodycomponent colliders")) {
                         rigidbody.addCollider(Carrot::Physics::CapsuleCollisionShape(1.0f, 1.0f));
+                        edition.hasModifications = true;
+                    }
+                    if(ImGui::MenuItem("Heightmap##rigidbodycomponent colliders")) {
+                        rigidbody.addCollider(Carrot::Physics::HeightmapCollisionShape());
                         edition.hasModifications = true;
                     }
                     // TODO: convex

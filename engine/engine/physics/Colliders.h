@@ -18,6 +18,7 @@
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <core/Macros.h>
+#include <core/io/vfs/VirtualFileSystem.h>
 
 namespace Carrot {
     class SingleMesh;
@@ -190,6 +191,35 @@ namespace Carrot::Physics {
     private:
         float currentRadius = 0.0f;
         float currentHeight = 0.0f;
+    };
+
+    class HeightmapCollisionShape: public CollisionShape {
+    public:
+        explicit HeightmapCollisionShape();
+        explicit HeightmapCollisionShape(const Carrot::DocumentElement& element);
+        explicit HeightmapCollisionShape(const Carrot::IO::VFS::Path& sourceMapPath, const glm::vec3& scale);
+        explicit HeightmapCollisionShape(const Carrot::IO::VFS::Path& sourceMapPath, const glm::vec3& scale, const Carrot::Vector<float>& samples);
+        explicit HeightmapCollisionShape(const HeightmapCollisionShape&) = delete;
+
+        ~HeightmapCollisionShape() override;
+
+    public:
+        ColliderType getType() const override;
+        std::unique_ptr<CollisionShape> duplicate() const override;
+        void serialiseTo(Carrot::DocumentElement& target) const override;
+
+        const glm::vec3& getScale() const;
+        void changeShapeScale(const glm::vec3& scale) override;
+
+        const Carrot::IO::VFS::Path& getSourcePath() const;
+        void setSourcePath(const Carrot::IO::VFS::Path& sourcePath);
+
+    private:
+        void recreateShape();
+
+        Carrot::Vector<float> samples;
+        glm::vec3 scale{1.0f};
+        Carrot::IO::VFS::Path sourceMap;
     };
 
     class Collider {

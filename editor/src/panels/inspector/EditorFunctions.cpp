@@ -269,6 +269,42 @@ namespace Peeler {
         }
     }
 
+    bool editVFSPath(const char* id, Carrot::IO::VFS::Path& path, const Helpers::Limits<Carrot::IO::VFS::Path>& limits) {
+        std::string pathStr = path.toString();
+        bool wasModified = false;
+        if(ImGui::InputText(id, pathStr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            wasModified = true;
+        }
+
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                buffer.get()[payload->DataSize] = '\0';
+
+                std::u8string str = buffer.get();
+                std::string s = Carrot::toString(str);
+
+                auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                // TODO: no need to go through disk again
+                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                if((std::filesystem::is_directory(fsPath) == limits.allowDirectories) && limits.validityChecker(vfsPath)) {
+                    pathStr = s;
+                    wasModified = true;
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
+        if (wasModified) {
+            path = Carrot::IO::VFS::Path { pathStr };
+        }
+        return wasModified;
+    }
+
+
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);
         registerFunction(inspector, editForceSinPositionComponent);
