@@ -300,6 +300,7 @@ namespace Peeler {
 
             ImGui::EndMenuBar();
 
+            drawCameraSettingsWindow();
             drawPhysicsSettingsWindow();
             drawNewSceneWindow();
 
@@ -947,6 +948,7 @@ namespace Peeler {
         if(ImGui::MenuItem(ICON_FA_CUBES "  Physics settings", nullptr, &showPhysicsSettings /* TODO: save to editor settings */)) {
             //showPhysicsSettings = !showPhysicsSettings;
         }
+        ImGui::MenuItem(ICON_FA_CAMERA "  Editor camera settings", nullptr, &showCameraSettings /* TODO: save to editor settings */);
     }
 
     void Application::drawToolsMenu() {
@@ -987,6 +989,15 @@ namespace Peeler {
             }
 
             ImGui::EndPopup();
+        }
+    }
+
+    void Application::drawCameraSettingsWindow() {
+        if (showCameraSettings) {
+            if (ImGui::Begin("Camera settings", &showCameraSettings)) {
+                ImGui::SliderFloat("Speed", &cameraSpeedMultiplier, 0.01f, 1000.0f);
+            }
+            ImGui::End();
         }
     }
 
@@ -1469,7 +1480,7 @@ namespace Peeler {
         }
 
         if(movingGameViewCamera && !isPlaying) {
-            cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
+            cameraController.move(moveCamera.getValue().x * cameraSpeedMultiplier, moveCamera.getValue().y * cameraSpeedMultiplier, (moveCameraUp.getValue() - moveCameraDown.getValue()) * cameraSpeedMultiplier,
                 turnCamera.getValue().x, turnCamera.getValue().y,
                 frameTime*5);
         }

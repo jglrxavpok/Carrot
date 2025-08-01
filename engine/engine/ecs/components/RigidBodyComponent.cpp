@@ -26,6 +26,10 @@ namespace Carrot::ECS {
         rigidbody.setBodyType(getTypeFromName(std::string{doc["body_type"].getAsString()}));
         rigidbody.setMass(doc["mass"].getAsDouble());
 
+        if (doc.contains("sensor")) {
+            rigidbody.setSensor(doc["sensor"].getAsBool());
+        }
+
         if(doc.contains("free_translation_axes")) {
             rigidbody.setTranslationAxes(Carrot::DocumentHelpers::read<3, bool>(doc["free_translation_axes"]));
         }
@@ -57,6 +61,7 @@ namespace Carrot::ECS {
         bodyType = getTypeName(rigidbody.getBodyType());
         obj["body_type"] = bodyType;
         obj["mass"] = rigidbody.getMass();
+        obj["sensor"] = rigidbody.isSensor();
         obj["free_translation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getTranslationAxes());
         obj["free_rotation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getRotationAxes());
         obj["layer"] = GetPhysics().getCollisionLayers().getLayer(rigidbody.getCollisionLayer()).name;

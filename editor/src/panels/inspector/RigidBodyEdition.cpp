@@ -540,6 +540,15 @@ namespace Peeler {
             { BodyType::Dynamic, BodyType::Kinematic, BodyType::Static }
         );
 
+        multiEditField(edition, "Is sensor", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.isSensor();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const bool& v) {
+                c.rigidbody.setSensor(v);
+            }
+        );
+
         Carrot::Vector<CollisionLayerID> validIDs;
         const std::vector<CollisionLayer>& layers = GetPhysics().getCollisionLayers().getLayers();
         validIDs.ensureReserve(layers.size());

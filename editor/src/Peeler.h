@@ -119,6 +119,7 @@ namespace Peeler {
         void drawSettingsMenu();
         void drawToolsMenu();
         void drawNewSceneWindow();
+        void drawCameraSettingsWindow();
         void drawPhysicsSettingsWindow();
 
     private: // C# project handling
@@ -224,6 +225,10 @@ namespace Peeler {
         Tools::EditorSettings settings;
 
         bool showNewScenePopup = false;
+
+        bool showCameraSettings = false;
+        float cameraSpeedMultiplier = 1.0f;
+
         bool showPhysicsSettings = false;
         bool showParticleEditor = false;
 

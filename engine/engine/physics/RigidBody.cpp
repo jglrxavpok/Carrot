@@ -252,6 +252,18 @@ namespace Carrot::Physics {
         }
     }
 
+    bool RigidBody::isSensor() const {
+        return bodyTemplate.mIsSensor;
+    }
+
+    void RigidBody::setSensor(bool isSensor) {
+        BodyAccessWrite w { bodyID };
+        bodyTemplate.mIsSensor = isSensor;
+        if (w) {
+            w->SetIsSensor(true);
+        }
+    }
+
     float RigidBody::getMass() const {
         return bodyTemplate.mMassPropertiesOverride.mMass;
     }

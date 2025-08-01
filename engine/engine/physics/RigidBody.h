@@ -94,6 +94,9 @@ namespace Carrot::Physics {
         bool isActive() const;
         void setActive(bool active);
 
+        bool isSensor() const;
+        void setSensor(bool isSensor);
+
     public:
         Carrot::Math::Transform getTransform() const;
         /// Forces the given transform. Only use for static bodies, kinematic and dynamic bodies may have trouble adapting to the new transform
