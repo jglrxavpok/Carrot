@@ -12,6 +12,7 @@ namespace Carrot::Skybox {
         None,
         Forest,
         Meadow,
+        Clouds,
     };
 
     enum class Direction {
@@ -51,6 +52,9 @@ namespace Carrot::Skybox {
             case Type::Forest:
                 return std::string("resources/textures/forest_cubemap/")+getSuffix(direction)+".png";
 
+            case Type::Clouds:
+                return std::string("resources/textures/clouds/")+getSuffix(direction)+".png";
+
             default:
                 TODO
         }
@@ -67,6 +71,9 @@ namespace Carrot::Skybox {
             case Type::Meadow:
                 return "Meadow";
 
+            case Type::Clouds:
+                return "Clouds";
+
             default:
                 TODO
         }
@@ -81,6 +88,9 @@ namespace Carrot::Skybox {
             return true;
         } else if(name == "Meadow") {
             outSkyboxType = Type::Meadow;
+            return true;
+        } else if(name == "Clouds") {
+            outSkyboxType = Type::Clouds;
             return true;
         }
         return false;

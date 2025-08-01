@@ -246,13 +246,18 @@ namespace Peeler {
 
     static Carrot::Physics::Collider* currentlyEditedCollider = nullptr;
 
-    static bool drawColliderUI(EditContext& edition, Carrot::ECS::Entity& entity, Carrot::Physics::Collider& collider, std::size_t index, bool* removed) {
+    static bool drawColliderUI(EditContext& edition, Carrot::ECS::Entity& entity, Carrot::Physics::Collider& collider, std::size_t index, bool* removed, bool* duplicate) {
         ImGui::PushID(&collider);
         ImGui::Text("%s", Carrot::Physics::ColliderTypeNames[collider.getType()]);
 
         if(removed) {
             ImGui::SameLine();
             *removed = ImGui::Button("Remove");
+        }
+
+        if (duplicate) {
+            ImGui::SameLine();
+            *duplicate = ImGui::Button("Duplicate");
         }
 
         bool modified = false;
@@ -433,7 +438,7 @@ namespace Peeler {
 
         if(components.size() == 1) {
             auto& component = components[0];
-            bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr);
+            bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr, nullptr);
             if(modified) {
                 component->character.applyColliderChanges();
             }
@@ -616,11 +621,15 @@ namespace Peeler {
                     if(index != 0) {
                         ImGui::Separator();
                     }
-                    bool removed;
-                    edition.hasModifications |= drawColliderUI(edition, component->getEntity(), rigidbody.getCollider(index), index, &removed);
+                    bool removed = false;
+                    bool duplicate = false;
+                    edition.hasModifications |= drawColliderUI(edition, component->getEntity(), rigidbody.getCollider(index), index, &removed, &duplicate);
                     if(removed) {
                         rigidbody.removeCollider(index);
                         index--;
+                        edition.hasModifications = true;
+                    } else if (duplicate) {
+                        rigidbody.addColliderDirectly(Collider::load(rigidbody.getCollider(index).serialise()));
                         edition.hasModifications = true;
                     }
                 }

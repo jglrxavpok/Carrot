@@ -468,7 +468,7 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     // TODO: maybe interesting to batch these writes right before starting the rendering
     ZoneScoped;
     if(boundTextures[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
-        return;
+        // TODO: GMTK, reason of crash on 'cold' boot? return;
     }
     boundTextures[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
