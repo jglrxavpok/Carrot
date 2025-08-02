@@ -31,6 +31,7 @@ namespace Carrot::ECS {
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<TextComponent>(newOwner, fontPath);
+            result->setColor(getColor());
             result->setText(getText());
             return result;
         }
