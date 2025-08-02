@@ -116,6 +116,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", (void*)_SetLocalScale);
         mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", (void*)_GetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", (void*)_SetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::AddRotationAroundY", (void*)_AddRotationAroundY);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", (void*)_GetWorldPosition);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldUpForwardVectors", (void*)_GetWorldUpForwardVectors);
 
@@ -823,6 +824,14 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::TransformComponent>()->localTransform.rotation = glm::quat(value);
+    }
+
+    void CSharpBindings::_AddRotationAroundY(MonoObject* transformComp, float angle) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        glm::quat& rot = entity.getComponent<ECS::TransformComponent>()->localTransform.rotation;
+        glm::quat newRot = glm::rotate(rot, angle, glm::vec3(0,1,0));
+        rot = newRot;
     }
 
     glm::vec3 CSharpBindings::_GetWorldPosition(MonoObject* transformComp) {

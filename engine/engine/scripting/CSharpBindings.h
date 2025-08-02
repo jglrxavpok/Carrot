@@ -225,6 +225,7 @@ namespace Carrot::Scripting {
         static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
+        static void _AddRotationAroundY(MonoObject* transformComp, float value);
         static glm::vec3 _GetWorldPosition(MonoObject* transformComp);
         static MonoArray* _GetWorldUpForwardVectors(MonoObject* transformComp);
 

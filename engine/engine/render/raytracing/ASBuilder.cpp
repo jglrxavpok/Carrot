@@ -580,7 +580,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             }
             hasNewGeometry.store(true);
 
-            if(blas.pPrecomputedBLAS != nullptr) {
+            if(false && blas.pPrecomputedBLAS != nullptr) {
                 // attempt to see if we can reuse the precomputed BLAS
                 vk::AccelerationStructureVersionInfoKHR versionInfo {
                     .pVersionData = blas.pPrecomputedBLAS->blasBytes.data(),
