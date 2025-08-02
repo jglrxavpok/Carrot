@@ -22,6 +22,11 @@ namespace Carrot::Render {
         float basePixelSize = 0.0f;
     };
 
+    enum class TextAlignment {
+        Left,
+        Center
+    };
+
     class RenderableText {
     public:
         RenderableText(RenderableText&& text) = default;
@@ -62,12 +67,13 @@ namespace Carrot::Render {
         using Ref = std::shared_ptr<Font>;
 
         static constexpr std::uint32_t MaxInstances = 256;
+        static constexpr float DefaultPixelSize = 64.0f;
 
         // TODO: Support font fallback
         explicit Font(Carrot::VulkanRenderer& renderer, const Carrot::IO::Resource& ttfFile, const std::vector<std::uint64_t>& renderableCodepoints = getAsciiCodepoints());
 
     public:
-        RenderableText bake(std::u32string_view text, float pixelSize = 64.0f);
+        RenderableText bake(std::u32string_view text, float pixelSize = DefaultPixelSize, TextAlignment horizontalAlignment = TextAlignment::Center);
         void immediateRender(std::u32string_view text, glm::mat4 transform);
 
     public:

@@ -22,6 +22,9 @@ namespace Carrot::ECS {
         const glm::vec4& getColor() const;
         void setColor(const glm::vec4& newColor);
 
+        Render::TextAlignment getHorizontalAlignment() const;
+        void setHorizontalAlignment(Render::TextAlignment newAlignment);
+
     public:
         Carrot::DocumentElement serialise() const override;
 
@@ -33,6 +36,7 @@ namespace Carrot::ECS {
             auto result = std::make_unique<TextComponent>(newOwner, fontPath);
             result->setColor(getColor());
             result->setText(getText());
+            result->setHorizontalAlignment(getHorizontalAlignment());
             return result;
         }
 
@@ -48,6 +52,7 @@ namespace Carrot::ECS {
         std::filesystem::path fontPath;
         std::shared_ptr<Carrot::Render::Font> font;
         Carrot::Render::RenderableText renderableText;
+        Render::TextAlignment horizontalAlignment = Render::TextAlignment::Center;
 
         friend class TextRenderSystem;
     };

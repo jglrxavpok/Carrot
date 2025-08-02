@@ -227,6 +227,22 @@ namespace Peeler {
             +[](Carrot::ECS::TextComponent& c, const std::string_view& v) { c.setText(v); },
             Helpers::Limits<std::string_view> { .multiline = true });
 
+        multiEditEnumField(edition, "Horizontal Alignment", components,
+            +[](Carrot::ECS::TextComponent& c) { return c.getHorizontalAlignment(); },
+            +[](Carrot::ECS::TextComponent& c, const Carrot::Render::TextAlignment& v) { c.setHorizontalAlignment(v); },
+            +[](const Carrot::Render::TextAlignment& c) {
+                switch (c) {
+                    case Carrot::Render::TextAlignment::Left:
+                        return "Left";
+                    case Carrot::Render::TextAlignment::Center:
+                        return "Center";
+                    default:
+                        TODO;
+                }
+                return "";
+            },
+            {Carrot::Render::TextAlignment::Left, Carrot::Render::TextAlignment::Center});
+
         multiEditField(edition, "Color", components,
             +[](Carrot::ECS::TextComponent& c) { return Helpers::RGBAColorWrapper(c.getColor()); },
             +[](Carrot::ECS::TextComponent& c, const Helpers::RGBAColorWrapper& v) { c.setColor(v.rgba); });

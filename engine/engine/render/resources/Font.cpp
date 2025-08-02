@@ -30,7 +30,7 @@ namespace Carrot::Render {
         }
     }
 
-    RenderableText Font::bake(std::u32string_view text, float pixelSize) {
+    RenderableText Font::bake(std::u32string_view text, float pixelSize, TextAlignment horizontalAlignment) {
         if(text.empty()) {
             return RenderableText {};
         }
@@ -96,7 +96,11 @@ namespace Carrot::Render {
         );
         Carrot::InstanceData instanceData;
         instanceData.color = glm::vec4{1.0f};
-        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { -static_cast<float>(w) / 2.0f, static_cast<float>(h) / 2.0f, 0.0f})
+        float xOffset = 0.0f;
+        if (horizontalAlignment == TextAlignment::Center) {
+            xOffset = -static_cast<float>(w) / 2.0f;
+        }
+        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { xOffset, static_cast<float>(h) / 2.0f, 0.0f})
                 * glm::scale(glm::mat4{1.0f}, glm::vec3{static_cast<float>(w), -static_cast<float>(h), 1.0f});
         TextMetrics metrics {
             .width = static_cast<float>(w),
