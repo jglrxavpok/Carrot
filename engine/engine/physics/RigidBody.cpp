@@ -169,9 +169,16 @@ namespace Carrot::Physics {
         bodyTemplate.mPosition = joltPos;
         bodyTemplate.mRotation = joltRot;
         if (!bodyID.IsInvalid()) {
-            BodyAccessRead r { bodyID };
-            bodyTemplate.mLinearVelocity = r->GetLinearVelocity();
-            bodyTemplate.mAngularVelocity = r->GetAngularVelocity();
+            {
+                BodyAccessRead r { bodyID };
+                bodyTemplate.mLinearVelocity = r->GetLinearVelocity();
+                bodyTemplate.mAngularVelocity = r->GetAngularVelocity();
+            }
+
+            if (bodyType == BodyType::Static) {
+                GetPhysics().jolt->GetBodyInterface().SetPositionAndRotation(bodyID, joltPos, joltRot, JPH::EActivation::Activate);
+                return;
+            }
         }
         if(needUpdate) {
             recreateBodyIfNeeded();

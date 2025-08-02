@@ -17,7 +17,7 @@ namespace Carrot::ECS {
             rigidBodyComp.rigidbody.setUserData((void *) &entity.getID());
 
             auto transform = rigidBodyComp.rigidbody.getTransform();
-            if(rigidBodyComp.firstTick) {
+            if(rigidBodyComp.firstTick || rigidBodyComp.rigidbody.getBodyType() == Physics::BodyType::Static/*allow static objects to be moved around*/) {
                 rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalPhysicsTransform());
                 rigidBodyComp.firstTick = false;
             } else {
