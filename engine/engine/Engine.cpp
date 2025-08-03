@@ -128,6 +128,9 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     ZoneScoped;
     instance = this;
     changeTickRate(config.tickRate);
+    setShutdownRequestHandler([this]() {
+        running = false;
+    });
 
 #if USE_LIVEPP
     if (settings.useCppHotReloading) {
@@ -1402,6 +1405,14 @@ TracyVkCtx Carrot::Engine::createTracyContext(const std::string_view& name) {
     TracyVkCtx tracyCtx = TracyVkContextHostCalibrated(vkDriver.getPhysicalDevice(), getLogicalDevice(), ptr_vkResetQueryPool, ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, ptr_vkGetCalibratedTimestampsEXT);
     TracyVkContextName(tracyCtx, name.data(), name.size());
     return tracyCtx;
+}
+
+void Carrot::Engine::setShutdownRequestHandler(std::function<void()> handler) {
+    shutdownRequestHandler = handler;
+}
+
+void Carrot::Engine::requestShutdown() {
+    shutdownRequestHandler();
 }
 
 void Carrot::Engine::createTracyContexts() {

@@ -90,6 +90,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", (void*)BeginProfilingZone);
         mono_add_internal_call("Carrot.Utilities::EndProfilingZone", (void*)EndProfilingZone);
         mono_add_internal_call("Carrot.Utilities::EulerToForwardVector", (void*)EulerToForwardVector);
+        mono_add_internal_call("Carrot.Utilities::ShutdownGame", (void*)ShutdownGame);
         mono_add_internal_call("Carrot.Signature::GetComponentIndex", (void*)GetComponentIndex);
         mono_add_internal_call("Carrot.System::LoadEntities", (void*)LoadEntities);
         mono_add_internal_call("Carrot.System::_Query", (void*)_QueryECS);
@@ -116,7 +117,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", (void*)_SetLocalScale);
         mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", (void*)_GetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", (void*)_SetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::AddRotationAroundX", (void*)_AddRotationAroundX);
         mono_add_internal_call("Carrot.TransformComponent::AddRotationAroundY", (void*)_AddRotationAroundY);
+        mono_add_internal_call("Carrot.TransformComponent::AddRotationAroundZ", (void*)_AddRotationAroundZ);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", (void*)_GetWorldPosition);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldUpForwardVectors", (void*)_GetWorldUpForwardVectors);
 
@@ -686,6 +689,10 @@ namespace Carrot::Scripting {
         return glm::quat(glm::vec3(pitch, yaw, roll)) * forward;
     }
 
+    void CSharpBindings::ShutdownGame() {
+        GetEngine().requestShutdown();
+    }
+
     ComponentID CSharpBindings::GetComponentID(MonoString* namespaceStr, MonoString* classStr) {
         char* namespaceChars = mono_string_to_utf8(namespaceStr);
         char* classChars = mono_string_to_utf8(classStr);
@@ -826,11 +833,27 @@ namespace Carrot::Scripting {
         entity.getComponent<ECS::TransformComponent>()->localTransform.rotation = glm::quat(value);
     }
 
+    void CSharpBindings::_AddRotationAroundX(MonoObject* transformComp, float angle) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        glm::quat& rot = entity.getComponent<ECS::TransformComponent>()->localTransform.rotation;
+        glm::quat newRot = glm::rotate(rot, angle, glm::vec3(1,0,0));
+        rot = newRot;
+    }
+
     void CSharpBindings::_AddRotationAroundY(MonoObject* transformComp, float angle) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         glm::quat& rot = entity.getComponent<ECS::TransformComponent>()->localTransform.rotation;
         glm::quat newRot = glm::rotate(rot, angle, glm::vec3(0,1,0));
+        rot = newRot;
+    }
+
+    void CSharpBindings::_AddRotationAroundZ(MonoObject* transformComp, float angle) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        glm::quat& rot = entity.getComponent<ECS::TransformComponent>()->localTransform.rotation;
+        glm::quat newRot = glm::rotate(rot, angle, glm::vec3(0,0,1));
         rot = newRot;
     }
 

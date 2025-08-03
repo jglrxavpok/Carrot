@@ -231,6 +231,13 @@ namespace Carrot {
 
         TracyVkCtx createTracyContext(const std::string_view& name);
 
+        /**
+         * Sets the code that is run when a game asks for shutdown.
+         * By default, it shuts down the game and the engine.
+         */
+        void setShutdownRequestHandler(std::function<void()> handler);
+        void requestShutdown();
+
     public:
         const Render::FrameResource& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
         const Render::FrameResource& fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
@@ -485,6 +492,8 @@ namespace Carrot {
 
         std::unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
         Async::DeferringAwaiter nextFrameAwaiter;
+
+        std::function<void()> shutdownRequestHandler; // TODO GMTK: hook to Game::hasRequestedShutdown?
 
         /// Init engine
         void init();

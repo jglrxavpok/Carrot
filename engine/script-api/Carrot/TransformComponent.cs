@@ -56,7 +56,13 @@ namespace Carrot {
         private extern void _SetEulerAngles(Vec3 newScale);
         
         [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void AddRotationAroundX(float angle);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void AddRotationAroundY(float angle);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void AddRotationAroundZ(float angle);
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern Vec3 _GetWorldPosition();

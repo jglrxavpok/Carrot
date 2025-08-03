@@ -167,6 +167,7 @@ namespace Carrot::Scripting {
         static void BeginProfilingZone(MonoString* zoneName);
         static void EndProfilingZone(MonoString* zoneName);
         static glm::vec3 EulerToForwardVector(float pitch, float yaw, float roll);
+        static void ShutdownGame();
 
         static ComponentID GetComponentID(MonoString* namespaceStr, MonoString* classStr);
         static ComponentID GetComponentIndex(MonoString* namespaceStr, MonoString* classStr);
@@ -225,7 +226,9 @@ namespace Carrot::Scripting {
         static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
+        static void _AddRotationAroundX(MonoObject* transformComp, float value);
         static void _AddRotationAroundY(MonoObject* transformComp, float value);
+        static void _AddRotationAroundZ(MonoObject* transformComp, float value);
         static glm::vec3 _GetWorldPosition(MonoObject* transformComp);
         static MonoArray* _GetWorldUpForwardVectors(MonoObject* transformComp);
 

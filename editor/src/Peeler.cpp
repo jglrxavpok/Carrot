@@ -1340,6 +1340,9 @@ namespace Peeler {
         NFD_Init();
 
         GetVFS().addRoot("editor", std::filesystem::current_path());
+        engine.setShutdownRequestHandler([this]() {
+            stopSimulation();
+        });
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 

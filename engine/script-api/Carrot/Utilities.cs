@@ -7,6 +7,9 @@ namespace Carrot {
             throw new NotImplementedException(message);
         }
 
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void ShutdownGame();
+
 
         private static bool _queriedMaxComponentCount = false;
         private static int _maxComponentCount = -1;
