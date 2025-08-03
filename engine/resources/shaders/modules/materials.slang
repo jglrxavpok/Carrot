@@ -33,25 +33,25 @@ public struct Material {
 
         output.albedo = baseColor;
         if (albedo >= 0) {
-            output.albedo *= materials.Sample(albedo, sampler, uv);
+            output.albedo *= materials.Sample(NonUniformResourceIndex(albedo), sampler, uv);
         }
 
         output.emissive = emissiveColor;
         if (emissive >= 0) {
-            output.emissive *= materials.Sample(emissive, sampler, uv).rgb;
+            output.emissive *= materials.Sample(NonUniformResourceIndex(emissive), sampler, uv).rgb;
         }
 
         output.metallic = metallicRoughnessFactor.x;
         output.roughness = metallicRoughnessFactor.y;
         if (metallicRoughness >= 0) {
-            const vec2 metallicRoughnessValues = materials.Sample(metallicRoughness, sampler, uv).xy;
+            const vec2 metallicRoughnessValues = materials.Sample(NonUniformResourceIndex(metallicRoughness), sampler, uv).xy;
             output.metallic *= metallicRoughnessValues.x;
             output.roughness *= metallicRoughnessValues.y;
         }
 
         output.normal = vec3(0, 0, 1);
         if (normalMap >= 0) {
-            output.normal = normalize(materials.Sample(normalMap, sampler, uv).xyz * 2 - 1);
+            output.normal = normalize(materials.Sample(NonUniformResourceIndex(normalMap), sampler, uv).xyz * 2 - 1);
         }
 
         return output;
@@ -71,11 +71,11 @@ public struct MaterialSystem {
     public ConstantBuffer<GlobalTextures, ScalarDataLayout> globalTextures;
 
     public float4 SampleAlbedo(in Material mat, in SamplerState sampler, float2 uv) {
-        return textures[mat.albedo].Sample(sampler, uv);
+        return textures[NonUniformResourceIndex(mat.albedo)].Sample(sampler, uv);
     }
 
     public float4 Sample(uint textureIndex, in SamplerState sampler, float2 uv) {
-        return textures[textureIndex].Sample(sampler, uv);
+        return textures[NonUniformResourceIndex(textureIndex)].Sample(sampler, uv);
     }
 
     public float Dither(uvec2 coords) {

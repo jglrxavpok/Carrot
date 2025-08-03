@@ -22,10 +22,10 @@ layout(location = 8) flat in mat4 inModelview;
 layout(location = 12) flat in int inDrawID;
 
 void main() {
-    DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset+inDrawID];
+    DrawData instanceDrawData = perDrawData.drawData[nonuniformEXT(perDrawDataOffsets.offset+inDrawID)];
     //#define material (materials[instanceDrawData.materialIndex])
 
-    Material material = materials[instanceDrawData.materialIndex];
+    Material material = materials[nonuniformEXT(instanceDrawData.materialIndex)];
     uint albedoTexture = nonuniformEXT(material.albedo);
     uint normalMap = nonuniformEXT(material.normalMap);
     uint emissiveTexture = nonuniformEXT(material.emissive);
@@ -34,9 +34,14 @@ void main() {
     texColor *= material.baseColor;
     texColor *= vColor;
 
-    texColor.a = 1.0;
     if(texColor.a < 0.01) {
         discard;
+    }
+    if (texColor.a < 1.0) {
+        // TODO: animate dithering? -> need smarter AA
+        if(dither(uvec2(gl_FragCoord.xy)) >= texColor.a) {
+            discard;
+        }
     }
 
     GBuffer o = initGBuffer(inModelview);

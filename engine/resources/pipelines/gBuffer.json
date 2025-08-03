@@ -30,6 +30,7 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/raster/draw_gbuffer.slang"
+    "file": "resources/shaders/gBuffer.fragment.glsl",
+    "entry_point": "main"
   }
 }

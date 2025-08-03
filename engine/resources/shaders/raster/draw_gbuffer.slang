@@ -23,8 +23,8 @@ mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
 EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
     GBuffer result;
 
-    const ObjectDrawData object = objects.Load(input.inDrawID);
-    const Material material = materialSystem.materials[object.materialIndex];
+    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.inDrawID));
+    const Material material = materialSystem.materials[NonUniformResourceIndex(object.materialIndex)];
     const MaterialOutput output = material.Compute(materialSystem, materialSystem.linearSampler, input.uv);
 
     vec4 albedo = output.albedo;

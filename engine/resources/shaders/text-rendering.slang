@@ -52,8 +52,8 @@ VSOutput vertex(VSInput input, int drawID : SV_DrawIndex) {
 
 [shader("pixel")]
 EncodedGBuffer pixel(VSOutput input) {
-    const ObjectDrawData instanceDrawData = objects.Load(input.drawID);
-    const Material material = materialSystem.materials[instanceDrawData.materialIndex];
+    const ObjectDrawData instanceDrawData = objects.Load(NonUniformResourceIndex(input.drawID));
+    const Material material = materialSystem.materials[NonUniformResourceIndex(instanceDrawData.materialIndex)];
 
     float color = materialSystem.SampleAlbedo(material, materialSystem.linearSampler, input.uv).r;
     if (color < 0.01) {
