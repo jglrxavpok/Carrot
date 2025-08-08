@@ -49,8 +49,8 @@ namespace Fertilizer {
     bool requiresModifications(const fspath& inputFile, const fspath& outputFile) {
         if(!std::filesystem::exists(outputFile))
             return true;
-        return false; // TODO GMTK: make this an option. Needed for asset server to work properly on "exported" builds
-        //return std::filesystem::last_write_time(inputFile) != std::filesystem::last_write_time(outputFile);
+        // TODO GMTK: make this an option. Needed for asset server to work properly on "exported" builds
+        return std::filesystem::last_write_time(inputFile) != std::filesystem::last_write_time(outputFile);
     }
 
     std::filesystem::path makeOutputPath(const std::filesystem::path& inputFile) {

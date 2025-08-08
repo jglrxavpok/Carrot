@@ -52,6 +52,12 @@ uint getProbeIndex(uvec2 probePosition) {
 }
 
 vec3 readProbe(uvec2 probePos) {
+    if(probePos.x >= push.frameWidth) {
+        probePos.x = push.frameWidth;
+    }
+    if(probePos.y >= push.frameHeight) {
+        probePos.y = push.frameHeight;
+    }
     const ScreenProbe probe = probes[getProbeIndex(probePos)];
     return unpackRadiance(probe.radiance) / probe.sampleCount;
 }
@@ -68,7 +74,22 @@ void main() {
     const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
 
     // bilinear interpolation
-    pixel -= uvec2(ScreenProbeSize/2);
+    if(pixel.x < ScreenProbeSize/2)
+    {
+        pixel.x = 0;
+    }
+    else
+    {
+        pixel.x -= ScreenProbeSize/2;
+    }
+    if(pixel.y < ScreenProbeSize/2)
+    {
+        pixel.y = 0;
+    }
+    else
+    {
+        pixel.y -= ScreenProbeSize/2;
+    }
     const uvec2 probePositionTopLeft = uvec2(pixel) / ScreenProbeSize + uvec2(push.frameCount*0);
     const uvec2 probePositionTopRight = probePositionTopLeft + uvec2(1, 0);
     const uvec2 probePositionBottomLeft = probePositionTopLeft + uvec2(0, 1);

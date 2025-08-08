@@ -87,6 +87,8 @@ namespace Carrot {
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetCallbacksHolder(Listeners value);
 
+
+        // TODO GMTK: Add "in local space" to method names
         /**
          * Gets the velocity of a given point of this rigidbody
          */

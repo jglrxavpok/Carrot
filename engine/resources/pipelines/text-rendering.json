@@ -16,8 +16,7 @@
   },
   "fragmentShader": {
     "file": "resources/shaders/text-rendering.fragment.glsl",
-
-
+    "_todo": "TODO GMTK: understand why NVIDIA gpus did not sample correct texture, reuse slang version",
     "entry_point": "main"
   },
   "descriptorSets": [

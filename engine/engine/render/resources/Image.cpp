@@ -550,6 +550,8 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
     Async::Counter waitForPixelReads;
     for(Skybox::Direction direction : { Skybox::Direction::NegativeX, Skybox::Direction::PositiveX, Skybox::Direction::NegativeY, Skybox::Direction::PositiveY, Skybox::Direction::NegativeZ, Skybox::Direction::PositiveZ }) {
         std::string textureName = textureSupplier(direction);
+
+        // TODO GMTK
         /*Carrot::TaskDescription task {
                 .name = Carrot::sprintf("Read cubemap face %s", textureName.c_str()),
                 .task = [direction, &allSizes, &allPixels, &textureSupplier](TaskHandle& task) -> void {*/

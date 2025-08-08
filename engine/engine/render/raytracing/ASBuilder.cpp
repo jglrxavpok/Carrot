@@ -580,6 +580,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             }
             hasNewGeometry.store(true);
 
+            // TODO GMTK
             if(false && blas.pPrecomputedBLAS != nullptr) {
                 // attempt to see if we can reuse the precomputed BLAS
                 vk::AccelerationStructureVersionInfoKHR versionInfo {

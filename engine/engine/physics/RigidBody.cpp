@@ -12,14 +12,8 @@
 
 namespace Carrot::Physics {
     RigidBody::RigidBody() {
-        //bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
         bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         bodyTemplate.mMassPropertiesOverride.mMass = 1.0f;
-        bodyTemplate.mMaxLinearVelocity = 300.0f/3.6f;
-
-        /*bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(0) = {48531.0f,-1320.0f, 0.0f};
-        bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(1) = {-1320.0f, 256608.0f, 0.0f};
-        bodyTemplate.mMassPropertiesOverride.mInertia.GetColumn3(2) = {0.0f, 0.0f, 211333.0f};*/
     }
 
     RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
@@ -165,7 +159,7 @@ namespace Carrot::Physics {
         bool needUpdate = bodyTemplate.mPosition != joltPos;
             needUpdate |= bodyTemplate.mRotation != joltRot;
             needUpdate &= !bodyID.IsInvalid();
-        needUpdate |= true; // TODO: find why this is necessary to place player correctly on first frame
+        needUpdate |= true; // TODO GMTK: find why this is necessary to place player correctly on first frame
         bodyTemplate.mPosition = joltPos;
         bodyTemplate.mRotation = joltRot;
         if (!bodyID.IsInvalid()) {

@@ -31,6 +31,7 @@
   },
   "fragmentShader": {
     "file": "resources/shaders/gBuffer.fragment.glsl",
+    "_todo": "TODO GMTK: reuse slang, understand why NVIDIA gpus did not use correct texture",
     "entry_point": "main"
   }
 }
