@@ -258,9 +258,9 @@ namespace Carrot::Scripting {
         static MonoObject* _RigidBodyGetCallbacksHolder(MonoObject* comp);
         static void _RigidBodySetCallbacksHolder(MonoObject* comp, MonoObject* holder);
 
-        static glm::vec3 _RigidBodyGetPointVelocity(MonoObject* comp, glm::vec3 point);
-        static void _RigidBodyAddForceAtPoint(MonoObject* comp, glm::vec3 force, glm::vec3 point);
-        static void _RigidBodyAddRelativeForce(MonoObject* comp, glm::vec3 force);
+        static glm::vec3 _RigidBodyGetPointVelocityInLocalSpace(MonoObject* comp, glm::vec3 point);
+        static void _RigidBodyAddForceAtPointInLocalSpace(MonoObject* comp, glm::vec3 force, glm::vec3 point);
+        static void _RigidBodyAddRelativeForceInLocalSpace(MonoObject* comp, glm::vec3 force);
 
         static std::uint64_t GetRigidBodyColliderCount(MonoObject* comp);
         static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);

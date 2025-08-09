@@ -126,20 +126,20 @@ namespace Carrot::Physics {
         return *colliders[index];
     }
 
-    glm::vec3 RigidBody::getPointVelocity(const glm::vec3& point) {
+    glm::vec3 RigidBody::getPointVelocityInLocalSpace(const glm::vec3& point) {
         BodyAccessRead r {bodyID};
         verify(!glm::any(glm::isnan(point)), "NaN point!");
         return joltToCarrot(r->GetRotation().InverseRotate(r->GetPointVelocity(r->GetPosition() + r->GetRotation() * carrotToJolt(point))));
     }
 
-    void RigidBody::addForceAtPoint(const glm::vec3& force, const glm::vec3& point) {
+    void RigidBody::addForceAtPointInLocalSpace(const glm::vec3& force, const glm::vec3& point) {
         BodyAccessWrite w {bodyID};
         verify(!glm::any(glm::isnan(force)), "NaN force!");
         verify(!glm::any(glm::isnan(point)), "NaN point!");
         w->AddForce(w->GetRotation() * carrotToJolt(force), w->GetPosition() + w->GetRotation() * carrotToJolt(point));
     }
 
-    void RigidBody::addRelativeForce(const glm::vec3& force) {
+    void RigidBody::addRelativeForceInLocalSpace(const glm::vec3& force) {
         BodyAccessWrite w {bodyID};
         verify(!glm::any(glm::isnan(force)), "NaN force!");
         w->AddForce(w->GetRotation() * carrotToJolt(force));

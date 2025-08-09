@@ -87,25 +87,23 @@ namespace Carrot {
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetCallbacksHolder(Listeners value);
 
-
-        // TODO GMTK: Add "in local space" to method names
         /**
          * Gets the velocity of a given point of this rigidbody
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern Vec3 GetPointVelocity(Vec3 point);
+        public extern Vec3 GetPointVelocityInLocalSpace(Vec3 point);
 
         /**
          * Adds the given force at a point on the rigidbody
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern void AddForceAtPoint(Vec3 force, Vec3 point);
+        public extern void AddForceAtPointInLocalSpace(Vec3 force, Vec3 point);
 
         /**
          * Adds the given force at the center of mass, in the coordinate system of the rigidbody
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern void AddRelativeForce(Vec3 force);
+        public extern void AddRelativeForceInLocalSpace(Vec3 force);
         
         // called by engine when contact are found
         private void _OnContactAdded(Entity otherBody) {

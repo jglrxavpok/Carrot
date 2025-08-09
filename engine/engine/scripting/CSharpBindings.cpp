@@ -141,9 +141,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", (void*)_GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", (void*)_SetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", (void*)_RigidBodyRegisterForContacts);
-        mono_add_internal_call("Carrot.RigidBodyComponent::GetPointVelocity", (void*)_RigidBodyGetPointVelocity);
-        mono_add_internal_call("Carrot.RigidBodyComponent::AddForceAtPoint", (void*)_RigidBodyAddForceAtPoint);
-        mono_add_internal_call("Carrot.RigidBodyComponent::AddRelativeForce", (void*)_RigidBodyAddRelativeForce);
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetPointVelocityInLocalSpace", (void*)_RigidBodyGetPointVelocityInLocalSpace);
+        mono_add_internal_call("Carrot.RigidBodyComponent::AddForceAtPointInLocalSpace", (void*)_RigidBodyAddForceAtPointInLocalSpace);
+        mono_add_internal_call("Carrot.RigidBodyComponent::AddRelativeForceInLocalSpace", (void*)_RigidBodyAddRelativeForceInLocalSpace);
 
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetRegisteredForContacts", (void*)_RigidBodyGetRegisteredForContacts);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetRegisteredForContacts", (void*)_RigidBodySetRegisteredForContacts);
@@ -1040,25 +1040,25 @@ namespace Carrot::Scripting {
         pHolder = std::make_shared<CSObject>(holder);
     }
 
-    glm::vec3 CSharpBindings::_RigidBodyGetPointVelocity(MonoObject* comp, glm::vec3 point) {
+    glm::vec3 CSharpBindings::_RigidBodyGetPointVelocityInLocalSpace(MonoObject* comp, glm::vec3 point) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
-        return rigidBody.getPointVelocity(point);
+        return rigidBody.getPointVelocityInLocalSpace(point);
     }
 
-    void CSharpBindings::_RigidBodyAddForceAtPoint(MonoObject* comp, glm::vec3 force, glm::vec3 point) {
+    void CSharpBindings::_RigidBodyAddForceAtPointInLocalSpace(MonoObject* comp, glm::vec3 force, glm::vec3 point) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
-        return rigidBody.addForceAtPoint(force, point);
+        return rigidBody.addForceAtPointInLocalSpace(force, point);
     }
 
-    void CSharpBindings::_RigidBodyAddRelativeForce(MonoObject* comp, glm::vec3 force) {
+    void CSharpBindings::_RigidBodyAddRelativeForceInLocalSpace(MonoObject* comp, glm::vec3 force) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
-        return rigidBody.addRelativeForce(force);
+        return rigidBody.addRelativeForceInLocalSpace(force);
     }
 
     std::uint64_t CSharpBindings::GetRigidBodyColliderCount(MonoObject* comp) {
