@@ -200,7 +200,7 @@ namespace Carrot::Scripting {
         });
 
         // get lines drawn by c#
-        {
+        if (baseModule && DebugGetDrawnLinesMethod) {
             CSObject resultArray = DebugGetDrawnLinesMethod->staticInvoke({});
             MonoArray* monoArray = (MonoArray*)resultArray.toMono();
             Carrot::Vector<Render::DebugRenderer::LineDesc> lines;
@@ -208,9 +208,6 @@ namespace Carrot::Scripting {
             lines.resize(size);
             for (i32 i = 0; i < size; i++) {
                 Render::DebugRenderer::LineDesc obj = mono_array_get(monoArray, Render::DebugRenderer::LineDesc, i);
-                /*if (obj != nullptr) {
-                    lines[i] = CSObject{obj}.unbox<Render::DebugRenderer::LineDesc>();
-                }*/
                 lines[i] = obj;
             }
 
@@ -654,6 +651,7 @@ namespace Carrot::Scripting {
         //appDomain->unregisterCurrentThread();
 #endif
 
+        DebugGetDrawnLinesMethod = nullptr;
         appDomain = nullptr;
     }
 
