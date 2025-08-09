@@ -116,6 +116,11 @@ namespace Carrot {
     public:
         bool checkForReloadableShaders();
 
+        /**
+         * Gets the 'generation number' of the pipeline, which means how many this pipeline was regenerated
+         */
+        u32 getGenerationNumber() const;
+
     public:
         PipelineDescription& getDescription() {
             return description;
@@ -193,6 +198,8 @@ namespace Carrot {
         std::unique_ptr<ShaderStages> stages = nullptr;
         std::vector<std::vector<vk::DescriptorSet>> descriptorSets{};
         std::vector<vk::UniqueDescriptorSetLayout> descriptorSetLayouts{};
+
+        u32 generationNumber = 0;
 
         PipelineDescription description;
         mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};

@@ -431,6 +431,10 @@ bool Carrot::Pipeline::checkForReloadableShaders() {
     return false;
 }
 
+u32 Carrot::Pipeline::getGenerationNumber() const {
+    return generationNumber;
+}
+
 const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view name) const {
     return pushConstantMap[std::string(name)];
 }
@@ -556,6 +560,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 }
 
 void Carrot::Pipeline::allocateDescriptorSets() {
+    generationNumber++;
     if(descriptorPool) {
         driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     }
