@@ -111,7 +111,7 @@ namespace Carrot::Vulkan {
             GetVulkanDriver().onDeviceLost();
         }
         }
-        WaitDeviceIdle(); // replicate RADV_DEBUG=hang which does not crash :c
+        WaitDeviceIdle(); // TODO GMTK replicate RADV_DEBUG=hang which does not crash :c
 
     }
 

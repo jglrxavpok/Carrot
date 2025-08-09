@@ -18,7 +18,7 @@ namespace Carrot::ECS {
         bool isOrthographic = false;
         glm::vec3 orthoSize { 1.0f };
 
-        float perspectiveNear = 0.001f;
+        float perspectiveNear = 0.1f;
         float perspectiveFar = 1000.0f;
         float perspectiveFov = glm::radians(70.0f);
         constexpr static float PerspectiveAspectRatio = 16.0f / 9.0f; // TODO: take viewport size into account

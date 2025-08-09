@@ -551,21 +551,20 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
     for(Skybox::Direction direction : { Skybox::Direction::NegativeX, Skybox::Direction::PositiveX, Skybox::Direction::NegativeY, Skybox::Direction::PositiveY, Skybox::Direction::NegativeZ, Skybox::Direction::PositiveZ }) {
         std::string textureName = textureSupplier(direction);
 
-        // TODO GMTK
-        /*Carrot::TaskDescription task {
+        Carrot::TaskDescription task {
                 .name = Carrot::sprintf("Read cubemap face %s", textureName.c_str()),
-                .task = [direction, &allSizes, &allPixels, &textureSupplier](TaskHandle& task) -> void {*/
+                .task = [direction, &allSizes, &allPixels, &textureSupplier](TaskHandle& task) -> void {
                     auto index = static_cast<std::size_t>(direction);
                     int w, h, n;
                     stbi_uc* pixels = stbi_load(textureSupplier(direction).c_str(), &w, &h, &n, STBI_rgb_alpha);
                     allSizes[index] = { w, h };
                     allPixels[index] = pixels;
-/*                },
+                },
                 .joiner = &waitForPixelReads,
         };
-        GetTaskScheduler().schedule(std::move(task), TaskScheduler::AssetLoading);*/
+        GetTaskScheduler().schedule(std::move(task), TaskScheduler::AssetLoading);
     }
-//    waitForPixelReads.sleepWait();
+    waitForPixelReads.sleepWait();
 
     int firstWidth = allSizes[0].x;
     int firstHeight = allSizes[0].y;
