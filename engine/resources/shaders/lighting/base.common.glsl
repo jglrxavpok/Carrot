@@ -84,7 +84,7 @@ rayQueryEXT rayQuery;
 
 void initRayQuery(vec3 startPos, vec3 direction, float maxDistance, float tMin) {
     // Initializes a ray query object but does not start traversal
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
 }
 
 bool traceShadowRay() {
