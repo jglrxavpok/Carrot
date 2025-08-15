@@ -6,6 +6,7 @@
 
 #include "Component.h"
 #include <engine/physics/RigidBody.h>
+#include <engine/scripting/CSharpBindings.h>
 
 #include "core/scripting/csharp/CSObject.h"
 
@@ -46,6 +47,9 @@ namespace Carrot::ECS {
         bool wasActive = true;
 
         // scripting stuff, because C# component are transient
+        Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
+        Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
+
         bool registeredForContacts = false;
         std::shared_ptr<Scripting::CSObject> callbacksHolder;
 

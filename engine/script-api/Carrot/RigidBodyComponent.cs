@@ -56,7 +56,8 @@ namespace Carrot {
         public extern bool Raycast(RayCastSettings settings, RaycastInfo raycastInfo);
 
         public void RegisterContactAddedListener(Action<Entity> listener) {
-            CallbackHolders.contactAddedListeners.Add(listener);
+            List<Action<Entity>> contactAdded = CallbackHolders.contactAddedListeners;
+            contactAdded.Add(listener);
             if (!RegisteredForContacts) {
                 RegisteredForContacts = true;
                 _RegisterForContacts();

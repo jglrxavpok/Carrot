@@ -16,6 +16,7 @@
 #include <map>
 #include <filesystem>
 #include <core/io/DocumentHelpers.h>
+#include <engine/scripting/CSharpBindings.h>
 
 namespace Carrot::ECS {
 
@@ -53,6 +54,9 @@ namespace Carrot::ECS {
         for(const auto& colliderData : doc["colliders"].getAsArray()) {
             rigidbody.addColliderDirectly(Physics::Collider::load(colliderData));
         }
+
+        loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { callbacksHolder = nullptr; });
+        unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { callbacksHolder = nullptr; });
     }
 
     Carrot::DocumentElement RigidBodyComponent::serialise() const {
