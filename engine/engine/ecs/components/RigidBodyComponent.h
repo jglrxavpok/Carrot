@@ -18,6 +18,8 @@ namespace Carrot::ECS {
 
         explicit RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity);
 
+        ~RigidBodyComponent() override;
+
         Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {

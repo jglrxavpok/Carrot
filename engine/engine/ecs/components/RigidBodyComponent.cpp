@@ -59,6 +59,11 @@ namespace Carrot::ECS {
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { callbacksHolder = nullptr; });
     }
 
+    RigidBodyComponent::~RigidBodyComponent() {
+        GetCSharpBindings().unregisterGameAssemblyLoadCallback(loadCallbackHandle);
+        GetCSharpBindings().unregisterGameAssemblyUnloadCallback(unloadCallbackHandle);
+    }
+
     Carrot::DocumentElement RigidBodyComponent::serialise() const {
         Carrot::DocumentElement obj;
         Carrot::DocumentElement bodyType;
