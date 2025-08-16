@@ -42,7 +42,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
     auto& visibilityPasses = getVisibilityBuffer().addVisibilityBufferPasses(mainGraph, opaqueGBufferPass.getData(), framebufferSize);
 
-    const float scaleFactor = 0.75f;
+    const float scaleFactor = 1.0f;
     Render::TextureSize lightingFramebufferSize;
     lightingFramebufferSize.type = framebufferSize.type;
     lightingFramebufferSize.width = scaleFactor * framebufferSize.width;
