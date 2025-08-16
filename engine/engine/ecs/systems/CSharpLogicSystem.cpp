@@ -56,6 +56,12 @@ namespace Carrot::ECS {
             if (csPostPhysicsTickMethod == nullptr) {
                 csPostPhysicsTickMethod = c->findMethod("PostPhysicsTick", 1);
             }
+            if (csFirstTickMethod == nullptr) {
+                csFirstTickMethod = c->findMethod("FirstTick", 0);
+            }
+            if (csFirstTickOfEntitiesMethod == nullptr) {
+                csFirstTickOfEntitiesMethod = c->findMethod("FirstTickOfEntities", 1);
+            }
         }
         std::uint64_t ptr = reinterpret_cast<std::uint64_t>(this);
         void* args[1] { (void*)&ptr };
@@ -96,6 +102,17 @@ namespace Carrot::ECS {
         if(needToReloadEntities) {
             world.reloadSystemEntities(this);
             recreateEntityList();
+        }
+    }
+
+    void CSharpLogicSystem::firstTick() {
+        ZoneScopedN("C# first tick");
+        ZoneName(systemName.c_str(), systemName.size());
+        if(!foundInAssemblies) {
+            return;
+        }
+        if(*csSystem && csFirstTickMethod) {
+            csFirstTickMethod->invoke(*csSystem, {});
         }
     }
 
@@ -143,6 +160,28 @@ namespace Carrot::ECS {
 
     void CSharpLogicSystem::onEntitiesAdded(const std::vector<EntityID>& entities) {
         System::onEntitiesAdded(entities);
+
+        if (*csSystem && csFirstTickOfEntitiesMethod) {
+            std::vector<EntityWithComponents> addedEntities;
+            std::vector<Entity> entitiesWrappers;
+            entitiesWrappers.reserve(entities.size());
+
+            for (auto& id : entities) {
+                auto obj = world.wrap(id);
+                if((world.getSignature(obj) & getSignature()) == getSignature()) {
+                    entitiesWrappers.emplace_back() = obj;
+                }
+            }
+            if (!entitiesWrappers.empty()) {
+                addedEntities.resize(entitiesWrappers.size());
+                world.fillComponents(signature, entitiesWrappers, addedEntities);
+
+                auto csArray = GetCSharpBindings().entityListToCSharp(addedEntities);
+                void* args[1] = { csArray->toMono() };
+
+                csFirstTickOfEntitiesMethod->invoke(*csSystem, args);
+            }
+        }
         recreateEntityList();
     }
 
@@ -154,6 +193,30 @@ namespace Carrot::ECS {
     void CSharpLogicSystem::onEntitiesUpdated(const std::vector<EntityID>& entities) {
         System::onEntitiesUpdated(entities);
         recreateEntityList();
+    }
+
+    void CSharpLogicSystem::reload() {
+        if (*csSystem && csFirstTickOfEntitiesMethod) {
+            std::vector<EntityWithComponents> addedEntities;
+            std::vector<Entity> entitiesWrappers;
+            entitiesWrappers.reserve(entities.size());
+
+            for (auto& id : entities) {
+                auto obj = world.wrap(id);
+                if((world.getSignature(obj) & getSignature()) == getSignature()) {
+                    entitiesWrappers.emplace_back() = obj;
+                }
+            }
+            if (!entitiesWrappers.empty()) {
+                addedEntities.resize(entitiesWrappers.size());
+                world.fillComponents(signature, entitiesWrappers, addedEntities);
+
+                auto csArray = GetCSharpBindings().entityListToCSharp(addedEntities);
+                void* args[1] = { csArray->toMono() };
+
+                csFirstTickOfEntitiesMethod->invoke(*csSystem, args);
+            }
+        }
     }
 
     void CSharpLogicSystem::recreateEntityList() {
@@ -189,6 +252,8 @@ namespace Carrot::ECS {
     void CSharpLogicSystem::onAssemblyUnload() {
         csSystem = nullptr;
         csTickMethod = nullptr;
+        csFirstTickMethod = nullptr;
+        csFirstTickOfEntitiesMethod = nullptr;
         csPrePhysicsTickMethod = nullptr;
         csPostPhysicsTickMethod = nullptr;
         csEntities = nullptr;

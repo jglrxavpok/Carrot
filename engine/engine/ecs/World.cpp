@@ -314,11 +314,19 @@ namespace Carrot::ECS {
         flushEntityCreationAndRemoval();
 
         if(!frozenLogic) {
+            for (auto& pSystem : logicSystemsWaitingForFirstTick) {
+                pSystem->firstTick();
+            }
+            logicSystemsWaitingForFirstTick.clear();
             for(const auto& logic : logicSystems) {
                 logic->tick(dt);
             }
         }
 
+        for (auto& pSystem : renderSystemsWaitingForFirstTick) {
+            pSystem->firstTick();
+        }
+        renderSystemsWaitingForFirstTick.clear();
         for(const auto& render : renderSystems) {
             render->tick(dt);
         }
@@ -328,11 +336,19 @@ namespace Carrot::ECS {
 
     void World::prePhysics() {
         if(!frozenLogic) {
+            for (auto& pSystem : logicSystemsWaitingForFirstTick) {
+                pSystem->firstTick();
+            }
+            logicSystemsWaitingForFirstTick.clear();
             for(const auto& logic : logicSystems) {
                 logic->prePhysics();
             }
         }
 
+        for (auto& pSystem : renderSystemsWaitingForFirstTick) {
+            pSystem->firstTick();
+        }
+        renderSystemsWaitingForFirstTick.clear();
         for(const auto& render : renderSystems) {
             render->prePhysics();
         }
@@ -764,7 +780,7 @@ namespace Carrot::ECS {
             }
         }
 
-        auto copySystems = [&](std::vector<std::unique_ptr<System>>& dest, const std::vector<std::unique_ptr<System>>& src) {
+        auto copySystems = [&](std::vector<System*>& waitingForFirstTick, std::vector<std::unique_ptr<System>>& dest, const std::vector<std::unique_ptr<System>>& src) {
             dest.clear();
             dest.resize(src.size());
 
@@ -774,10 +790,13 @@ namespace Carrot::ECS {
                     dest[i]->entities.emplace_back(srcEntity.internalEntity, *this);
                 }
                 dest[i]->onEntitiesUpdated({});
+                waitingForFirstTick.emplace_back(dest[i].get());
             }
         };
-        copySystems(logicSystems, toCopy.logicSystems);
-        copySystems(renderSystems, toCopy.renderSystems);
+        logicSystemsWaitingForFirstTick.clear();
+        renderSystemsWaitingForFirstTick.clear();
+        copySystems(logicSystemsWaitingForFirstTick, logicSystems, toCopy.logicSystems);
+        copySystems(renderSystemsWaitingForFirstTick, renderSystems, toCopy.renderSystems);
 
         return *this;
     }
@@ -830,12 +849,14 @@ namespace Carrot::ECS {
         verify(system, "System must not be nullptr");
         system->onEntitiesAdded(entities);
         renderSystems.push_back(std::move(system));
+        renderSystemsWaitingForFirstTick.emplace_back(renderSystems.back().get());
     }
 
     void World::addLogicSystem(std::unique_ptr<System>&& system) {
         verify(system, "System must not be nullptr");
         system->onEntitiesAdded(entities);
         logicSystems.push_back(std::move(system));
+        logicSystemsWaitingForFirstTick.emplace_back(logicSystems.back().get());
     }
 
     System* World::getRenderSystem(std::string_view name) {
@@ -860,11 +881,17 @@ namespace Carrot::ECS {
         Carrot::removeIf(logicSystems, [&](auto& ptr) {
             return ptr.get() == system;
         });
+        Carrot::removeIf(logicSystemsWaitingForFirstTick, [&](auto& ptr) {
+            return ptr == system;
+        });
     }
 
     void World::removeRenderSystem(System* system) {
         Carrot::removeIf(renderSystems, [&](auto& ptr) {
             return ptr.get() == system;
+        });
+        Carrot::removeIf(renderSystemsWaitingForFirstTick, [&](auto& ptr) {
+            return ptr == system;
         });
     }
 

@@ -32,6 +32,7 @@ namespace Carrot::ECS {
 
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
         virtual void setupCamera(Carrot::Render::Context renderContext) {};
+        virtual void firstTick() {};
         virtual void tick(double dt) {};
 
         /// Called before physics updates. NOT called if the physics system is paused.

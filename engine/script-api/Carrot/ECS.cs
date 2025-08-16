@@ -106,6 +106,16 @@ namespace Carrot {
          */
         public virtual void PostPhysicsTick(double deltaTime) {}
         
+        /**
+         * Called once for each entity affected by this system
+         */
+        public virtual void FirstTickOfEntities(EntityWithComponents[] entities) {}
+        
+        /**
+         * Called once for the entire system
+         */
+        public virtual void FirstTick() {}
+        
         // TODO: Render
         
         // because C# does not have variadic generics, this is how we will have to do for now...
@@ -115,9 +125,12 @@ namespace Carrot {
         /**
          * DO NOT STORE THE COMPONENTS
          */
-        public void ForEachEntity<T0>(Action<Entity, T0> action) where T0: IComponent {
+        public void ForEachEntity<T0>(Action<Entity, T0> action, EntityWithComponents[] entities = null) where T0: IComponent {
             int index0 = _signature.GetIndex<T0>();
-            foreach (var entity in LoadEntities()) {
+            if (entities == null) {
+                entities = LoadEntities();
+            }
+            foreach (var entity in entities) {
                 action(entity.Entity, (T0)entity.Components[index0]);
             }
         }
@@ -125,10 +138,13 @@ namespace Carrot {
         /**
          * DO NOT STORE THE COMPONENTS
          */
-        public void ForEachEntity<T0, T1>(Action<Entity, T0, T1> action) where T0 : IComponent where T1: IComponent {
+        public void ForEachEntity<T0, T1>(Action<Entity, T0, T1> action, EntityWithComponents[] entities = null) where T0 : IComponent where T1: IComponent {
             int index0 = _signature.GetIndex<T0>();
             int index1 = _signature.GetIndex<T1>();
-            foreach (var entity in LoadEntities()) {
+            if (entities == null) {
+                entities = LoadEntities();
+            }
+            foreach (var entity in entities) {
                 action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1]);
             }
         }
@@ -136,7 +152,7 @@ namespace Carrot {
         /**
          * DO NOT STORE THE COMPONENTS
          */
-        public void ForEachEntity<T0, T1, T2>(Action<Entity, T0, T1, T2> action) 
+        public void ForEachEntity<T0, T1, T2>(Action<Entity, T0, T1, T2> action, EntityWithComponents[] entities = null) 
             where T0 : IComponent 
             where T1: IComponent 
             where T2: IComponent 
@@ -144,7 +160,10 @@ namespace Carrot {
             int index0 = _signature.GetIndex<T0>();
             int index1 = _signature.GetIndex<T1>();
             int index2 = _signature.GetIndex<T2>();
-            foreach (var entity in LoadEntities()) {
+            if (entities == null) {
+                entities = LoadEntities();
+            }
+            foreach (var entity in entities) {
                 action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2]);
             }
         }
@@ -152,7 +171,7 @@ namespace Carrot {
         /**
          * DO NOT STORE THE COMPONENTS
          */
-        public void ForEachEntity<T0, T1, T2, T3>(Action<Entity, T0, T1, T2, T3> action) 
+        public void ForEachEntity<T0, T1, T2, T3>(Action<Entity, T0, T1, T2, T3> action, EntityWithComponents[] entities = null) 
             where T0 : IComponent 
             where T1: IComponent 
             where T2: IComponent 
@@ -162,7 +181,10 @@ namespace Carrot {
             int index1 = _signature.GetIndex<T1>();
             int index2 = _signature.GetIndex<T2>();
             int index3 = _signature.GetIndex<T3>();
-            foreach (var entity in LoadEntities()) {
+            if (entities == null) {
+                entities = LoadEntities();
+            }
+            foreach (var entity in entities) {
                 action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2], (T3) entity.Components[index3]);
             }
         }
@@ -170,7 +192,7 @@ namespace Carrot {
         /**
          * DO NOT STORE THE COMPONENTS
          */
-        public void ForEachEntity<T0, T1, T2, T3, T4>(Action<Entity, T0, T1, T2, T3, T4> action) 
+        public void ForEachEntity<T0, T1, T2, T3, T4>(Action<Entity, T0, T1, T2, T3, T4> action, EntityWithComponents[] entities = null) 
             where T0 : IComponent 
             where T1: IComponent 
             where T2: IComponent 
@@ -181,7 +203,10 @@ namespace Carrot {
             int index2 = _signature.GetIndex<T2>();
             int index3 = _signature.GetIndex<T3>();
             int index4 = _signature.GetIndex<T4>();
-            foreach (var entity in LoadEntities()) {
+            if (entities == null) {
+                entities = LoadEntities();
+            }
+            foreach (var entity in entities) {
                 action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2], (T3) entity.Components[index3], (T4) entity.Components[index4]);
             }
         }

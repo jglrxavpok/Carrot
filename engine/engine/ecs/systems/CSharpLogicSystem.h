@@ -16,6 +16,7 @@ namespace Carrot::ECS {
 
         ~CSharpLogicSystem();
 
+        virtual void firstTick() override;
         virtual void tick(double dt) override;
         virtual void prePhysics() override;
         virtual void postPhysics() override;
@@ -29,7 +30,8 @@ namespace Carrot::ECS {
         virtual void onEntitiesRemoved(const std::vector<EntityID>& entities) override;
         virtual void onEntitiesUpdated(const std::vector<EntityID>& entities) override;
 
-    public:
+        void reload() override;
+
         virtual std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
         Carrot::DocumentElement serialise() const override;
@@ -53,6 +55,8 @@ namespace Carrot::ECS {
     private:
         std::shared_ptr<Scripting::CSObject> csSystem;
         Scripting::CSMethod* csTickMethod = nullptr;
+        Scripting::CSMethod* csFirstTickMethod = nullptr;
+        Scripting::CSMethod* csFirstTickOfEntitiesMethod = nullptr;
         Scripting::CSMethod* csPrePhysicsTickMethod = nullptr;
         Scripting::CSMethod* csPostPhysicsTickMethod = nullptr;
         std::shared_ptr<Scripting::CSArray> csEntities = nullptr; // array of Carrot::System.EntityWithComponents

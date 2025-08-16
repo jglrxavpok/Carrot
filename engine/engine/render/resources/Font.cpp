@@ -80,7 +80,6 @@ namespace Carrot::Render {
             xpos += advance * scale;
         }
         bitmap->getImage().stageUpload({pixels.data(), pixels.size()});
-        stbi_write_png("test-font.png", w, h, 1, pixels.data(), w);
 
         auto material = GetRenderer().getMaterialSystem().createMaterialHandle();
         auto textureHandle = GetRenderer().getMaterialSystem().createTextureHandle(bitmap);

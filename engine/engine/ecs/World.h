@@ -213,6 +213,8 @@ namespace Carrot::ECS {
 
         std::vector<std::unique_ptr<System>> logicSystems;
         std::vector<std::unique_ptr<System>> renderSystems;
+        std::vector<System*> logicSystemsWaitingForFirstTick; // index into logicSystems
+        std::vector<System*> renderSystemsWaitingForFirstTick; // index into renderSystems
 
         bool frozenLogic = false;
 
