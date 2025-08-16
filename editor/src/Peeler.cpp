@@ -44,7 +44,8 @@
 #include <engine/scripting/CSharpBindings.h>
 
 #include "layers/GizmosLayer.h"
-#include <IconsFontAwesome5.h>
+#include <IconsFontAwesome6.h>
+#include <ImGuiNotify.hpp>
 #include <commands/DeleteEntitiesCommand.h>
 #include <commands/DuplicateEntitiesCommand.h>
 #include <commands/ModifySystemsCommands.h>
@@ -81,7 +82,7 @@ namespace Peeler {
 
         if (pParticleEditor) {
             bool keepOpen = true;
-            if (ImGui::Begin(ICON_FA_MAGIC "  Particle Editor", &keepOpen, ImGuiWindowFlags_MenuBar)) {
+            if (ImGui::Begin(ICON_FA_STAR "  Particle Editor", &keepOpen, ImGuiWindowFlags_MenuBar)) {
                 pParticleEditor->onFrame(renderContext);
             }
             ImGui::End();
@@ -181,12 +182,12 @@ namespace Peeler {
                 ImGui::EndMenu();
             }
 
-            if(ImGui::BeginMenu(ICON_FA_STREAM "  Scenes")) {
+            if(ImGui::BeginMenu(ICON_FA_BARS_STAGGERED "  Scenes")) {
                 drawScenesMenu();
                 ImGui::EndMenu();
             }
 
-            if(ImGui::BeginMenu(ICON_FA_TOOLS "  Settings")) {
+            if(ImGui::BeginMenu(ICON_FA_SCREWDRIVER_WRENCH "  Settings")) {
                 drawSettingsMenu();
                 ImGui::EndMenu();
             }
@@ -226,46 +227,54 @@ namespace Peeler {
 
                     const std::filesystem::path projectBasePath = getCurrentProjectFile().parent_path() / "code";
                     const std::filesystem::path carrotDllFilepath = GetVFS().resolve(GetCSharpBindings().getEngineDllPath());
-                    std::error_code ec; // ignored
-                    std::filesystem::path relativeCarrotDllFilepath = std::filesystem::relative(carrotDllFilepath, projectBasePath, ec);
-                    if(ec || relativeCarrotDllFilepath.empty()) {
-                        relativeCarrotDllFilepath = carrotDllFilepath;
-                    }
 
-                    const std::string carrotDll = Carrot::toString(relativeCarrotDllFilepath.u8string());
+                    const Carrot::IO::VFS::Path solutionPath { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) };
+                    const bool alreadyExists = GetVFS().exists(solutionPath);
 
-                    // copy file and replace some tokens by their value
-                    auto templateCopy = [&](const Carrot::IO::VFS::Path& path, const Carrot::IO::VFS::Path& destinationPath) {
-                        const Carrot::IO::Resource r { path };
-                        std::string templateContents = r.readText();
+                    if (alreadyExists) {
+                        ImGui::InsertNotification({ImGuiToastType::Error, 3000, "Project file already exists!"});
+                    } else {
+                        std::error_code ec; // ignored
+                        std::filesystem::path relativeCarrotDllFilepath = std::filesystem::relative(carrotDllFilepath, projectBasePath, ec);
+                        if(ec || relativeCarrotDllFilepath.empty()) {
+                            relativeCarrotDllFilepath = carrotDllFilepath;
+                        }
 
-                        const std::array<std::pair<std::string, std::string>, 3> replacements = {
-                                std::pair<std::string, std::string> {"%PROJECT-NAME%", projectName},
-                                                                    {"%GUID%", projectGuidString},
-                                                                    {"%CARROT-DLL%", carrotDll },
+                        const std::string carrotDll = Carrot::toString(relativeCarrotDllFilepath.u8string());
+
+                        // copy file and replace some tokens by their value
+                        auto templateCopy = [&](const Carrot::IO::VFS::Path& path, const Carrot::IO::VFS::Path& destinationPath) {
+                            const Carrot::IO::Resource r { path };
+                            std::string templateContents = r.readText();
+
+                            const std::array<std::pair<std::string, std::string>, 3> replacements = {
+                                    std::pair<std::string, std::string> {"%PROJECT-NAME%", projectName},
+                                                                        {"%GUID%", projectGuidString},
+                                                                        {"%CARROT-DLL%", carrotDll },
+                            };
+
+                            std::string finalContents = templateContents;
+                            for(const auto& [k, v] : replacements) {
+                                finalContents = Carrot::replace(finalContents, k, v);
+                            }
+
+                            const std::filesystem::path destinationFile = GetVFS().resolve(destinationPath);
+
+                            const std::filesystem::path parentPath = destinationFile.parent_path();
+                            if(!std::filesystem::exists(parentPath)) {
+                                std::filesystem::create_directories(parentPath);
+                            }
+
+                            Carrot::IO::writeFile(Carrot::toString(destinationFile.u8string()), (void*)finalContents.c_str(), finalContents.size());
                         };
 
-                        std::string finalContents = templateContents;
-                        for(const auto& [k, v] : replacements) {
-                            finalContents = Carrot::replace(finalContents, k, v);
-                        }
-
-                        const std::filesystem::path destinationFile = GetVFS().resolve(destinationPath);
-
-                        const std::filesystem::path parentPath = destinationFile.parent_path();
-                        if(!std::filesystem::exists(parentPath)) {
-                            std::filesystem::create_directories(parentPath);
-                        }
-
-                        Carrot::IO::writeFile(Carrot::toString(destinationFile.u8string()), (void*)finalContents.c_str(), finalContents.size());
-                    };
-
-                    templateCopy("editor://resources/text/csharp/CSProjTemplate.csproj",
-                                 Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.csproj", projectName.c_str()) });
-                    templateCopy("editor://resources/text/csharp/SolutionTemplate.sln",
-                                 Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) });
-                    templateCopy("editor://resources/text/csharp/Properties/AssemblyInfo.cs", "game://code/Properties/AssemblyInfo.cs");
-                    templateCopy("editor://resources/text/csharp/ExampleSystem.cs", "game://code/ExampleSystem.cs");
+                        templateCopy("editor://resources/text/csharp/CSProjTemplate.csproj",
+                                     Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.csproj", projectName.c_str()) });
+                        templateCopy("editor://resources/text/csharp/SolutionTemplate.sln",
+                                     Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) });
+                        templateCopy("editor://resources/text/csharp/Properties/AssemblyInfo.cs", "game://code/Properties/AssemblyInfo.cs");
+                        templateCopy("editor://resources/text/csharp/ExampleSystem.cs", "game://code/ExampleSystem.cs");
+                    }
                 }
 
                 // TODO: should be done automatically
@@ -325,12 +334,12 @@ namespace Peeler {
 
         ImGui::End();
 
-        if(ImGui::Begin(ICON_FA_STREAM "  Scene")) {
+        if(ImGui::Begin(ICON_FA_BARS_STAGGERED "  Scene")) {
             UIWorldHierarchy(renderContext);
         }
         ImGui::End();
 
-        if(ImGui::Begin(ICON_FA_FILE_ALT "  Resources")) {
+        if(ImGui::Begin(ICON_FA_FILE "  Resources")) {
             resourcePanel.draw(renderContext);
         }
         ImGui::End();
@@ -936,11 +945,11 @@ namespace Peeler {
             ImGui::EndMenu();
         }
 
-        if(ImGui::MenuItem(ICON_FA_SAVE "  Save")) {
+        if(ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save")) {
             saveCurrentScene();
         }
 
-        if(ImGui::MenuItem(ICON_FA_SAVE "  Save as")) {
+        if(ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save as")) {
             // TODO
         }
     }
@@ -953,7 +962,7 @@ namespace Peeler {
     }
 
     void Application::drawToolsMenu() {
-        if (ImGui::MenuItem(ICON_FA_MAGIC "  Particle editor", nullptr, &showParticleEditor)) {
+        if (ImGui::MenuItem(ICON_FA_STAR "  Particle editor", nullptr, &showParticleEditor)) {
             if (!pParticleEditor) {
                 pParticleEditor = Carrot::makeUnique<Peeler::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
             }

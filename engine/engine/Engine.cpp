@@ -11,6 +11,7 @@
 #include "engine/Engine.h"
 #include <chrono>
 #include <algorithm>
+#include <ImGuiNotify.hpp>
 #include <stdexcept>
 #include <vector>
 #include <set>
@@ -483,6 +484,8 @@ void Carrot::Engine::run() {
         if(showInputDebug) {
             Carrot::IO::debugDrawActions();
         }
+
+        ImGui::RenderNotifications();
 
         if(showSettingsDebug) {
             // if this gets more complicated than a few values -> move to function or other file to reduce clutter

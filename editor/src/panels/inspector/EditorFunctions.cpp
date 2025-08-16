@@ -21,10 +21,8 @@
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <core/io/Logging.hpp>
-#include <engine/render/ModelRenderer.h>
-#include <IconsFontAwesome5.h>
+#include <IconsFontAwesome6.h>
 #include <Peeler.h>
-#include <core/allocators/StackAllocator.h>
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/ParticleEmitterComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
@@ -339,7 +337,7 @@ namespace Peeler {
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
-        inspector.registerComponentDisplayName(Carrot::ECS::TransformComponent::getID(), ICON_FA_ARROWS_ALT "  Transform");
+        inspector.registerComponentDisplayName(Carrot::ECS::TransformComponent::getID(), ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT "  Transform");
         inspector.registerComponentDisplayName(Carrot::ECS::LightComponent::getID(), ICON_FA_LIGHTBULB "  Light");
         inspector.registerComponentDisplayName(Carrot::ECS::ModelComponent::getID(), ICON_FA_CUBE "  Model");
         inspector.registerComponentDisplayName(Carrot::ECS::AnimatedModelComponent::getID(), ICON_FA_CUBE "  AnimatedModel");
@@ -351,6 +349,6 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::NavMeshComponent::getID(), ICON_FA_ROUTE "  NavMesh");
         inspector.registerComponentDisplayName(Carrot::ECS::SoundListenerComponent::getID(), ICON_FA_PODCAST "  SoundListener");
         inspector.registerComponentDisplayName(Carrot::ECS::PrefabInstanceComponent::getID(), ICON_FA_TOOLBOX "  PrefabInstance");
-        inspector.registerComponentDisplayName(Carrot::ECS::ParticleEmitterComponent::getID(), ICON_FA_MAGIC "  ParticleEmitter");
+        inspector.registerComponentDisplayName(Carrot::ECS::ParticleEmitterComponent::getID(), ICON_FA_STAR "  ParticleEmitter");
     }
 }

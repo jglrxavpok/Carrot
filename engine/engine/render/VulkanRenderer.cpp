@@ -17,7 +17,6 @@
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
-#include "core/io/IO.h"
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/GBufferDrawData.h"
 #include "engine/render/resources/Buffer.h"
@@ -27,7 +26,6 @@
 #include <execution>
 #include <robin_hood.h>
 #include <core/math/BasicFunctions.h>
-#include <IconsFontAwesome5.h>
 #include <core/allocators/StackAllocator.h>
 #include <engine/console/Console.h>
 #include <engine/vulkan/VulkanDefines.h>

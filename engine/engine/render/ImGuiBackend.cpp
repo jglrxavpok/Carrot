@@ -4,7 +4,7 @@
 
 #include "ImGuiBackend.h"
 
-#include <IconsFontAwesome5.h>
+#include <IconsFontAwesome6.h>
 #include <core/Macros.h>
 #include <engine/render/resources/Texture.h>
 #include <engine/Engine.h>
@@ -151,14 +151,14 @@ namespace Carrot::Render {
         icons_config.MergeMode = true;
         icons_config.PixelSnapH = true;
         icons_config.GlyphMinAdvanceX = iconFontSize;
-        io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Font Awesome 5 Free-Solid-900.otf")).u8string()).c_str(),
+        io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/fa-solid-900.ttf")).u8string()).c_str(),
                                       iconFontSize, &icons_config, icons_ranges );
 
         icons_config.MergeMode = false;
         icons_config.PixelSnapH = true;
         icons_config.GlyphMinAdvanceX = iconFontSize*4;
 
-        bigIconsFont = io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Font Awesome 5 Free-Solid-900.otf")).u8string()).c_str(),
+        bigIconsFont = io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/fa-solid-900.ttf")).u8string()).c_str(),
                                       iconFontSize*4, &icons_config, icons_ranges );
 
         io.Fonts->Build();

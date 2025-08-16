@@ -16,7 +16,7 @@ namespace Peeler {
         ImGui::PushID(uniqueWidgetID);
         CLEANUP(ImGui::PopID());
 
-        const char* icon = ICON_FA_EXCLAMATION_CIRCLE;
+        const char* icon = ICON_FA_CIRCLE_EXCLAMATION;
         const char* popupID = "Errors";
 
         const Carrot::Vector<std::string>& errors = iter->second;
@@ -126,7 +126,7 @@ namespace Peeler {
         if (warnings.empty()) {
             return;
         }
-        const char* icon = ICON_FA_EXCLAMATION_TRIANGLE;
+        const char* icon = ICON_FA_TRIANGLE_EXCLAMATION;
         const char* popupID = "Warnings";
 
         ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);

@@ -4,7 +4,7 @@
 
 #include "Widgets.h"
 
-#include <IconsFontAwesome5.h>
+#include <IconsFontAwesome6.h>
 #include <imgui.h>
 #include <core/Macros.h>
 #include <engine/utils/Macros.h>
@@ -15,8 +15,8 @@ namespace Carrot::Widgets {
         static std::unordered_map<MessageBoxButtons, std::string> texts = {
             {MessageBoxButtons::Ok, "Ok"},
             {MessageBoxButtons::Yes, "Yes"},
-            {MessageBoxButtons::Save, ICON_FA_SAVE "  Save"},
-            {MessageBoxButtons::DontSave, ICON_FA_TIMES "  Don't save"},
+            {MessageBoxButtons::Save, ICON_FA_FLOPPY_DISK "  Save"},
+            {MessageBoxButtons::DontSave, ICON_FA_CROSS "  Don't save"},
             {MessageBoxButtons::No, "No"},
             {MessageBoxButtons::Cancel, ICON_FA_BAN "  Cancel"},
         };
@@ -31,17 +31,17 @@ namespace Carrot::Widgets {
                 {
                     case MessageBoxIcon::Warning:
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-                        ImGui::Text(ICON_FA_EXCLAMATION_TRIANGLE);
+                        ImGui::Text(ICON_FA_TRIANGLE_EXCLAMATION);
                     break;
 
                     case MessageBoxIcon::Error:
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-                        ImGui::Text(ICON_FA_EXCLAMATION_CIRCLE);
+                        ImGui::Text(ICON_FA_CIRCLE_EXCLAMATION);
                     break;
 
                     case MessageBoxIcon::Info:
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 1.0f, 1.0f));
-                        ImGui::Text(ICON_FA_INFO_CIRCLE);
+                        ImGui::Text(ICON_FA_CIRCLE_INFO);
                     break;
                 }
                 ImGui::PopStyleColor();

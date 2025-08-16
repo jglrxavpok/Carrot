@@ -8,7 +8,7 @@
 #include <nfd.h>
 #include <engine/render/RenderContext.h>
 #include <core/utils/stringmanip.h>
-#include <IconsFontAwesome5.h>
+#include <IconsFontAwesome6.h>
 #include <engine/io/actions/ActionSet.h>
 
 namespace Tools {
@@ -24,8 +24,8 @@ namespace Tools {
             newItemName = ICON_FA_FILE "  New##" + settings.getName();
             openItemName = ICON_FA_FOLDER_OPEN "  Open##" + settings.getName();
             openRecentItemName = ICON_FA_FOLDER_OPEN "  Open Recent##" + settings.getName();
-            saveItemName = ICON_FA_SAVE "  Save##" + settings.getName();
-            saveAsItemName = ICON_FA_SAVE "  Save as...##" + settings.getName();
+            saveItemName = ICON_FA_FLOPPY_DISK "  Save##" + settings.getName();
+            saveAsItemName = ICON_FA_FLOPPY_DISK "  Save as...##" + settings.getName();
 
             initShortcuts();
         }
@@ -135,7 +135,7 @@ namespace Tools {
                     ImGui::Text("You currently have unsaved changes!");
                     ImGui::Text("Do you still want to continue?");
 
-                    if(ImGui::Button(ICON_FA_SAVE "  Save")) {
+                    if(ImGui::Button(ICON_FA_FLOPPY_DISK "  Save")) {
                         if(triggerSave()) {
                             onContinueAction();
                         } else {
@@ -145,7 +145,7 @@ namespace Tools {
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::SameLine();
-                    if(ImGui::Button(ICON_FA_TIMES "  Don't save")) {
+                    if(ImGui::Button(ICON_FA_CROSS "  Don't save")) {
                         onContinueAction();
                         unsavedChangePopupIsOpen = false;
                         ImGui::CloseCurrentPopup();
