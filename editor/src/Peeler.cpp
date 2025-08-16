@@ -274,6 +274,7 @@ namespace Peeler {
                                      Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) });
                         templateCopy("editor://resources/text/csharp/Properties/AssemblyInfo.cs", "game://code/Properties/AssemblyInfo.cs");
                         templateCopy("editor://resources/text/csharp/ExampleSystem.cs", "game://code/ExampleSystem.cs");
+                        templateCopy("editor://resources/text/.gitignore", "game://code/.gitignore");
                     }
                 }
 
