@@ -13,7 +13,7 @@ namespace Carrot::Edition {
         glm::vec3 position{};
         glm::vec3 eulerAngles{ glm::radians(-90.0f), 0.0f, 0.0f };
         float fov = glm::radians(70.0f);
-        float zNear = 0.001f;
+        float zNear = 0.1f;
         float zFar = 1000.0f;
 
     public: // movement parameters
