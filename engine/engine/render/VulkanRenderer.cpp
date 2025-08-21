@@ -216,7 +216,7 @@ static void imguiCheckVkResult(VkResult err) {
 }
 
 void Carrot::VulkanRenderer::initImGui() {
-    if (!std::filesystem::exists("imgui.ini")) {
+    if (!std::filesystem::exists("imgui.ini") && std::filesystem::exists("default-imgui.ini")) {
         std::filesystem::copy_file("default-imgui.ini", "imgui.ini");
     }
     imGuiBackend.initResources();

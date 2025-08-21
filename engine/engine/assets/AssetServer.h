@@ -41,6 +41,9 @@ namespace Carrot {
         void beginFrame(const Carrot::Render::Context& renderContext);
         void beforeRecord(const Carrot::Render::Context& renderContext);
 
+        // Returns the folder storing the assets for the given vfs root (may not exist)
+        std::filesystem::path getSubFolder(std::string_view vfsRoot) const;
+
     public: // tmp stuff for migration
         bool TMLhasReloadedShaders();
 

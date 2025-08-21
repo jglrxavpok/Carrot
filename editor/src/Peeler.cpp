@@ -62,6 +62,8 @@
 namespace fs = std::filesystem;
 
 namespace Peeler {
+    static constexpr const char* ExportPopupID = "Exporting wizard";
+
     Application* Instance = nullptr;
 
     void Application::setupCamera(const Carrot::Render::Context& renderContext) {
@@ -179,6 +181,10 @@ namespace Peeler {
         if (ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu(ICON_FA_FOLDER_OPEN "  Project")) {
                 drawProjectMenu();
+
+                if (ImGui::MenuItem(ICON_FA_FILE_EXPORT "  Export")) {
+                    showExportPopup = true;
+                }
                 ImGui::EndMenu();
             }
 
@@ -375,6 +381,8 @@ namespace Peeler {
             selectEntity(entityIDPickedThisFrame, additive);
         }
 
+        drawExportMenu();
+
         if(wantsToLoadProject && projectToLoad == EmptyProject) {
             static const char* newProjectModalID = "New project";
             ImGui::OpenPopup(newProjectModalID);
@@ -568,6 +576,145 @@ namespace Peeler {
             }
         }
         ImGui::End();
+    }
+
+    void Application::drawExportMenu() {
+        static struct {
+            std::string outputDirectory;
+            bool validOutputDirectory = false;
+            std::string outputDirectoryValidityMessage; // if not empty, shown to user. Only a warning if validOutputDirectory = false
+        } state;
+        if(!showExportPopup) {
+            state = {};
+            return;
+        }
+
+        ImGui::OpenPopup(ExportPopupID);
+        if (ImGui::BeginPopupModal(ExportPopupID)) {
+            bool checkDirectoryValidity = false;
+            if(ImGui::InputText("Output directory", state.outputDirectory)) {
+                checkDirectoryValidity = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("...")) {
+                nfdchar_t* outPath;
+
+                // show the dialog
+                nfdresult_t result = NFD_PickFolder(&outPath, nullptr);
+                if (result == NFD_OKAY) {
+                    state.outputDirectory = outPath;
+                    checkDirectoryValidity = true;
+                    // remember to free the memory (since NFD_OKAY is returned)
+                    NFD_FreePath(outPath);
+                } else if (result == NFD_CANCEL) {
+                    // no-op
+                } else {
+                    std::string msg = "Error: ";
+                    msg += NFD_GetError();
+                    throw std::runtime_error(msg);
+                }
+            }
+
+            if (checkDirectoryValidity) {
+                std::filesystem::path p = state.outputDirectory;
+                if (!std::filesystem::exists(p)) {
+                    state.outputDirectoryValidityMessage = "Folder does not exist";
+                    state.validOutputDirectory = false;
+                } else if (!std::filesystem::is_directory(p)) {
+                    state.outputDirectoryValidityMessage = "Path does not refer to a folder";
+                    state.validOutputDirectory = false;
+                } else if (!std::filesystem::is_empty(p)) {
+                    state.outputDirectoryValidityMessage = "Folder is not empty";
+                    state.validOutputDirectory = true;
+                } else {
+                    state.outputDirectoryValidityMessage.clear();
+                    state.validOutputDirectory = true;
+                }
+            }
+
+            if (!state.outputDirectoryValidityMessage.empty()) {
+                if (state.validOutputDirectory) {
+                    ImGui::TextColored(ImColor(255, 255, 0, 255), state.outputDirectoryValidityMessage.c_str());
+                } else {
+                    ImGui::TextColored(ImColor(255, 0, 0, 255), state.outputDirectoryValidityMessage.c_str());
+                }
+            } else {
+                ImGui::Dummy(ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+            }
+
+            ImGui::Separator();
+
+            bool canExport = state.validOutputDirectory;
+            ImGui::BeginDisabled(!canExport);
+            if (ImGui::Button("Export!")) {
+                exportGame(state.outputDirectory);
+                showExportPopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                showExportPopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+    }
+
+    void Application::exportGame(const std::filesystem::path& outputDirectory) {
+        const fs::path exePath = Carrot::IO::getExecutablePath();
+        const fs::path runtimePath =
+#ifdef _WIN64
+        exePath.parent_path() / "Runtime.exe";
+#else
+        exePath.parent_path() / "Runtime";
+#endif
+
+        auto copy = [](const fs::path& input, const fs::path& output) {
+            constexpr fs::copy_options copyOptions = fs::copy_options::overwrite_existing;
+
+            if (fs::is_directory(input)) {
+                for (const fs::directory_entry& entry : fs::recursive_directory_iterator{input}) {
+                    if (!entry.is_regular_file())
+                        continue;
+                    const fs::path relativePath = fs::relative(entry.path(), input);
+                    const fs::path fullPath = input / relativePath;
+                    const fs::path outputPath = output / relativePath;
+
+                    const fs::path parentOutputPath = outputPath.parent_path();
+                    if (!fs::exists(parentOutputPath)) {
+                        fs::create_directories(parentOutputPath);
+                    }
+                    fs::copy(fullPath, outputPath, copyOptions);
+                    fs::last_write_time(outputPath, fs::last_write_time(fullPath)); // required for asset server to work
+                }
+            } else {
+                fs::copy(input, output, copyOptions);
+                fs::last_write_time(output, fs::last_write_time(input));
+            }
+        };
+
+        // Export engine resources
+        auto engineData = GetVFS().resolve("engine://");
+        copy(engineData / "resources", outputDirectory / "resources");
+        copy(engineData / "mono-install", outputDirectory / "mono-install");
+        copy(engineData / "scripting", outputDirectory / "scripting");
+
+        // TODO: make Runtime autoload the game?
+        copy(runtimePath, outputDirectory / runtimePath.filename());
+        copy(runtimePath.parent_path() / "lib", outputDirectory / "lib"); // based on rpath on Linux
+
+        // Export engine resources
+        // TODO: Allow to set default scene?
+        auto gameData = GetVFS().resolve("game://");
+        copy(gameData, outputDirectory / "game_data");
+
+        // Export engine+game asset server
+        // TODO: Bake assets: currently we only copy the ones already baked during dev/testing, so an export from a clean build of the editor+game
+        //  would end up with an empty server, meaning players have to bake assets on their machine :c
+        fs::create_directories(outputDirectory / "asset_server");
+        copy(GetAssetServer().getSubFolder("engine"), outputDirectory / "asset_server" / "engine");
+        copy(GetAssetServer().getSubFolder("game"), outputDirectory / "asset_server" / "game");
     }
 
     static ImColor getEntityNameColor(Carrot::ECS::Entity& entity) {

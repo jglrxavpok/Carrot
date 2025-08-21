@@ -79,6 +79,7 @@ namespace Peeler {
         bool canSave() const override;
 
         bool drawCantSavePopup() override;
+        void exportGame(const std::filesystem::path& outputDirectory);
 
     public: // tools
         /// Request to open the given file inside the particle editor.
@@ -112,6 +113,7 @@ namespace Peeler {
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
         void UIStatusBar(const Carrot::Render::Context& renderContext);
+        void drawExportMenu();
 
         void drawEntityErrors(const ErrorReport& report, Carrot::ECS::Entity entity, const char* uniqueWidgetID);
         void drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID);
@@ -225,6 +227,7 @@ namespace Peeler {
         Tools::EditorSettings settings;
 
         bool showNewScenePopup = false;
+        bool showExportPopup = false;
 
         bool showCameraSettings = false;
         float cameraSpeedMultiplier = 1.0f;

@@ -66,6 +66,10 @@ namespace Carrot {
 
     }
 
+    std::filesystem::path AssetServer::getSubFolder(std::string_view vfsRootName) const {
+        return vfsRoot / vfsRootName;
+    }
+
     bool AssetServer::TMLhasReloadedShaders() {
         return hasReloadedShadersThisFrame;
     }
@@ -294,11 +298,10 @@ namespace Carrot {
             return {};
         }
         const fs::path root { p.getRoot() };
-        const fs::path relativePath = root / p.getPath().get();
         // path of asset as if we had copied it to <vfsRoot>/<path.getRoot()>/<path.getPath()>
         // examples: <vfsRoot>/game/resources/my_texture.jpg
         //           <vfsRoot>/engine/resources/models/cube.gltf
-        fs::path expectedPath = vfsRoot / relativePath;
+        fs::path expectedPath = getSubFolder(p.getRoot()) / p.getPath().get();
         fs::path convertedPath = Fertilizer::makeOutputPath(expectedPath);
         return convertedPath;
     }

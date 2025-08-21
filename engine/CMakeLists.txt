@@ -330,19 +330,6 @@ endfunction()
 add_engine_precompiled_headers(Engine-Base)
 add_engine_precompiled_headers(Engine-ASAN)
 
-# TODO: move to post-build
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")
-    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Debug/*.pdb")
-else()
-    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.dll")
-    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Release/*.pdb")
-endif()
-
-file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
-file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
-file(COPY "${EngineRoot}../resources/default-imgui.ini" DESTINATION "${CMAKE_BINARY_DIR}/")
-
 # SteamDeck support
 if(WIN32)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_BINARY_DIR})
@@ -356,3 +343,33 @@ if(WIN32)
             )
     add_dependencies(Engine-Base CopyRuntimeLibs)
 endif()
+
+# Post build copies
+add_custom_command(TARGET Engine-Base POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy
+        "$<TARGET_SONAME_FILE:ktx>"
+        "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:ktx>"
+)
+add_custom_command(TARGET Engine-Base POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy
+        "$<TARGET_SONAME_FILE:OpenXR::openxr_loader>"
+        "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenXR::openxr_loader>"
+)
+add_custom_command(TARGET Engine-Base POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy
+        "$<TARGET_SONAME_FILE:OpenAL::OpenAL>"
+        "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenAL::OpenAL>"
+)
+
+# TODO: move to post-build
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")
+    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Debug/*.pdb")
+else()
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.dll")
+    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Release/*.pdb")
+endif()
+
+file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
+file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
+file(COPY "${EngineRoot}../resources/default-imgui.ini" DESTINATION "${CMAKE_BINARY_DIR}/")
