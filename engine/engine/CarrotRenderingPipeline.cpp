@@ -171,7 +171,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     );
 
                     pass.rasterized = false;
-                    pass.prerecordable = false;
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const FireflyRejection& data, vk::CommandBuffer& cmds) {
                     auto& inputTexture = pass.getGraph().getTexture(data.temporalAccumulation, frame.swapchainIndex);
@@ -249,7 +248,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                      vk::ImageLayout::eGeneral);
 
                     pass.rasterized = false; // compute pass
-                    pass.prerecordable = false;
                 },
                 [](const Render::CompiledPass& pass, const Render::Context& frame, const VarianceCompute& data, vk::CommandBuffer& cmds) {
                     auto copyPipeline = frame.renderer.getOrCreatePipeline("compute/copy-variance", (std::uint64_t)frame.pViewport + (std::uint64_t)&pass);
@@ -327,7 +325,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
                     data.iterationCount = 4;
                     pass.rasterized = false; // compute pass
-                    pass.prerecordable = false;
                 },
                 [this, &input, framebufferSize](const Render::CompiledPass& pass, const Render::Context& frame, const SpatialDenoise& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph spatial denoise");

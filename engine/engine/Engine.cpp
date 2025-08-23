@@ -209,7 +209,6 @@ void Carrot::Engine::init() {
                                                              [toPresent](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
                                                                  data.input = builder.read(toPresent, vk::ImageLayout::eShaderReadOnlyOptimal);
                                                                  data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                                                                 // uses ImGui, so no pre-record: pass.prerecordable = false;
                                                                  builder.present(data.output);
                                                              },
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {

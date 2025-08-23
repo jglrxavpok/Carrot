@@ -527,8 +527,6 @@ namespace Carrot::Render {
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)
                {
                     pass.rasterized = false;
-                    pass.prerecordable = false; //TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
-                    // TODO (or it should be re-recorded when changes happen)
                     resolveData.gBuffer.readFrom(graph, traceGIRays.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     addDenoisingResources("Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion);

@@ -63,7 +63,6 @@ namespace Carrot::Render {
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
                 SwapchainRecreationCallback swapchainCallback,
-                bool prerecordable,
                 const Carrot::UUID& passID
         );
 
@@ -76,7 +75,6 @@ namespace Carrot::Render {
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
                 SwapchainRecreationCallback swapchainCallback,
-                bool prerecordable,
                 const Carrot::UUID& passID
         );
 
@@ -112,15 +110,11 @@ namespace Carrot::Render {
 
     private:
         void createFramebuffers();
-        void createCommandPool();
-        void createCommandBuffers(const Render::Context& renderContext);
-        void recordCommands(const Render::Context& renderContext);
         void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
 
     private:
         Graph& graph;
         bool rasterized = true;
-        bool prerecordable = false;
         std::vector<bool> needsRecord; // do pre-recorded buffers need to be re-recorded?
         std::vector<vk::UniqueFramebuffer> framebuffers;
         vk::UniqueRenderPass renderPass;
@@ -140,10 +134,6 @@ namespace Carrot::Render {
         std::vector<FrameResource> outputs;
         std::vector<bool> needBufferClearEachFrame;
         std::vector<FrameResource> inouts; // inputs used as read-write
-
-    private: // Pre-recording
-        vk::UniqueCommandPool commandPool;
-        std::vector<vk::CommandBuffer> commandBuffers;
     };
 
     template<typename> class Pass;
@@ -154,7 +144,6 @@ namespace Carrot::Render {
     class PassBase {
     public:
         bool rasterized = true;
-        bool prerecordable = false;
 
         explicit PassBase(VulkanDriver& driver, std::string name): driver(driver), name(std::move(name)) {}
 

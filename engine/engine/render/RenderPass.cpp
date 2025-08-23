@@ -23,7 +23,6 @@ Carrot::Render::CompiledPass::CompiledPass(
         std::vector<ImageTransition>&& prePassTransitions,
         InitCallback initCallback,
         SwapchainRecreationCallback swapchainCallback,
-        bool prerecordable,
         const Carrot::UUID& passID
         ):
         graph(graph),
@@ -35,16 +34,11 @@ Carrot::Render::CompiledPass::CompiledPass(
         initCallback(std::move(initCallback)),
         swapchainRecreationCallback(std::move(swapchainCallback)),
         name(std::move(name)),
-        prerecordable(prerecordable),
         passID(passID)
         {
             rasterized = true;
             this->viewportSize = viewportSize;
             createFramebuffers();
-            if(prerecordable) {
-                createCommandPool();
-                needsRecord.resize(GetEngine().getSwapchainImageCount());
-            }
         }
 
 Carrot::Render::CompiledPass::CompiledPass(
@@ -55,7 +49,6 @@ Carrot::Render::CompiledPass::CompiledPass(
         std::vector<ImageTransition>&& prePassTransitions,
         InitCallback initCallback,
         SwapchainRecreationCallback swapchainCallback,
-        bool prerecordable,
         const Carrot::UUID& passID
         ):
         graph(graph),
@@ -66,16 +59,11 @@ Carrot::Render::CompiledPass::CompiledPass(
         initCallback(std::move(initCallback)),
         swapchainRecreationCallback(std::move(swapchainCallback)),
         name(std::move(name)),
-        prerecordable(prerecordable),
         passID(passID)
         {
             rasterized = false;
             this->viewportSize = viewportSize;
             createFramebuffers();
-            if(prerecordable) {
-                createCommandPool();
-                needsRecord.resize(GetEngine().getSwapchainImageCount());
-            }
         }
 
 void Carrot::Render::CompiledPass::performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds) {
@@ -138,26 +126,11 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
                     },
                     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                     .pClearValues = clearValues.data(),
-            }, prerecordable ? vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
-            if(!prerecordable) {
-                getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
-            }
+            }, vk::SubpassContents::eInline);
+            getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
         }
 
-        if(prerecordable) {
-            if(commandBuffers.empty()) {
-                createCommandBuffers(renderContext);
-            }
-
-            if(needsRecord[renderContext.swapchainIndex]) {
-              //  recordCommands(renderContext);
-                needsRecord[renderContext.swapchainIndex] = false;
-            }
-
-            cmds.executeCommands(commandBuffers[renderContext.swapchainIndex]);
-        } else {
-            renderingCode(*this, renderContext, cmds);
-        }
+        renderingCode(*this, renderContext, cmds);
 
         if(rasterized) {
             cmds.endRenderPass();
@@ -387,7 +360,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             return framebuffers;
         };
         result = std::make_unique<CompiledPass>(graph, name, viewportSize, std::move(renderPass), clearValues,
-                                         generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
+                                         generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), passID);
     } else {
         auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
@@ -407,7 +380,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             renderSize.height = 0;
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
-        result = make_unique<CompiledPass>(graph, name, viewportSize, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
+        result = make_unique<CompiledPass>(graph, name, viewportSize, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), passID);
     }
     result->setInputsOutputsForDebug(inputs, outputs);
     postCompile(*result);
@@ -451,55 +424,10 @@ void Carrot::Render::CompiledPass::onSwapchainSizeChange(Window& window, int new
     };
     getVulkanDriver().getResourceRepository().removeBelongingTo(passID);
     createFramebuffers();
-    if(!commandBuffers.empty()) {
-        getVulkanDriver().getLogicalDevice().resetCommandPool(*commandPool);
-        commandBuffers.clear();
-    }
 }
 
 Carrot::VulkanDriver& Carrot::Render::CompiledPass::getVulkanDriver() const {
     return graph.getVulkanDriver();
-}
-
-void Carrot::Render::CompiledPass::createCommandPool() {
-    commandPool = getVulkanDriver().getLogicalDevice().createCommandPoolUnique(vk::CommandPoolCreateInfo {
-            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            .queueFamilyIndex = getVulkanDriver().getQueuePartitioning().graphicsFamily.value(),
-    });
-}
-
-void Carrot::Render::CompiledPass::recordCommands(const Carrot::Render::Context& renderContext) {
-    auto& cmds = commandBuffers[renderContext.swapchainIndex];
-    vk::CommandBufferInheritanceInfo inheritanceInfo {
-            .renderPass = *renderPass,
-            .subpass = 0, // TODO: modify if subpasses become supported
-            .framebuffer = *framebuffers[renderContext.swapchainIndex],
-    };
-    cmds.begin(vk::CommandBufferBeginInfo {
-            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue | vk::CommandBufferUsageFlagBits::eSimultaneousUse,
-            .pInheritanceInfo = &inheritanceInfo,
-    });
-
-    if(rasterized) {
-        getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
-    }
-
-    renderingCode(*this, renderContext, cmds);
-    cmds.end();
-}
-
-void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& renderContext) {
-    if(!prerecordable)
-        return;
-    commandBuffers = getVulkanDriver().getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = *commandPool,
-            .level = vk::CommandBufferLevel::eSecondary,
-            .commandBufferCount = static_cast<std::uint32_t>(getVulkanDriver().getSwapchainImageCount()),
-    });
-
-    for (int i = 0; i < commandBuffers.size(); i++) {
-        recordCommands(GetEngine().newRenderContext(i, *renderContext.pViewport, renderContext.eye));
-    }
 }
 
 void Carrot::Render::FrameResource::updateLayout(vk::ImageLayout newLayout) {
