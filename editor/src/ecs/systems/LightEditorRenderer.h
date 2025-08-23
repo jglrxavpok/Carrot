@@ -14,8 +14,6 @@ namespace Peeler::ECS {
     public:
         explicit LightEditorRenderer(Carrot::ECS::World& world);
 
-        void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
-
         void onFrame(Carrot::Render::Context renderContext) override;
 
         std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;

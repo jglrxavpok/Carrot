@@ -13,12 +13,12 @@ namespace Peeler {
 
         auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Eye::NoVR,
                                      [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         GetRenderer().recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         currentScene.world.recordOpaqueGBufferPass(pass, frame, cmds);
+                                         GetRenderer().recordOpaqueGBufferPass(pass, frame, cmds);
                                      },
                                      [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         currentScene.world.recordTransparentGBufferPass(pass, frame, cmds);
+                                         GetRenderer().recordTransparentGBufferPass(pass, frame, cmds);
                                      });
 
         engine.getVulkanDriver().getResourceRepository().getTextureUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
@@ -60,7 +60,7 @@ namespace Peeler {
             }
 
             renderer.pushConstantBlock("selection", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, cmds, block);
-            pipeline->bind(pass.getRenderPass(), renderContext, cmds);
+            pipeline->bind(pass, renderContext, cmds);
             fullscreenMesh.bind(cmds);
             fullscreenMesh.draw(cmds);
         });

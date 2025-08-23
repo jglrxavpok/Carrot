@@ -619,8 +619,8 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .bufferDeviceAddress = true,
             },
             vk::PhysicalDeviceVulkan13Features {
-                .dynamicRendering = true,
                 .synchronization2 = true,
+                .dynamicRendering = true,
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {
                     .nullDescriptor = true,

@@ -215,9 +215,9 @@ void Carrot::Engine::init() {
                                                                  ZoneScopedN("CPU RenderGraph present");
                                                                  auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                                                                  auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                                                                 frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
+                                                                 frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
 
-                                                                 renderer.recordImGuiPass(cmds, pass.getRenderPass(), frame);
+                                                                 renderer.recordImGuiPass(cmds, pass, frame);
                                                              }
         );
     };

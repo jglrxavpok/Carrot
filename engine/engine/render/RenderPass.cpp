@@ -16,9 +16,10 @@
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
         std::string name,
+        Vector<Output> _colorAttachments,
+        std::optional<Output> _depthAttachment,
+        std::optional<Output> _stencilAttachment,
         const vk::Extent2D& viewportSize,
-        vk::UniqueRenderPass&& renderPass,
-        const std::vector<vk::ClearValue>& clearValues,
         const CompiledPassCallback& renderingCode,
         std::vector<ImageTransition>&& prePassTransitions,
         InitCallback initCallback,
@@ -26,19 +27,30 @@ Carrot::Render::CompiledPass::CompiledPass(
         const Carrot::UUID& passID
         ):
         graph(graph),
-        framebuffers(),
-        renderPass(std::move(renderPass)),
-        clearValues(clearValues),
         renderingCode(renderingCode),
+        colorAttachments(std::move(_colorAttachments)),
+        depthAttachment(std::move(_depthAttachment)),
+        stencilAttachment(std::move(_stencilAttachment)),
         prePassTransitions(prePassTransitions),
         initCallback(std::move(initCallback)),
         swapchainRecreationCallback(std::move(swapchainCallback)),
         name(std::move(name)),
         passID(passID)
         {
+            pipelineCreateInfo.colorAttachments.resize(colorAttachments.size());
+            for (i32 index = 0; index < colorAttachments.size(); index++) {
+                pipelineCreateInfo.colorAttachments[index] = colorAttachments[index].resource.format;
+            }
+            if (depthAttachment.has_value()) {
+                pipelineCreateInfo.depthFormat = depthAttachment->resource.format;
+            }
+            if (stencilAttachment.has_value()) {
+                pipelineCreateInfo.stencilFormat = stencilAttachment->resource.format;
+            }
+
             rasterized = true;
             this->viewportSize = viewportSize;
-            createFramebuffers();
+            recreateResources();
         }
 
 Carrot::Render::CompiledPass::CompiledPass(
@@ -52,8 +64,6 @@ Carrot::Render::CompiledPass::CompiledPass(
         const Carrot::UUID& passID
         ):
         graph(graph),
-        framebuffers(),
-        renderPass(),
         renderingCode(renderingCode),
         prePassTransitions(prePassTransitions),
         initCallback(std::move(initCallback)),
@@ -63,16 +73,16 @@ Carrot::Render::CompiledPass::CompiledPass(
         {
             rasterized = false;
             this->viewportSize = viewportSize;
-            createFramebuffers();
+            recreateResources();
         }
 
 void Carrot::Render::CompiledPass::performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds) {
-    { // TODO: pre-record
+    {
         ZoneScopedN("Pre-Pass Layout transitions");
 
         // TODO: batch transitions
         for(const auto& transition : prePassTransitions) {
-            auto& tex = graph.getTexture(transition.resourceID, renderContext.swapchainIndex);
+            auto& tex = graph.getOrCreateTexture(transition.resource, renderContext.swapchainIndex, renderSize);
             tex.assumeLayout(transition.from);
             tex.transitionInline(cmds, transition.to, transition.aspect);
         }
@@ -108,6 +118,10 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
     }
 }
 
+const Carrot::RenderingPipelineCreateInfo& Carrot::Render::CompiledPass::getPipelineCreateInfo() const {
+    return pipelineCreateInfo;
+}
+
 void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext, vk::CommandBuffer& cmds) {
     // TODO: allow whole execute to be pre-recorded?
 
@@ -117,29 +131,61 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
         ZoneScopedN("Render pass recording");
 
         if(rasterized) {
-            cmds.beginRenderPass(vk::RenderPassBeginInfo {
-                    .renderPass = *renderPass,
-                    .framebuffer = *framebuffers[renderContext.swapchainIndex],
-                    .renderArea = {
-                            .offset = vk::Offset2D{0, 0},
-                            .extent = renderSize,
-                    },
-                    .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-                    .pClearValues = clearValues.data(),
-            }, vk::SubpassContents::eInline);
+            // to allow reuse between calls
+            thread_local StackAllocator allocator{Allocator::getDefault()};
+            allocator.clear();
+
+            auto convert = [&](vk::RenderingAttachmentInfo& output, const Output& passOutput, vk::ImageAspectFlags aspect) {
+                auto& texture = getGraph().getOrCreateTexture(passOutput.resource, renderContext.swapchainIndex, viewportSize);
+                output.imageView = texture.getView(aspect);
+                output.imageLayout = passOutput.resource.layout;
+                output.resolveMode = vk::ResolveModeFlagBits::eNone;
+                output.loadOp = passOutput.loadOp;
+                output.storeOp = vk::AttachmentStoreOp::eStore;
+                output.clearValue = passOutput.clearValue;
+            };
+
+            Vector<vk::RenderingAttachmentInfo> vkColorAttachments{allocator};
+            vkColorAttachments.ensureReserve(colorAttachments.size());
+            for (const Output& passOutput : colorAttachments) {
+                convert(vkColorAttachments.emplaceBack(), passOutput, vk::ImageAspectFlagBits::eColor);
+            }
+            vk::RenderingAttachmentInfo vkDepthAttachment;
+            vk::RenderingAttachmentInfo vkStencilAttachment;
+            const bool hasDepthAttachment = depthAttachment.has_value();
+            bool hasStencilAttachment = stencilAttachment.has_value();
+            if (hasDepthAttachment && !hasStencilAttachment) {
+                convert(vkDepthAttachment, depthAttachment.value(), vk::ImageAspectFlagBits::eDepth);
+            }
+            if (hasStencilAttachment && !hasDepthAttachment) {
+                convert(vkStencilAttachment, stencilAttachment.value(), vk::ImageAspectFlagBits::eStencil);
+            }
+
+            if (hasDepthAttachment && hasStencilAttachment) {
+                convert(vkDepthAttachment, depthAttachment.value(), vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                vkStencilAttachment = vkDepthAttachment;
+            }
+
+            cmds.beginRendering(vk::RenderingInfo {
+                .renderArea = {
+                    .offset = vk::Offset2D{0, 0},
+                    .extent = renderSize,
+                },
+                .layerCount = 1,
+                .colorAttachmentCount = (u32)vkColorAttachments.size(),
+                .pColorAttachments = vkColorAttachments.data(),
+                .pDepthAttachment = hasDepthAttachment ? &vkDepthAttachment : nullptr,
+                .pStencilAttachment = hasStencilAttachment ? &vkStencilAttachment : nullptr,
+            });
             getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
         }
 
         renderingCode(*this, renderContext, cmds);
 
         if(rasterized) {
-            cmds.endRenderPass();
+            cmds.endRendering();
         }
     }
-}
-
-void Carrot::Render::CompiledPass::refresh() {
-    std::fill(needsRecord.begin(), needsRecord.end(), true);
 }
 
 void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
@@ -150,7 +196,7 @@ void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource,
 
 void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
                                          vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame) {
-    outputs.emplace_back(resource, loadOp, clearValue, aspect);
+    outputs.emplace_back(resource, layout, loadOp, clearValue, aspect);
     outputs.back().resource.updateLayout(layout);
     outputs.back().isCreatedInThisPass = isCreatedInThisPass;
     outputs.back().clearBufferEachFrame = clearBufferEachFrame;
@@ -175,69 +221,23 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     std::unique_ptr<vk::AttachmentReference> depthAttachmentRef = nullptr;
 
     std::vector<ImageTransition> prePassTransitions;
-    for(const auto& input : inputs) {
-        auto initialLayout = input.resource.previousLayout;//graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
-        //assert(initialLayout != vk::ImageLayout::eUndefined);
+    for (const auto& input : inputs) {
+        auto initialLayout = input.resource.previousLayout;
         if(initialLayout != input.expectedLayout) {
-            auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resourceID == input.resource.rootID; });
+            auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resource.rootID == input.resource.rootID; });
             if(it == prePassTransitions.end()) {
-                prePassTransitions.emplace_back(input.resource.rootID, initialLayout, input.resource.layout, input.aspect);
+                prePassTransitions.emplace_back(input.resource, initialLayout, input.expectedLayout, input.aspect);
             }
         }
     }
 
-    std::vector<vk::ClearValue> clearValues;
-    for(const auto& output : outputs) {
-        if(output.resource.type != ResourceType::RenderTarget) {
-            continue;
-        }
-        auto initialLayout = vk::ImageLayout::eUndefined;
-        auto finalLayout = output.resource.layout;//finalLayouts[output.resource.id];
-        assert(finalLayout != vk::ImageLayout::eUndefined);
-
-        /*if(output.resource.id != output.resource.parentID) */{
-            initialLayout = output.resource.previousLayout;//graph.getFinalLayouts()[output.resource.parentID];
-        }
-
-        if(rasterized) {
-            vk::AttachmentDescription attachment {
-                    .format = output.resource.format,
-                    .samples = vk::SampleCountFlagBits::e1,
-
-                    .loadOp = output.loadOp,
-                    .storeOp = vk::AttachmentStoreOp::eStore,
-
-                    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-                    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-
-                    .initialLayout = initialLayout,
-                    .finalLayout = finalLayout,
-            };
-            attachments.push_back(attachment);
-
-            /*if(output.loadOp == vk::AttachmentLoadOp::eClear) */{
-                clearValues.push_back(output.clearValue);
-            }
-
-            if(finalLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal
-               || finalLayout == vk::ImageLayout::eDepthAttachmentOptimal
-               || finalLayout == vk::ImageLayout::eStencilAttachmentOptimal
-               || finalLayout == vk::ImageLayout::eDepthStencilReadOnlyOptimal
-               || finalLayout == vk::ImageLayout::eDepthReadOnlyOptimal
-               || finalLayout == vk::ImageLayout::eStencilReadOnlyOptimal) {
-                verify(!depthAttachmentRef, "Only one depth-stencil is allowed at once.");
-                depthAttachmentRef = std::make_unique<vk::AttachmentReference>(vk::AttachmentReference{
-                        .attachment = static_cast<uint32_t>(attachments.size()-1),
-                        .layout = finalLayout,
-                });
-            } else {
-                if(finalLayout == vk::ImageLayout::ePresentSrcKHR) {
-                    finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
-                }
-                outputAttachments.push_back(vk::AttachmentReference {
-                        .attachment = static_cast<uint32_t>(attachments.size()-1),
-                        .layout = finalLayout,
-                });
+    // with dynamic rendering, the layout transition must be done manually
+    for (const auto& output : outputs) {
+        auto initialLayout = output.resource.previousLayout;
+        if(initialLayout != output.expectedLayout) {
+            auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resource.rootID == output.resource.rootID; });
+            if(it == prePassTransitions.end()) {
+                prePassTransitions.emplace_back(output.resource, initialLayout, output.expectedLayout, output.aspect);
             }
         }
     }
@@ -271,66 +271,38 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         }
     };
     if(rasterized) {
-        vk::SubpassDescription mainSubpass{
-                .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-                .inputAttachmentCount = static_cast<uint32_t>(inputAttachments.size()),
-
-                .colorAttachmentCount = static_cast<uint32_t>(outputAttachments.size()),
-                // index in this array is used by `layout(location = 0)` inside shaders
-                .pColorAttachments = outputAttachments.data(),
-                .pDepthStencilAttachment = depthAttachmentRef.get(),
-
-                .preserveAttachmentCount = 0,
-        };
-
-        vk::SubpassDependency mainDependency{
-                .srcSubpass = VK_SUBPASS_EXTERNAL,
-                .dstSubpass = 0,
-
-                .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                // TODO: .srcAccessMask = 0,
-
-                .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite |
-                                 vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-        };
-
-        vk::UniqueRenderPass renderPass = driver.getLogicalDevice().createRenderPassUnique(vk::RenderPassCreateInfo{
-                .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
-                .pAttachments = attachments.data(),
-
-                // TODO: merge compatible render passes into subpasses
-                .subpassCount = 1,
-                .pSubpasses = &mainSubpass,
-                .dependencyCount = 1,
-                .pDependencies = &mainDependency,
-        });
-        DebugNameable::nameSingle(this->name, *renderPass);
-
+        Carrot::Vector<Output> colorAttachments;
+        std::optional<Output> depthAttachment;
+        std::optional<Output> stencilAttachment;
+        for (const auto& output : outputs) {
+            if (output.resource.type == ResourceType::RenderTarget) {
+                if (output.aspect & vk::ImageAspectFlagBits::eColor) {
+                    colorAttachments.emplaceBack(output);
+                }
+                if (output.aspect & vk::ImageAspectFlagBits::eDepth) {
+                    verify(!depthAttachment.has_value(), "Only a single depth attachment is allowed");
+                    depthAttachment = output;
+                }
+                if (output.aspect & vk::ImageAspectFlagBits::eStencil) {
+                    verify(!stencilAttachment.has_value(), "Only a single stencil attachment is allowed");
+                    stencilAttachment = output;
+                }
+            }
+        }
         auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
             auto& graph = pass.getGraph();
             auto& driver = pass.getVulkanDriver();
-            std::vector<std::vector<vk::ImageView>> attachmentImageViews(driver.getSwapchainImageCount()); // [frameIndex][attachmentIndex], one per swapchain image
-            std::vector<vk::UniqueFramebuffer> framebuffers(driver.getSwapchainImageCount());
 
             std::uint32_t maxWidth = 0;
             std::uint32_t maxHeight = 0;
-            for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
-                auto& frameImageViews = attachmentImageViews[i];
-
+            for (const auto& output : outputs) {
                 bool hasOnlyStorageBuffers = true;
-                for (const auto& output : outputs) {
+                for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
                     if(output.resource.type == ResourceType::StorageBuffer) {
                         DISCARD(graph.getOrCreateBuffer(output.resource, i));
                     } else {
                         hasOnlyStorageBuffers = false;
                         auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
-
-                        if(output.resource.type == ResourceType::RenderTarget) {
-                            frameImageViews.push_back(texture.getView(output.aspect));
-                        }
 
                         maxWidth = std::max(texture.getSize().width, maxWidth);
                         maxHeight = std::max(texture.getSize().height, maxHeight);
@@ -338,28 +310,13 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 }
 
                 verify(!hasOnlyStorageBuffers, "Pass has no render targets nor storage images, are you sure you want rasterization?");
-
-                Carrot::Log::info("Creating framebuffer of size %lux%lu (pass %s)", maxWidth, maxHeight, pass.getName().data());
-
-
-                vk::FramebufferCreateInfo framebufferInfo{
-                        .renderPass = pass.getRenderPass(),
-                        .attachmentCount = static_cast<uint32_t>(frameImageViews.size()),
-                        .pAttachments = frameImageViews.data(),
-                        .width = maxWidth,
-                        .height = maxHeight,
-                        .layers = 1,
-                };
-
-                framebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(framebufferInfo,
-                                                                                              driver.getAllocationCallbacks()));
             }
+            Carrot::Log::info("Creating framebuffer of size %lux%lu (pass %s)", maxWidth, maxHeight, pass.getName().data());
             resetBuffers();
             renderSize.width = maxWidth;
             renderSize.height = maxHeight;
-            return framebuffers;
         };
-        result = std::make_unique<CompiledPass>(graph, name, viewportSize, std::move(renderPass), clearValues,
+        result = std::make_unique<CompiledPass>(graph, name, std::move(colorAttachments), std::move(depthAttachment), std::move(stencilAttachment), viewportSize,
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), passID);
     } else {
         auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
@@ -378,7 +335,6 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             // no render pass = no render size
             renderSize.width = 0;
             renderSize.height = 0;
-            return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
         result = make_unique<CompiledPass>(graph, name, viewportSize, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), passID);
     }
@@ -405,11 +361,8 @@ void Carrot::Render::CompiledPass::setInputsOutputsForDebug(const std::list<Inpu
     }
 }
 
-void Carrot::Render::CompiledPass::createFramebuffers(){
-    framebuffers.clear();
-    auto fb = this->initCallback(*this, viewportSize, renderSize);
-    verify(rasterized || fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
-    framebuffers = std::move(fb);
+void Carrot::Render::CompiledPass::recreateResources(){
+    this->initCallback(*this, viewportSize, renderSize);
     swapchainRecreationCallback(*this);
 }
 
@@ -423,7 +376,7 @@ void Carrot::Render::CompiledPass::onSwapchainSizeChange(Window& window, int new
             .height = static_cast<std::uint32_t>(newHeight),
     };
     getVulkanDriver().getResourceRepository().removeBelongingTo(passID);
-    createFramebuffers();
+    recreateResources();
 }
 
 Carrot::VulkanDriver& Carrot::Render::CompiledPass::getVulkanDriver() const {

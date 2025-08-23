@@ -16,9 +16,6 @@ namespace Carrot::ECS {
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
-        void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
-        void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
-
         void tick(double dt) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
@@ -33,7 +30,6 @@ namespace Carrot::ECS {
         }
 
     private:
-        void setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands);
         void updateSprite(Carrot::Render::Context renderContext, const TransformComponent& transform, Carrot::Render::Sprite& sprite);
     };
 }

@@ -10,6 +10,7 @@ namespace Carrot {
     class Engine;
 
     namespace Render {
+        class CompiledPass;
         struct Context;
     }
 
@@ -32,8 +33,8 @@ namespace Carrot {
 
         [[deprecated]] virtual void onMouseMove(double dx, double dy) {};
 
-        virtual void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
-        virtual void recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
+        virtual void recordOpaqueGBufferPass(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
+        virtual void recordTransparentGBufferPass(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
 
         virtual void changeGraphicsWaitSemaphores(std::uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {};
 

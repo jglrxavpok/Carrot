@@ -447,7 +447,7 @@ namespace Carrot::ECS {
         }
     }
 
-    void World::recordOpaqueGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    void World::recordOpaqueGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         ZoneScoped;
         {
             ZoneScopedN("GBuffer Logic");
@@ -464,7 +464,7 @@ namespace Carrot::ECS {
         }
     }
 
-    void World::recordTransparentGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    void World::recordTransparentGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         ZoneScoped;
         {
             ZoneScopedN("GBuffer Logic");

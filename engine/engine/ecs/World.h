@@ -68,8 +68,8 @@ namespace Carrot::ECS {
         void postPhysics();
         void setupCamera(Carrot::Render::Context renderContext);
         void onFrame(Carrot::Render::Context renderContext);
-        void recordOpaqueGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
-        void recordTransparentGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordOpaqueGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordTransparentGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
 
         Entity newEntity(std::string_view name = "<unnamed>");
 

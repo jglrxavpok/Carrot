@@ -137,7 +137,7 @@ void Carrot::VulkanRenderer::lateInit() {
     debugArrowModel = GetAssetServer().blockingLoadModel("resources/models/simple_arrow.gltf");
 }
 
-std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& renderPass) {
+std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const Render::CompiledPass& renderPass) {
     return getOrCreatePipeline(name, reinterpret_cast<std::uint64_t>((void*) &renderPass));
 }
 
@@ -909,7 +909,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
 //    waitForRenderToComplete();
 }
 
-void Carrot::VulkanRenderer::recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext) {
+void Carrot::VulkanRenderer::recordImGuiPass(vk::CommandBuffer& cmds, const Render::CompiledPass& renderPass, const Carrot::Render::Context& renderContext) {
     imGuiBackend.record(cmds, renderPass, renderContext);
 }
 
@@ -1410,7 +1410,7 @@ const vk::DescriptorSet& Carrot::VulkanRenderer::getPerDrawDescriptorSet(const R
     return perDrawDescriptorSets[renderContext.swapchainIndex];
 }
 
-void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
+void Carrot::VulkanRenderer::fullscreenBlit(const Render::CompiledPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
     auto pipeline = getOrCreateRenderPassSpecificPipeline("blit", pass);
     vk::DescriptorImageInfo imageInfo {
             .sampler = getVulkanDriver().getLinearSampler(),
@@ -1495,7 +1495,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
 }
 
 
-void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPass, const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
     ASSERT_RENDER_THREAD();
 
@@ -1516,11 +1516,11 @@ void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPa
     }
 }
 
-void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Carrot::VulkanRenderer::recordOpaqueGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     recordPassPackets(Render::PassEnum::OpaqueGBuffer, pass, renderContext, commands);
 }
 
-void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Carrot::VulkanRenderer::recordTransparentGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
 
     if(blinkTime > 0.0) {

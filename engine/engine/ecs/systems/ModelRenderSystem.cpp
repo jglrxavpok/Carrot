@@ -15,14 +15,6 @@ namespace Carrot::ECS {
 
     }
 
-    void ModelRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-
-    }
-
-    void ModelRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-
-    }
-
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext) {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");

@@ -54,7 +54,7 @@ namespace Carrot::Render {
         [](const Render::CompiledPass& pass, const Render::Context& frame, const PassData::Composer& data, vk::CommandBuffer& cmds) {
             ZoneScopedN("CPU RenderGraph Composer");
             auto& renderer = frame.renderer;
-            auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("composer-blit", pass.getRenderPass());
+            auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("composer-blit", pass);
             auto& screenQuad = renderer.getFullscreenQuad();
             screenQuad.bind(cmds);
 
@@ -71,7 +71,7 @@ namespace Carrot::Render {
             }
 
             index = 0;
-            pipeline->bind(pass.getRenderPass(), frame, cmds);
+            pipeline->bind(pass, frame, cmds);
             for(const auto& e : data.elements) {
                 struct Region {
                     float left;

@@ -22,6 +22,7 @@ namespace Carrot {
     class VulkanRenderer;
 
     namespace Render {
+        class CompiledPass;
         struct Context;
         class Viewport;
     }
@@ -150,7 +151,7 @@ namespace Carrot::Render {
         /// \param renderContext
         /// \param commands
         /// \param previousRenderPacket if you know the proper state is already bound, you can skip its bind thanks to this parameter to save time
-        void record(Carrot::Allocator& tempAllocator, vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
+        void record(Carrot::Allocator& tempAllocator, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
 
     private:
         std::span<std::uint8_t> allocateGeneric(std::size_t size);

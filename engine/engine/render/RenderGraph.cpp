@@ -143,7 +143,7 @@ namespace Carrot::Render {
         r.type = isStorageImage ? ResourceType::StorageImage : ResourceType::RenderTarget;
         r.size = size;
         r.imageOrigin = ImageOrigin::Created;
-        r.updateLayout(layout);
+        //r.updateLayout(layout);
         currentPass->finalLayouts[r.id] = layout;
 
         GetVulkanDriver().getResourceRepository().setCreatorID(r.rootID, currentPass->passID);

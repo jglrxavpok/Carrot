@@ -106,8 +106,8 @@ namespace Carrot {
 
         void onFrame(const Carrot::Render::Context& renderContext) override;
 
-        void renderOpaqueGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
-        void renderTransparentGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
+        void renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
+        void renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
@@ -123,7 +123,7 @@ namespace Carrot {
         Carrot::EmitterData& getEmitterData(u32 emitterID);
         friend class ParticleEmitter;
 
-        void render(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const;
+        void render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const;
         void pullDataFromGPU();
         void pushDataToGPU();
 

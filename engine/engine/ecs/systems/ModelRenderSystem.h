@@ -16,9 +16,6 @@ namespace Carrot::ECS {
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
-        void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
-        void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
-
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 
         void reload() override;

@@ -58,8 +58,8 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
     [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
         if(previewSystem) {
             auto& renderingPipeline = previewSystem->getRenderingPipeline();
-            previewSystem->renderOpaqueGBuffer(pass.getRenderPass(), frame, cmds);
-            previewSystem->renderTransparentGBuffer(pass.getRenderPass(), frame, cmds);
+            previewSystem->renderOpaqueGBuffer(pass, frame, cmds);
+            previewSystem->renderTransparentGBuffer(pass, frame, cmds);
         }
     });
 

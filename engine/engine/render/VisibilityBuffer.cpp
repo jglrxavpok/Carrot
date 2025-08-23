@@ -54,7 +54,7 @@ namespace Carrot::Render {
                 // Record all render packets (~= draw commands) with the tag "PrePassVisibilityBuffer" then "VisibilityBuffer"
                 {
                     GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Pre pass visibility buffer");
-                    frame.renderer.recordPassPackets(Render::PassEnum::PrePassVisibilityBuffer, {}, frame, cmds);
+                    frame.renderer.recordPassPackets(Render::PassEnum::PrePassVisibilityBuffer, pass, frame, cmds);
                 }
             });
 
@@ -98,7 +98,7 @@ namespace Carrot::Render {
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 {
                     GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Visibility buffer");
-                    frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
+                    frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass, frame, cmds);
                 }
             }
         );
@@ -120,7 +120,7 @@ namespace Carrot::Render {
                (const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph visibility buffer debug view");
                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
-                   auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline(pipelineName, pass.getRenderPass());
+                   auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline(pipelineName, pass);
 
                    Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);
                    Carrot::BufferView clusterInstances = frame.renderer.getMeshletManager().getClusterInstances(frame);
@@ -138,7 +138,7 @@ namespace Carrot::Render {
                    frame.renderer.bindBuffer(*pipeline, frame, clusterInstances, 1, 2);
                    frame.renderer.bindBuffer(*pipeline, frame, clusterInstanceData, 1, 3);
 
-                   pipeline->bind(pass.getRenderPass(), frame, cmds);
+                   pipeline->bind(pass, frame, cmds);
                    auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                    screenQuadMesh.bind(cmds);
                    screenQuadMesh.draw(cmds);
@@ -174,7 +174,7 @@ namespace Carrot::Render {
                     return;
                 }
 
-                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.pipeline", (std::uint64_t)(VkRenderPass)pass.getRenderPass());
+                auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("resources/pipelines/material-pass.pipeline", pass);
                 const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
@@ -185,7 +185,7 @@ namespace Carrot::Render {
                 frame.renderer.bindBuffer(*pipeline, frame, clusterInstances, 2, 2);
                 frame.renderer.bindBuffer(*pipeline, frame, clusterInstanceData, 2, 3);
 
-                pipeline->bind(pass.getRenderPass(), frame, cmds);
+                pipeline->bind(pass, frame, cmds);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(cmds);
                 screenQuadMesh.draw(cmds);

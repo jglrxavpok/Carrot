@@ -12,7 +12,7 @@ namespace Carrot::Render {
         virtual ~BasicRenderable() = default;
 
         virtual void onFrame(const Carrot::Render::Context& renderContext) {};
-        virtual void renderOpaqueGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {};
-        virtual void renderTransparentGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {};
+        virtual void renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {};
+        virtual void renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {};
     };
 }

@@ -130,7 +130,7 @@ namespace Carrot::Render {
         return false; // TODO: fix packet merging
     }
 
-    void Packet::record(Carrot::Allocator& tempAllocator, vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
+    void Packet::record(Carrot::Allocator& tempAllocator, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
         ZoneScoped;
 
         if(commands.empty()) {

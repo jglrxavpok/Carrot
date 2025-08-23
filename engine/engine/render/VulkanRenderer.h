@@ -138,7 +138,7 @@ namespace Carrot {
 
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
-        std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& pass);
+        std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const Render::CompiledPass& pass);
 
         std::shared_ptr<Render::Texture> getOrCreateTexture(const std::string& textureName);
 
@@ -190,7 +190,7 @@ namespace Carrot {
         void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
         void startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext);
-        void recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
+        void recordImGuiPass(vk::CommandBuffer& cmds, const Render::CompiledPass& renderPass, const Carrot::Render::Context& renderContext);
 
         void waitForRenderToComplete();
 
@@ -247,7 +247,7 @@ namespace Carrot {
 
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 
-        void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
+        void fullscreenBlit(const Render::CompiledPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
 
     public:
         std::shared_ptr<Carrot::Model> getUnitSphere();
@@ -287,9 +287,9 @@ namespace Carrot {
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         const Carrot::BufferView getNullBufferInfo() const;
 
-        void recordPassPackets(Carrot::Render::PassName passEnum, vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
-        void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
-        void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordPassPackets(Carrot::Render::PassName passEnum, const Render::CompiledPass& pass, Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordOpaqueGBufferPass(const Render::CompiledPass& pass, Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordTransparentGBufferPass(const Render::CompiledPass& pass, Render::Context renderContext, vk::CommandBuffer& commands);
 
     public:
         Render::Texture::Ref getDefaultImage();

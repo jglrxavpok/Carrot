@@ -377,8 +377,8 @@ namespace Carrot::Render {
         }
     }
 
-    void ImGuiBackend::record(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext) {
-        renderer.recordPassPackets(PassEnum::ImGui, renderPass, renderContext, cmds);
+    void ImGuiBackend::record(vk::CommandBuffer& cmds, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext) {
+        renderer.recordPassPackets(PassEnum::ImGui, pass, renderContext, cmds);
     }
 
     void ImGuiBackend::onSwapchainImageCountChange(std::size_t newCount) {
@@ -429,7 +429,7 @@ namespace Carrot::Render {
                                                             graph.present(data.targetTexture);
         },
                                                         [this](const CompiledPass& pass, const Render::Context& renderContext, ImGuiRenderPassData& data, vk::CommandBuffer& cmds) {
-                                                            record(cmds, pass.getRenderPass(), renderContext);
+                                                            record(cmds, pass, renderContext);
         });
         pRendererUserData->pViewport = &viewport;
         viewport.setRenderGraph(std::move(renderGraphBuilder.compile()));

@@ -1655,12 +1655,12 @@ namespace Peeler {
         currentScene.postPhysics();
     }
 
-    void Application::recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
+    void Application::recordOpaqueGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
                                               vk::CommandBuffer& commands) {
         // no op, everything is done inside gameViewport
     }
 
-    void Application::recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
+    void Application::recordTransparentGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
                                                    vk::CommandBuffer& commands) {
         // no op, everything is done inside gameViewport
     }

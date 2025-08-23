@@ -15,10 +15,6 @@ namespace Peeler::ECS {
         textureHandleOff = GetRenderer().getMaterialSystem().createTextureHandle(GetRenderer().getOrCreateTexture("ui/lightbulb_inactive.png"));
     }
 
-    void LightEditorRenderer::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-
-    }
-
     void LightEditorRenderer::onFrame(Carrot::Render::Context renderContext) {
         if(Peeler::Instance->isCurrentlyPlaying()) {
             return;

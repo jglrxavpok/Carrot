@@ -8,7 +8,8 @@
 #include "engine/render/resources/Texture.h"
 #include "core/utils/UUID.h"
 #include "engine/render/RenderPassData.h"
-#include <any>
+#include <core/containers/Vector.hpp>
+#include <engine/render/resources/Pipeline.h>
 
 namespace Carrot::Render {
 
@@ -30,35 +31,37 @@ namespace Carrot::Render {
 
     struct Output {
         FrameResource resource;
+        vk::ImageLayout expectedLayout = vk::ImageLayout::eUndefined;
         vk::AttachmentLoadOp loadOp;
         vk::ClearValue clearValue;
         vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
         bool isCreatedInThisPass: 1 = false;
         bool clearBufferEachFrame: 1 = false;
 
-        Output(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
+        Output(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), expectedLayout(expectedLayout), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
     };
 
     struct ImageTransition {
-        Carrot::UUID resourceID;
+        FrameResource resource;
         vk::ImageLayout from;
         vk::ImageLayout to;
         vk::ImageAspectFlags aspect;
 
-        explicit ImageTransition(Carrot::UUID resourceID, vk::ImageLayout from, vk::ImageLayout to, vk::ImageAspectFlags aspect): resourceID(resourceID), from(from), to(to), aspect(aspect) {}
+        explicit ImageTransition(const FrameResource& resource, vk::ImageLayout from, vk::ImageLayout to, vk::ImageAspectFlags aspect): resource(resource), from(from), to(to), aspect(aspect) {}
     };
 
     class CompiledPass: public SwapchainAware {
     public:
-        using InitCallback = std::function<std::vector<vk::UniqueFramebuffer>(CompiledPass&, const vk::Extent2D&, vk::Extent2D&)>;
+        using InitCallback = std::function<void(CompiledPass&, const vk::Extent2D&, vk::Extent2D&)>;
 
         /// Constructor for rasterized passes
         explicit CompiledPass(
                 Graph& graph,
                 std::string name,
+                Vector<Output> colorAttachments,
+                std::optional<Output> depthAttachment,
+                std::optional<Output> stencilAttachment,
                 const vk::Extent2D& viewportSize,
-                vk::UniqueRenderPass&& renderPass,
-                const std::vector<vk::ClearValue>& clearValues,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
@@ -81,10 +84,7 @@ namespace Carrot::Render {
     public:
         void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
-        const vk::RenderPass& getRenderPass() const {
-            assert(rasterized); // Only rasterized passes have a render pass
-            return *renderPass;
-        }
+        const RenderingPipelineCreateInfo& getPipelineCreateInfo() const;
 
         VulkanDriver& getVulkanDriver() const;
 
@@ -98,8 +98,6 @@ namespace Carrot::Render {
         std::span<const FrameResource> getOutputs() const { return outputs; }
         std::span<const FrameResource> getInputOutputs() const { return inouts; }
 
-        void refresh();
-
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
@@ -109,16 +107,12 @@ namespace Carrot::Render {
         void setInputsOutputsForDebug(const std::list<Input>& inputs, const std::list<Output>& outputs);
 
     private:
-        void createFramebuffers();
+        void recreateResources();
         void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
 
     private:
         Graph& graph;
         bool rasterized = true;
-        std::vector<bool> needsRecord; // do pre-recorded buffers need to be re-recorded?
-        std::vector<vk::UniqueFramebuffer> framebuffers;
-        vk::UniqueRenderPass renderPass;
-        std::vector<vk::ClearValue> clearValues;
         std::vector<ImageTransition> prePassTransitions;
         CompiledPassCallback renderingCode;
         InitCallback initCallback;
@@ -128,6 +122,11 @@ namespace Carrot::Render {
         // used to create textures that match the viewport size
         vk::Extent2D viewportSize;
         Carrot::UUID passID; // used to tell texture repository which textures belong to this pass
+
+        Vector<Output> colorAttachments;
+        std::optional<Output> depthAttachment;
+        std::optional<Output> stencilAttachment;
+        RenderingPipelineCreateInfo pipelineCreateInfo;
 
         // kept for debug
         std::vector<FrameResource> inputs;
@@ -206,9 +205,6 @@ namespace Carrot::Render {
             return [executeCallback = executeCallback, data = data, condition = condition, lastConditionValue = false](CompiledPass& pass, const Render::Context& frameData, vk::CommandBuffer& cmds)
             mutable {
                 bool conditionValue = condition(pass, frameData, data);
-                if(conditionValue != lastConditionValue) {
-                    pass.refresh();
-                }
                 if(conditionValue) {
                     executeCallback(pass, frameData, data, cmds);
                 }

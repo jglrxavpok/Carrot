@@ -193,19 +193,19 @@ Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
     return particle;
 }
 
-void Carrot::ParticleSystem::render(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
     renderingPipeline->bind(pass, renderContext, commands);
     commands.draw(6 * usedParticleCount, 1, 0, 0);
 }
 
-void Carrot::ParticleSystem::renderOpaqueGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
     if(!isOpaque()) {
         return;
     }
     render(pass, renderContext, commands);
 }
 
-void Carrot::ParticleSystem::renderTransparentGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
     if(isOpaque()) {
         return;
     }

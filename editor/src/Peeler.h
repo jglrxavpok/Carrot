@@ -43,10 +43,10 @@ namespace Peeler {
         void prePhysics() override;
         void postPhysics() override;
 
-        void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
+        void recordOpaqueGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
                                      vk::CommandBuffer& commands) override;
 
-        void recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
+        void recordTransparentGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
                                           vk::CommandBuffer& commands) override;
 
         void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;

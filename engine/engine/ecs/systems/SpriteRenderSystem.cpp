@@ -7,17 +7,6 @@
 #include <engine/render/GBufferDrawData.h>
 
 namespace Carrot::ECS {
-    void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        // TODO: remove
-    }
-
-    void SpriteRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        // TODO: remove
-    }
-
-    void SpriteRenderSystem::setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
-        // TODO: remove
-    }
 
     void SpriteRenderSystem::onFrame(Carrot::Render::Context renderContext) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {

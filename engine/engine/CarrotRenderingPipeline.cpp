@@ -103,7 +103,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph temporal-denoise");
                     GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "temporal-denoise");
-                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass.getRenderPass());
+                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass);
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.swapchainIndex), 0, 0, nullptr);
 
                     auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) {
@@ -128,7 +128,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
                     data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                    pipeline->bind(pass.getRenderPass(), frame, buffer);
+                    pipeline->bind(pass, frame, buffer);
                     auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                     screenQuadMesh.bind(buffer);
                     screenQuadMesh.draw(buffer);
@@ -476,7 +476,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph merge-lighting");
                 GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "merge-lighting");
-                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/merge-lighting", pass.getRenderPass());
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/merge-lighting", pass);
 
                 struct PushConstant {
                     std::uint32_t frameCount;
@@ -505,7 +505,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.visibilityBufferDebug[debugIndex], frame.swapchainIndex), 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, debugIndex, vk::ImageLayout::eShaderReadOnlyOptimal);
                 }
 
-                pipeline->bind(pass.getRenderPass(), frame, buffer);
+                pipeline->bind(pass, frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(buffer);
                 screenQuadMesh.draw(buffer);
@@ -526,7 +526,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const UnlitDraw& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph draw-unlit");
                 GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "draw-unlit");
-                GetRenderer().recordPassPackets(Render::PassEnum::Unlit, pass.getRenderPass(), frame, buffer);
+                GetRenderer().recordPassPackets(Render::PassEnum::Unlit, pass, frame, buffer);
             });
 
     auto& toneMapping = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
@@ -545,13 +545,13 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph post-process");
                 GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
-                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass.getRenderPass());
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
 
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
 
-                pipeline->bind(pass.getRenderPass(), frame, buffer);
+                pipeline->bind(pass, frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(buffer);
                 screenQuadMesh.draw(buffer);
@@ -569,14 +569,14 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::Gr
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 GPUZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
                                                 ZoneScopedN("CPU RenderGraph Opaque GPass");
-                                                game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                                renderer.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                                game->recordOpaqueGBufferPass(pass, frame, cmds);
+                                                renderer.recordOpaqueGBufferPass(pass, frame, cmds);
                                             },
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 GPUZone(tracyCtx[frame.swapchainIndex], cmds, "Transparent Rendering");
                                                 ZoneScopedN("CPU RenderGraph Transparent GPass");
-                                                game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                                renderer.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                                game->recordTransparentGBufferPass(pass, frame, cmds);
+                                                renderer.recordTransparentGBufferPass(pass, frame, cmds);
                                             },
                                             framebufferSize);
 

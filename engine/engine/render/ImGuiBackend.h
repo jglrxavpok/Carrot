@@ -14,6 +14,7 @@ namespace Carrot {
     class VulkanRenderer;
 
     namespace Render {
+        class CompiledPass;
         struct Context;
         struct PImpl;
         struct ImGuiRendererData;
@@ -37,7 +38,7 @@ namespace Carrot {
             void render(const Carrot::Render::Context& renderContext, WindowID windowID, ImDrawData* pDrawData);
 
             /// Record commands based on last call to 'render', called from render thread
-            void record(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
+            void record(vk::CommandBuffer& cmds, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext);
 
             void onSwapchainImageCountChange(std::size_t newCount);
 
