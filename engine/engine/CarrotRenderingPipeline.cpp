@@ -212,7 +212,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipeline, frame, inputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(dispatchX, dispatchY, 1);
 
                     vk::MemoryBarrier2KHR memoryBarrier {
@@ -265,7 +265,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*copyPipeline, frame, inputMomentsTexture, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*copyPipeline, frame, outputTexture, 0, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    copyPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    copyPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(dispatchX, dispatchY, 1);
 
                     vk::MemoryBarrier2KHR memoryBarrier {
@@ -417,7 +417,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                         buffer.pipelineBarrier2KHR(dependencyInfo);
 
                         auto pipeline = pipelinePingPong[pipelineIndex];
-                        pipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
+                        pipeline->bind(RenderingPipelineCreateInfo{}, frame, buffer, vk::PipelineBindPoint::eCompute);
                         frame.renderer.pushConstantBlock("iterationData", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, iterationData);
                         buffer.dispatch(dispatchX, dispatchY, 1);
 

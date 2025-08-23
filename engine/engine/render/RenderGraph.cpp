@@ -450,7 +450,7 @@ namespace Carrot::Render {
 
             context.renderer.pushConstants("push", *pipeline, context, vk::ShaderStageFlagBits::eCompute, cmds,
                 static_cast<std::uint64_t>(buffer.view.getDeviceAddress()), static_cast<std::uint32_t>(buffer.view.getSize()));
-            pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
+            pipeline->bind(RenderingPipelineCreateInfo{}, context, cmds, vk::PipelineBindPoint::eCompute);
 
             context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
@@ -468,7 +468,7 @@ namespace Carrot::Render {
         } else {
             auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.pipeline", reinterpret_cast<std::uint64_t>(destinationTexture.get()));
 
-            pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
+            pipeline->bind(RenderingPipelineCreateInfo{}, context, cmds, vk::PipelineBindPoint::eCompute);
 
             auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
 

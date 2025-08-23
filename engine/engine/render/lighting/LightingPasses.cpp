@@ -289,20 +289,20 @@ namespace Carrot::Render {
                    // first iteration
                    {
                        renderer.pushConstants("push", *temporalDenoisePipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, isAO ? (u32)1 : (u32)0);
-                       temporalDenoisePipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       temporalDenoisePipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
                    {
                        denoiseBlock.iterationIndex = 0;
                        renderer.pushConstantBlock("push", *spatialDenoisePipelines[0], frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
-                       spatialDenoisePipelines[0]->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       spatialDenoisePipelines[0]->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
                    for(std::uint8_t i = 0; i < data.iterationCount-1; i++) {
                        auto& pipeline = *spatialDenoisePipelines[i % 2 +1];
                        denoiseBlock.iterationIndex = i;
                        renderer.pushConstantBlock("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
-                       pipeline.bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       pipeline.bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
 
@@ -341,7 +341,7 @@ namespace Carrot::Render {
                     (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 256;
                 const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
@@ -485,7 +485,7 @@ namespace Carrot::Render {
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, data, pass.getGraph(), frame, *pipeline, cmds);
                 bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t groupX = (block.frameWidth+ProbeScreenSize-1)/ProbeScreenSize;
                 const std::size_t groupY = (block.frameHeight+ProbeScreenSize-1)/ProbeScreenSize;
@@ -509,7 +509,7 @@ namespace Carrot::Render {
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, data, pass.getGraph(), frame, *pipeline, cmds);
                 bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const i64 probesCountX = (block.frameWidth+ProbeScreenSize-1) / ProbeScreenSize;
                 const i64 probesCountY = (block.frameHeight+ProbeScreenSize-1) / ProbeScreenSize;
@@ -627,11 +627,11 @@ namespace Carrot::Render {
                        std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                        std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
                        setupPipeline(data.directLighting.noisy, *directLightingPipeline, false, useRaytracingVersion ? 7 : 6);
-                       directLightingPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       directLightingPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
                        setupPipeline(data.ambientOcclusion.noisy, *aoPipeline, false, -1);
-                       aoPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       aoPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
                        setupPipeline(data.reflections.noisy, *reflectionsPipeline, true, useRaytracingVersion ? 7 : 6);
@@ -642,7 +642,7 @@ namespace Carrot::Render {
                             renderer.bindStorageImage(*reflectionsPipeline, frame, outputPos, 5, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                             renderer.bindStorageImage(*reflectionsPipeline, frame, outputNormalsTangents, 5, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                        }
-                       reflectionsPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       reflectionsPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
 
@@ -731,7 +731,7 @@ namespace Carrot::Render {
                 frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameCount).view, 1, 2);
                 frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.emptyProbes, frame.frameCount).view, 1, 3);
                 frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameCount).view, 1, 4);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 32;
                 const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
@@ -766,7 +766,7 @@ namespace Carrot::Render {
                     frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbesInput, frame.frameCount).view, 1, 1);
 
                     data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-                    pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                     const std::size_t localSize = 32;
                     const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;

@@ -3,6 +3,8 @@
 //
 
 #pragma once
+#include <core/render/ImageFormats.h>
+
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/IDTypes.h"
 #include "engine/render/shaders/ShaderStages.h"
@@ -11,6 +13,15 @@
 #include <core/utils/Lookup.hpp>
 
 #include "engine/vulkan/DebugNameable.h"
+
+namespace Carrot {
+    struct RenderingPipelineCreateInfo;
+}
+
+template<>
+struct std::hash<Carrot::RenderingPipelineCreateInfo> {
+    std::size_t operator()(const Carrot::RenderingPipelineCreateInfo& info) const noexcept;
+};
 
 namespace Carrot {
     namespace Render {
@@ -87,6 +98,15 @@ namespace Carrot {
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };
 
+    // Intended as a wrapper / renderer-agnostic version of VkPipelineRenderingCreateInfo
+    struct RenderingPipelineCreateInfo {
+        Carrot::Vector<vk::Format> colorAttachments;
+        vk::Format depthFormat = vk::Format::eUndefined;
+        vk::Format stencilFormat = vk::Format::eUndefined;
+
+        bool operator==(const RenderingPipelineCreateInfo&) const = default;
+    };
+
     class Pipeline: public SwapchainAware, public DebugNameable {
     public:
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
@@ -96,6 +116,7 @@ namespace Carrot {
          * Binds pipeline + descriptor sets
          */
         void bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics, std::vector<std::uint32_t> dynamicOffsets = {}) const;
+        void bind(const RenderingPipelineCreateInfo& createInfo, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics, std::vector<std::uint32_t> dynamicOffsets = {}) const;
 
         /**
          * Binds only descriptor sets
@@ -143,6 +164,7 @@ namespace Carrot {
         void allocateDescriptorSets();
 
         vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
+        vk::Pipeline& getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const;
 
         void reloadShaders(bool needDeviceWait);
 
@@ -202,7 +224,8 @@ namespace Carrot {
         u32 generationNumber = 0;
 
         PipelineDescription description;
-        mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
+        mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkLegacyRenderingPipelines{}; // for "legacy" rendering
+        mutable std::unordered_map<RenderingPipelineCreateInfo, vk::UniquePipeline> vkPipelines{}; // for dynamic rendering
 
         mutable std::unordered_map<std::string, vk::PushConstantRange> pushConstantMap{};
     };

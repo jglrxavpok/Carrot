@@ -598,9 +598,6 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
                     .accelerationStructure = GetCapabilities().supportsRaytracing,
             },
-            vk::PhysicalDeviceSynchronization2FeaturesKHR  {
-                    .synchronization2 = true,
-            },
             vk::PhysicalDeviceVulkan11Features {
                     .storageBuffer16BitAccess = true,
                     .shaderDrawParameters = true,
@@ -620,6 +617,10 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .hostQueryReset = true,
                 .timelineSemaphore = true,
                 .bufferDeviceAddress = true,
+            },
+            vk::PhysicalDeviceVulkan13Features {
+                .dynamicRendering = true,
+                .synchronization2 = true,
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {
                     .nullDescriptor = true,

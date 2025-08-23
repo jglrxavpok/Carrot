@@ -15,6 +15,9 @@ namespace Carrot {
 
 #define VECTOR_TEMPLATE template<typename TElement, typename Traits> requires IsValidVectorTraits<Traits>
     VECTOR_TEMPLATE
+    Vector<TElement, Traits>::Vector(): Vector(Allocator::getDefault()) {}
+
+    VECTOR_TEMPLATE
     Vector<TElement, Traits>::Vector(Allocator& allocator): allocator(allocator) {}
 
     VECTOR_TEMPLATE

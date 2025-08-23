@@ -40,11 +40,13 @@ namespace Carrot {
         static_assert(sizeof(TElement) > 0, "Special handling would need to be added to support 0-length elements inside Vector");
         static_assert(std::is_trivial_v<TElement> || VectorTraits::CallConstructorAndDestructorOnResize, "CallConstructorAndDestructorOnResize=false is only allowed for trivial types");
 
+        Vector();
+
         /**
          * \brief Creates an empty Vector and sets its corresponding allocator.
          * \param allocator allocator to use for this vector. Allocator::getDefault() by default
          */
-        explicit Vector(Allocator& allocator = Allocator::getDefault());
+        explicit Vector(Allocator& allocator);
         /**
          * \brief Creates a Vector with n default-constructed elements and sets its corresponding allocator.
          * \param allocator allocator to use for this vector. Allocator::getDefault() by default

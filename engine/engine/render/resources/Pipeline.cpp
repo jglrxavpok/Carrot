@@ -82,6 +82,7 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
     if(needDeviceWait) {
         WaitDeviceIdle();
     }
+    vkLegacyRenderingPipelines.clear(); // flush existing pipelines
     vkPipelines.clear(); // flush existing pipelines
     stages->reload();
 
@@ -440,22 +441,48 @@ const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view 
 }
 
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass pass) const {
-    auto it = vkPipelines.find(pass);
-    if(it == vkPipelines.end()) {
+    auto it = vkLegacyRenderingPipelines.find(pass);
+    if(it == vkLegacyRenderingPipelines.end()) {
         if(description.type == PipelineType::Compute) {
             vk::ComputePipelineCreateInfo info = computePipelineTemplate.pipelineInfo;
-            vkPipelines[pass] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr).value);
+            vkLegacyRenderingPipelines[pass] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr).value);
         } else {
             vk::GraphicsPipelineCreateInfo info = graphicsPipelineTemplate.pipelineInfo;
             info.renderPass = pass;
-            vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr).value);
+            vkLegacyRenderingPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr).value);
         }
 
         if(!debugName.empty()) {
-            DebugNameable::nameSingle(debugName, *vkPipelines[pass]);
+            DebugNameable::nameSingle(debugName, *vkLegacyRenderingPipelines[pass]);
         }
     }
-    return *vkPipelines[pass];
+    return *vkLegacyRenderingPipelines[pass];
+}
+
+vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const {
+    auto it = vkPipelines.find(createInfo);
+    if(it == vkPipelines.end()) {
+        if(description.type == PipelineType::Compute) {
+            vk::ComputePipelineCreateInfo info = computePipelineTemplate.pipelineInfo;
+            vkPipelines[createInfo] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr).value);
+        } else {
+            vk::GraphicsPipelineCreateInfo info = graphicsPipelineTemplate.pipelineInfo;
+
+            vk::PipelineRenderingCreateInfo vkRenderingCreateInfo {
+                .colorAttachmentCount = static_cast<u32>(createInfo.colorAttachments.size()),
+                .pColorAttachmentFormats = createInfo.colorAttachments.data(),
+                .depthAttachmentFormat = createInfo.depthFormat,
+                .stencilAttachmentFormat = createInfo.stencilFormat,
+            };
+            info.pNext = &vkRenderingCreateInfo;
+            vkPipelines[createInfo] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr).value);
+        }
+
+        if(!debugName.empty()) {
+            DebugNameable::nameSingle(debugName, *vkPipelines[createInfo]);
+        }
+    }
+    return *vkPipelines[createInfo];
 }
 
 void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, std::vector<std::uint32_t> dynamicOffsets) const {
@@ -465,6 +492,18 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& 
     ZoneText(zoneText.c_str(), zoneText.size());
 #endif
     auto& pipeline = getOrCreatePipelineForRenderPass(pass);
+    commands.bindPipeline(bindPoint, pipeline);
+
+    bindOnlyDescriptorSets(renderContext, commands, bindPoint, dynamicOffsets);
+}
+
+void Carrot::Pipeline::bind(const RenderingPipelineCreateInfo& createInfo, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, std::vector<std::uint32_t> dynamicOffsets) const {
+    ZoneScopedN("Bind pipeline");
+#ifdef TRACY_ENABLE
+    std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str());
+    ZoneText(zoneText.c_str(), zoneText.size());
+#endif
+    auto& pipeline = getOrCreatePipelineForRendering(createInfo);
     commands.bindPipeline(bindPoint, pipeline);
 
     bindOnlyDescriptorSets(renderContext, commands, bindPoint, dynamicOffsets);
@@ -731,6 +770,9 @@ void Carrot::Pipeline::onSwapchainSizeChange(Window& window, int newWidth, int n
 }
 
 void Carrot::Pipeline::setDebugNames(const std::string& name) {
+    for(auto& [_, pPipeline] : vkLegacyRenderingPipelines) {
+        DebugNameable::nameSingle(name, *pPipeline);
+    }
     for(auto& [_, pPipeline] : vkPipelines) {
         DebugNameable::nameSingle(name, *pPipeline);
     }
@@ -825,4 +867,14 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
 
     // TODO: coherency verifications
 
+}
+
+std::size_t std::hash<Carrot::RenderingPipelineCreateInfo>::operator()(const Carrot::RenderingPipelineCreateInfo& info) const noexcept {
+    std::size_t h = 0;
+    for (const vk::Format& colorFormat : info.colorAttachments) {
+        Carrot::hash_combine(h, (std::size_t)colorFormat);
+    }
+    Carrot::hash_combine(h, (std::size_t)info.depthFormat);
+    Carrot::hash_combine(h, (std::size_t)info.stencilFormat);
+    return h;
 }

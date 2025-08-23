@@ -35,7 +35,7 @@ namespace Carrot::Render {
                     vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
                     renderer.pushConstantBlock("address", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
 
-                    clearReadbackPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    clearReadbackPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(1, 1, 1);
                 }
 
@@ -78,7 +78,7 @@ namespace Carrot::Render {
                         std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
                         std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
 
-                        clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                        clearBufferPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                         cmds.dispatch(dispatchX, dispatchY, 1);
                     });
         // Add the hardware rasterization pass

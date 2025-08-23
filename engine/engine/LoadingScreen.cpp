@@ -13,40 +13,6 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     auto& device = engine.getLogicalDevice();
 
-    // prepare pipeline
-    vk::AttachmentDescription output {
-            .format = vk::Format::eB8G8R8A8Srgb,
-
-            .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = vk::AttachmentStoreOp::eStore,
-
-            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-
-            .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::ePresentSrcKHR,
-    };
-
-    vk::AttachmentReference outputRef {
-            .attachment = 0,
-            .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-    vk::SubpassDescription subpass {
-            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .inputAttachmentCount = 0,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &outputRef,
-    };
-
-    vk::UniqueRenderPass blitRenderPass = device.createRenderPassUnique(vk::RenderPassCreateInfo {
-            .attachmentCount = 1,
-            .pAttachments = &output,
-
-            .subpassCount = 1,
-            .pSubpasses = &subpass,
-    });
-
     auto& driver = engine.getVulkanDriver();
 
     vk::UniqueSemaphore imageAvailable = device.createSemaphoreUnique(vk::SemaphoreCreateInfo {
@@ -56,18 +22,8 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     auto imageIndex = device.acquireNextImageKHR(engine.getMainWindow().getSwapchain(), UINT64_MAX, *imageAvailable, nullptr).value;
 
     auto& swapchainExtent = engine.getMainWindow().getFramebufferExtent(); // TODO: will need to be changed for VR compatible loading screens
-    auto swapchainView = engine.getMainWindow().getSwapchainTexture(imageIndex)->getView();
-    vk::UniqueFramebuffer framebuffer = device.createFramebufferUnique(vk::FramebufferCreateInfo {
-        .renderPass = *blitRenderPass,
-        .attachmentCount = 1,
-        .pAttachments = &swapchainView,
-
-        .width = swapchainExtent.width,
-        .height = swapchainExtent.height,
-
-        .layers = 1,
-    });
-
+    Render::Texture::Ref swapchainTexture = engine.getMainWindow().getSwapchainTexture(imageIndex);
+    auto swapchainView = swapchainTexture->getView();
     auto pipeline = Pipeline(engine.getVulkanDriver(), "resources/pipelines/blit.pipeline");
 
     auto loadingImageView = loadingImage->createImageView();
@@ -122,24 +78,34 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     driver.updateViewportAndScissor(cmds, swapchainExtent);
 
     vk::ClearValue color{std::array{1.0f,1.0f,0.0f,1.0f}};
-    cmds.beginRenderPass(vk::RenderPassBeginInfo {
-            .renderPass = *blitRenderPass,
-            .framebuffer = *framebuffer,
 
+    vk::RenderingAttachmentInfo colorAttachmentInfo {
+        .imageView = swapchainView,
+        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .resolveMode = vk::ResolveModeFlagBits::eNone,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = color,
+    };
+
+    cmds.beginRendering(vk::RenderingInfo {
             .renderArea = {
                     .offset = vk::Offset2D{0, 0},
                     .extent = swapchainExtent,
             },
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentInfo,
+    });
 
-            .clearValueCount = 1,
-            .pClearValues = &color,
-    }, vk::SubpassContents::eInline);
-
-    pipeline.bind(*blitRenderPass, engine.newRenderContext(0, engine.getMainViewport()), cmds);
+        RenderingPipelineCreateInfo createInfo {
+                .colorAttachments = {swapchainTexture->getImage().getFormat()}
+        };
+    pipeline.bind(createInfo, engine.newRenderContext(0, engine.getMainViewport()), cmds);
     quad.bind(cmds);
     quad.draw(cmds);
 
-    cmds.endRenderPass();
+    cmds.endRendering();
 
     cmds.end();
     vk::CommandBufferSubmitInfo commandInfo {
