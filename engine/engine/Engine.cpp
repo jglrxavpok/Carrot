@@ -214,7 +214,7 @@ void Carrot::Engine::init() {
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                                  ZoneScopedN("CPU RenderGraph present");
                                                                  auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
-                                                                 auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+                                                                 auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainIndex);
                                                                  frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
 
                                                                  renderer.recordImGuiPass(cmds, pass, frame);

@@ -14,6 +14,12 @@
 #include "resources/ResourceAllocator.h"
 
 namespace Carrot::Render {
+    Texture& ResourceRepository::getSwapchainTexture(const FrameResource& resource, size_t swapchainIndex) {
+        verify(resource.imageOrigin == Render::ImageOrigin::SurfaceSwapchain, "Texture is not from a swapchain!");
+        verify(resource.pOriginWindow != nullptr, "Cannot get the swapchain texture if there is no origin window!");
+        return *(resource.pOriginWindow->getSwapchainTexture(swapchainIndex));
+    }
+
     Texture& ResourceRepository::getTexture(const FrameResource& texture, size_t swapchainIndex) {
         return *getTextureRef(texture, swapchainIndex);
     }
@@ -23,10 +29,7 @@ namespace Carrot::Render {
     }
 
     Texture::Ref ResourceRepository::getTextureRef(const FrameResource& texture, size_t swapchainIndex) {
-        if(texture.imageOrigin == Render::ImageOrigin::SurfaceSwapchain) {
-            verify(texture.pOriginWindow != nullptr, "Cannot get the swapchain texture if there is no origin window!");
-            return texture.pOriginWindow->getSwapchainTexture(swapchainIndex);
-        }
+        verify(texture.imageOrigin != Render::ImageOrigin::SurfaceSwapchain, "Not allowed for swapchain images");
         return getTextureRef(texture.rootID, swapchainIndex);
     }
 
@@ -54,10 +57,7 @@ namespace Carrot::Render {
             textures.resize(driver.getSwapchainImageCount());
         }
 
-        if(resource.imageOrigin == Render::ImageOrigin::SurfaceSwapchain) {
-            verify(resource.pOriginWindow != nullptr, "Cannot get the swapchain texture if there is no origin window!");
-            return *(resource.pOriginWindow->getSwapchainTexture(frameIndex));
-        }
+        verify(resource.imageOrigin != Render::ImageOrigin::SurfaceSwapchain, "Not allowed for swapchain images");
 
         auto it = textures[frameIndex].find(resource.rootID);
         if(it == textures[frameIndex].end()) {

@@ -26,6 +26,7 @@ namespace Carrot::Render {
     public:
         Texture& createTexture(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         Texture& getTexture(const FrameResource& texture, size_t swapchainIndex);
+        Texture& getSwapchainTexture(const FrameResource& texture, size_t swapchainIndex);
         Texture& getTexture(const Carrot::UUID& id, size_t swapchainIndex);
         Texture::Ref getTextureRef(const FrameResource& texture, size_t swapchainIndex);
         Texture::Ref getTextureRef(const Carrot::UUID& id, size_t swapchainIndex);

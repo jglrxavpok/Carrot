@@ -82,9 +82,14 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
 
         // TODO: batch transitions
         for(const auto& transition : prePassTransitions) {
-            auto& tex = graph.getOrCreateTexture(transition.resource, renderContext.swapchainIndex, renderSize);
-            tex.assumeLayout(transition.from);
-            tex.transitionInline(cmds, transition.to, transition.aspect);
+            Texture* pTexture = nullptr;
+            if (transition.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
+                pTexture = &getGraph().getSwapchainTexture(transition.resource, renderContext.swapchainIndex);
+            } else {
+                pTexture = &getGraph().getOrCreateTexture(transition.resource, renderContext.swapchainIndex, viewportSize);
+            }
+            pTexture->assumeLayout(transition.from);
+            pTexture->transitionInline(cmds, transition.to, transition.aspect);
         }
 
         Carrot::Vector<vk::BufferMemoryBarrier> bufferBarriers;
@@ -136,8 +141,13 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
             allocator.clear();
 
             auto convert = [&](vk::RenderingAttachmentInfo& output, const Output& passOutput, vk::ImageAspectFlags aspect) {
-                auto& texture = getGraph().getOrCreateTexture(passOutput.resource, renderContext.swapchainIndex, viewportSize);
-                output.imageView = texture.getView(aspect);
+                Texture* pTexture = nullptr;
+                if (passOutput.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
+                    pTexture = &getGraph().getSwapchainTexture(passOutput.resource, renderContext.swapchainIndex);
+                } else {
+                    pTexture = &getGraph().getOrCreateTexture(passOutput.resource, renderContext.swapchainIndex, viewportSize);
+                }
+                output.imageView = pTexture->getView(aspect);
                 output.imageLayout = passOutput.resource.layout;
                 output.resolveMode = vk::ResolveModeFlagBits::eNone;
                 output.loadOp = passOutput.loadOp;
@@ -302,10 +312,14 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                         DISCARD(graph.getOrCreateBuffer(output.resource, i));
                     } else {
                         hasOnlyStorageBuffers = false;
-                        auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
-
-                        maxWidth = std::max(texture.getSize().width, maxWidth);
-                        maxHeight = std::max(texture.getSize().height, maxHeight);
+                        if (output.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
+                            maxWidth = std::max(viewportSize.width, maxWidth);
+                            maxHeight = std::max(viewportSize.height, maxHeight);
+                        } else {
+                            auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
+                            maxWidth = std::max(texture.getSize().width, maxWidth);
+                            maxHeight = std::max(texture.getSize().height, maxHeight);
+                        }
                     }
                 }
 

@@ -571,6 +571,10 @@ namespace Carrot::Render {
         }
     }
 
+    Texture& Graph::getSwapchainTexture(const FrameResource& resource, size_t swapchainIndex) const {
+        return driver.getResourceRepository().getSwapchainTexture(resource, swapchainIndex);
+    }
+
     Texture& Graph::getTexture(const FrameResource& resource, size_t frameIndex) const {
         return driver.getResourceRepository().getTexture(resource, frameIndex);
     }
