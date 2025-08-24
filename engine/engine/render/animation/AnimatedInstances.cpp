@@ -69,20 +69,20 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         });
     });
 
-    for (int i = 0; i < BufferingCount; ++i) {
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         fullySkinnedVertexBuffers[i] = GetResourceAllocator().allocateDeviceBuffer(sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
         fullySkinnedVertexBuffers[i].name(Carrot::sprintf("full skinned vertices %s", model->debugName.c_str()));
     }
 
-    raytracingBLASes.reserve(maxInstanceCount * BufferingCount);
-    raytracingInstances.reserve(maxInstanceCount * BufferingCount);
+    raytracingBLASes.reserve(maxInstanceCount * MAX_FRAMES_IN_FLIGHT);
+    raytracingInstances.reserve(maxInstanceCount * MAX_FRAMES_IN_FLIGHT);
 
     for(int i = 0; i < maxInstanceCount; i++) {
-        std::array<std::vector<std::shared_ptr<Carrot::Mesh>>, BufferingCount> instanceMeshes;
-        std::array<std::vector<glm::mat4>, BufferingCount> meshTransforms;
-        std::array<std::vector<std::uint32_t>, BufferingCount> meshMaterialSlots;
+        std::array<std::vector<std::shared_ptr<Carrot::Mesh>>, MAX_FRAMES_IN_FLIGHT> instanceMeshes;
+        std::array<std::vector<glm::mat4>, MAX_FRAMES_IN_FLIGHT> meshTransforms;
+        std::array<std::vector<std::uint32_t>, MAX_FRAMES_IN_FLIGHT> meshMaterialSlots;
 
-        for (i32 bufferingIndex = 0; bufferingIndex < BufferingCount; bufferingIndex++) {
+        for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
             instanceMeshes[bufferingIndex].reserve(meshes.size());
             meshTransforms[bufferingIndex].reserve(meshes.size());
             meshMaterialSlots[bufferingIndex].reserve(meshes.size());
@@ -100,7 +100,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
             });
 
             if(GetCapabilities().supportsRaytracing) {
-                for (i32 bufferingIndex = 0; bufferingIndex < BufferingCount; bufferingIndex++) {
+                for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
                     Carrot::BufferView vertexBuffer = fullySkinnedVertexBuffers[bufferingIndex].view.subView(static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex));
                     instanceMeshes[bufferingIndex].push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex), sizeof(std::uint32_t)));
                     meshTransforms[bufferingIndex].push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform
@@ -110,7 +110,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         });
 
         if(GetCapabilities().supportsRaytracing) {
-            for (i32 bufferingIndex = 0; bufferingIndex < BufferingCount; bufferingIndex++) {
+            for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
                 auto& asBuilder = GetRenderer().getASBuilder();
                 auto blas = asBuilder.addBottomLevel(instanceMeshes[bufferingIndex], meshTransforms[bufferingIndex], meshMaterialSlots[bufferingIndex], BLASGeometryFormat::Default);
                 blas->dynamicGeometry = true;
@@ -136,7 +136,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     skinningCommandBuffers = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = computeCommandPool,
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = BufferingCount,
+            .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
     });
 
     // sets the mesh count (per instance) for this skinning pipeline
@@ -175,7 +175,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = BufferingCount,
+                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
 
@@ -183,7 +183,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 1,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = BufferingCount,
+                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
 
@@ -191,7 +191,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 2,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = BufferingCount,
+                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
     };
@@ -226,12 +226,12 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     // set0
     poolSizes.push_back(vk::DescriptorPoolSize {
             .type = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = static_cast<uint32_t>(set0Size * BufferingCount),
+            .descriptorCount = static_cast<uint32_t>(set0Size * MAX_FRAMES_IN_FLIGHT),
     });
 
-    for(size_t i = 0; i < BufferingCount; i++) {
+    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         auto pool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-                .maxSets = 2*BufferingCount,
+                .maxSets = 2*MAX_FRAMES_IN_FLIGHT,
                 .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
                 .pPoolSizes = poolSizes.data(),
         });
@@ -259,7 +259,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     };
 
     // TODO: fix validation error with arrays
-    for(size_t i = 0; i < BufferingCount; i++) {
+    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::DescriptorBufferInfo outputBufferInfo = fullySkinnedVertexBuffers[i].view.asBufferInfo();
 
         using DT = vk::DescriptorType;
@@ -317,7 +317,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 
     std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
     std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;
-    for(std::size_t i = 0; i < BufferingCount; i++) {
+    for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::CommandBuffer& commands = skinningCommandBuffers[i];
         commands.begin(vk::CommandBufferBeginInfo {
         });
@@ -337,14 +337,14 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     ZoneScoped;
 
-    const std::size_t modFrameIndex = renderContext.frameCount % BufferingCount;
+    const std::size_t modFrameIndex = renderContext.frameCount % MAX_FRAMES_IN_FLIGHT;
     if(GetCapabilities().supportsRaytracing) {
         verify(raytracingBLASes.size() == raytracingInstances.size(), "There must be as many BLASes as there are RT instances!");
         for(std::size_t instanceIndex = 0; instanceIndex < maxInstanceCount; instanceIndex ++) {
-            for (i32 bufferingIndex = 0; bufferingIndex < BufferingCount; bufferingIndex++) {
-                const i32 globalIndex = instanceIndex * BufferingCount + bufferingIndex;
+            for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
+                const i32 globalIndex = instanceIndex * MAX_FRAMES_IN_FLIGHT + bufferingIndex;
                 auto& instance = raytracingInstances[globalIndex];
-                if (bufferingIndex == modFrameIndex % BufferingCount) {
+                if (bufferingIndex == modFrameIndex % MAX_FRAMES_IN_FLIGHT) {
                     auto& blas = raytracingBLASes[globalIndex];
 
                     const AnimatedInstanceData& animatedInstanceData = getInstance(instanceIndex);
@@ -431,7 +431,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     packet.instanceCount = 1;
     packet.commands.resize(1);
 
-    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffers[renderContext.frameCount % BufferingCount].view;
+    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffers[renderContext.frameCount % MAX_FRAMES_IN_FLIGHT].view;
     for (const auto&[mat, meshList]: model->skinnedMeshes) {
         data.materialIndex = mat;
         packet.clearPerDrawData();

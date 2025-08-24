@@ -46,12 +46,11 @@ namespace Carrot {
         void forEachMesh(const std::function<void(std::uint32_t meshIndex, std::uint32_t materialSlot, std::shared_ptr<Mesh>& mesh)>& action);
 
     private:
-        constexpr static std::size_t BufferingCount = 2;
         std::size_t maxInstanceCount = 0;
         std::size_t currentInstanceCount = 0;
         Carrot::Engine& engine;
         std::shared_ptr<Model> model = nullptr;
-        std::array<BufferAllocation, BufferingCount> fullySkinnedVertexBuffers;
+        std::array<BufferAllocation, MAX_FRAMES_IN_FLIGHT> fullySkinnedVertexBuffers;
         std::unique_ptr<Buffer> flatVertices = nullptr;
         std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* animatedInstances = nullptr;
