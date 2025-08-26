@@ -46,12 +46,12 @@ namespace sol {
 namespace Carrot {
     struct BindingKey {
         Carrot::Pipeline& pipeline;
-        std::size_t swapchainIndex;
+        u8 frameIndex;
         std::uint32_t setID;
         std::uint32_t bindingID;
 
         bool operator==(const BindingKey& other) const {
-            return &pipeline == &other.pipeline && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID;
+            return &pipeline == &other.pipeline && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && frameIndex == other.frameIndex && setID == other.setID && bindingID == other.bindingID;
         }
     };
 
@@ -59,7 +59,7 @@ namespace Carrot {
         vk::ImageLayout layout = vk::ImageLayout::eUndefined;
 
         bool operator==(const ImageBindingKey& other) const {
-            return &pipeline == &other.pipeline && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID
+            return &pipeline == &other.pipeline && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && frameIndex == other.frameIndex && setID == other.setID && bindingID == other.bindingID
             && layout == other.layout;
         }
     };
@@ -73,7 +73,7 @@ namespace std {
 
             std::size_t hash = static_cast<std::size_t>((std::uint64_t)&key.pipeline);
             hash = key.pipeline.getGenerationNumber() + hash * prime;
-            hash = key.swapchainIndex + hash * prime;
+            hash = key.frameIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
             return hash;
@@ -87,7 +87,7 @@ namespace std {
 
             std::size_t hash = static_cast<std::size_t>((std::uint64_t)&key.pipeline);
             hash = key.pipeline.getGenerationNumber() + hash * prime;
-            hash = key.swapchainIndex + hash * prime;
+            hash = key.frameIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
             hash = static_cast<std::size_t>(key.layout) + hash * prime;
@@ -155,7 +155,7 @@ namespace Carrot {
 
     public:
         std::uint32_t getFrameCount() const { return frameCount; }
-        std::size_t getSwapchainImageCount() const;
+        std::size_t getSwapchainImagesCount() const;
         VulkanDriver& getVulkanDriver() { return driver; };
 
         ASBuilder& getASBuilder() { return *asBuilder; };

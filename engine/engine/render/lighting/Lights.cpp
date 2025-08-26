@@ -64,16 +64,16 @@ namespace Carrot::Render {
         std::array<vk::DescriptorPoolSize, BindingCount> poolSizes = {
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 },
         };
         descriptorSetPool = GetVulkanDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
                 .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-                .maxSets = GetEngine().getSwapchainImageCount(),
+                .maxSets = MAX_FRAMES_IN_FLIGHT,
                 .poolSizeCount = static_cast<std::uint32_t>(poolSizes.size()),
                 .pPoolSizes = poolSizes.data(),
         });
@@ -110,7 +110,7 @@ namespace Carrot::Render {
     }
 
     void Lighting::bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint) {
-        cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.swapchainIndex]}, {});
+        cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.frameIndex]}, {});
     }
 
     void Lighting::drawDebug() {
@@ -153,8 +153,8 @@ namespace Carrot::Render {
 
         activeLightsData->count = activeCount;
 
-        if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
-            auto& set = descriptorSets[renderContext.swapchainIndex];
+        if(descriptorNeedsUpdate[renderContext.frameIndex]) {
+            auto& set = descriptorSets[renderContext.frameIndex];
             auto lightBufferInfo = lightBuffer->getWholeView().asBufferInfo();
             auto activeLightsInfo = activeLightsBuffer->getWholeView().asBufferInfo();
             std::array<vk::WriteDescriptorSet, BindingCount> writes = {
@@ -177,15 +177,15 @@ namespace Carrot::Render {
                     },
             };
             GetVulkanDevice().updateDescriptorSets(writes, {});
-            descriptorNeedsUpdate[renderContext.swapchainIndex] = false;
+            descriptorNeedsUpdate[renderContext.frameIndex] = false;
         }
     }
 
     void Lighting::reallocateDescriptorSets() {
-        std::vector<vk::DescriptorSetLayout> layouts{GetEngine().getSwapchainImageCount(), *descriptorSetLayout};
+        std::vector<vk::DescriptorSetLayout> layouts{MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout};
         descriptorSets = GetVulkanDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *descriptorSetPool,
-                .descriptorSetCount = GetEngine().getSwapchainImageCount(),
+                .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
                 .pSetLayouts = layouts.data(),
         });
 

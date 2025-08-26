@@ -25,6 +25,7 @@ namespace Carrot {
             Carrot::BufferView allocateAligned(std::size_t index, vk::DeviceSize size, vk::DeviceSize align = 1);
 
             vk::DeviceSize getAllocatedSize(std::size_t index) const;
+            i32 getBufferCount() const;
 
         private:
             vk::DeviceSize bufferSize;

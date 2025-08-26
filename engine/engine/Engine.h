@@ -161,7 +161,7 @@ namespace Carrot {
 
         Carrot::Vulkan::SynchronizedQueue& getComputeQueue();
 
-        std::uint32_t getSwapchainImageCount();
+        std::uint32_t getSwapchainImagesCount();
 
         /// Creates a set with the graphics and transfer family indices
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
@@ -224,7 +224,7 @@ namespace Carrot {
 
         Render::Composer& getMainComposer(Render::Eye eye = Render::Eye::NoVR) { return *composers[eye]; }
 
-        Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Viewport& viewport, Render::Eye eye = Render::Eye::NoVR);
+        Render::Context newRenderContext(u8 frameIndex, std::size_t swapchainFrameIndex, Render::Viewport& viewport, Render::Eye eye = Render::Eye::NoVR);
 
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
         VR::Session& getVRSession();

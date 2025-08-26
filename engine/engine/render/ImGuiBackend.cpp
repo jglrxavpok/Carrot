@@ -41,7 +41,7 @@ namespace Carrot::Render {
             v.pipeline = renderer.getOrCreatePipelineFullPath(PipelinePath, (std::uint64_t)w); // one per window to avoid texture binding conflicts
             v.pViewport = pViewport;
 
-            std::size_t imageCount = GetEngine().getSwapchainImageCount();
+            std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
             v.vertexBuffers.resize(imageCount);
             v.indexBuffers.resize(imageCount);
             v.stagingBuffers.resize(imageCount);
@@ -97,7 +97,7 @@ namespace Carrot::Render {
         if(pRendererData == nullptr) { // not external window
             return;
         }
-        pThis->renderExternalWindowImGui(vp->DrawData, *pRendererData, *((std::size_t*)render_arg));
+        pThis->renderExternalWindowImGui(vp->DrawData, *pRendererData, 0/*TODO: frame index??*/, *((std::size_t*)render_arg));
     }
 
     static void destroyWindowImGui(ImGuiViewport* vp) {
@@ -183,7 +183,7 @@ namespace Carrot::Render {
         pImpl->initPerFrameData(renderer, renderer.getEngine().getMainWindow().getWindowID(), nullptr /* directly rendered on top of main viewport */);
 
         // resize buffers for frame-by-frame storage
-        onSwapchainImageCountChange(renderer.getSwapchainImageCount());
+        resizeStorage(MAX_FRAMES_IN_FLIGHT);
 
         ImGui_ImplGlfw_InitForVulkan(renderer.getEngine().getMainWindow().getGLFWPointer(), true);
 
@@ -248,20 +248,20 @@ namespace Carrot::Render {
             return;// nothing to render
         }
 
-        pImpl->perWindow[windowID].vertexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
-        pImpl->perWindow[windowID].indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
-        Carrot::BufferView& vertexBuffer = pImpl->perWindow[windowID].vertexBuffers[renderContext.swapchainIndex].view;
-        Carrot::BufferView& indexBuffer = pImpl->perWindow[windowID].indexBuffers[renderContext.swapchainIndex].view;
+        pImpl->perWindow[windowID].vertexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
+        pImpl->perWindow[windowID].indexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
+        Carrot::BufferView& vertexBuffer = pImpl->perWindow[windowID].vertexBuffers[renderContext.frameIndex].view;
+        Carrot::BufferView& indexBuffer = pImpl->perWindow[windowID].indexBuffers[renderContext.frameIndex].view;
 
         std::size_t totalStagingSize = vertexBuffer.getSize() + indexBuffer.getSize();
-        auto& stagingBufferAlloc = pImpl->perWindow[windowID].stagingBuffers[renderContext.swapchainIndex];
+        auto& stagingBufferAlloc = pImpl->perWindow[windowID].stagingBuffers[renderContext.frameIndex];
         stagingBufferAlloc = GetResourceAllocator().allocateStagingBuffer(totalStagingSize);
         auto& stagingBuffer = stagingBufferAlloc.view;
 
         // upload data to staging buffer
         stagingBuffer.directUpload(vertices.data(), vertexBuffer.getSize());
         stagingBuffer.directUpload(indices.data(), indexBuffer.getSize(), vertexBuffer.getSize()/*offset*/);
-        auto& copySyncSemaphore = pImpl->perWindow[windowID].bufferCopySync[renderContext.swapchainIndex];
+        auto& copySyncSemaphore = pImpl->perWindow[windowID].bufferCopySync[renderContext.frameIndex];
         renderer.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& cmds) {
             stagingBuffer.subView(0, vertexBuffer.getSize()).cmdCopyTo(cmds, vertexBuffer);
             stagingBuffer.subView(vertexBuffer.getSize(), indexBuffer.getSize()).cmdCopyTo(cmds, indexBuffer);
@@ -304,13 +304,13 @@ namespace Carrot::Render {
         auto& textureIndexMap = pImpl->perWindow[windowID].textureIndices;
         textureIndexMap.clear();
 
-        if(pImpl->perWindow[windowID].rebindTextures[renderContext.swapchainIndex]) {
+        if(pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex]) {
             for (int i = 0; i < MaxTextures; ++i) {
                 renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
                                      vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
                                      i);
             }
-            pImpl->perWindow[windowID].rebindTextures[renderContext.swapchainIndex] = false;
+            pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex] = false;
         }
 
         int drawIndex = 0;
@@ -381,7 +381,7 @@ namespace Carrot::Render {
         renderer.recordPassPackets(PassEnum::ImGui, pass, renderContext, cmds);
     }
 
-    void ImGuiBackend::onSwapchainImageCountChange(std::size_t newCount) {
+    void ImGuiBackend::resizeStorage(std::size_t newCount) {
         for(auto& [_, v] : pImpl->perWindow) {
             v.vertexBuffers.resize(newCount);
             v.indexBuffers.resize(newCount);
@@ -436,8 +436,8 @@ namespace Carrot::Render {
         pImpl->initPerFrameData(renderer, externalWindow.getWindowID(), &viewport);
     }
 
-    void ImGuiBackend::renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& rendererData, std::size_t swapchainIndex) {
-        Carrot::Render::Context renderContext = renderer.getEngine().newRenderContext(swapchainIndex, *rendererData.pViewport);
+    void ImGuiBackend::renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& rendererData, u8 frameIndex, std::size_t swapchainIndex) {
+        Carrot::Render::Context renderContext = renderer.getEngine().newRenderContext(frameIndex, swapchainIndex, *rendererData.pViewport);
         render(renderContext, rendererData.pWindow->getWindowID(), pDrawData);
     }
 } // Carrot::Render

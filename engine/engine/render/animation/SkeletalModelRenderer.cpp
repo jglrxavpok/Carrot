@@ -57,10 +57,10 @@ namespace Carrot::Render {
             }
 
             // upload new skeleton
-            gpuSkeletons[renderContext.swapchainIndex][meshIndex]->directUpload(&processedSkeletons[meshIndex], sizeof(GPUSkeleton));
+            gpuSkeletons[renderContext.frameIndex][meshIndex]->directUpload(&processedSkeletons[meshIndex], sizeof(GPUSkeleton));
         });
 
-        auto& skinningPipelinesOfThisFrame = skinningPipelines[renderContext.swapchainIndex];
+        auto& skinningPipelinesOfThisFrame = skinningPipelines[renderContext.frameIndex];
         auto skinnedMeshes = model->getSkinnedMeshes();
 
         std::size_t meshIndex = 0;
@@ -68,7 +68,7 @@ namespace Carrot::Render {
             for(const auto& mesh : meshList) {
                 std::uint32_t vertexCount = mesh->getVertexCount();
                 std::uint32_t vertexGroups = (vertexCount + 127) / 128;
-                auto& semaphore = skinningSemaphores[renderContext.swapchainIndex][meshIndex];
+                auto& semaphore = skinningSemaphores[renderContext.frameIndex][meshIndex];
 
                 skinningPipelinesOfThisFrame[meshIndex]->dispatch(vertexGroups, 1, 1, &(*semaphore));
 
@@ -79,8 +79,8 @@ namespace Carrot::Render {
         }
 
         if(GetCapabilities().supportsRaytracing) {
-            blas[renderContext.swapchainIndex]->setDirty();
-            rtInstance[renderContext.swapchainIndex]->transform = instanceData.transform;
+            blas[renderContext.frameIndex]->setDirty();
+            rtInstance[renderContext.frameIndex]->transform = instanceData.transform;
         }
 
         // push mesh rendering
@@ -100,7 +100,7 @@ namespace Carrot::Render {
             forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, const Mesh::Ref& mesh) {
                 ZoneScopedN("mesh use");
                 data.materialIndex = materialSlot;
-                packet.useMesh(*renderingMeshes[renderContext.swapchainIndex][meshIndex]);
+                packet.useMesh(*renderingMeshes[renderContext.frameIndex][meshIndex]);
 
                 GBufferDrawData drawData;
                 drawData.materialIndex = materialSlot;
@@ -114,9 +114,9 @@ namespace Carrot::Render {
 
     void SkeletalModelRenderer::createGPUSkeletonBuffers() {
         gpuSkeletons.clear();
-        gpuSkeletons.resize(GetEngine().getSwapchainImageCount());
+        gpuSkeletons.resize(MAX_FRAMES_IN_FLIGHT);
 
-        for (std::size_t i = 0; i < GetEngine().getSwapchainImageCount(); ++i) {
+        for (std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
                 gpuSkeletons[i].emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(
                         sizeof(GPUSkeleton),
@@ -129,22 +129,22 @@ namespace Carrot::Render {
 
     void SkeletalModelRenderer::createSkinningPipelines() {
         skinningPipelines.clear();
-        skinningPipelines.resize(GetEngine().getSwapchainImageCount());
+        skinningPipelines.resize(MAX_FRAMES_IN_FLIGHT);
 
         skinningSemaphores.clear();
-        skinningSemaphores.resize(GetEngine().getSwapchainImageCount());
+        skinningSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 
         outputBuffers.clear();
-        outputBuffers.reserve(GetEngine().getSwapchainImageCount());
+        outputBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
 
         renderingMeshes.clear();
-        renderingMeshes.resize(GetEngine().getSwapchainImageCount());
+        renderingMeshes.resize(MAX_FRAMES_IN_FLIGHT);
 
         blas.clear();
-        blas.reserve(GetEngine().getSwapchainImageCount());
+        blas.reserve(MAX_FRAMES_IN_FLIGHT);
 
         rtInstance.clear();
-        rtInstance.reserve(GetEngine().getSwapchainImageCount());
+        rtInstance.reserve(MAX_FRAMES_IN_FLIGHT);
 
         meshTransforms.clear();
 
@@ -173,7 +173,7 @@ namespace Carrot::Render {
         });
 
 
-        for (std::size_t imageIndex = 0; imageIndex < GetEngine().getSwapchainImageCount(); imageIndex++) {
+        for (std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
             // create output buffer for this frame
             auto& outputBuffer = outputBuffers.emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(requiredSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal));
 

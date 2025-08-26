@@ -60,7 +60,7 @@ namespace Carrot::Render {
 
             std::uint32_t index = 0;
             for(const auto& e : data.elements) {
-                auto& texture = pass.getGraph().getTexture(e.toDraw, frame.swapchainIndex);
+                auto& texture = pass.getGraph().getTexture(e.toDraw, frame.frameIndex);
                 renderer.bindTexture(*pipeline, frame, texture, 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, index);
                 index++;
             }

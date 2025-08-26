@@ -68,7 +68,8 @@ namespace Carrot {
     void Window::computeSwapchainOffset() {
         // ensure we know the proper offset for the next acquire: the renderer assumes all windows have the same swapchain index,
         //  we just fix up the index in Window with this offset
-        swapchainIndexOffset = (2-engine.getSwapchainImageIndexRightNow()) % engine.getSwapchainImageCount();
+        // TODO: why 2- index ??
+        swapchainIndexOffset = (2-engine.getSwapchainImageIndexRightNow()) % engine.getSwapchainImagesCount();
     }
 
     void Window::createSurface() {
@@ -106,7 +107,7 @@ namespace Carrot {
         }
 
         if(!isMainWindow()) {
-            verify(imageCount == GetEngine().getSwapchainImageCount(), "All windows are expected to have the same number of swapchain images. This engine does not support other cases in its current state");
+            verify(imageCount == GetEngine().getSwapchainImagesCount(), "All windows are expected to have the same number of swapchain images. This engine does not support other cases in its current state");
         }
 
         vk::SwapchainCreateInfoKHR createInfo{
@@ -189,7 +190,7 @@ namespace Carrot {
     void Window::setCurrentSwapchainIndex(std::int32_t mainWindowSwapchainIndex, std::int32_t thisWindowSwapchainIndex) {
         std::int32_t swapchainOffset = thisWindowSwapchainIndex - mainWindowSwapchainIndex;
         while(swapchainOffset < 0) {
-            swapchainOffset += GetEngine().getSwapchainImageCount();
+            swapchainOffset += GetEngine().getSwapchainImagesCount();
         }
 
         if(!acquiredAtLeastOneImage) {
@@ -230,7 +231,7 @@ namespace Carrot {
         };
     }
 
-    size_t Window::getSwapchainImageCount() const {
+    size_t Window::getSwapchainImagesCount() const {
         return swapchainTextures.size();
     }
 
@@ -247,7 +248,7 @@ namespace Carrot {
     }
 
     std::shared_ptr<Render::Texture> Window::getSwapchainTexture(std::size_t swapchainIndex) {
-        return swapchainTextures[(swapchainIndex + swapchainIndexOffset) % GetEngine().getSwapchainImageCount()];
+        return swapchainTextures[(swapchainIndex + swapchainIndexOffset) % GetEngine().getSwapchainImagesCount()];
     }
 
     void Window::fetchNewFramebufferSize() {

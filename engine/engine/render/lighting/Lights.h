@@ -94,7 +94,7 @@ namespace Carrot::Render {
 
     public:
         const vk::DescriptorSetLayout& getDescriptorSetLayout() const { return *descriptorSetLayout; }
-        vk::DescriptorSet getDescriptorSet(const Render::Context& context) { return descriptorSets[context.swapchainIndex]; }
+        vk::DescriptorSet getDescriptorSet(const Render::Context& context) { return descriptorSets[context.frameIndex]; }
 
     public:
         void onSwapchainImageCountChange(size_t newCount) override;

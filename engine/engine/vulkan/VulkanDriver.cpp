@@ -848,8 +848,8 @@ Carrot::VulkanDriver::~VulkanDriver() {
 void Carrot::VulkanDriver::createUniformBuffers() {
 }
 
-size_t Carrot::VulkanDriver::getSwapchainImageCount() const {
-    return mainWindow.getSwapchainImageCount(); // assumed that all windows share the same format
+size_t Carrot::VulkanDriver::getSwapchainImagesCount() const {
+    return mainWindow.getSwapchainImagesCount(); // assumed that all windows share the same format
 }
 
 vk::Format Carrot::VulkanDriver::getSwapchainImageFormat() const {

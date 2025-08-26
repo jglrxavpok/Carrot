@@ -156,7 +156,7 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
         };
     }
 
-    recreateDescriptorPool(driver.getSwapchainImageCount());
+    recreateDescriptorPool(MAX_FRAMES_IN_FLIGHT);
 }
 
 void Carrot::Pipeline::createGraphicsTemplate() {
@@ -487,7 +487,7 @@ void Carrot::Pipeline::bindOnlyDescriptorSets(const Carrot::Render::Context& ren
     }
     std::vector<vk::DescriptorSet> setsToBind { description.setCount, VK_NULL_HANDLE };
     for(std::uint32_t i = 0; i < setsToBind.size(); i++) {
-        setsToBind[i] = getDescriptorSets(renderContext, i)[renderContext.swapchainIndex];
+        setsToBind[i] = getDescriptorSets(renderContext, i)[renderContext.frameIndex];
     }
 
     commands.bindDescriptorSets(bindPoint, *layout, 0, setsToBind, dynamicOffsets);
@@ -589,9 +589,9 @@ void Carrot::Pipeline::allocateDescriptorSets() {
 
 std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(std::uint32_t setID) {
     if(!descriptorPool) {
-        return std::vector<vk::DescriptorSet>{driver.getSwapchainImageCount(), vk::DescriptorSet{}};
+        return std::vector<vk::DescriptorSet>{MAX_FRAMES_IN_FLIGHT, vk::DescriptorSet{}};
     }
-    std::vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), getDescriptorSetLayout(setID)};
+    std::vector<vk::DescriptorSetLayout> layouts{MAX_FRAMES_IN_FLIGHT, getDescriptorSetLayout(setID)};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
@@ -599,7 +599,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
     };
     std::vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
 
-    for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+    for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         DebugNameable::nameSingle<vk::DescriptorSet>(Carrot::sprintf("Autofill descriptor pipeline %s, set %d, frame %llu", description.originatingResource.getName().c_str(), setID, i), sets[i]);
     }
 
@@ -609,14 +609,14 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
     }
 
     // allocate default values
-    std::vector<vk::WriteDescriptorSet> writes{bindings.size() * driver.getSwapchainImageCount()};
-    std::vector<vk::DescriptorBufferInfo> buffers{bindings.size() * driver.getSwapchainImageCount()};
-    std::vector<vk::DescriptorImageInfo> samplers{bindings.size() * driver.getSwapchainImageCount()};
-    std::vector<vk::DescriptorImageInfo> images{bindings.size() * driver.getSwapchainImageCount()};
+    std::vector<vk::WriteDescriptorSet> writes{bindings.size() * MAX_FRAMES_IN_FLIGHT};
+    std::vector<vk::DescriptorBufferInfo> buffers{bindings.size() * MAX_FRAMES_IN_FLIGHT};
+    std::vector<vk::DescriptorImageInfo> samplers{bindings.size() * MAX_FRAMES_IN_FLIGHT};
+    std::vector<vk::DescriptorImageInfo> images{bindings.size() * MAX_FRAMES_IN_FLIGHT};
 
     std::uint32_t writeIndex = 0;
     for(const auto& binding : bindings) {
-        for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+        for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             auto& write = writes[writeIndex];
             bool wrote = false;
 
@@ -671,31 +671,31 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
 
         case PipelineDescription::DescriptorSet::Type::Camera:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.pViewport->getCameraDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, renderContext.pViewport->getCameraDescriptorSet(renderContext) };
             return sets;
         }
 
         case PipelineDescription::DescriptorSet::Type::Lights:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getLighting().getDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, GetRenderer().getLighting().getDescriptorSet(renderContext) };
             return sets;
         }
 
         case PipelineDescription::DescriptorSet::Type::Debug:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getDebugDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, GetRenderer().getDebugDescriptorSet(renderContext) };
             return sets;
         }
 
         case PipelineDescription::DescriptorSet::Type::Viewport:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.pViewport->getViewportDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, renderContext.pViewport->getViewportDescriptorSet(renderContext) };
             return sets;
         }
 
         case PipelineDescription::DescriptorSet::Type::PerDraw:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.renderer.getPerDrawDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, renderContext.renderer.getPerDrawDescriptorSet(renderContext) };
             return sets;
         }
 

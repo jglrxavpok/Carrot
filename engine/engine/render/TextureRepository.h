@@ -24,13 +24,13 @@ namespace Carrot::Render {
         ResourceRepository(VulkanDriver& driver): driver(driver) {}
 
     public:
-        Texture& createTexture(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
-        Texture& getTexture(const FrameResource& texture, size_t swapchainIndex);
+        Texture& createTexture(const FrameResource& texture, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+        Texture& getTexture(const FrameResource& texture, size_t frameIndex);
         Texture& getSwapchainTexture(const FrameResource& texture, size_t swapchainIndex);
-        Texture& getTexture(const Carrot::UUID& id, size_t swapchainIndex);
-        Texture::Ref getTextureRef(const FrameResource& texture, size_t swapchainIndex);
-        Texture::Ref getTextureRef(const Carrot::UUID& id, size_t swapchainIndex);
-        Texture& getOrCreateTexture(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+        Texture& getTexture(const Carrot::UUID& id, size_t frameIndex);
+        Texture::Ref getTextureRef(const FrameResource& texture, size_t frameIndex);
+        Texture::Ref getTextureRef(const Carrot::UUID& id, size_t frameIndex);
+        Texture& getOrCreateTexture(const FrameResource& id, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         vk::ImageUsageFlags& getTextureUsages(const Carrot::UUID& id);
 
         BufferChain& createBuffer(const FrameResource& texture, vk::BufferUsageFlags usages);

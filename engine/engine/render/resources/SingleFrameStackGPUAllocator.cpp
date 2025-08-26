@@ -40,6 +40,10 @@ namespace Carrot {
         return stackPointers[frameIndex];
     }
 
+    i32 SingleFrameStackGPUAllocator::RingBuffer::getBufferCount() const {
+        return stackPointers.size();
+    }
+
     // --
 
     SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize heapSize):
@@ -53,7 +57,7 @@ namespace Carrot {
                             | vk::BufferUsageFlagBits::eTransferSrc
 
                             , vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
-        buffers.resize(GetEngine().getSwapchainImageCount());
+        buffers.resize(MAX_FRAMES_IN_FLIGHT);
     }
 
     void SingleFrameStackGPUAllocator::newFrame(std::size_t frameIndex) {
@@ -79,7 +83,7 @@ namespace Carrot {
 
     vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeAllFrames() const {
         vk::DeviceSize sum = 0;
-        for (std::size_t frameIndex = 0; frameIndex < GetEngine().getSwapchainImageCount(); ++frameIndex) {
+        for (std::size_t frameIndex = 0; frameIndex < buffers.getBufferCount(); ++frameIndex) {
             sum += buffers.getAllocatedSize(frameIndex);
         }
         return sum;

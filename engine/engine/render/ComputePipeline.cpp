@@ -125,20 +125,20 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     if(storageBufferCount != 0) {
         descriptorSizes.emplace_back(vk::DescriptorPoolSize {
                 .type = vk::DescriptorType::eStorageBuffer,
-                .descriptorCount = storageBufferCount*engine.getSwapchainImageCount(),
+                .descriptorCount = storageBufferCount*MAX_FRAMES_IN_FLIGHT,
         });
     }
 
     if(storageBufferDynamicCount != 0) {
         descriptorSizes.emplace_back(vk::DescriptorPoolSize {
                 .type = vk::DescriptorType::eStorageBufferDynamic,
-                .descriptorCount = storageBufferDynamicCount*engine.getSwapchainImageCount(),
+                .descriptorCount = storageBufferDynamicCount*MAX_FRAMES_IN_FLIGHT,
         });
     }
 
     descriptorSets.clear();
     descriptorPool = std::move(engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-            .maxSets = engine.getSwapchainImageCount(),
+            .maxSets = MAX_FRAMES_IN_FLIGHT,
             .poolSizeCount = static_cast<uint32_t>(descriptorSizes.size()),
             .pPoolSizes = descriptorSizes.data(),
     }));

@@ -33,8 +33,9 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
-    auto renderContext = GetEngine().newRenderContext(imageIndex, GetEngine().getMainViewport());
-    auto set = pipeline.getDescriptorSets(renderContext, 0)[imageIndex];
+    const u8 frameIndex = 0;
+    auto renderContext = GetEngine().newRenderContext(frameIndex, imageIndex, GetEngine().getMainViewport());
+    auto set = pipeline.getDescriptorSets(renderContext, 0)[frameIndex];
     vk::WriteDescriptorSet writeLoadingImage {
             .dstSet = set,
             .dstBinding = 0,
@@ -59,7 +60,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     };
     cmds.begin(beginInfo);
 
-    PrepareVulkanTracy(engine.tracyCtx[imageIndex], cmds);
+    PrepareVulkanTracy(engine.tracyCtx[frameIndex], cmds);
 
     auto quad = SingleMesh(
                      std::vector<ScreenSpaceVertex> {
@@ -101,7 +102,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
         RenderingPipelineCreateInfo createInfo {
                 .colorAttachments = {swapchainTexture->getImage().getFormat()}
         };
-    pipeline.bind(createInfo, engine.newRenderContext(0, engine.getMainViewport()), cmds);
+    pipeline.bind(createInfo, engine.newRenderContext(frameIndex, imageIndex, engine.getMainViewport()), cmds);
     quad.bind(cmds);
     quad.draw(cmds);
 

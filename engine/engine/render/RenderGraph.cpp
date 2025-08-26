@@ -356,7 +356,7 @@ namespace Carrot::Render {
             if(ImGui::Begin("Resource", &keepOpen)) {
                 ImGui::Text("%s", clickedResourceForMain->name.c_str());
                 if(clickedResourceForMain->type != ResourceType::StorageBuffer) {
-                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.swapchainIndex);
+                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.frameIndex);
                     ImGui::Text("%s (%s) (%u x %u x %u)", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                 } else {
                     auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.frameCount);
@@ -383,7 +383,7 @@ namespace Carrot::Render {
         ImGui::BeginTooltip();
         ImGui::Text("%s", hoveredResourceForMain->name.c_str());
         if(hoveredResourceForMain->type != ResourceType::StorageBuffer) {
-            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.swapchainIndex);
+            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.frameIndex);
             ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
         } else {
             auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.frameCount);
@@ -470,7 +470,7 @@ namespace Carrot::Render {
 
             pipeline->bind(RenderingPipelineCreateInfo{}, context, cmds, vk::PipelineBindPoint::eCompute);
 
-            auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
+            auto& inputImage = getTexture(sourceResource, context.frameIndex);
 
             const vk::ImageLayout targetLayout = vk::ImageLayout::eGeneral;
             const bool isDepth = inputImage.getImage().getFormat() == context.renderer.getVulkanDriver().getDepthFormat();

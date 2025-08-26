@@ -77,18 +77,14 @@ public:
     TracyVulkanScope varname( context, commandBuffer, name, &TracyConcat(__tracy_gpu_source_location,__LINE__));
 
 #define TracyVulkanZone(context, commandBuffer, name) TracyVulkanNamedZone(context, commandBuffer, name, ____tracy_vulkan_zone)
-#define TracyVulkanZone2(engine, commandBuffer, name) TracyVulkanNamedZone(*((engine).tracyCtx[(engine).getSwapchainImageIndexRightNow()]), commandBuffer, name, ____tracy_vulkan_zone)
 #define PrepareVulkanTracy(context, commandBuffer) context->prepareForTracing(commandBuffer)
-#define PrepareVulkanTracy2(engine, commandBuffer) ((engine).tracyCtx[(engine).getSwapchainImageIndexRightNow()])->prepareForTracing(commandBuffer)
 #define TracyVulkanCollect(context) context->collect()
 
 #else
 
 #define TracyVulkanZone(context, commandBuffer, name)
-#define TracyVulkanZone2(engine, commandBuffer, name)
 #define TracyVulkanNamedZone(context, commandBuffer, name)
 #define PrepareVulkanTracy(context, commandBuffer)
-#define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
 
 #endif

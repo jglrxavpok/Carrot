@@ -151,7 +151,7 @@ namespace Carrot {
 
         const vk::Extent2D& getFinalRenderSize(Window& window) const;
 
-        size_t getSwapchainImageCount() const;
+        size_t getSwapchainImagesCount() const;
 
         vk::Format getSwapchainImageFormat() const;
 

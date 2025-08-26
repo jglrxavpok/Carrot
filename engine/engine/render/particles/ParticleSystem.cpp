@@ -35,7 +35,7 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::Renderabl
     renderingPipeline = blueprint.buildRenderingPipeline(engine);
     updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
 
-    onSwapchainImageCountChange(engine.getSwapchainImageCount());
+    onSwapchainImageCountChange(MAX_FRAMES_IN_FLIGHT);
 
     statistics = statisticsBuffer.map<ParticleStatistics>();
 }
@@ -166,8 +166,8 @@ std::shared_ptr<Carrot::ParticleEmitter> Carrot::ParticleSystem::createEmitter()
         emitterDataGraveyard.emplaceBack(std::move(emitterData));
         emitterData = std::move(newBuffer);
 
-        for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
-            auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, GetEngine().getMainViewport()), 1)[i];
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, 0, GetEngine().getMainViewport()), 1)[i];
 
             const vk::DescriptorBufferInfo emitterBufferInfo = emitterData.view.asBufferInfo();
             vk::WriteDescriptorSet writeEmitters = {
@@ -224,14 +224,14 @@ void Carrot::ParticleSystem::reload() {
     blueprint.clearHotReloadFlag();
     usedParticleCount = 0;
 
-    onSwapchainImageCountChange(engine.getSwapchainImageCount()); // writes binding sets for the new pipelines
+    onSwapchainImageCountChange(MAX_FRAMES_IN_FLIGHT); // writes binding sets for the new pipelines
 }
 
 
 void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
     renderingPipeline->onSwapchainImageCountChange(newCount);
-    for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
-        auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, GetEngine().getMainViewport()), 1)[i];
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, 0, GetEngine().getMainViewport()), 1)[i];
 
         const vk::DescriptorBufferInfo particleBufferInfo = particleBuffer.asBufferInfo();
         vk::WriteDescriptorSet writeParticles = {

@@ -297,6 +297,7 @@ namespace Carrot::Render {
         std::unordered_map<std::uint32_t, GroupRTData> groupRTDataPerModel; // [clusterModel->getSlot()][groupID - firstGroupInstanceIndex]
 
         bool requireClusterUpdate = true;
+        bool isFirstFrame = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
         std::shared_ptr<Carrot::BufferAllocation> instanceDataGPUVisibleArray;
 

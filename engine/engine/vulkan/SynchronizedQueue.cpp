@@ -111,8 +111,6 @@ namespace Carrot::Vulkan {
             GetVulkanDriver().onDeviceLost();
         }
         }
-        WaitDeviceIdle(); // TODO GMTK replicate RADV_DEBUG=hang which does not crash :c
-
     }
 
     void SynchronizedQueue::presentKHR(const vk::PresentInfoKHR& info) {

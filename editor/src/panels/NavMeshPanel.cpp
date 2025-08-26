@@ -119,7 +119,7 @@ namespace Peeler {
         ImGui::TextUnformatted(navMeshBuilder.getDebugStep().c_str());
 
         if(!navMeshBuilder.isRunning()) {
-            navMeshBuilder.debugDraw(GetEngine().newRenderContext(renderContext.swapchainIndex, app.gameViewport), debugDraw);
+            navMeshBuilder.debugDraw(GetEngine().newRenderContext(renderContext.frameIndex, renderContext.swapchainImageIndex, app.gameViewport), debugDraw);
 
             if(navMeshBuilder.getResult().hasTriangles()) {
                 if(ImGui::Button("Save")) {

@@ -213,8 +213,8 @@ void Carrot::Engine::init() {
                                                              },
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                                  ZoneScopedN("CPU RenderGraph present");
-                                                                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
-                                                                 auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainIndex);
+                                                                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameIndex);
+                                                                 auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainImageIndex);
                                                                  frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
 
                                                                  renderer.recordImGuiPass(cmds, pass, frame);
@@ -724,7 +724,7 @@ Carrot::Engine::~Engine() {
         optLPPAgent.reset();
     }
 #endif
-/*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+/*    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         TracyVkDestroy(tracyCtx[i]);
     }*/
 }
@@ -737,7 +737,7 @@ std::unique_ptr<Carrot::CarrotGame>& Carrot::Engine::getGame() {
 void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex, const Render::Context& mainRenderContext) {
     ZoneScopedN("Record main command buffer");
     const std::uint32_t frameIndex = _frameIndex; // index of image in frames in flight, 0 or 1 currently (MAX_FRAMES_IN_FLIGHT)
-    const std::uint32_t swapchainIndex = mainRenderContext.swapchainIndex; // index of image in swapchain, on my machine, 0 to 2 (inclusive)
+    const std::uint32_t swapchainIndex = mainRenderContext.swapchainImageIndex; // index of image in swapchain, on my machine, 0 to 2 (inclusive)
     // main command buffer
     vk::CommandBufferBeginInfo beginInfo{
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -757,18 +757,18 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "begin command buffer");
         }
 
-        GPUZone(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex], "Main command buffer");
+        GPUZone(tracyCtx[frameIndex], mainCommandBuffers[frameIndex], "Main command buffer");
 
         if(config.runInVR) {
             {
                 ZoneScopedN("VR Left eye render");
                 GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "VR Left eye render");
-                leftEyeGlobalFrameGraph->execute(newRenderContext(swapchainIndex, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[frameIndex]);
+                leftEyeGlobalFrameGraph->execute(newRenderContext(frameIndex, swapchainIndex, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[frameIndex]);
             }
             {
                 ZoneScopedN("VR Right eye render");
                 GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "VR Right eye render");
-                rightEyeGlobalFrameGraph->execute(newRenderContext(swapchainIndex, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[frameIndex]);
+                rightEyeGlobalFrameGraph->execute(newRenderContext(frameIndex, swapchainIndex, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[frameIndex]);
             }
         }
 
@@ -797,7 +797,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             gpuTimeHistory.push(time);
         }
 
-        TracyVkCollect(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex]);
+        TracyVkCollect(tracyCtx[frameIndex], mainCommandBuffers[frameIndex]);
     }
 
     mainCommandBuffers[frameIndex].end();
@@ -905,7 +905,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                     continue;
                 }
                 swapchains.emplace_back(window.getSwapchain());
-                swapchainIndices.emplace_back((std::uint32_t)((swapchainIndex + window.getSwapchainIndexOffset()) % getSwapchainImageCount()));
+                swapchainIndices.emplace_back((std::uint32_t)((swapchainIndex + window.getSwapchainIndexOffset()) % getSwapchainImagesCount()));
             }
 
             vk::PresentInfoKHR presentInfo {
@@ -942,7 +942,7 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     vk::CommandBufferAllocateInfo allocInfo{
             .commandPool = getGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
+            .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
     };
 
     this->mainCommandBuffers = this->getLogicalDevice().allocateCommandBuffers(allocInfo);
@@ -1017,7 +1017,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
     }
 
-    Carrot::Render::Context mainRenderContext = newRenderContext(imageIndex, getMainViewport());
+    Carrot::Render::Context mainRenderContext = newRenderContext(static_cast<u8>(currentFrame), imageIndex, getMainViewport());
     vkDriver.newFrame(mainRenderContext);
 
     {
@@ -1039,14 +1039,14 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ZoneScoped;
             std::string profilingMarker = Carrot::sprintf("Viewport %x", &v);
             ZoneText(profilingMarker.c_str(), profilingMarker.size());
-            Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
+            Carrot::Render::Context renderContext = newRenderContext(currentFrame, imageIndex, v);
             {
                 ZoneScopedN("game->onFrame");
                 if(config.runInVR) {
-                    game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::LeftEye));
-                    game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::RightEye));
+                    game->setupCamera(newRenderContext(currentFrame, imageIndex, v, Carrot::Render::Eye::LeftEye));
+                    game->setupCamera(newRenderContext(currentFrame, imageIndex, v, Carrot::Render::Eye::RightEye));
                     v.getCamera().updateFrustum();
-                    game->onFrame(newRenderContext(imageIndex, v));
+                    game->onFrame(renderContext);
                 } else {
                     game->setupCamera(renderContext);
                     v.getCamera().updateFrustum();
@@ -1228,13 +1228,13 @@ void Carrot::Engine::recreateSwapchain(Window& window) {
 
     WaitDeviceIdle();
 
-    std::size_t previousImageCount = getSwapchainImageCount();
+    std::size_t previousImageCount = getSwapchainImagesCount();
     window.cleanupSwapChain();
     window.createSwapChain();
 
     // TODO: only recreate if necessary
-    if(previousImageCount != vkDriver.getSwapchainImageCount()) {
-        onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
+    if(previousImageCount != vkDriver.getSwapchainImagesCount()) {
+        onSwapchainImageCountChange(vkDriver.getSwapchainImagesCount());
     }
     vk::Extent2D swapchainImageSize = vkDriver.getFinalRenderSize(window);
     onSwapchainSizeChange(window, swapchainImageSize.width, swapchainImageSize.height);
@@ -1288,8 +1288,8 @@ std::set<std::uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
     return vkDriver.createGraphicsAndTransferFamiliesSet();
 }
 
-std::uint32_t Carrot::Engine::getSwapchainImageCount() {
-    return vkDriver.getSwapchainImageCount();
+std::uint32_t Carrot::Engine::getSwapchainImagesCount() {
+    return vkDriver.getSwapchainImagesCount();
 }
 
 void Carrot::Engine::createCameras() {
@@ -1418,10 +1418,10 @@ void Carrot::Engine::requestShutdown() {
 }
 
 void Carrot::Engine::createTracyContexts() {
-    tracyCtx = std::vector<TracyVkCtx>{ getSwapchainImageCount(), nullptr };
+    tracyCtx = std::vector<TracyVkCtx>{ MAX_FRAMES_IN_FLIGHT, nullptr };
 
 
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         tracyCtx[i] = createTracyContext(Carrot::sprintf("Main swapchainIndex %d", i));
     }
 }
@@ -1644,14 +1644,14 @@ void Carrot::Engine::onSwapchainSizeChange(Window& window, int newWidth, int new
     game->onSwapchainSizeChange(window, newWidth, newHeight);
 }
 
-Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex, Carrot::Render::Viewport& viewport, Carrot::Render::Eye eye) {
+Carrot::Render::Context Carrot::Engine::newRenderContext(u8 frameIndex, std::size_t swapchainFrameIndex, Carrot::Render::Viewport& viewport, Carrot::Render::Eye eye) {
     return Carrot::Render::Context {
             .renderer = renderer,
             .pViewport = &viewport,
             .eye = eye,
             .frameCount = frames,
-            .swapchainIndex = swapchainFrameIndex,
-            .lastSwapchainIndex = lastFrameIndex,
+            .frameIndex = frameIndex,
+            .swapchainImageIndex = swapchainFrameIndex,
     };
 }
 

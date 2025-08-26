@@ -203,7 +203,7 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
     vk::PhysicalDeviceAccelerationStructurePropertiesKHR properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceAccelerationStructurePropertiesKHR>().get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
     scratchBufferAlignment = properties.minAccelerationStructureScratchOffsetAlignment;
 
-    onSwapchainImageCountChange(GetEngine().getSwapchainImageCount());
+    onSwapchainImageCountChange(MAX_FRAMES_IN_FLIGHT);
 
     identityMatrixForBLASes = GetResourceAllocator().allocateDeviceBuffer(sizeof(vk::TransformMatrixKHR), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
     vk::TransformMatrixKHR identityValue;
@@ -226,16 +226,16 @@ void Carrot::ASBuilder::createBuildCommandBuffers() {
     tlasBuildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
             .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = GetEngine().getSwapchainImageCount(),
+            .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
     });
 
-    tlasBuildTracyCtx.resize(GetEngine().getSwapchainImageCount());
+    tlasBuildTracyCtx.resize(MAX_FRAMES_IN_FLIGHT);
     for(std::size_t i = 0; i < tlasBuildTracyCtx.size(); i++) {
         tlasBuildTracyCtx[i] = GetEngine().createTracyContext(Carrot::sprintf("TLAS build %llu", i));
     }
 
-    blasBuildTracyContextes.resize(GetEngine().getSwapchainImageCount());
-    for(std::size_t imageIndex = 0; imageIndex < GetEngine().getSwapchainImageCount(); imageIndex++) {
+    blasBuildTracyContextes.resize(MAX_FRAMES_IN_FLIGHT);
+    for(std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
         for(std::size_t i = 0; i < BLASBuildBucketCount; i++) {
             blasBuildTracyContextes[imageIndex][i] = GetEngine().createTracyContext(Carrot::sprintf("BLAS bucket %d", i));
         }
@@ -243,7 +243,7 @@ void Carrot::ASBuilder::createBuildCommandBuffers() {
 }
 
 void Carrot::ASBuilder::createQueryPools() {
-    queryPools.resize(GetEngine().getSwapchainImageCount());
+    queryPools.resize(MAX_FRAMES_IN_FLIGHT);
 }
 
 void Carrot::ASBuilder::createGraveyard() {
@@ -291,7 +291,7 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::shar
 }
 
 void Carrot::ASBuilder::createSemaphores() {
-    std::size_t imageCount = GetEngine().getSwapchainImageCount();
+    std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
     preCompactBLASSemaphore.resize(imageCount);
     blasBuildSemaphore.resize(imageCount);
     tlasBuildSemaphore.resize(imageCount);
@@ -360,7 +360,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     } else {
         // ensure we still get Tracy's profiling data even when not building BLASes
         GetEngine().getVulkanDriver().performSingleTimeComputeCommands([&](vk::CommandBuffer& commands) {
-            for(auto& ctx : blasBuildTracyContextes[renderContext.swapchainIndex]) {
+            for(auto& ctx : blasBuildTracyContextes[renderContext.frameIndex]) {
                 TracyVkCollect(ctx, commands);
             }
         }, false /* don't wait, just go */);
@@ -397,27 +397,27 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     if(geometriesBuffer) {
-        geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer;
+        geometriesBufferPerFrame[renderContext.frameIndex] = geometriesBuffer;
     }
 
     if(instancesBuffer) {
-        instancesBufferPerFrame[renderContext.swapchainIndex] = instancesBuffer;
+        instancesBufferPerFrame[renderContext.frameIndex] = instancesBuffer;
     }
 
     if(rtInstancesBuffer) {
-        rtInstancesBufferPerFrame[renderContext.swapchainIndex] = rtInstancesBuffer;
+        rtInstancesBufferPerFrame[renderContext.frameIndex] = rtInstancesBuffer;
     }
 
     if(rtInstancesScratchBuffer) {
-        rtInstancesScratchBufferPerFrame[renderContext.swapchainIndex] = rtInstancesScratchBuffer;
+        rtInstancesScratchBufferPerFrame[renderContext.frameIndex] = rtInstancesScratchBuffer;
     }
 
-    tlasBuildTimelineSemaphoreWaitValuesForRenderThread[renderContext.swapchainIndex] = tlasBuildTimelineSemaphoreWaitValue;
-    tlasPerFrame[renderContext.swapchainIndex] = currentTLAS;
+    tlasBuildTimelineSemaphoreWaitValuesForRenderThread[renderContext.frameIndex] = tlasBuildTimelineSemaphoreWaitValue;
+    tlasPerFrame[renderContext.frameIndex] = currentTLAS;
 }
 
 void Carrot::ASBuilder::resetBlasBuildCommands(const Carrot::Render::Context& renderContext) {
-    auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.swapchainIndex];
+    auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.frameIndex];
     if(!perThreadCommandPools) {
         perThreadCommandPools = std::make_unique<Carrot::Async::ParallelMap<std::thread::id, PerThreadCommandObjects>>();
     }
@@ -427,7 +427,7 @@ void Carrot::ASBuilder::resetBlasBuildCommands(const Carrot::Render::Context& re
 }
 
 void Carrot::ASBuilder::preallocateBlasBuildCommandBuffers(const std::thread::id& threadID) {
-    for(std::size_t imageIndex = 0; imageIndex < GetEngine().getSwapchainImageCount(); imageIndex++) {
+    for(std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
         auto& perThreadCommandPools = blasBuildCommandObjects[imageIndex];
         if(!perThreadCommandPools) {
             perThreadCommandPools = std::make_unique<Carrot::Async::ParallelMap<std::thread::id, PerThreadCommandObjects>>();
@@ -442,7 +442,7 @@ void Carrot::ASBuilder::preallocateBlasBuildCommandBuffers(const std::thread::id
 }
 
 vk::CommandBuffer Carrot::ASBuilder::getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext) {
-    auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.swapchainIndex];
+    auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.frameIndex];
     std::thread::id currentThreadID = std::this_thread::get_id();
     PerThreadCommandObjects& objects = perThreadCommandPools->getOrCompute(currentThreadID, [&]() {
         PerThreadCommandObjects result;
@@ -513,13 +513,13 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         perBlas[blasIndex].bucketIndex = (blasIndex / BLASBuildBucketCount) % BLASBuildBucketCount;
     }
 
-    vk::UniqueQueryPool& queryPool = queryPools[renderContext.swapchainIndex];
+    vk::UniqueQueryPool& queryPool = queryPools[renderContext.frameIndex];
 
     std::atomic_bool hasNewGeometry{ false };
 
     for (std::size_t bucketIndex = 0; bucketIndex < BLASBuildBucketCount; bucketIndex++) {
         auto& bucket = buckets[bucketIndex];
-        bucket.tracyContext = blasBuildTracyContextes[renderContext.swapchainIndex][bucketIndex];
+        bucket.tracyContext = blasBuildTracyContextes[renderContext.frameIndex][bucketIndex];
         bucket.buildInfos.setGrowthFactor(2);
         bucket.pBuildRanges.setGrowthFactor(2);
         bucket.prebuiltContents.setGrowthFactor(2);
@@ -962,19 +962,19 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         return;
     }
 
-    vk::CommandBuffer& buildCommand = *tlasBuildCommands[renderContext.swapchainIndex];
+    vk::CommandBuffer& buildCommand = *tlasBuildCommands[renderContext.frameIndex];
 
     buildCommand.reset();
     buildCommand.begin(vk::CommandBufferBeginInfo {
     });
     std::uint64_t tlasValueToWait = 0;
     {
-        GPUZone(tlasBuildTracyCtx[renderContext.swapchainIndex], buildCommand, "TLAS build or update");
+        GPUZone(tlasBuildTracyCtx[renderContext.frameIndex], buildCommand, "TLAS build or update");
 
         GetVulkanDriver().setFormattedMarker(buildCommand, "Start of command buffer for TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
         // upload instances to the device
 
-        lastFrameIndexForTLAS = renderContext.swapchainIndex;
+        lastFrameIndexForTLAS = renderContext.frameIndex;
         vk::DeviceAddress instanceBufferAddress;
         /*if(!rtInstancesBuffer || lastInstanceCount < vkInstances.size()) */{
             ZoneScopedN("Create RT instances buffer");
@@ -1069,7 +1069,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         buildCommand.buildAccelerationStructuresKHR(buildInfo, &buildOffsetInfo);
         GetVulkanDriver().setFormattedMarker(buildCommand, "After TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
 
-        TracyVkCollect(tlasBuildTracyCtx[renderContext.swapchainIndex], buildCommand);
+        TracyVkCollect(tlasBuildTracyCtx[renderContext.frameIndex], buildCommand);
     }
     buildCommand.end();
 
@@ -1126,7 +1126,7 @@ void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
 
 Carrot::AccelerationStructure* Carrot::ASBuilder::getTopLevelAS(const Carrot::Render::Context& renderContext) {
     verify(GetCapabilities().supportsRaytracing, "Raytracing is not supported");
-    return tlasPerFrame[renderContext.swapchainIndex].get();
+    return tlasPerFrame[renderContext.frameIndex].get();
 }
 
 void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
@@ -1167,11 +1167,11 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
     if(!geometriesBuffer) {
         return Carrot::BufferView{};
     }
-    return geometriesBufferPerFrame[renderContext.swapchainIndex]->view;
+    return geometriesBufferPerFrame[renderContext.frameIndex]->view;
 }
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
-    return instancesBufferPerFrame[renderContext.swapchainIndex]->view;
+    return instancesBufferPerFrame[renderContext.frameIndex]->view;
 }
 
 vk::Semaphore Carrot::ASBuilder::getTlasBuildTimelineSemaphore() const {

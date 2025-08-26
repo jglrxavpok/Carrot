@@ -12,7 +12,7 @@
 namespace Carrot::Render {
     DebugRenderer::DebugRenderer(VulkanRenderer& renderer): renderer(renderer) {
         lines.setGrowthFactor(1.5f);
-        meshes.resize(renderer.getEngine().getSwapchainImageCount());
+        meshes.resize(MAX_FRAMES_IN_FLIGHT);
     }
 
     void DebugRenderer::drawLine(const glm::vec3& a, const glm::vec3& b, const glm::vec4& color) {
@@ -37,7 +37,7 @@ namespace Carrot::Render {
             lineDrawPipeline = renderer.getOrCreatePipeline("gBufferLines");
         }
 
-        const u64 frameMod = renderContext.frameCount % meshes.size();
+        const u64 frameMod = renderContext.frameIndex;
 
         std::vector<Vertex> vertices;
         std::vector<u32> indices;

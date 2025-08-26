@@ -24,8 +24,10 @@ namespace Carrot::Render {
         Viewport* pViewport = nullptr;
         Eye eye = Eye::NoVR;
         size_t frameCount = -1;
-        size_t swapchainIndex = -1;
-        size_t lastSwapchainIndex = -1;
+        u8 frameIndex = -1; // TODO: only use frameCount?
+        size_t swapchainImageIndex = -1;
+
+        u8 getPreviousFrameIndex() const;
 
         void copyFrom(const Context& other);
 
@@ -36,10 +38,6 @@ namespace Carrot::Render {
         const Carrot::Camera& getCamera() const;
 
         vk::DescriptorSet getCameraDescriptorSet() const;
-
-        /// Returns a copy of this RenderContext, with swapchainIndex = lastSwapchainIndex. Calling it again on the
-        /// resulting object won't have any effect (outside of creating a new object)
-        Context lastFrame() const;
 
         void renderWireframeSphere(const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());

@@ -86,7 +86,7 @@ namespace Carrot::Render {
     }
 
     ClusterManager::ClusterManager(VulkanRenderer& renderer): renderer(renderer) {
-        onSwapchainImageCountChange(renderer.getSwapchainImageCount());
+        onSwapchainImageCountChange(MAX_FRAMES_IN_FLIGHT); // TODO: rename
         templateClusterGroups.setGrowthFactor(2);
     }
 
@@ -334,7 +334,7 @@ namespace Carrot::Render {
     }
 
     Carrot::BufferView ClusterManager::getClusters(const Carrot::Render::Context& renderContext) {
-        auto& pAlloc = clusterDataPerFrame[renderContext.swapchainIndex];
+        auto& pAlloc = clusterDataPerFrame[renderContext.frameIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
 
@@ -346,12 +346,12 @@ namespace Carrot::Render {
         if(iter->second.instancesPerFrame.empty()) {
             return Carrot::BufferView{};
         }
-        auto& pAlloc = iter->second.instancesPerFrame[renderContext.swapchainIndex];
+        auto& pAlloc = iter->second.instancesPerFrame[renderContext.frameIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
 
     Carrot::BufferView ClusterManager::getClusterInstanceData(const Carrot::Render::Context& renderContext) {
-        auto& pAlloc = instanceDataPerFrame[renderContext.swapchainIndex];
+        auto& pAlloc = instanceDataPerFrame[renderContext.frameIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
 
@@ -368,8 +368,10 @@ namespace Carrot::Render {
         }
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
-            if(mainRenderContext.lastSwapchainIndex != static_cast<std::size_t>(-1)) {
-                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.swapchainIndex); // TODO: which frame index should be used?
+            if(isFirstFrame) {
+                isFirstFrame = false; // TODO: per viewport?
+            } else {
+                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.frameIndex); // TODO: which frame index should be used?
             }
         }
     }
@@ -418,13 +420,13 @@ namespace Carrot::Render {
 
         auto& statsCPUBufferPerFrame = perViewport[renderContext.pViewport].statsCPUBuffersPerFrame;
         if(statsCPUBufferPerFrame.empty()) {
-            statsCPUBufferPerFrame.resize(GetEngine().getSwapchainImageCount());
+            statsCPUBufferPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
 
             for(std::size_t i = 0; i< statsCPUBufferPerFrame.size(); i++) {
                 statsCPUBufferPerFrame[i] = GetResourceAllocator().allocateStagingBuffer(sizeof(StatsBuffer));
             }
         }
-        auto& statsCPUBuffer = statsCPUBufferPerFrame[renderContext.swapchainIndex];
+        auto& statsCPUBuffer = statsCPUBufferPerFrame[renderContext.frameIndex];
 
         StatsBuffer* pStats = statsCPUBuffer.view.map<StatsBuffer>();
         triangleCount += pStats->totalTriangleCount;
@@ -510,18 +512,18 @@ namespace Carrot::Render {
             activeGroupOffsetsBufferView.directUpload(std::span<const std::uint64_t>(activeGroupOffsets));
         }
 
-        clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        clusterDataPerFrame[renderContext.frameIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         auto& instancesPerFrame = perViewport[renderContext.pViewport].instancesPerFrame;
-        if(instancesPerFrame.size() != GetEngine().getSwapchainImageCount()) {
-            instancesPerFrame.resize(GetEngine().getSwapchainImageCount());
+        if(instancesPerFrame.size() != MAX_FRAMES_IN_FLIGHT) {
+            instancesPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
         }
-        instancesPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
-        instanceDataPerFrame[renderContext.swapchainIndex] = instanceDataGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        instancesPerFrame[renderContext.frameIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        instanceDataPerFrame[renderContext.frameIndex] = instanceDataGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
 
-        const Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.swapchainIndex]->view;
-        const Carrot::BufferView instanceRefs = instancesPerFrame[renderContext.swapchainIndex]->view;
-        const Carrot::BufferView instanceDataRefs = instanceDataPerFrame[renderContext.swapchainIndex]->view;
-        const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.swapchainIndex)->getWholeView();
+        const Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.frameIndex]->view;
+        const Carrot::BufferView instanceRefs = instancesPerFrame[renderContext.frameIndex]->view;
+        const Carrot::BufferView instanceDataRefs = instanceDataPerFrame[renderContext.frameIndex]->view;
+        const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.frameIndex)->getWholeView();
         if(clusterRefs) {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
 
@@ -632,7 +634,7 @@ namespace Carrot::Render {
     Memory::OptionalRef<Carrot::Buffer> ClusterManager::getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex) {
         auto& readbackBuffersPerFrame = perViewport[pViewport].readbackBuffersPerFrame;
         if(readbackBuffersPerFrame.empty()) {
-            readbackBuffersPerFrame.resize(GetEngine().getSwapchainImageCount());
+            readbackBuffersPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
         }
         auto& gpuInstances = perViewport[pViewport].gpuClusterInstances;
         UniquePtr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];

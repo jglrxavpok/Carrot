@@ -20,41 +20,42 @@ namespace Carrot::Render {
         return *(resource.pOriginWindow->getSwapchainTexture(swapchainIndex));
     }
 
-    Texture& ResourceRepository::getTexture(const FrameResource& texture, size_t swapchainIndex) {
-        return *getTextureRef(texture, swapchainIndex);
+    Texture& ResourceRepository::getTexture(const FrameResource& texture, size_t frameIndex) {
+        return *getTextureRef(texture, frameIndex);
     }
 
-    Texture& ResourceRepository::getTexture(const Carrot::UUID& id, size_t swapchainIndex) {
-        return *getTextureRef(id, swapchainIndex);
+    Texture& ResourceRepository::getTexture(const Carrot::UUID& id, size_t frameIndex) {
+        return *getTextureRef(id, frameIndex);
     }
 
-    Texture::Ref ResourceRepository::getTextureRef(const FrameResource& texture, size_t swapchainIndex) {
+    Texture::Ref ResourceRepository::getTextureRef(const FrameResource& texture, size_t frameIndex) {
         verify(texture.imageOrigin != Render::ImageOrigin::SurfaceSwapchain, "Not allowed for swapchain images");
-        return getTextureRef(texture.rootID, swapchainIndex);
+        return getTextureRef(texture.rootID, frameIndex);
     }
 
-    Texture::Ref ResourceRepository::getTextureRef(const Carrot::UUID& id, size_t swapchainIndex) {
-        auto it = textures[swapchainIndex].find(id);
-        verify(it != textures[swapchainIndex].end(), "Did not create texture correctly?");
+    Texture::Ref ResourceRepository::getTextureRef(const Carrot::UUID& id, size_t frameIndex) {
+        auto it = textures[frameIndex].find(id);
+        verify(it != textures[frameIndex].end(), "Did not create texture correctly?");
         return it->second;
     }
 
-    Texture& ResourceRepository::getOrCreateTexture(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
+    Texture& ResourceRepository::getOrCreateTexture(const FrameResource& id, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
         if(textures.empty()) {
-            textures.resize(driver.getSwapchainImageCount());
+            textures.resize(MAX_FRAMES_IN_FLIGHT);
         }
-        auto it = textures[swapchainIndex].find(id.rootID);
-        if(it != textures[swapchainIndex].end()) {
+        // TODO: use history length
+        auto it = textures[frameIndex].find(id.rootID);
+        if(it != textures[frameIndex].end()) {
             return *it->second;
         }
-        return createTexture(id, swapchainIndex, textureUsages, viewportSize);
+        return createTexture(id, frameIndex, textureUsages, viewportSize);
     }
 
     Texture& ResourceRepository::createTexture(const FrameResource& resource, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
         verify(resource.type == ResourceType::StorageImage || resource.type == ResourceType::RenderTarget, Carrot::sprintf("Resource %s is not a texture", resource.name.c_str()));
         // TODO: aliasing
         if(textures.empty()) {
-            textures.resize(driver.getSwapchainImageCount());
+            textures.resize(MAX_FRAMES_IN_FLIGHT);
         }
 
         verify(resource.imageOrigin != Render::ImageOrigin::SurfaceSwapchain, "Not allowed for swapchain images");

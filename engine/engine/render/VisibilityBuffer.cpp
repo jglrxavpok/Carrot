@@ -30,7 +30,7 @@ namespace Carrot::Render {
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Empty& data, vk::CommandBuffer& cmds) {
                 // clear readback buffer to ensure visible count starts at 0 for the new frame
                 auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.pipeline", (std::uint64_t)&pass);
-                auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.swapchainIndex);
+                auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.frameIndex);
                 if(readbackBufferOpt.hasValue()) {
                     vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
                     renderer.pushConstantBlock("address", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
@@ -53,7 +53,7 @@ namespace Carrot::Render {
 
                 // Record all render packets (~= draw commands) with the tag "PrePassVisibilityBuffer" then "VisibilityBuffer"
                 {
-                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Pre pass visibility buffer");
+                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Pre pass visibility buffer");
                     frame.renderer.recordPassPackets(Render::PassEnum::PrePassVisibilityBuffer, pass, frame, cmds);
                 }
             });
@@ -66,8 +66,8 @@ namespace Carrot::Render {
                     },
                     [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                         ZoneScopedN("CPU RenderGraph visibility buffer clear");
-                        GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "clear buffer rasterize");
-                        auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+                        GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "clear buffer rasterize");
+                        auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
 
                         // clear visibility buffer to reset depth
                         auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.pipeline", (std::uint64_t)&pass);
@@ -89,15 +89,15 @@ namespace Carrot::Render {
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                 ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
-                GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
-                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "visibility buffer rasterize");
+                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
                 auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.pipeline", (std::uint64_t)frame.pViewport);
                 renderer.bindStorageImage(*pipeline, frame, texture, 0, 3,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 {
-                    GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Visibility buffer");
+                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Visibility buffer");
                     frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass, frame, cmds);
                 }
             }
@@ -119,7 +119,7 @@ namespace Carrot::Render {
                [this, pipelineName = Carrot::sprintf("post-process/visibility-buffer-debug/%s", shaderNameSuffix.c_str())]
                (const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph visibility buffer debug view");
-                   GPUZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
+                   GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "visibility buffer debug view");
                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline(pipelineName, pass);
 
                    Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);
@@ -129,7 +129,7 @@ namespace Carrot::Render {
                        return;
                    }
 
-                   const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex);
+                   const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.postLighting, frame.frameIndex);
                    frame.renderer.getMaterialSystem().bind(frame, cmds, 0, pipeline->getPipelineLayout());
                    frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 1, 0,
                        vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
@@ -175,7 +175,7 @@ namespace Carrot::Render {
                 }
 
                 auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("resources/pipelines/material-pass.pipeline", pass);
-                const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+                const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
                 frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 2, 0,

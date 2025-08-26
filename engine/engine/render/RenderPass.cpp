@@ -84,9 +84,9 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
         for(const auto& transition : prePassTransitions) {
             Texture* pTexture = nullptr;
             if (transition.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
-                pTexture = &getGraph().getSwapchainTexture(transition.resource, renderContext.swapchainIndex);
+                pTexture = &getGraph().getSwapchainTexture(transition.resource, renderContext.swapchainImageIndex);
             } else {
-                pTexture = &getGraph().getOrCreateTexture(transition.resource, renderContext.swapchainIndex, viewportSize);
+                pTexture = &getGraph().getOrCreateTexture(transition.resource, renderContext.frameIndex, viewportSize);
             }
             pTexture->assumeLayout(transition.from);
             pTexture->transitionInline(cmds, transition.to, transition.aspect);
@@ -143,9 +143,9 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
             auto convert = [&](vk::RenderingAttachmentInfo& output, const Output& passOutput, vk::ImageAspectFlags aspect) {
                 Texture* pTexture = nullptr;
                 if (passOutput.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
-                    pTexture = &getGraph().getSwapchainTexture(passOutput.resource, renderContext.swapchainIndex);
+                    pTexture = &getGraph().getSwapchainTexture(passOutput.resource, renderContext.swapchainImageIndex);
                 } else {
-                    pTexture = &getGraph().getOrCreateTexture(passOutput.resource, renderContext.swapchainIndex, viewportSize);
+                    pTexture = &getGraph().getOrCreateTexture(passOutput.resource, renderContext.frameIndex, viewportSize);
                 }
                 output.imageView = pTexture->getView(aspect);
                 output.imageLayout = passOutput.resource.layout;
@@ -271,7 +271,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             Carrot::Log::debug("clear buffers");
             Carrot::Log::flush();
             driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-                for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+                for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
                     for(const auto& b : buffersToClear) {
                         auto& buffer = graph.getBuffer(b, i);
                         cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
@@ -307,7 +307,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             std::uint32_t maxHeight = 0;
             for (const auto& output : outputs) {
                 bool hasOnlyStorageBuffers = true;
-                for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
+                for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                     if(output.resource.type == ResourceType::StorageBuffer) {
                         DISCARD(graph.getOrCreateBuffer(output.resource, i));
                     } else {
@@ -334,7 +334,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), passID);
     } else {
         auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
-            for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
                     // force create resources

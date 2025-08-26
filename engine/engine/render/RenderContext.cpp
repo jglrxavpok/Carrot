@@ -7,11 +7,15 @@
 #include "VulkanRenderer.h"
 
 namespace Carrot::Render {
+    u8 Context::getPreviousFrameIndex() const {
+        return (frameIndex + (MAX_FRAMES_IN_FLIGHT-1)) % MAX_FRAMES_IN_FLIGHT;
+    }
+
     void Context::copyFrom(const Context& other) {
         eye = other.eye;
         frameCount = other.frameCount;
-        swapchainIndex = other.swapchainIndex;
-        lastSwapchainIndex = other.lastSwapchainIndex;
+        frameIndex = other.frameIndex;
+        swapchainImageIndex = other.swapchainImageIndex;
     }
 
     Carrot::Camera& Context::getCamera() {
@@ -24,17 +28,6 @@ namespace Carrot::Render {
 
     vk::DescriptorSet Context::getCameraDescriptorSet() const {
         return pViewport->getCameraDescriptorSet(*this);
-    }
-
-    Context Context::lastFrame() const {
-        return Context {
-            .renderer = renderer,
-            .pViewport = pViewport,
-            .eye = eye,
-            .frameCount = frameCount,
-            .swapchainIndex = lastSwapchainIndex, // <-- only change
-            .lastSwapchainIndex = lastSwapchainIndex,
-        };
     }
 
     void Context::renderWireframeSphere(const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {

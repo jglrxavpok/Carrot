@@ -40,13 +40,16 @@ namespace Carrot {
             /// Record commands based on last call to 'render', called from render thread
             void record(vk::CommandBuffer& cmds, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext);
 
-            void onSwapchainImageCountChange(std::size_t newCount);
+            // TODO: remove
+            void onSwapchainImageCountChange(std::size_t newCount) {}
+
+            void resizeStorage(std::size_t newSize);
 
             ImFont* getBigIconsFont();
 
         public: // called by ImGui
             void createWindowImGui(ImGuiViewport* pViewport);
-            void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, std::size_t swapchainIndex);
+            void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, u8 frameIndex, std::size_t swapchainIndex);
 
         private:
             VulkanRenderer& renderer;

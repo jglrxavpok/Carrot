@@ -282,7 +282,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                 .pPoolSizes = sizes.data(),
         }, engine.getAllocator());
 
-        std::vector<vk::DescriptorSetLayout> layouts = {engine.getSwapchainImageCount(), *animationSetLayout};
+        std::vector<vk::DescriptorSetLayout> layouts = {MAX_FRAMES_IN_FLIGHT, *animationSetLayout};
         animationDescriptorSets = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *animationSetPool,
                 .descriptorSetCount = 1,

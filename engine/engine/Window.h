@@ -85,7 +85,7 @@ namespace Carrot {
 
         vk::Semaphore getImageAvailableSemaphore(std::size_t frameInFlightIndex);
 
-        size_t getSwapchainImageCount() const;
+        size_t getSwapchainImagesCount() const;
         const vk::Format& getSwapchainImageFormat() const;
         const vk::Extent2D& getFramebufferExtent() const;
         const vk::SwapchainKHR& getSwapchain() const;

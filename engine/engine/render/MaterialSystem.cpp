@@ -24,7 +24,7 @@ namespace Carrot::Render {
     }
 
     void TextureHandle::updateHandle(const Carrot::Render::Context& renderContext) {
-        auto& boundTextures = materialSystem.boundTextures[renderContext.swapchainIndex];
+        auto& boundTextures = materialSystem.boundTextures[renderContext.frameIndex];
         auto imageViewToBind = texture ? texture->getView() : GetRenderer().getDefaultImage()->getView();
         auto it = boundTextures.find(getSlot());
 
@@ -39,7 +39,7 @@ namespace Carrot::Render {
                 .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
         };
         vk::WriteDescriptorSet write {
-                .dstSet = materialSystem.descriptorSets[renderContext.swapchainIndex],
+                .dstSet = materialSystem.descriptorSets[renderContext.frameIndex],
                 .dstBinding = 1,
                 .dstArrayElement = getSlot(),
                 .descriptorCount = 1,
@@ -50,7 +50,7 @@ namespace Carrot::Render {
     }
 
     TextureHandle::~TextureHandle() noexcept {
-        for(std::size_t index = 0; index < GetEngine().getSwapchainImageCount(); index++) {
+        for(std::size_t index = 0; index < MAX_FRAMES_IN_FLIGHT; index++) {
             materialSystem.boundTextures[index][getSlot()] = materialSystem.invalidTexture->getView();
         }
         materialSystem.descriptorNeedsUpdate = std::vector<bool>(materialSystem.descriptorSets.size(), true);
@@ -165,7 +165,7 @@ namespace Carrot::Render {
 
     void MaterialSystem::init() {
         reallocateMaterialBuffer(DefaultMaterialBufferSize);
-        boundTextures.resize(GetEngine().getSwapchainImageCount());
+        boundTextures.resize(MAX_FRAMES_IN_FLIGHT);
 
         vk::ShaderStageFlags stageFlags = Carrot::AllVkStages;
         std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
@@ -212,28 +212,28 @@ namespace Carrot::Render {
         std::array<vk::DescriptorPoolSize, BindingCount> poolSizes = {
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eSampledImage,
-                        .descriptorCount = GetEngine().getSwapchainImageCount() * MaxTextures,
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT * MaxTextures,
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eSampler,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eSampler,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eUniformBuffer,
-                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
                 }
         };
         descriptorSetPool = GetVulkanDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
                 .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-                .maxSets = GetEngine().getSwapchainImageCount(),
+                .maxSets = MAX_FRAMES_IN_FLIGHT,
                 .poolSizeCount = static_cast<std::uint32_t>(poolSizes.size()),
                 .pPoolSizes = poolSizes.data(),
         });
@@ -305,8 +305,8 @@ namespace Carrot::Render {
     }
 
     void MaterialSystem::updateDescriptorSets(const Carrot::Render::Context& renderContext) {
-        if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
-            auto& set = descriptorSets[renderContext.swapchainIndex];
+        if(descriptorNeedsUpdate[renderContext.frameIndex]) {
+            auto& set = descriptorSets[renderContext.frameIndex];
             auto materialBufferInfo = materialBuffer->getWholeView().asBufferInfo();
             auto globalTexturesInfo = globalTexturesBuffer->getWholeView().asBufferInfo();
             std::array<vk::DescriptorImageInfo, MaxTextures> imageInfo;
@@ -366,7 +366,7 @@ namespace Carrot::Render {
                     },
             };
             GetVulkanDevice().updateDescriptorSets(writes, {});
-            descriptorNeedsUpdate[renderContext.swapchainIndex] = false;
+            descriptorNeedsUpdate[renderContext.frameIndex] = false;
         }
     }
 
@@ -459,7 +459,7 @@ namespace Carrot::Render {
     }
 
     void MaterialSystem::bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint) {
-        cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.swapchainIndex]}, {});
+        cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.frameIndex]}, {});
     }
 
     void MaterialSystem::reallocateMaterialBuffer(std::uint32_t materialCount) {
@@ -525,10 +525,10 @@ namespace Carrot::Render {
 
     void MaterialSystem::reallocateDescriptorSets() {
         GetVulkanDevice().resetDescriptorPool(*descriptorSetPool);
-        std::vector<vk::DescriptorSetLayout> layouts{GetEngine().getSwapchainImageCount(), *descriptorSetLayout};
+        std::vector<vk::DescriptorSetLayout> layouts{MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout};
         descriptorSets = GetVulkanDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *descriptorSetPool,
-                .descriptorSetCount = GetEngine().getSwapchainImageCount(),
+                .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
                 .pSetLayouts = layouts.data(),
         });
         for (auto& descriptorSet : descriptorSets) {
@@ -538,7 +538,7 @@ namespace Carrot::Render {
     }
 
     vk::ImageView MaterialSystem::getBoundImageView(std::uint32_t index, const Carrot::Render::Context& renderContext) {
-        auto& boundThisSwapchainFrame = boundTextures[renderContext.swapchainIndex];
+        auto& boundThisSwapchainFrame = boundTextures[renderContext.frameIndex];
         auto it = boundThisSwapchainFrame.find(index);
         if(it != boundThisSwapchainFrame.end())
             return it->second;
