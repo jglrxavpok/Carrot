@@ -827,7 +827,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     // swap double-buffered data
     {
         recordingRenderContext.copyFrom(renderContext);
-        currentRendererFrame = renderContext.frameCount;
+        currentRendererFrame = renderContext.frameNumber;
         bufferPointer = 1 - bufferPointer;
         renderData.perDrawData.clear();
         renderData.perDrawOffsets.clear();

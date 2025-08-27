@@ -134,10 +134,10 @@ void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, con
 
 void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const {
     auto& renderer = GetRenderer();
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.frameIndex), setID, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.frameIndex), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frame.frameIndex), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.frameIndex), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.frameNumber), setID, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.frameNumber), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frame.frameNumber), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.frameNumber), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.frameIndex), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frame.frameIndex), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frame.frameIndex), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);

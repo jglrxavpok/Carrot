@@ -337,7 +337,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     ZoneScoped;
 
-    const std::size_t modFrameIndex = renderContext.frameCount % MAX_FRAMES_IN_FLIGHT;
+    const std::size_t modFrameIndex = renderContext.frameNumber % MAX_FRAMES_IN_FLIGHT;
     if(GetCapabilities().supportsRaytracing) {
         verify(raytracingBLASes.size() == raytracingInstances.size(), "There must be as many BLASes as there are RT instances!");
         for(std::size_t instanceIndex = 0; instanceIndex < maxInstanceCount; instanceIndex ++) {
@@ -431,7 +431,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     packet.instanceCount = 1;
     packet.commands.resize(1);
 
-    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffers[renderContext.frameCount % MAX_FRAMES_IN_FLIGHT].view;
+    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffers[renderContext.frameNumber % MAX_FRAMES_IN_FLIGHT].view;
     for (const auto&[mat, meshList]: model->skinnedMeshes) {
         data.materialIndex = mat;
         packet.clearPerDrawData();

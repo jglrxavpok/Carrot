@@ -24,19 +24,18 @@ namespace Carrot::Render {
         ResourceRepository(VulkanDriver& driver): driver(driver) {}
 
     public:
-        Texture& createTexture(const FrameResource& texture, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
-        Texture& getTexture(const FrameResource& texture, size_t frameIndex);
+        Texture& getTexture(const FrameResource& texture, u64 frameNumber);
         Texture& getSwapchainTexture(const FrameResource& texture, size_t swapchainIndex);
-        Texture& getTexture(const Carrot::UUID& id, size_t frameIndex);
-        Texture::Ref getTextureRef(const FrameResource& texture, size_t frameIndex);
-        Texture::Ref getTextureRef(const Carrot::UUID& id, size_t frameIndex);
-        Texture& getOrCreateTexture(const FrameResource& id, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+        Texture& getTexture(const Carrot::UUID& id, u64 frameNumber);
+        Texture::Ref getTextureRef(const FrameResource& texture, u64 frameNumber);
+        Texture::Ref getTextureRef(const Carrot::UUID& id, u64 frameNumber);
+        Texture& getOrCreateTexture(const FrameResource& id, u64 frameNumber, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         vk::ImageUsageFlags& getTextureUsages(const Carrot::UUID& id);
 
         BufferChain& createBuffer(const FrameResource& texture, vk::BufferUsageFlags usages);
-        BufferAllocation& getBuffer(const FrameResource& texture, size_t frameIndex);
-        BufferAllocation& getBuffer(const Carrot::UUID& id, size_t frameIndex);
-        BufferAllocation& getOrCreateBuffer(const FrameResource& id, size_t frameIndex, vk::BufferUsageFlags usages);
+        BufferAllocation& getBuffer(const FrameResource& texture, u64 frameNumber);
+        BufferAllocation& getBuffer(const Carrot::UUID& id, u64 frameNumber);
+        BufferAllocation& getOrCreateBuffer(const FrameResource& id, u64 frameNumber, vk::BufferUsageFlags usages);
         vk::BufferUsageFlags& getBufferUsages(const Carrot::UUID& id);
         void setBufferReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength);
 
@@ -51,6 +50,8 @@ namespace Carrot::Render {
         void setXRSession(VR::Session* session);
 
     private:
+        Texture& createTexture(const FrameResource& texture, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+
         /// Sets which render pass is the creator of the texture with the given ID
         void setCreatorID(const Carrot::UUID& resourceID, const Carrot::UUID& creatorID);
 

@@ -11,9 +11,23 @@ namespace Carrot::Render {
         return (frameIndex + (MAX_FRAMES_IN_FLIGHT-1)) % MAX_FRAMES_IN_FLIGHT;
     }
 
+    u64 Context::getPreviousFrameNumber() const {
+        if (frameNumber > 0) {
+            return frameNumber - 1;
+        }
+        return frameNumber + MAX_FRAMES_IN_FLIGHT-1;
+    }
+
+    u64 Context::getRealPreviousFrameNumber() const {
+        if (frameNumber > 0) {
+            return frameNumber - 1;
+        }
+        return 0;
+    }
+
     void Context::copyFrom(const Context& other) {
         eye = other.eye;
-        frameCount = other.frameCount;
+        frameNumber = other.frameNumber;
         frameIndex = other.frameIndex;
         swapchainImageIndex = other.swapchainImageIndex;
     }

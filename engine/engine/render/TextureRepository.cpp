@@ -20,35 +20,36 @@ namespace Carrot::Render {
         return *(resource.pOriginWindow->getSwapchainTexture(swapchainIndex));
     }
 
-    Texture& ResourceRepository::getTexture(const FrameResource& texture, size_t frameIndex) {
-        return *getTextureRef(texture, frameIndex);
+    Texture& ResourceRepository::getTexture(const FrameResource& texture, u64 frameNumber) {
+        return *getTextureRef(texture, frameNumber);
     }
 
-    Texture& ResourceRepository::getTexture(const Carrot::UUID& id, size_t frameIndex) {
-        return *getTextureRef(id, frameIndex);
+    Texture& ResourceRepository::getTexture(const Carrot::UUID& id, u64 frameNumber) {
+        return *getTextureRef(id, frameNumber);
     }
 
-    Texture::Ref ResourceRepository::getTextureRef(const FrameResource& texture, size_t frameIndex) {
+    Texture::Ref ResourceRepository::getTextureRef(const FrameResource& texture, u64 frameNumber) {
         verify(texture.imageOrigin != Render::ImageOrigin::SurfaceSwapchain, "Not allowed for swapchain images");
-        return getTextureRef(texture.rootID, frameIndex);
+        return getTextureRef(texture.rootID, frameNumber);
     }
 
-    Texture::Ref ResourceRepository::getTextureRef(const Carrot::UUID& id, size_t frameIndex) {
-        auto it = textures[frameIndex].find(id);
-        verify(it != textures[frameIndex].end(), "Did not create texture correctly?");
+    Texture::Ref ResourceRepository::getTextureRef(const Carrot::UUID& id, u64 frameNumber) {
+        // TODO: use history length
+        auto it = textures[frameNumber % MAX_FRAMES_IN_FLIGHT].find(id);
+        verify(it != textures[frameNumber % MAX_FRAMES_IN_FLIGHT].end(), "Did not create texture correctly?");
         return it->second;
     }
 
-    Texture& ResourceRepository::getOrCreateTexture(const FrameResource& id, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
+    Texture& ResourceRepository::getOrCreateTexture(const FrameResource& id, u64 frameNumber, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
         if(textures.empty()) {
             textures.resize(MAX_FRAMES_IN_FLIGHT);
         }
         // TODO: use history length
-        auto it = textures[frameIndex].find(id.rootID);
-        if(it != textures[frameIndex].end()) {
+        auto it = textures[frameNumber % MAX_FRAMES_IN_FLIGHT].find(id.rootID);
+        if(it != textures[frameNumber % MAX_FRAMES_IN_FLIGHT].end()) {
             return *it->second;
         }
-        return createTexture(id, frameIndex, textureUsages, viewportSize);
+        return createTexture(id, frameNumber, textureUsages, viewportSize);
     }
 
     Texture& ResourceRepository::createTexture(const FrameResource& resource, size_t frameIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize) {
@@ -122,19 +123,19 @@ namespace Carrot::Render {
         return ref;
     }
 
-    BufferAllocation& ResourceRepository::getBuffer(const FrameResource& texture, size_t frameIndex) {
-        return getBuffer(texture.rootID, frameIndex);
+    BufferAllocation& ResourceRepository::getBuffer(const FrameResource& texture, u64 frameNumber) {
+        return getBuffer(texture.rootID, frameNumber);
     }
 
-    BufferAllocation& ResourceRepository::getBuffer(const Carrot::UUID& id, size_t frameIndex) {
-        return buffers.at(id).get(frameIndex);
+    BufferAllocation& ResourceRepository::getBuffer(const Carrot::UUID& id, u64 frameNumber) {
+        return buffers.at(id).get(frameNumber);
     }
 
-    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, size_t frameIndex, vk::BufferUsageFlags usages) {
+    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, u64 frameNumber, vk::BufferUsageFlags usages) {
         if(!buffers.contains(id.rootID)) {
             createBuffer(id, usages);
         }
-        return buffers[id.rootID].get(frameIndex);
+        return buffers[id.rootID].get(frameNumber);
     }
 
 

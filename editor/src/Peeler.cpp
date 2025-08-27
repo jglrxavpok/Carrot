@@ -1008,7 +1008,7 @@ namespace Peeler {
         
         ImVec2 entireRegion = ImGui::GetContentRegionAvail();
         verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
-        gameTextureRef = GetVulkanDriver().getResourceRepository().getTextureRef(gameTexture, renderContext.frameIndex);
+        gameTextureRef = GetVulkanDriver().getResourceRepository().getTextureRef(gameTexture, renderContext.frameNumber);
 
         float startX = ImGui::GetCursorScreenPos().x;
         float startY = ImGui::GetCursorScreenPos().y;
@@ -1052,7 +1052,7 @@ namespace Peeler {
         if(canPickEntity && ImGui::IsItemClicked()) {
             verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
             const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
-            const auto& entityIDTexture = GetVulkanDriver().getResourceRepository().getTexture(gbufferPass.entityID, renderContext.getPreviousFrameIndex());
+            const auto& entityIDTexture = GetVulkanDriver().getResourceRepository().getTexture(gbufferPass.entityID, renderContext.getPreviousFrameNumber());
             glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
             uv -= glm::vec2 { startX, startY };
             uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };

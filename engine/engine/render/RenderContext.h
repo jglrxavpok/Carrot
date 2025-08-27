@@ -23,11 +23,21 @@ namespace Carrot::Render {
         VulkanRenderer& renderer;
         Viewport* pViewport = nullptr;
         Eye eye = Eye::NoVR;
-        size_t frameCount = -1;
-        u8 frameIndex = -1; // TODO: only use frameCount?
+        u64 frameNumber = -1; // TODO: rename to frame number
+        u8 frameIndex = -1; // frameCount % MAX_FRAMES_IN_FLIGHT
         size_t swapchainImageIndex = -1;
 
         u8 getPreviousFrameIndex() const;
+
+        //! Gets the frame number used to reference resources from the previous frame.
+        //! Technically this frame number is lying to you on the first frame, it will return a frame in the future.
+        //! The intent is that this is used for ring buffers/textures with a length of MAX_FRAMES_IN_FLIGHT in order to
+        //! reference valid resources even on the first frame
+        u64 getPreviousFrameNumber() const;
+
+        //! Gets the frame number used to reference resources from the previous frame.
+        //! If the current frame number is 0, this will also return 0.
+        u64 getRealPreviousFrameNumber() const;
 
         void copyFrom(const Context& other);
 

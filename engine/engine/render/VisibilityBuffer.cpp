@@ -30,7 +30,7 @@ namespace Carrot::Render {
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Empty& data, vk::CommandBuffer& cmds) {
                 // clear readback buffer to ensure visible count starts at 0 for the new frame
                 auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.pipeline", (std::uint64_t)&pass);
-                auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.frameIndex);
+                auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.frameNumber);
                 if(readbackBufferOpt.hasValue()) {
                     vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
                     renderer.pushConstantBlock("address", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
@@ -67,7 +67,7 @@ namespace Carrot::Render {
                     [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                         ZoneScopedN("CPU RenderGraph visibility buffer clear");
                         GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "clear buffer rasterize");
-                        auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
+                        auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameNumber);
 
                         // clear visibility buffer to reset depth
                         auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.pipeline", (std::uint64_t)&pass);
@@ -90,7 +90,7 @@ namespace Carrot::Render {
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                 ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "visibility buffer rasterize");
-                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
+                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameNumber);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
                 auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.pipeline", (std::uint64_t)frame.pViewport);
@@ -129,7 +129,7 @@ namespace Carrot::Render {
                        return;
                    }
 
-                   const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.postLighting, frame.frameIndex);
+                   const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.postLighting, frame.frameNumber);
                    frame.renderer.getMaterialSystem().bind(frame, cmds, 0, pipeline->getPipelineLayout());
                    frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 1, 0,
                        vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
@@ -175,7 +175,7 @@ namespace Carrot::Render {
                 }
 
                 auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("resources/pipelines/material-pass.pipeline", pass);
-                const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameIndex);
+                const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.frameNumber);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
                 frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 2, 0,

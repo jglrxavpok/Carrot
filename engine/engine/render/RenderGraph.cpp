@@ -356,10 +356,10 @@ namespace Carrot::Render {
             if(ImGui::Begin("Resource", &keepOpen)) {
                 ImGui::Text("%s", clickedResourceForMain->name.c_str());
                 if(clickedResourceForMain->type != ResourceType::StorageBuffer) {
-                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.frameIndex);
+                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.frameNumber);
                     ImGui::Text("%s (%s) (%u x %u x %u)", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                 } else {
-                    auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.frameCount);
+                    auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.frameNumber);
                     ImGui::Text("%s (%s) %llu bytes", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
                 }
                 float h = ImGui::GetContentRegionAvail().y;
@@ -383,10 +383,10 @@ namespace Carrot::Render {
         ImGui::BeginTooltip();
         ImGui::Text("%s", hoveredResourceForMain->name.c_str());
         if(hoveredResourceForMain->type != ResourceType::StorageBuffer) {
-            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.frameIndex);
+            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.frameNumber);
             ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
         } else {
-            auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.frameCount);
+            auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.frameNumber);
             ImGui::Text("%s (%s) %llu bytes", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
         }
 
@@ -446,7 +446,7 @@ namespace Carrot::Render {
         if(isBuffer) {
             auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.pipeline", reinterpret_cast<std::uint64_t>(destinationTexture.get()));
 
-            auto& buffer = getBuffer(sourceResource, context.frameCount);
+            auto& buffer = getBuffer(sourceResource, context.frameNumber);
 
             context.renderer.pushConstants("push", *pipeline, context, vk::ShaderStageFlagBits::eCompute, cmds,
                 static_cast<std::uint64_t>(buffer.view.getDeviceAddress()), static_cast<std::uint32_t>(buffer.view.getSize()));
@@ -470,7 +470,7 @@ namespace Carrot::Render {
 
             pipeline->bind(RenderingPipelineCreateInfo{}, context, cmds, vk::PipelineBindPoint::eCompute);
 
-            auto& inputImage = getTexture(sourceResource, context.frameIndex);
+            auto& inputImage = getTexture(sourceResource, context.frameNumber);
 
             const vk::ImageLayout targetLayout = vk::ImageLayout::eGeneral;
             const bool isDepth = inputImage.getImage().getFormat() == context.renderer.getVulkanDriver().getDepthFormat();
@@ -600,12 +600,6 @@ namespace Carrot::Render {
             default: verify(false, "unreachable");
         }
         return wanted;
-    }
-
-    Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
-        return driver.getResourceRepository().createTexture(resource, frameIndex,
-            computeUsages(resource),
-            viewportSize);
     }
 
     Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {

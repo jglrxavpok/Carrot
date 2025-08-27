@@ -86,7 +86,7 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
             if (transition.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
                 pTexture = &getGraph().getSwapchainTexture(transition.resource, renderContext.swapchainImageIndex);
             } else {
-                pTexture = &getGraph().getOrCreateTexture(transition.resource, renderContext.frameIndex, viewportSize);
+                pTexture = &getGraph().getOrCreateTexture(transition.resource, renderContext.frameNumber, viewportSize);
             }
             pTexture->assumeLayout(transition.from);
             pTexture->transitionInline(cmds, transition.to, transition.aspect);
@@ -95,7 +95,7 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
         Carrot::Vector<vk::BufferMemoryBarrier> bufferBarriers;
         for(std::size_t i = 0; i < outputs.size(); i++) {
             if(needBufferClearEachFrame[i]) {
-                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameCount);
+                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameNumber);
                 cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
                 bufferBarriers.emplaceBack(vk::BufferMemoryBarrier {
                     .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
@@ -105,7 +105,7 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
                     .size = buffer.view.getSize(),
                 });
             } else if (outputs[i].type == ResourceType::StorageBuffer) {
-                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameCount);
+                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameNumber);
                 bufferBarriers.emplaceBack(vk::BufferMemoryBarrier {
                     .srcAccessMask = vk::AccessFlagBits::eMemoryWrite,
                     .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
@@ -145,7 +145,7 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
                 if (passOutput.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
                     pTexture = &getGraph().getSwapchainTexture(passOutput.resource, renderContext.swapchainImageIndex);
                 } else {
-                    pTexture = &getGraph().getOrCreateTexture(passOutput.resource, renderContext.frameIndex, viewportSize);
+                    pTexture = &getGraph().getOrCreateTexture(passOutput.resource, renderContext.frameNumber, viewportSize);
                 }
                 output.imageView = pTexture->getView(aspect);
                 output.imageLayout = passOutput.resource.layout;

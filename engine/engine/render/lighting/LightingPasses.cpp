@@ -95,8 +95,8 @@ namespace Carrot::Render {
         }
 
         static void bind(const Carrot::Render::PassData::HashGridResources& r, const Carrot::Render::Graph& graph, const Carrot::Render::Context& renderContext, Carrot::Pipeline& pipeline, std::size_t setID) {
-            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.frameCount).view, setID, 0);
-            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.frameCount).view, setID, 1);
+            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.frameNumber).view, setID, 0);
+            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.frameNumber).view, setID, 1);
         }
 
         static Carrot::Render::PassData::HashGridResources write(Carrot::Render::GraphBuilder& graph, const Carrot::Render::PassData::HashGridResources& r) {
@@ -132,13 +132,13 @@ namespace Carrot::Render {
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Reuse GI cells");
-                if (frame.frameCount == 0) {
+                if (frame.frameNumber == 0) {
                     return; // nothing to do
                 }
 
                 // copy last frame's data
-                auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
-                auto& lastFrameBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount-1);
+                auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber);
+                auto& lastFrameBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber-1);
                 vk::BufferCopy region {
                     .srcOffset = lastFrameBuffer.view.getStart() + HashGrid::DataOffset,
                     .dstOffset = buffer.view.getStart() + HashGrid::DataOffset,
@@ -233,21 +233,21 @@ namespace Carrot::Render {
                };
 
                std::array pImages = std::array {
-                   &pass.getGraph().getTexture(data.pingPong[0], frame.frameIndex),
-                   &pass.getGraph().getTexture(data.pingPong[1], frame.frameIndex)
+                   &pass.getGraph().getTexture(data.pingPong[0], frame.frameNumber),
+                   &pass.getGraph().getTexture(data.pingPong[1], frame.frameNumber)
                };
 
                gBuffer.bindInputs(*temporalDenoisePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
+                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameNumber), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
                 renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameIndex), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
 
                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.noisy, frame.frameIndex), 2, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.samples, frame.frameIndex), 2, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.frameIndex), 2, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.getPreviousFrameIndex()), 2, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
-                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.getPreviousFrameIndex()), 2, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.pingPong[(data.iterationCount+1)%2], frame.getPreviousFrameIndex()), 2, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.getPreviousFrameNumber()), 2, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
+                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.getPreviousFrameNumber()), 2, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.pingPong[(data.iterationCount+1)%2], frame.getPreviousFrameNumber()), 2, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                gBuffer.bindInputs(*spatialDenoisePipelines[0], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                gBuffer.bindInputs(*spatialDenoisePipelines[1], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -327,11 +327,11 @@ namespace Carrot::Render {
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
-                const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
+                const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber);
                 BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
                 BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
                 frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
+                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameNumber, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
@@ -437,12 +437,12 @@ namespace Carrot::Render {
         static constexpr i32 MaxRaysPerProbe = 20;
 
         auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameCount).view, 1, 0);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameCount-1).view, 1, 1);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedProbes, context.frameCount).view, 1, 2);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.emptyProbes, context.frameCount).view, 1, 3);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.reprojectedProbes, context.frameCount).view, 1, 4);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedRays, context.frameCount).view, 1, 5);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameNumber).view, 1, 0);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameNumber-1).view, 1, 1);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedProbes, context.frameNumber).view, 1, 2);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.emptyProbes, context.frameNumber).view, 1, 3);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.reprojectedProbes, context.frameNumber).view, 1, 4);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedRays, context.frameNumber).view, 1, 5);
         };
 
         auto spawnScreenProbes = graph.addPass<GIUpdateData>("spawn-screen-probes",
@@ -469,7 +469,7 @@ namespace Carrot::Render {
             [preparePushConstant, bindBaseGIUpdateInputs, bindGIRayBuffers](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Spawn GI screen probes");
 
-                if (frame.frameCount == 0) {
+                if (frame.frameNumber == 0) {
                     return;
                 }
 
@@ -720,10 +720,10 @@ namespace Carrot::Render {
                 HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameCount).view, 1, 1);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameCount).view, 1, 2);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.emptyProbes, frame.frameCount).view, 1, 3);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameCount).view, 1, 4);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameNumber).view, 1, 1);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameNumber).view, 1, 2);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.emptyProbes, frame.frameNumber).view, 1, 3);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameNumber).view, 1, 4);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 32;
@@ -756,7 +756,7 @@ namespace Carrot::Render {
                     preparePushConstant(block, frame);
                     frame.renderer.pushConstantBlock<PushConstantRT>("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                     frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                    frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbesInput, frame.frameCount).view, 1, 1);
+                    frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbesInput, frame.frameNumber).view, 1, 1);
 
                     data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
                     pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);

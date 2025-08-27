@@ -213,7 +213,7 @@ void Carrot::Engine::init() {
                                                              },
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                                  ZoneScopedN("CPU RenderGraph present");
-                                                                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameIndex);
+                                                                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameNumber);
                                                                  auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainImageIndex);
                                                                  frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
 
@@ -842,7 +842,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
 
-        auto& additionalWaitSemaphoresForThisFrame = additionalWaitSemaphores[mainRenderContext.frameCount % additionalWaitSemaphores.size()];
+        auto& additionalWaitSemaphoresForThisFrame = additionalWaitSemaphores[mainRenderContext.frameNumber % additionalWaitSemaphores.size()];
         for(auto [stage, semaphore] : additionalWaitSemaphoresForThisFrame) {
             vk::PipelineStageFlags2 mask;
             mask = static_cast<vk::PipelineStageFlags2>(static_cast<VkPipelineStageFlags>(stage));
@@ -1649,7 +1649,7 @@ Carrot::Render::Context Carrot::Engine::newRenderContext(u8 frameIndex, std::siz
             .renderer = renderer,
             .pViewport = &viewport,
             .eye = eye,
-            .frameCount = frames,
+            .frameNumber = frames,
             .frameIndex = frameIndex,
             .swapchainImageIndex = swapchainFrameIndex,
     };
@@ -1763,12 +1763,12 @@ Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
 }
 
 void Carrot::Engine::addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore) {
-    for (const auto& [_, sem] : additionalWaitSemaphores[renderContext.frameCount % additionalWaitSemaphores.size()]) {
+    for (const auto& [_, sem] : additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()]) {
         if (sem == semaphore) {
             return;
         }
     }
-    additionalWaitSemaphores[renderContext.frameCount % additionalWaitSemaphores.size()].pushBack({stage, semaphore});
+    additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()].pushBack({stage, semaphore});
 }
 
 void Carrot::Engine::grabCursor() {

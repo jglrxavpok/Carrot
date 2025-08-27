@@ -464,7 +464,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         return;
 
     auto& device = renderer.getLogicalDevice();
-    const std::size_t semaphoreIndex = renderContext.frameCount % tlasBuildCommands.size();
+    const std::size_t semaphoreIndex = renderContext.frameNumber % tlasBuildCommands.size();
 
     // add a bottom level AS for each geometry entry
     std::size_t blasCount = toBuild.size();
@@ -823,7 +823,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         // TODO: reuse memory
         std::unordered_set<vk::Semaphore> alreadyWaitedOn;
         for(auto& blas : toBuild) {
-            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameCount);
+            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameNumber);
             if(boundSemaphore != VK_NULL_HANDLE) {
                 auto [_, isNew] = alreadyWaitedOn.emplace(boundSemaphore);
                 if (isNew) {
@@ -924,7 +924,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     if(!enabled)
         return;
  //   Carrot::Log::debug("buildTopLevelAS %llu", renderContext.frameCount);
-    const std::size_t semaphoreIndex = renderContext.frameCount % tlasBuildCommands.size();
+    const std::size_t semaphoreIndex = renderContext.frameNumber % tlasBuildCommands.size();
     static int prevPrimitiveCount = 0;
     ZoneValue(update ? 1 : 0);
 
@@ -1036,8 +1036,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         };
             currentTLAS = std::make_shared<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
         } else {
-            verify(renderContext.frameCount > 0, "Updating on first frame??");
-            tlasValueToWait = renderContext.frameCount-1;
+            verify(renderContext.frameNumber > 0, "Updating on first frame??");
+            tlasValueToWait = renderContext.frameNumber-1;
 
             ZoneScopedN("Render thread dependency");
             renderer.waitForRenderToComplete(); // this creates a dependency between render thread and main thread
@@ -1053,7 +1053,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
                                                      update ? sizeInfo.updateScratchSize : sizeInfo.buildScratchSize,
                                                      vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer
             )));
-            rtInstancesScratchBuffer->name(Carrot::sprintf("RT instances build scratch buffer frame %llu", renderContext.frameCount));
+            rtInstancesScratchBuffer->name(Carrot::sprintf("RT instances build scratch buffer frame %llu", renderContext.frameNumber));
             scratchBufferAddress = rtInstancesScratchBuffer->view.getDeviceAddress();
         }
 
@@ -1179,7 +1179,7 @@ vk::Semaphore Carrot::ASBuilder::getTlasBuildTimelineSemaphore() const {
 }
 
 std::uint64_t Carrot::ASBuilder::getTlasBuildTimelineSemaphoreSignalValue(const Render::Context& renderContext) const {
-    return renderContext.frameCount;
+    return renderContext.frameNumber;
 }
 
 /*static*/ vk::TransformMatrixKHR Carrot::ASBuilder::glmToRTTransformMatrix(const glm::mat4& mat) {

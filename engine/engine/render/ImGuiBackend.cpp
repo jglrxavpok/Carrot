@@ -97,7 +97,7 @@ namespace Carrot::Render {
         if(pRendererData == nullptr) { // not external window
             return;
         }
-        pThis->renderExternalWindowImGui(vp->DrawData, *pRendererData, 0/*TODO: frame index??*/, *((std::size_t*)render_arg));
+        pThis->renderExternalWindowImGui(vp->DrawData, *pRendererData, GetRenderer().getFrameCount() % MAX_FRAMES_IN_FLIGHT, *((std::size_t*)render_arg));
     }
 
     static void destroyWindowImGui(ImGuiViewport* vp) {

@@ -154,7 +154,7 @@ namespace Carrot {
     }
 
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
-        currentFrame = renderContext.frameCount;
+        currentFrame = renderContext.frameNumber;
 
         // clear buffers that are no longer used
         for(std::int64_t index = 0; index < dedicatedBufferGraveyard.size();) {

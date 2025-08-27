@@ -31,7 +31,6 @@ namespace Carrot::Render {
         void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
     public:
-        [[nodiscard]] Render::Texture& createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize);
         [[nodiscard]] Render::Texture& getTexture(const Carrot::UUID& resourceID, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getTexture(const FrameResource& resource, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getSwapchainTexture(const FrameResource& resource, size_t frameIndex) const;

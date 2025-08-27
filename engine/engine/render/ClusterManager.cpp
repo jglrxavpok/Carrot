@@ -371,7 +371,7 @@ namespace Carrot::Render {
             if(isFirstFrame) {
                 isFirstFrame = false; // TODO: per viewport?
             } else {
-                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.frameIndex); // TODO: which frame index should be used?
+                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.getPreviousFrameNumber());
             }
         }
     }
@@ -637,7 +637,7 @@ namespace Carrot::Render {
             readbackBuffersPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
         }
         auto& gpuInstances = perViewport[pViewport].gpuClusterInstances;
-        UniquePtr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];
+        UniquePtr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex % MAX_FRAMES_IN_FLIGHT];
 
         std::size_t requiredSize = computeSizeOfReadbackBuffer(gpuInstances.size());
         if(!pReadbackBuffer || pReadbackBuffer->getSize() < requiredSize) {

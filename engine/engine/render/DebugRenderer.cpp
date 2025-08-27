@@ -75,7 +75,7 @@ namespace Carrot::Render {
         renderer.render(renderPacket);
 
         if (renderContext.pViewport == &renderer.getEngine().getMainViewport()) {
-            u64 nextFrameMod = (renderContext.frameCount+1) % meshes.size();
+            u64 nextFrameMod = (renderContext.frameNumber+1) % meshes.size();
             meshes[nextFrameMod].clear();
             lines.clear();
             return;
