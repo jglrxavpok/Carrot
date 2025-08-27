@@ -37,7 +37,7 @@ namespace Carrot::Render {
         BufferAllocation& getBuffer(const Carrot::UUID& id, u64 frameNumber);
         BufferAllocation& getOrCreateBuffer(const FrameResource& id, u64 frameNumber, vk::BufferUsageFlags usages);
         vk::BufferUsageFlags& getBufferUsages(const Carrot::UUID& id);
-        void setBufferReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength);
+        void setResourceReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength);
 
         /// Which render pass is the creator of the texture with the given ID? Throws if no texture corresponds. Returns Carrot::UUID::null() if no creator has been set.
         Carrot::UUID getCreatorID(const Carrot::UUID& id) const;
@@ -65,7 +65,7 @@ namespace Carrot::Render {
             BufferChain() = default;
 
             void resize(const FrameResource& buffer, vk::BufferUsageFlags usages, std::size_t historyLength);
-            Carrot::BufferAllocation& get(std::size_t swapchainIndex);
+            Carrot::BufferAllocation& get(u64 frameNumber);
 
             BufferChain(const BufferChain&) = delete;
             BufferChain& operator=(const BufferChain&) = delete;
@@ -75,15 +75,36 @@ namespace Carrot::Render {
         private:
             Vector<Carrot::BufferAllocation> buffers;
         };
+
+        /**
+         * Represents the various versions of a texture across time.
+         * Actually multiple textures in a trenchcoat
+         */
+        class TextureChain {
+        public:
+            TextureChain() = default;
+
+            void resize(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::ImageUsageFlags usages, std::size_t historyLength);
+            Carrot::Render::Texture::Ref& get(u64 frameNumber);
+            i64 size() const;
+
+            TextureChain(const TextureChain&) = delete;
+            TextureChain& operator=(const TextureChain&) = delete;
+            TextureChain(TextureChain&&) = default;
+            TextureChain& operator=(TextureChain&&) = default;
+
+        private:
+            Vector<Carrot::Render::Texture::Ref> textures;
+        };
     private:
 
         VulkanDriver& driver;
-        std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;
+        std::unordered_map<Carrot::UUID, TextureChain> textures;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages;
         std::unordered_map<Carrot::UUID, Carrot::UUID> resourceOwners;
 
         std::unordered_map<Carrot::UUID, BufferChain> buffers;
-        std::unordered_map<Carrot::UUID, std::size_t> bufferReuseHistoryLengths; // assumed 0 if key is missing
+        std::unordered_map<Carrot::UUID, std::size_t> resourceReuseHistoryLengths; // assumed 0 if key is missing
         std::unordered_map<Carrot::UUID, vk::BufferUsageFlags> bufferUsages;
 
         VR::Session* vrSession = nullptr;

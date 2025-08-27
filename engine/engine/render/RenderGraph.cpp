@@ -106,8 +106,8 @@ namespace Carrot::Render {
         currentPass->present(resourceToPresent);
     }
 
-    void GraphBuilder::reuseBufferAcrossFrames(const FrameResource& toReuse, std::size_t historyLength) {
-        GetVulkanDriver().getResourceRepository().setBufferReuseHistoryLength(toReuse.rootID, historyLength);
+    void GraphBuilder::reuseResourceAcrossFrames(const FrameResource& toReuse, std::size_t historyLength) {
+        GetVulkanDriver().getResourceRepository().setResourceReuseHistoryLength(toReuse.rootID, historyLength);
     }
 
     FrameResource& GraphBuilder::createRenderTarget(std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,

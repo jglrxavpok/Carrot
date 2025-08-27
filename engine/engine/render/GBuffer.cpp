@@ -94,6 +94,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                             vk::AttachmentLoadOp::eClear,
                                                             clearDepth,
                                                             vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+               // used by editor & temporal algorithms
+               graph.reuseResourceAcrossFrames(data.albedo, 1);
+               graph.reuseResourceAcrossFrames(data.positions, 1);
+               graph.reuseResourceAcrossFrames(data.viewSpaceNormalTangents, 1);
+               graph.reuseResourceAcrossFrames(data.entityID, 1);
+               graph.reuseResourceAcrossFrames(data.metallicRoughnessVelocityXY, 1);
+               graph.reuseResourceAcrossFrames(data.emissiveVelocityZ, 1);
+               graph.reuseResourceAcrossFrames(data.depthStencil, 1);
            },
            [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
                 opaqueCallback(pass, frame, buffer);
@@ -138,9 +147,9 @@ void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, c
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.frameNumber), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frame.frameNumber), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.frameNumber), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.frameIndex), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frame.frameIndex), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frame.frameIndex), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.frameNumber), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frame.frameNumber), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frame.frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if(expectedLayout == vk::ImageLayout::eGeneral) {
@@ -149,7 +158,7 @@ void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, c
         depthLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     }
     // 7 unused
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frame.frameIndex), setID, 8, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frame.frameNumber), setID, 8, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
 
     Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
     if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {

@@ -64,8 +64,8 @@ namespace Carrot::Render {
             r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
             r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
 
-            graph.reuseBufferAcrossFrames(r.hashGrid, 1);
-            graph.reuseBufferAcrossFrames(r.gridPointers, 1);
+            graph.reuseResourceAcrossFrames(r.hashGrid, 1);
+            graph.reuseResourceAcrossFrames(r.gridPointers, 1);
             return r;
         }
 
@@ -165,7 +165,7 @@ namespace Carrot::Render {
             HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
         });
 
-        auto addDenoisingResources = [&](const char* name, vk::Format format, PassData::Denoising& data) {
+        auto addDenoisingResources = [&](Render::GraphBuilder& graph, const char* name, vk::Format format, PassData::Denoising& data) {
              data.noisy = graph.createStorageTarget(Carrot::sprintf("%s (noisy)", name),
                                                              format,
                                                              framebufferSize,
@@ -187,6 +187,11 @@ namespace Carrot::Render {
                                                              format,
                                                              framebufferSize,
                                                              vk::ImageLayout::eGeneral);
+
+            // used in temporal algorithms
+             graph.reuseResourceAcrossFrames(data.pingPong[0], 1);
+             graph.reuseResourceAcrossFrames(data.pingPong[1], 1);
+             graph.reuseResourceAcrossFrames(data.historyLength, 1);
              data.iterationCount = 3;
          };
         auto applyDenoising = [framebufferSize](
@@ -239,14 +244,16 @@ namespace Carrot::Render {
 
                gBuffer.bindInputs(*temporalDenoisePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameNumber), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
-                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameIndex), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
+                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameNumber), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
 
-               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.noisy, frame.frameIndex), 2, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.samples, frame.frameIndex), 2, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.frameIndex), 2, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.noisy, frame.frameNumber), 2, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.samples, frame.frameNumber), 2, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.frameNumber), 2, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.getPreviousFrameNumber()), 2, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
                 renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.getPreviousFrameNumber()), 2, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+            // TODO: should use result of temporal supersampling or spatial denoise?
                 renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.pingPong[(data.iterationCount+1)%2], frame.getPreviousFrameNumber()), 2, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                gBuffer.bindInputs(*spatialDenoisePipelines[0], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -254,11 +261,11 @@ namespace Carrot::Render {
                gBuffer.bindInputs(*spatialDenoisePipelines[2], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for (auto& pSpatialDenoisePipeline : spatialDenoisePipelines) {
-                    renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
-                    renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameIndex), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
+                    renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameNumber), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
+                    renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameNumber), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
                 }
 
-               renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, pass.getGraph().getTexture(data.samples, frame.frameIndex), 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, pass.getGraph().getTexture(data.samples, frame.frameNumber), 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, *pImages[0], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[0], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
@@ -462,7 +469,7 @@ namespace Carrot::Render {
                 data.emptyProbes = graph.createBuffer("empty-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.reprojectedProbes = graph.createBuffer("reprojected-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.spawnedRays = graph.createBuffer("spawned-rays", sizeof(u32) + probeCount * MaxRaysPerProbe * sizeof(SpawnedRay), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                graph.reuseBufferAcrossFrames(data.screenProbes, 1); // need previous frame
+                graph.reuseResourceAcrossFrames(data.screenProbes, 1); // need previous frame
 
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);
             },
@@ -522,9 +529,9 @@ namespace Carrot::Render {
                     pass.rasterized = false;
                     resolveData.gBuffer.readFrom(graph, traceGIRays.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                    addDenoisingResources("Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion);
-                    addDenoisingResources("Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
-                    addDenoisingResources("Reflections", vk::Format::eR32G32B32A32Sfloat, resolveData.reflections);
+                    addDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion);
+                    addDenoisingResources(graph, "Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
+                    addDenoisingResources(graph, "Reflections", vk::Format::eR32G32B32A32Sfloat, resolveData.reflections);
                     resolveData.reflectionsFirstBounceViewPositions = graph.createStorageTarget(
                         "Reflections first bounce positions",
                         vk::Format::eR32G32B32A32Sfloat,
@@ -588,7 +595,7 @@ namespace Carrot::Render {
 
                        // outputs
                        auto& renderGraph = pass.getGraph();
-                       auto& outputImage = renderGraph.getTexture(output, frame.frameIndex);
+                       auto& outputImage = renderGraph.getTexture(output, frame.frameNumber);
                        renderer.bindStorageImage(pipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                        if(useRaytracingVersion) {
@@ -742,7 +749,7 @@ namespace Carrot::Render {
                 pass.rasterized = false;
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.screenProbesInput = graph.read(traceGIRays.getData().screenProbes, {});
-                addDenoisingResources("gi", vk::Format::eR8G8B8A8Unorm, data.output);
+                addDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output);
                 data.output.iterationCount = 6;
             },
             [preparePushConstant, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {

@@ -80,6 +80,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                      vk::ImageLayout::eGeneral // TODO: color attachment?
                     );
 
+                    builder.reuseResourceAcrossFrames(data.denoisedResult, 1); // used in temporal algorithms
+
                     data.viewPositions = builder.read(viewPositions, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     data.momentsHistoryHistoryLength = builder.createRenderTarget("Moments & history length",
@@ -541,7 +543,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 ZoneScopedN("CPU RenderGraph post-process");
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "Post-Process");
                 auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.frameIndex), 0, 0, nullptr);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.frameNumber), 0, 0, nullptr);
 
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
