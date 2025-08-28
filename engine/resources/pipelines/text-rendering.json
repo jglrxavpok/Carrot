@@ -11,13 +11,12 @@
     "MAX_MATERIALS": 1
   },
   "vertexShader": {
-      "file": "resources/shaders/text-rendering.vertex.glsl",
-      "entry_point": "main"
+      "file": "resources/shaders/text-rendering.slang",
+      "entry_point": "vertex"
   },
   "fragmentShader": {
-    "file": "resources/shaders/text-rendering.fragment.glsl",
-    "_todo": "TODO GMTK: understand why NVIDIA gpus did not sample correct texture, reuse slang version",
-    "entry_point": "main"
+    "file": "resources/shaders/text-rendering.slang",
+    "entry_point": "pixel"
   },
   "descriptorSets": [
     {
