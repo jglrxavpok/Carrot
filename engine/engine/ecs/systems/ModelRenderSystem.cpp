@@ -63,7 +63,7 @@ namespace Carrot::ECS {
 
     }
 
-    void ModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
+    void ModelRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
         renderModels(renderContext);
     }
 

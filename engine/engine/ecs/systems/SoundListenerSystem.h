@@ -19,7 +19,7 @@ namespace Carrot::ECS {
 
         virtual void tick(double dt) override;
 
-        virtual void onFrame(Carrot::Render::Context renderContext) override;
+        virtual void onFrame(const Carrot::Render::Context& renderContext) override;
 
     public:
         inline static const char *getStringRepresentation() {

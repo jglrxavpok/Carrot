@@ -18,7 +18,7 @@ namespace Carrot::ECS {
         explicit CameraSystem(const Carrot::DocumentElement& doc, World& world): CameraSystem(world) {}
 
         virtual void setupCamera(Carrot::Render::Context renderContext) override;
-        virtual void onFrame(Carrot::Render::Context renderContext) override;
+        virtual void onFrame(const Carrot::Render::Context& renderContext) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override {
             return std::make_unique<CameraSystem>(newOwner);

@@ -30,7 +30,7 @@ namespace Carrot::ECS {
         [[nodiscard]] const Signature& getSignature() const;
         std::span<const Entity> getEntities() const;
 
-        virtual void onFrame(Carrot::Render::Context renderContext) = 0;
+        virtual void onFrame(const Carrot::Render::Context& renderContext) = 0;
         virtual void setupCamera(Carrot::Render::Context renderContext) {};
         virtual void firstTick() {};
         virtual void tick(double dt) {};
@@ -126,7 +126,7 @@ namespace Carrot::ECS {
         explicit LogicSystem(World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
         explicit LogicSystem(const Carrot::DocumentElement& doc, World& world): LogicSystem<RequiredComponents...>(world) {};
 
-        void onFrame(Carrot::Render::Context renderContext) override {};
+        void onFrame(const Carrot::Render::Context& renderContext) override {};
     };
 
     template<typename... RequiredComponents>

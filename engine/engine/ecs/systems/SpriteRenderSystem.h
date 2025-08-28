@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit SpriteRenderSystem(World& world): RenderSystem<TransformComponent, SpriteComponent>(world) {}
         explicit SpriteRenderSystem(const Carrot::DocumentElement& doc, World& world): SpriteRenderSystem(world) {}
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         void tick(double dt) override;
 

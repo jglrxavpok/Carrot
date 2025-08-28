@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit SystemHandleLights(World& world): RenderSystem<TransformComponent, LightComponent>(world) {}
         explicit SystemHandleLights(const Carrot::DocumentElement& doc, World& world): SystemHandleLights(world) {}
 
-        void onFrame(Carrot::Render::Context) override;
+        void onFrame(const Carrot::Render::Context&) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 

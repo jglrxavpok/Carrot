@@ -16,7 +16,7 @@ namespace Peeler::ECS {
 
     }
 
-    void CollisionShapeRenderer::onFrame(Carrot::Render::Context renderContext) {
+    void CollisionShapeRenderer::onFrame(const Carrot::Render::Context& renderContext) {
         for(const auto& selected : selectedIDs) {
             if(world.exists(selected)) {
                 auto entity = world.wrap(selected);

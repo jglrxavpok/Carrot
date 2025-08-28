@@ -6,7 +6,7 @@
 
 namespace Carrot::ECS {
 
-    void BillboardSystem::onFrame(Carrot::Render::Context renderContext) {
+    void BillboardSystem::onFrame(const Carrot::Render::Context& renderContext) {
         auto& camera = renderContext.getCamera();
         glm::quat invCameraRotation = glm::inverse(glm::toQuat(camera.getCurrentFrameViewMatrix()));
         forEachEntity([&](Entity& entity, TransformComponent& transform, BillboardComponent& textComponent) {

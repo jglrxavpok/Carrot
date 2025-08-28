@@ -17,7 +17,7 @@ namespace Carrot::ECS {
         });
     }
 
-    void SoundListenerSystem::onFrame(Carrot::Render::Context renderContext) {}
+    void SoundListenerSystem::onFrame(const Carrot::Render::Context& renderContext) {}
 
     std::unique_ptr <Carrot::ECS::System> SoundListenerSystem::duplicate(Carrot::ECS::World& newWorld) const {
         std::unique_ptr<SoundListenerSystem> result = std::make_unique<SoundListenerSystem>(newWorld);

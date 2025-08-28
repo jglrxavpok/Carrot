@@ -8,7 +8,7 @@
 
 namespace Carrot::ECS {
 
-    void TextRenderSystem::onFrame(Carrot::Render::Context renderContext) {
+    void TextRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, TextComponent& textComponent) {
             if(!entity.isVisible()) {
                 return;

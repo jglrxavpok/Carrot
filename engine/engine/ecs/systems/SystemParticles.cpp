@@ -18,7 +18,7 @@ namespace Carrot::ECS {
     : RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::ParticleEmitterComponent>(doc, world)
     {}
 
-    void SystemParticles::onFrame(Carrot::Render::Context renderContext) {
+    void SystemParticles::onFrame(const Carrot::Render::Context& renderContext) {
         for (auto& [_, pStorage] : particles) {
             if (pStorage->pParticleSystem)
                 pStorage->pParticleSystem->onFrame(renderContext);

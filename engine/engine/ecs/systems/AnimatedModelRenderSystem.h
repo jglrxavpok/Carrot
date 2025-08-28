@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit AnimatedModelRenderSystem(World& world): RenderSystem<TransformComponent, AnimatedModelComponent>(world) {}
         explicit AnimatedModelRenderSystem(const Carrot::DocumentElement& doc, World& world);
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
         void tick(double deltaTime) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;

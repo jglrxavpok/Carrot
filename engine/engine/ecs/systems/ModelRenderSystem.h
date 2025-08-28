@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit ModelRenderSystem(World& world): RenderSystem<TransformComponent, ModelComponent>(world) {}
         explicit ModelRenderSystem(const Carrot::DocumentElement& doc, World& world);
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 

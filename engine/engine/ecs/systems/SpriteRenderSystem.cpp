@@ -8,7 +8,7 @@
 
 namespace Carrot::ECS {
 
-    void SpriteRenderSystem::onFrame(Carrot::Render::Context renderContext) {
+    void SpriteRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
             if(!entity.isVisible()) {
                 return;

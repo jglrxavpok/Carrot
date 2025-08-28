@@ -44,19 +44,19 @@ namespace Carrot::Render {
         return pViewport->getCameraDescriptorSet(*this);
     }
 
-    void Context::renderWireframeSphere(const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
+    void Context::renderWireframeSphere(const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) const {
         renderer.renderWireframeSphere(*this, transform, radius, color, objectID);
     }
 
-    void Context::renderWireframeCuboid(const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+    void Context::renderWireframeCuboid(const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) const {
         renderer.renderWireframeCuboid(*this, transform, halfExtents, color, objectID);
     }
 
-    void Context::renderWireframeCapsule(const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+    void Context::renderWireframeCapsule(const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) const {
         renderer.renderWireframeCapsule(*this, transform, radius, height, color, objectID);
     }
 
-    void Context::render(const Render::Packet& packet) {
+    void Context::render(const Render::Packet& packet) const {
         renderer.render(packet);
     }
 }

@@ -23,7 +23,7 @@ namespace Carrot::ECS {
         virtual void prePhysics() override;
         virtual void postPhysics() override;
 
-        virtual void onFrame(Carrot::Render::Context renderContext) override;
+        virtual void onFrame(const Carrot::Render::Context& renderContext) override;
 
         void reload() override;
 

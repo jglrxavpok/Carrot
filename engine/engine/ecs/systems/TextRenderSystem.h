@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit TextRenderSystem(World& world): RenderSystem<TransformComponent, TextComponent>(world) {}
         explicit TextRenderSystem(const Carrot::DocumentElement& doc, World& world): TextRenderSystem(world) {}
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 

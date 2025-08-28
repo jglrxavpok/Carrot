@@ -19,7 +19,7 @@ namespace Carrot::ECS {
         });
     }
 
-    void CameraSystem::onFrame(Carrot::Render::Context renderContext) {
+    void CameraSystem::onFrame(const Carrot::Render::Context& renderContext) {
         // no op
     }
 }

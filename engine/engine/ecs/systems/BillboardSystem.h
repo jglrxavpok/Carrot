@@ -14,7 +14,7 @@ namespace Carrot::ECS {
         explicit BillboardSystem(World& world): RenderSystem<TransformComponent, BillboardComponent>(world) {}
         explicit BillboardSystem(const Carrot::DocumentElement& doc, World& world): BillboardSystem(world) {}
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 

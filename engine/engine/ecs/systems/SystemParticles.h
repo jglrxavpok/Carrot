@@ -20,7 +20,7 @@ namespace Carrot::ECS {
         explicit SystemParticles(World& world);
         SystemParticles(const Carrot::DocumentElement& doc, World& world);
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
         std::unique_ptr<System> duplicate(World& newOwner) const override;
         const char* getName() const override;
         void tick(double dt) override;

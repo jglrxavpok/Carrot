@@ -14,7 +14,7 @@ namespace Carrot::ECS {
 
     }
 
-    void AnimatedModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
+    void AnimatedModelRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
         Async::SpinLock renderedModelsLock;
         renderedModels.clear();
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelComponent& modelComp) {

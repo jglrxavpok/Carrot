@@ -14,7 +14,7 @@ namespace Peeler::ECS {
         secondaryCameraPipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
     }
 
-    void CameraRenderer::onFrame(Carrot::Render::Context renderContext) {
+    void CameraRenderer::onFrame(const Carrot::Render::Context& renderContext) {
         if(!cameraModel.isReady()) {
             return;
         }

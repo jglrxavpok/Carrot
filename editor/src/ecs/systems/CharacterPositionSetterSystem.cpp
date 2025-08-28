@@ -12,7 +12,7 @@ namespace Peeler::ECS {
 
     }
 
-    void CharacterPositionSetterSystem::onFrame(Carrot::Render::Context renderContext) {
+    void CharacterPositionSetterSystem::onFrame(const Carrot::Render::Context& renderContext) {
         // make sure physics debug show collisions at the proper place
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComponent, Carrot::ECS::PhysicsCharacterComponent& characterComponent) {
             characterComponent.character.setWorldTransform(transformComponent.computeGlobalPhysicsTransform());

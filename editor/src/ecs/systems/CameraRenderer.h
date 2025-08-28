@@ -16,7 +16,7 @@ namespace Peeler::ECS {
     public:
         explicit CameraRenderer(Carrot::ECS::World& world);
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
