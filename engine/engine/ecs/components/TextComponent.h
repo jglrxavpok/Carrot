@@ -40,18 +40,20 @@ namespace Carrot::ECS {
             return result;
         }
 
-    private:
-        void refreshRenderable();
+        Render::RenderableText& getRenderableText(const Carrot::Render::Context& currentFrame);
 
     private:
-        bool needsRefresh = false;
+        void refreshRenderable(const Carrot::Render::Context& currentFrame);
+
+    private:
+        Render::PerFrame<bool> needsRefreshs;
         std::string text;
         std::string previousText;
         glm::vec4 color{1.0f};
         glm::vec4 previousColor{1.0f};
         std::filesystem::path fontPath;
         std::shared_ptr<Carrot::Render::Font> font;
-        Carrot::Render::RenderableText renderableText;
+        Render::PerFrame<Carrot::Render::RenderableText> renderableTexts;
         Render::TextAlignment horizontalAlignment = Render::TextAlignment::Center;
 
         friend class TextRenderSystem;

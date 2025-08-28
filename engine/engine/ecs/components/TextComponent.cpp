@@ -11,7 +11,13 @@
 namespace Carrot::ECS {
 
     TextComponent::TextComponent(Entity entity, const std::filesystem::path& fontFile)
-    : IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {};
+    : IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {
+        renderableTexts.resize(MAX_FRAMES_IN_FLIGHT);
+        needsRefreshs.resize(MAX_FRAMES_IN_FLIGHT);
+        for (auto && needsRefresh : needsRefreshs) {
+            needsRefresh = false;
+        }
+    };
 
     TextComponent::TextComponent(const Carrot::DocumentElement& doc, Entity entity): TextComponent(entity, doc["font"].getAsString()) {
         setText(doc["text"].getAsString());
@@ -58,7 +64,9 @@ namespace Carrot::ECS {
     void TextComponent::setColor(const glm::vec4& newColor) {
         previousColor = color;
         color = newColor;
-        needsRefresh |= newColor != previousColor;
+        for (auto && needsRefresh : needsRefreshs) {
+            needsRefresh = needsRefresh || newColor != previousColor;
+        }
     }
 
     Render::TextAlignment TextComponent::getHorizontalAlignment() const {
@@ -66,7 +74,9 @@ namespace Carrot::ECS {
     }
 
     void TextComponent::setHorizontalAlignment(Render::TextAlignment newAlignment) {
-        needsRefresh |= horizontalAlignment != newAlignment;
+        for (auto && needsRefresh : needsRefreshs) {
+            needsRefresh = needsRefresh || horizontalAlignment != newAlignment;
+        }
         horizontalAlignment = newAlignment;
     }
 
@@ -74,21 +84,30 @@ namespace Carrot::ECS {
         return text;
     }
 
-    void TextComponent::refreshRenderable() {
-        if(needsRefresh) {
+    Render::RenderableText& TextComponent::getRenderableText(const Carrot::Render::Context& currentFrame) {
+        return renderableTexts[currentFrame.frameIndex];
+    }
+
+    void TextComponent::refreshRenderable(const Carrot::Render::Context& currentFrame) {
+        if(needsRefreshs[currentFrame.frameIndex]) {
+            Carrot::Render::RenderableText& renderableText = renderableTexts[currentFrame.frameIndex];
+            // TODO: this is quite wasteful for frequently changing text,
+            //  check if it is possible to reuse the mesh or the texture of the RenderableText?
             if(text.empty()) {
-                this->renderableText = std::move(Render::RenderableText{});
+                renderableText = std::move(Render::RenderableText{});
             } else {
-                this->renderableText = font->bake(Carrot::toU32String(text), Render::Font::DefaultPixelSize, horizontalAlignment);
+                renderableText = font->bake(Carrot::toU32String(text), Render::Font::DefaultPixelSize, horizontalAlignment);
             }
-            this->renderableText.getColor() = color;
-            needsRefresh = false;
+            renderableText.getColor() = color;
+            needsRefreshs[currentFrame.frameIndex] = false;
         }
     }
 
     void TextComponent::setText(std::string_view text) {
         previousText = this->text;
-        needsRefresh |= previousText != text;
+        for (auto && needsRefresh : needsRefreshs) {
+            needsRefresh = needsRefresh || previousText != text;
+        }
         this->text = text;
     }
 }
