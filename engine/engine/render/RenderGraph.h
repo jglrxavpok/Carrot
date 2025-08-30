@@ -67,6 +67,7 @@ namespace Carrot::Render {
         void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
         void debugDraw(const Render::Context& context);
         void drawResource(const Render::Context& context);
+        void autoLayoutDebugView();
 
         Carrot::VulkanDriver& driver;
         std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;

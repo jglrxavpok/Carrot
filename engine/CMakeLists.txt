@@ -290,6 +290,9 @@ set(ALL_BASE_LIBS
         OpenXR::headers
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
+        gvc
+        gvplugin_dot_layout
+        gvplugin_core
         ${ADDITIONAL_LIBS})
 
 add_dependencies(CarrotCore

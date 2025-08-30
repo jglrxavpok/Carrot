@@ -16,6 +16,12 @@
 #include <imgui_node_editor.h>
 #include <imgui_node_editor_internal.h>
 #include <engine/console/RuntimeOption.hpp>
+#include <gvc/gvc.h>
+#include <gvc/gvcint.h>
+#include <gvc/gvcproc.h>
+
+extern gvplugin_library_t gvplugin_dot_layout_LTX_library;
+extern gvplugin_library_t gvplugin_core_LTX_library;
 
 namespace ed = ax::NodeEditor;
 
@@ -199,6 +205,7 @@ namespace Carrot::Render {
 
     Graph::Graph(VulkanDriver& driver): driver(driver) {
         ed::Config config;
+        config.NavigateButtonIndex = 2; // pan graph with middle button (left = select, right = popup menu)
         nodesContext = ed::CreateEditor(&config);
     }
 
@@ -398,6 +405,77 @@ namespace Carrot::Render {
         ImGui::EndTooltip();
     }
 
+    void Graph::autoLayoutDebugView() {
+        GVC_t* context = gvContext();
+
+        gvAddLibrary(context, &gvplugin_dot_layout_LTX_library);
+        gvAddLibrary(context, &gvplugin_core_LTX_library);
+
+        Agraph_t* g = agopen("g", Agdirected, nullptr);
+        agsafeset(g, "concentrate", "true", "true");
+        agsafeset(g, "mincross", "true", "true");
+        agsafeset(g, "constraint", "false", "false");
+        agsafeset(g, "fixedsize", "shape", "shape");
+
+        std::unordered_map<CompiledPass*, Agnode_t*> nodeStorage;
+        std::unordered_map<CompiledPass*, std::string> nodeNameStorage;
+        std::unordered_map<Carrot::UUID, Agnode_t*> resourceToNode;
+        for (auto* pass: sortedPasses) {
+            std::string& nodeName = nodeNameStorage[pass];
+            nodeName = pass->getName();
+            nodeName = Carrot::sprintf("%s (%llx)", nodeName.c_str(), pass);
+            Agnode_t* node = agnode(g, nodeName.data(), 1);
+
+
+            nodeStorage[pass] = node;
+
+            std::size_t maxHeight = 0;
+            for(const auto& inputSet : { pass->getInputs(), pass->getInputOutputs(), pass->getOutputs() }) {
+                maxHeight = std::max(maxHeight, inputSet.size());
+                for (const auto& i : inputSet) {
+                    resourceToNode[i.id] = node;
+                }
+            }
+            const float lineHeight = 1.0f;
+            // invert width and height because we rotate the generated layout at the end
+            agsafeset(node, "height", Carrot::sprintf("%.5f", lineHeight*8).data(), "1");
+            agsafeset(node, "width", Carrot::sprintf("%.5f", ((maxHeight+1) * lineHeight)).data(), "1");
+        }
+
+        std::unordered_set<Carrot::Pair<Agnode_t*, Agnode_t*>> existingLinks;
+        for (auto* pass: sortedPasses) {
+            for(const auto& inputSet : { pass->getInputs(), pass->getInputOutputs() }) {
+                for(const auto& i : inputSet) {
+                    if(i.id != i.parentID) {
+                        Agnode_t* nodeA = resourceToNode.at(i.parentID);
+                        Agnode_t* nodeB = resourceToNode.at(i.id);
+                        if (existingLinks.insert(Carrot::Pair{nodeA, nodeB}).second) { // avoid duplicates
+                            agedge(g, nodeA, nodeB, "", 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        gvLayout(context, g, "dot");
+
+        u32 passIndex = 0;
+        for (auto* pass: sortedPasses) {
+            Agnode_t* correspondingNode = nodeStorage[pass];
+            pointf pos = ND_coord(correspondingNode);
+            const double x = -pos.y;
+            const double y = pos.x;
+
+            ed::SetNodePosition(getNodeID(passIndex), ImVec2(static_cast<float>(x), static_cast<float>(y)));
+
+            passIndex++;
+        }
+        gvRenderFilename(context, g, "svg", "graph.svg");
+        gvFreeLayout(context, g);
+        gvFreeContext(context);
+        agclose(g);
+    }
+
     void Graph::onFrame(const Render::Context& context) {
         static Graph* graphToDebug = nullptr;
         if(DebugRenderGraphs) {
@@ -418,6 +496,22 @@ namespace Carrot::Render {
                     ed::Begin("Render graph debug");
                     debugDraw(context);
                     ed::End();
+
+                    if (ImGui::BeginPopupContextWindow()) {
+                        if (ImGui::MenuItem("Auto layout")) {
+                            autoLayoutDebugView();
+                        }
+                        if (ImGui::MenuItem("Mess up layout(for debug)")) {
+                            u32 passIndex = 0;
+                            for (auto* pass: sortedPasses) {
+                                ed::SetNodePosition(getNodeID(passIndex), ImVec2(0, 0));
+
+                                passIndex++;
+                            }
+                        }
+                        ImGui::EndPopup();
+                    }
+
                     ed::EnableShortcuts(false);
                 }
             }
