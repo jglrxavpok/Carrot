@@ -62,7 +62,7 @@ EncodedGBuffer pixel(VSOutput input) {
 
     GBuffer gbuffer;
 
-    gbuffer.albedo = vec4(1, 1, 1, color) * input.instanceColor;
+    gbuffer.albedo = vec4(1, 1, 1, 1) * input.instanceColor;
     gbuffer.viewPosition = input.viewPos;
     gbuffer.intProperty = IntProperties::RayTracedLighting;
 
