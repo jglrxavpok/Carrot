@@ -447,40 +447,6 @@ namespace Carrot::ECS {
         }
     }
 
-    void World::recordOpaqueGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        ZoneScoped;
-        {
-            ZoneScopedN("GBuffer Logic");
-            for(const auto& logic : logicSystems) {
-                logic->opaqueGBufferRender(pass, renderContext, commands);
-            }
-        }
-
-        {
-            ZoneScopedN("GBuffer render");
-            for(const auto& render : renderSystems) {
-                render->opaqueGBufferRender(pass, renderContext, commands);
-            }
-        }
-    }
-
-    void World::recordTransparentGBufferPass(const Render::CompiledPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        ZoneScoped;
-        {
-            ZoneScopedN("GBuffer Logic");
-            for(const auto& logic : logicSystems) {
-                logic->transparentGBufferRender(pass, renderContext, commands);
-            }
-        }
-
-        {
-            ZoneScopedN("GBuffer render");
-            for(const auto& render : renderSystems) {
-                render->transparentGBufferRender(pass, renderContext, commands);
-            }
-        }
-    }
-
     Signature World::getSignature(const Entity& entity) const {
         auto componentMapLocation = this->entityComponents.find(entity);
         if(componentMapLocation == this->entityComponents.end()) {

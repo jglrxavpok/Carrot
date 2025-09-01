@@ -43,10 +43,6 @@ namespace Carrot::ECS {
         /// Will be called at a fixed tickrate
         virtual void postPhysics() {};
 
-        // TODO: provide a way to render even in other passes -> RenderPacket
-        virtual void opaqueGBufferRender(const Render::CompiledPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
-        virtual void transparentGBufferRender(const Render::CompiledPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
-
         virtual void onEntitiesAdded(const std::vector<EntityID>& entities);
         virtual void onEntitiesRemoved(const std::vector<EntityID>& entities);
 

@@ -225,8 +225,6 @@ namespace Peeler {
             const bool csharpEnabled = getCurrentProjectFile() != EmptyProject; // must already have a project
             if(ImGui::BeginMenu(ICON_FA_CODE "  C#", csharpEnabled)) {
                 if(ImGui::MenuItem("Generate C# .sln")) {
-                    // TODO: check that solution does not exist yet
-
                     const std::string& projectName = getCurrentProjectName();
                     const Carrot::UUID projectUuid; // generate new UUID
                     const std::string projectGuidString = projectUuid.toString();
@@ -1653,16 +1651,6 @@ namespace Peeler {
 
     void Application::postPhysics() {
         currentScene.postPhysics();
-    }
-
-    void Application::recordOpaqueGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
-                                              vk::CommandBuffer& commands) {
-        // no op, everything is done inside gameViewport
-    }
-
-    void Application::recordTransparentGBufferPass(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext,
-                                                   vk::CommandBuffer& commands) {
-        // no op, everything is done inside gameViewport
     }
 
     void Application::performLoad(std::filesystem::path fileToOpen) {

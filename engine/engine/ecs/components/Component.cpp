@@ -17,12 +17,10 @@ namespace Carrot::ECS {
 
     void ComponentLibrary::add(const Storage::ID& id, const Storage::DeserialiseFunction& deserialiseFunc, const Storage::CreateNewFunction& createNewFunc) {
         storage.add(id, deserialiseFunc, createNewFunc);
-        // TODO: currently not registering components in a way that is visible to Lua scripts, do we want to?
     }
 
     void ComponentLibrary::remove(const Storage::ID& id) {
         storage.remove(id);
-        // TODO: handle lua scripts?
     }
 
     std::unique_ptr<Component> ComponentLibrary::deserialise(const std::string& id, const Carrot::DocumentElement& doc, const Entity& entity) const {

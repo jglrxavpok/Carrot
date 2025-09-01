@@ -228,7 +228,6 @@ function(add_includes Target)
 
     if(NsightAftermath_FOUND)
         target_include_directories("${Target}" PRIVATE ${NsightAftermath_INCLUDE_DIRS})
-        # TODO: command line
         target_compile_definitions("${Target}" PRIVATE AFTERMATH_ENABLE=1)
         target_compile_definitions("${Target}" PRIVATE GPU_ASSISTED_VALIDATION=1)
     endif()

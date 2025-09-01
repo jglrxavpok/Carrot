@@ -13,11 +13,9 @@ namespace Peeler {
 
         auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Eye::NoVR,
                                      [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordOpaqueGBufferPass(pass, frame, cmds);
                                          GetRenderer().recordOpaqueGBufferPass(pass, frame, cmds);
                                      },
                                      [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordTransparentGBufferPass(pass, frame, cmds);
                                          GetRenderer().recordTransparentGBufferPass(pass, frame, cmds);
                                      });
 
