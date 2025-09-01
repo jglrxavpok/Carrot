@@ -8,6 +8,13 @@
 #include "engine/render/resources/Texture.h"
 
 namespace Peeler {
+    struct ThumbnailLoader {
+        void startLoading(const Carrot::IO::VFS::Path& filepath);
+
+        std::atomic_flag isReady = false;
+        Carrot::Render::Texture::Ref loadedTexture;
+    };
+
     class ResourcePanel: public EditorPanel {
     public:
         explicit ResourcePanel(Application& app);
@@ -17,8 +24,10 @@ namespace Peeler {
     private:
         /// Returns true iif the path corresponds to a folder and the user wants to open it (double click)
         bool drawFileTile(const Carrot::IO::VFS::Path& vfsPath, float tileSize);
-        const Carrot::Render::Texture& getFileTexture(const Carrot::IO::VFS::Path& filePath) const;
+        const Carrot::Render::Texture& requestFileThumbnail(const Carrot::IO::VFS::Path& filePath);
         void updateCurrentFolder(const Carrot::IO::VFS::Path& vfsPath);
+
+        Carrot::Render::Texture::Ref getLoadedFileThumbnail(const Carrot::IO::VFS::Path& filePath);
 
     private:
         void fillModelContextPopup(const Carrot::IO::VFS::Path& vfsPath);
@@ -40,6 +49,8 @@ namespace Peeler {
         std::vector<ResourceEntry> resourcesInCurrentFolder;
 
         std::unordered_map<Carrot::IO::FileFormat, Carrot::Render::Texture::Ref> filetypeIcons;
+        std::unordered_map<Carrot::IO::VFS::Path, Carrot::Render::Texture::Ref> thumbnails;
+        std::unordered_map<Carrot::IO::VFS::Path, ThumbnailLoader> thumbnailLoaders;
         Carrot::Render::Texture genericFileIcon;
         Carrot::Render::Texture folderIcon;
 

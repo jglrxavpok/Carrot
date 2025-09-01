@@ -16,6 +16,9 @@
 #include <engine/ecs/Prefab.h>
 
 namespace Peeler {
+
+    constexpr static u32 ThumbnailSize = 64;
+
     ResourcePanel::ResourcePanel(Application& app):
         EditorPanel(app),
         folderIcon(GetVulkanDriver(), "resources/textures/ui/folder.png"),
@@ -32,7 +35,20 @@ namespace Peeler {
         updateCurrentFolder(Carrot::IO::VFS::Path("engine://"));
     }
 
-    const Carrot::Render::Texture& ResourcePanel::getFileTexture(const Carrot::IO::VFS::Path& filePath) const {
+    Carrot::Render::Texture::Ref ResourcePanel::getLoadedFileThumbnail(const Carrot::IO::VFS::Path& filePath) {
+        auto iter = thumbnails.find(filePath);
+        if (iter == thumbnails.end()) {
+            return nullptr;
+        }
+        return iter->second;
+    }
+
+    const Carrot::Render::Texture& ResourcePanel::requestFileThumbnail(const Carrot::IO::VFS::Path& filePath) {
+        Carrot::Render::Texture::Ref thumbnail = getLoadedFileThumbnail(filePath);
+        if (thumbnail) {
+            return *thumbnail;
+        }
+
         auto physicalPathOpt = GetVFS().safeResolve(filePath);
         if(!physicalPathOpt.has_value()) {
             return genericFileIcon;
@@ -47,6 +63,18 @@ namespace Peeler {
         }
 
         auto fileformat = Carrot::IO::getFileFormat(filePath.getPath().c_str());
+        if (Carrot::IO::isImageFormat(fileformat)) {
+            auto [kv, isNew] = thumbnailLoaders.try_emplace(filePath);
+            ThumbnailLoader& loader = kv->second;
+            if (isNew) {
+                loader.startLoading(filePath);
+            } else {
+                if (loader.isReady.test()) {
+                    thumbnails[filePath] = loader.loadedTexture;
+                    thumbnailLoaders.erase(kv);
+                }
+            }
+        }
         auto it = filetypeIcons.find(fileformat);
         if(it != filetypeIcons.end()) {
             return *it->second;
@@ -137,7 +165,7 @@ namespace Peeler {
                     const float textOffset = baseOffset + (ImGui::GetStyle().FramePadding.x) + imageSize.x;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + imageSize.x);
                     ImGui::SameLine();
-                    ImGui::Image(getFileTexture(vfsPath.value()).getImguiID(), imageSize);
+                    ImGui::Image(requestFileThumbnail(vfsPath.value()).getImguiID(), imageSize);
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + textOffset);
                     ImGui::SameLine();
                     ImGui::Text("%s", toDisplay.c_str());
@@ -323,7 +351,7 @@ namespace Peeler {
 
             float thumbnailSize = tileSize - (ImGui::GetFontSize() * lineCount + ImGui::GetStyle().ItemSpacing.y * (lineCount-1) + ImGui::GetStyle().WindowPadding.y * 2);
             ImGui::SameLine((tileSize - thumbnailSize) / 2);
-            ImGui::Image(getFileTexture(vfsPath).getImguiID(), ImVec2(thumbnailSize, thumbnailSize));
+            ImGui::Image(requestFileThumbnail(vfsPath).getImguiID(), ImVec2(thumbnailSize, thumbnailSize));
 
             // TODO: center text
             auto filename = std::string(vfsPath.getPath().getFilename());
@@ -397,5 +425,29 @@ namespace Peeler {
                 Carrot::Log::error("No prefab at %s", vfsPath.toString().c_str());
             }
         }
+    }
+
+    void ThumbnailLoader::startLoading(const Carrot::IO::VFS::Path& filepath) {
+        GetTaskScheduler().schedule(Carrot::TaskDescription {
+            .name = "Thumbnail generation",
+            .task = [this, filepath] (Carrot::TaskHandle& task) {
+                const Carrot::IO::FileFormat fileFormat = Carrot::IO::getFileFormat(filepath.getPath().c_str());
+                const Carrot::IO::Resource resource { filepath };
+                Carrot::Render::Texture loadedBitmap { GetVulkanDriver(), resource, fileFormat };
+
+                loadedTexture = std::make_shared<Carrot::Render::Texture>(GetVulkanDriver(), vk::Extent3D {
+                    .width = ThumbnailSize,
+                    .height = ThumbnailSize,
+                    .depth = 1,
+                }, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8G8B8A8Unorm);
+
+                // TODO: find a way not to block thread (the engine has fibers, profit!)
+                GetVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+                    GetRenderer().blit(loadedBitmap, *loadedTexture, cmds);
+                    loadedTexture->transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
+                });
+                DISCARD(isReady.test_and_set());
+            }
+        }, Carrot::TaskScheduler::AssetLoading);
     }
 }
