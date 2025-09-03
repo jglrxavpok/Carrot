@@ -1077,7 +1077,27 @@ namespace Peeler {
         }
 
         if(ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Open")) {
-            // TODO
+            nfdchar_t* outPath;
+
+            // show the dialog
+            nfdresult_t result = NFD_PickFolder(&outPath, GetVFS().resolve("game://").c_str());
+            if (result == NFD_OKAY) {
+                auto resolved = GetVFS().represent(outPath);
+                if (resolved.has_value()) {
+                    openScene(resolved.value());
+                } else {
+                    ImGui::InsertNotification({ImGuiToastType::Error, "This folder is not inside your project!"});
+                }
+
+                // remember to free the memory (since NFD_OKAY is returned)
+                NFD_FreePath(outPath);
+            } else if (result == NFD_CANCEL) {
+                // no-op
+            } else {
+                std::string msg = "Error: ";
+                msg += NFD_GetError();
+                throw std::runtime_error(msg);
+            }
         }
 
         if(ImGui::BeginMenu(ICON_FA_FOLDER_OPEN "  Open recent")) {
@@ -1096,7 +1116,32 @@ namespace Peeler {
         }
 
         if(ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save as")) {
-            // TODO
+            nfdchar_t* outPath;
+
+            // show the dialog
+            nfdresult_t result = NFD_PickFolder(&outPath, GetVFS().resolve("game://").c_str());
+            if (result == NFD_OKAY) {
+                auto resolved = GetVFS().represent(outPath);
+                if (resolved.has_value()) {
+                    if (!fs::is_empty(outPath)) {
+                        ImGui::InsertNotification({ImGuiToastType::Error, "This folder is not empty!"});
+                    } else {
+                        scenePath = resolved.value();
+                        saveCurrentScene();
+                    }
+                } else {
+                    ImGui::InsertNotification({ImGuiToastType::Error, "This folder is not inside your project!"});
+                }
+
+                // remember to free the memory (since NFD_OKAY is returned)
+                NFD_FreePath(outPath);
+            } else if (result == NFD_CANCEL) {
+                // no-op
+            } else {
+                std::string msg = "Error: ";
+                msg += NFD_GetError();
+                throw std::runtime_error(msg);
+            }
         }
     }
 
@@ -1705,6 +1750,7 @@ namespace Peeler {
                 currentScene.deserialise(scenePath);
                 undoStack.clear();
             } catch (std::exception& e) {
+                ImGui::InsertNotification({ImGuiToastType::Error, "Failed to open scene: %s", e.what()});
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();
             }
