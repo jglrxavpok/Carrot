@@ -123,7 +123,7 @@ namespace Carrot::ECS {
             }
 
             ParticleSystemStorage& storage = *iter->second;
-            if (!storage.pBlueprint.isReady()) {
+            if (!storage.pBlueprint.isReady() || wasNew) {
                 blueprintsToCheckNextFrame.insert(particleFile);
             }
         });
@@ -158,11 +158,23 @@ namespace Carrot::ECS {
     }
 
     std::unique_ptr<System> SystemParticles::duplicate(World& newOwner) const {
-        return std::make_unique<SystemParticles>(newOwner);
+        auto pParticles = std::make_unique<SystemParticles>(newOwner);
+        for (auto& [key, pStorage] : particles) {
+            pParticles->blueprintsToCheckNextFrame.insert(key);
+            pParticles->particles[key] = {};//duplicateStorage(pParticles->allocator, const_cast<ParticleSystemStorage&/*yolo*/>(*pStorage));
+        }
+        for (const auto& p : blueprintsToCheckNextFrame) {
+            pParticles->blueprintsToCheckNextFrame.insert(p);
+        }
+        return pParticles;
     }
 
     const char* SystemParticles::getName() const {
         return "Particles";
+    }
+
+    SystemParticles::ParticleSystemStorage::ParticleSystemStorage(u64 maxParticles): maxParticles(maxParticles) {
+
     }
 
     SystemParticles::ParticleSystemStorage::ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles)
@@ -182,7 +194,15 @@ namespace Carrot::ECS {
             pBlueprint->load(IO::Resource{ particleFile, outputPath });
             readyForReload = true;
         }, {vfsPath});
-
     }
+
+    UniquePtr<SystemParticles::ParticleSystemStorage> SystemParticles::duplicateStorage(Carrot::TrackingAllocator& destAllocator, ParticleSystemStorage& storage) const {
+        auto pStorage = Carrot::makeUnique<ParticleSystemStorage>(destAllocator, storage.maxParticles);
+        pStorage->pBlueprint = storage.pBlueprint.get();
+        pStorage->pFileWatcher = storage.pFileWatcher; // TODO: the new filewatcher's callback refers to the old storage
+        pStorage->readyForReload = true;
+        return pStorage;
+    }
+
 
 }

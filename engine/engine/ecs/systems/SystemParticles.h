@@ -52,10 +52,12 @@ namespace Carrot::ECS {
             std::shared_ptr<IO::FileWatcher> pFileWatcher;
             u64 maxParticles = 0;
 
+            explicit ParticleSystemStorage(u64 maxParticles);
             explicit ParticleSystemStorage(const Carrot::IO::VFS::Path& particleFile, u64 maxParticles);
         };
 
-        Carrot::TrackingAllocator allocator { Carrot::Allocator::getDefault() }; // used for allocations below
+        UniquePtr<ParticleSystemStorage> duplicateStorage(Carrot::TrackingAllocator& destAllocator, ParticleSystemStorage& storage) const;
+        mutable Carrot::TrackingAllocator allocator { Carrot::Allocator::getDefault() }; // used for allocations below
         std::unordered_map<Carrot::IO::VFS::Path /* path of particle files */, Carrot::UniquePtr<ParticleSystemStorage>> particles;
         std::unordered_set<Carrot::IO::VFS::Path> blueprintsToCheckNextFrame; // keys of particle blueprints to check for loading finish on next frame
 
