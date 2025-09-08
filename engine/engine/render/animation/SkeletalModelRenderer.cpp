@@ -114,7 +114,6 @@ namespace Carrot::Render {
 
     void SkeletalModelRenderer::createGPUSkeletonBuffers() {
         gpuSkeletons.clear();
-        gpuSkeletons.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
@@ -129,23 +128,11 @@ namespace Carrot::Render {
 
     void SkeletalModelRenderer::createSkinningPipelines() {
         skinningPipelines.clear();
-        skinningPipelines.resize(MAX_FRAMES_IN_FLIGHT);
-
         skinningSemaphores.clear();
-        skinningSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-
         outputBuffers.clear();
-        outputBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-
         renderingMeshes.clear();
-        renderingMeshes.resize(MAX_FRAMES_IN_FLIGHT);
-
         blas.clear();
-        blas.reserve(MAX_FRAMES_IN_FLIGHT);
-
         rtInstance.clear();
-        rtInstance.reserve(MAX_FRAMES_IN_FLIGHT);
-
         meshTransforms.clear();
 
         std::vector<std::uint32_t> meshMaterials;
@@ -175,7 +162,8 @@ namespace Carrot::Render {
 
         for (std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
             // create output buffer for this frame
-            auto& outputBuffer = outputBuffers.emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(requiredSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal));
+            auto& outputBuffer = outputBuffers[imageIndex];
+            outputBuffer = GetEngine().getResourceAllocator().allocateDedicatedBuffer(requiredSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
             // create skinning pipelines for all meshes inside the model
             auto& pipelinesForThisFrame = skinningPipelines[imageIndex];
@@ -215,8 +203,8 @@ namespace Carrot::Render {
 
             if(GetCapabilities().supportsRaytracing) {
                 auto& asBuilder = GetRenderer().getASBuilder();
-                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials, BLASGeometryFormat::Default));
-                rtInstance.emplace_back(asBuilder.addInstance(createdBLAS));
+                blas[imageIndex] = asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials, BLASGeometryFormat::Default);
+                rtInstance[imageIndex] = asBuilder.addInstance(blas[imageIndex]);
             }
         }
     }

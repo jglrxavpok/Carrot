@@ -61,15 +61,15 @@ namespace Carrot {
         std::unordered_map<MeshID, size_t> meshOffsets{};
         std::size_t vertexCountPerInstance = 0;
 
-        std::vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
+        Render::PerFrame<vk::UniqueDescriptorPool> computeDescriptorPools{};
         std::vector<vk::DescriptorSet> computeDescriptorSet0{};
         std::vector<vk::DescriptorSet> computeDescriptorSet1{};
         vk::UniqueDescriptorSetLayout computeSetLayout0{};
         vk::UniqueDescriptorSetLayout computeSetLayout1{};
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
-        std::vector<vk::CommandBuffer> skinningCommandBuffers{};
-        std::vector<vk::UniqueSemaphore> skinningSemaphores{};
+        Render::PerFrame<vk::CommandBuffer> skinningCommandBuffers{};
+        Render::PerFrame<vk::UniqueSemaphore> skinningSemaphores{};
         bool submitAtLeastOneSkinningCompute = false;
 
         void createSkinningComputePipeline();

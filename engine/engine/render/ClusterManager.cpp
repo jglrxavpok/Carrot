@@ -343,9 +343,6 @@ namespace Carrot::Render {
         if(iter == perViewport.end()) {
             return Carrot::BufferView{};
         }
-        if(iter->second.instancesPerFrame.empty()) {
-            return Carrot::BufferView{};
-        }
         auto& pAlloc = iter->second.instancesPerFrame[renderContext.frameIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
@@ -419,9 +416,7 @@ namespace Carrot::Render {
         }
 
         auto& statsCPUBufferPerFrame = perViewport[renderContext.pViewport].statsCPUBuffersPerFrame;
-        if(statsCPUBufferPerFrame.empty()) {
-            statsCPUBufferPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
-
+        if(!statsCPUBufferPerFrame[0].view) {
             for(std::size_t i = 0; i< statsCPUBufferPerFrame.size(); i++) {
                 statsCPUBufferPerFrame[i] = GetResourceAllocator().allocateStagingBuffer(sizeof(StatsBuffer));
             }
@@ -514,9 +509,6 @@ namespace Carrot::Render {
 
         clusterDataPerFrame[renderContext.frameIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         auto& instancesPerFrame = perViewport[renderContext.pViewport].instancesPerFrame;
-        if(instancesPerFrame.size() != MAX_FRAMES_IN_FLIGHT) {
-            instancesPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
-        }
         instancesPerFrame[renderContext.frameIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         instanceDataPerFrame[renderContext.frameIndex] = instanceDataGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
 
@@ -606,9 +598,9 @@ namespace Carrot::Render {
     }
 
     void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
-        clusterDataPerFrame.resize(newCount);
+        clusterDataPerFrame.clear();
         perViewport.clear();
-        instanceDataPerFrame.resize(newCount);
+        instanceDataPerFrame.clear();
     }
 
     std::shared_ptr<Carrot::Pipeline> ClusterManager::getPipeline(const Carrot::Render::Context& renderContext) {
@@ -633,9 +625,6 @@ namespace Carrot::Render {
 
     Memory::OptionalRef<Carrot::Buffer> ClusterManager::getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex) {
         auto& readbackBuffersPerFrame = perViewport[pViewport].readbackBuffersPerFrame;
-        if(readbackBuffersPerFrame.empty()) {
-            readbackBuffersPerFrame.resize(MAX_FRAMES_IN_FLIGHT);
-        }
         auto& gpuInstances = perViewport[pViewport].gpuClusterInstances;
         UniquePtr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex % MAX_FRAMES_IN_FLIGHT];
 

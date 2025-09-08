@@ -1189,9 +1189,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 }
 
 void Carrot::Engine::createSynchronizationObjects() {
-    renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
-    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
     vk::SemaphoreCreateInfo semaphoreInfo{};
 
     vk::FenceCreateInfo fenceInfo{
@@ -1203,8 +1200,6 @@ void Carrot::Engine::createSynchronizationObjects() {
         DebugNameable::nameSingle("Render finished", *renderFinishedSemaphore[i]);
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
-
-    additionalWaitSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 }
 
 void Carrot::Engine::createTimingQueryPools() {

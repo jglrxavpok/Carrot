@@ -60,7 +60,7 @@ namespace Carrot::Render {
         Carrot::InstanceData instanceData;
         PerFrame<std::vector<std::unique_ptr<Carrot::ComputePipeline>>> skinningPipelines; // [swapchainIndex][mesh]
         PerFrame<std::vector<vk::UniqueSemaphore>> skinningSemaphores; // [swapchainIndex][mesh]
-        PerFrame<std::unique_ptr<Carrot::Buffer>> outputBuffers;
+        PerFrame<UniquePtr<Carrot::Buffer>> outputBuffers;
         PerFrame<std::vector<std::shared_ptr<Carrot::Mesh>>> renderingMeshes; // one per mesh inside the input model, per swapchain index
         std::vector<glm::mat4> meshTransforms; // one per mesh inside the input model
         PerFrame<std::vector<std::unique_ptr<Carrot::Buffer>>> gpuSkeletons; // one per mesh

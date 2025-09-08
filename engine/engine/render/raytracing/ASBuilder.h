@@ -332,10 +332,10 @@ namespace Carrot {
         std::shared_ptr<AccelerationStructure> currentTLAS;
 
         bool builtBLASThisFrame = false;
-        std::vector<vk::UniqueSemaphore> instanceUploadSemaphore;
-        std::vector<vk::UniqueSemaphore> tlasBuildSemaphore;
-        std::vector<vk::UniqueSemaphore> preCompactBLASSemaphore;
-        std::vector<vk::UniqueSemaphore> blasBuildSemaphore;
+        Render::PerFrame<vk::UniqueSemaphore> instanceUploadSemaphore;
+        Render::PerFrame<vk::UniqueSemaphore> tlasBuildSemaphore;
+        Render::PerFrame<vk::UniqueSemaphore> preCompactBLASSemaphore;
+        Render::PerFrame<vk::UniqueSemaphore> blasBuildSemaphore;
 
         std::int8_t framesBeforeRebuildingTLAS = 0;
         std::size_t previousActiveInstances = 0;

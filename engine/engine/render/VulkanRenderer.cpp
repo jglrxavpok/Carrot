@@ -92,7 +92,6 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                3,2,0,
                                        });
 
-    asyncCopySemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         asyncCopySemaphores[i] = driver.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[i]);
@@ -236,8 +235,6 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
 
     lighting.onSwapchainImageCountChange(newCount);
     forwardRenderingFrameInfo.clear();
-    forwardRenderingFrameInfo.resize(newCount);
-    asyncCopySemaphores.resize(newCount);
     for (std::size_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
         forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
                 sizeof(ForwardFrameInfo),
@@ -248,9 +245,6 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
         asyncCopySemaphores[j] = driver.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[j]);
     }
-
-    perDrawBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    perDrawOffsetBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
     if(asBuilder) {
         asBuilder->onSwapchainImageCountChange(newCount);
@@ -1106,9 +1100,6 @@ void Carrot::VulkanRenderer::createPerDrawSetResources() {
             .pSetLayouts = layouts.data(),
     });
 
-    perDrawBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    perDrawOffsetBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
     for(auto& set : perDrawDescriptorSets) {
         std::vector<vk::WriteDescriptorSet> writes = {
                 {
@@ -1244,7 +1235,6 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
             .pSetLayouts = layouts.data(),
     });
 
-    debugBuffers.resize(debugDescriptorSets.size());
     for (int i = 0; i < debugDescriptorSets.size(); i++) {
         debugBuffers[i] = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(DebugBufferObject),
@@ -1292,8 +1282,6 @@ void Carrot::VulkanRenderer::createDefaultResources() {
 
     blackCubeMapTexture = std::make_shared<Render::Texture>(std::move(cubeMap));
 
-    forwardRenderingFrameInfo.clear();
-    forwardRenderingFrameInfo.resize(MAX_FRAMES_IN_FLIGHT);
     for (std::size_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
         forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
                 sizeof(ForwardFrameInfo),
@@ -1303,7 +1291,7 @@ void Carrot::VulkanRenderer::createDefaultResources() {
     }
 }
 
-std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
+std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::span<Carrot::BufferView>& uniformBuffers) {
     verify(uniformBuffers.size() > 0, "Must have at least one uniform buffer");
     int vrMultiplier = (GetEngine().getConfiguration().runInVR ? 2 : 1);
     std::size_t count = MAX_FRAMES_IN_FLIGHT * vrMultiplier;
@@ -1342,13 +1330,13 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
     return cameraDescriptorSets;
 }
 
-void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets) {
+void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::span<vk::DescriptorSet>& sets) {
     if(sets.empty())
         return;
     getVulkanDriver().getLogicalDevice().freeDescriptorSets(*cameraDescriptorPool, sets);
 }
 
-std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers) {
+std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForViewport(const std::span<Carrot::BufferView>& uniformBuffers) {
     verify(uniformBuffers.size() > 0, "Must have at least one uniform buffer");
     std::size_t count = MAX_FRAMES_IN_FLIGHT;
     std::vector<vk::DescriptorSetLayout> layouts {count, *viewportDescriptorSetLayout};
@@ -1378,7 +1366,7 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForVie
     return descriptorSets;
 }
 
-void Carrot::VulkanRenderer::destroyViewportDescriptorSets(const std::vector<vk::DescriptorSet>& sets) {
+void Carrot::VulkanRenderer::destroyViewportDescriptorSets(const std::span<vk::DescriptorSet>& sets) {
     if(sets.empty())
         return;
     getVulkanDriver().getLogicalDevice().freeDescriptorSets(*viewportDescriptorPool, sets);

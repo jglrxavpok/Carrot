@@ -42,11 +42,6 @@ namespace Carrot::Render {
             v.pViewport = pViewport;
 
             std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
-            v.vertexBuffers.resize(imageCount);
-            v.indexBuffers.resize(imageCount);
-            v.stagingBuffers.resize(imageCount);
-            v.bufferCopySync.resize(imageCount);
-            v.rebindTextures.resize(imageCount);
 
             vk::SemaphoreCreateInfo semaphoreInfo{};
             for(std::size_t i = 0; i < imageCount; i++) {
@@ -382,13 +377,8 @@ namespace Carrot::Render {
     }
 
     void ImGuiBackend::resizeStorage(std::size_t newCount) {
+        verify(newCount == MAX_FRAMES_IN_FLIGHT, "Values other than MAX_FRAMES_IN_FLIGHT are not supported");
         for(auto& [_, v] : pImpl->perWindow) {
-            v.vertexBuffers.resize(newCount);
-            v.indexBuffers.resize(newCount);
-            v.stagingBuffers.resize(newCount);
-            v.bufferCopySync.resize(newCount);
-            v.rebindTextures.resize(newCount);
-
             vk::SemaphoreCreateInfo semaphoreInfo{};
             for(std::size_t i = 0; i < newCount; i++) {
                 v.bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());

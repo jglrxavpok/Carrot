@@ -12,9 +12,7 @@ namespace Carrot::ECS {
 
     TextComponent::TextComponent(Entity entity, const std::filesystem::path& fontFile)
     : IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {
-        renderableTexts.resize(MAX_FRAMES_IN_FLIGHT);
-        needsRefreshs.resize(MAX_FRAMES_IN_FLIGHT);
-        for (auto && needsRefresh : needsRefreshs) {
+        for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = false;
         }
     };
@@ -64,7 +62,7 @@ namespace Carrot::ECS {
     void TextComponent::setColor(const glm::vec4& newColor) {
         previousColor = color;
         color = newColor;
-        for (auto && needsRefresh : needsRefreshs) {
+        for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = needsRefresh || newColor != previousColor;
         }
     }
@@ -74,7 +72,7 @@ namespace Carrot::ECS {
     }
 
     void TextComponent::setHorizontalAlignment(Render::TextAlignment newAlignment) {
-        for (auto && needsRefresh : needsRefreshs) {
+        for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = needsRefresh || horizontalAlignment != newAlignment;
         }
         horizontalAlignment = newAlignment;
@@ -105,7 +103,7 @@ namespace Carrot::ECS {
 
     void TextComponent::setText(std::string_view text) {
         previousText = this->text;
-        for (auto && needsRefresh : needsRefreshs) {
+        for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = needsRefresh || previousText != text;
         }
         this->text = text;

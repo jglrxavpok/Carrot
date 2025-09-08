@@ -29,7 +29,7 @@ namespace Carrot::Render {
         if(!cameraDescriptorSets.empty()) {
             renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
         }
-        if(!viewportDescriptorSets.empty()) {
+        if(viewportDescriptorSets[0] != VK_NULL_HANDLE) {
             renderer.destroyViewportDescriptorSets(viewportDescriptorSets);
         }
     }
@@ -49,13 +49,12 @@ namespace Carrot::Render {
             renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
         }
 
-        if(!viewportDescriptorSets.empty()) {
+        if(viewportDescriptorSets[0] != VK_NULL_HANDLE) {
             renderer.destroyViewportDescriptorSets(viewportDescriptorSets);
         }
 
         std::size_t totalCount = newCount * (renderer.getConfiguration().runInVR ? 2 : 1);
         cameraUniformBuffers.resize(totalCount);
-        viewportUniformBuffers.resize(newCount);
         for (std::size_t i = 0; i < totalCount; i++) {
             cameraUniformBuffers[i] = renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::CameraBufferObject),
                                                                                        vk::BufferUsageFlagBits::eUniformBuffer,

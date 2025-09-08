@@ -242,7 +242,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
                 .pSetLayouts = &(*computeSetLayout0)
         })[0]);
 
-        computeDescriptorPools.emplace_back(std::move(pool));
+        computeDescriptorPools[i] = std::move(pool);
     }
 
     // write to descriptor sets
@@ -329,7 +329,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         }
         commands.end();
 
-        skinningSemaphores.emplace_back(std::move(engine.getLogicalDevice().createSemaphoreUnique({})));
+        skinningSemaphores[i] = engine.getLogicalDevice().createSemaphoreUnique({});
         DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphores[i]);
     }
 }
@@ -377,9 +377,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     {
         submitAtLeastOneSkinningCompute = true;
         Render::PerFrame<vk::Semaphore> semaphores;
-        semaphores.reserve(skinningSemaphores.size());
+        i32 index = 0;
         for(auto& pSemaphore : skinningSemaphores) {
-            semaphores.emplace_back(*pSemaphore);
+            semaphores[index] = *pSemaphore;
+            index++;
         }
 
         for(auto& blas : raytracingBLASes) {

@@ -215,11 +215,11 @@ namespace Carrot {
         const vk::DescriptorSet& getDebugDescriptorSet(const Render::Context& renderContext) const;
         const vk::DescriptorSet& getPerDrawDescriptorSet(const Render::Context& renderContext) const;
 
-        std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
-        void destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
+        std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::span<Carrot::BufferView>& uniformBuffers);
+        void destroyCameraDescriptorSets(const std::span<vk::DescriptorSet>& sets);
 
-        std::vector<vk::DescriptorSet> createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers);
-        void destroyViewportDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
+        std::vector<vk::DescriptorSet> createDescriptorSetForViewport(const std::span<Carrot::BufferView>& uniformBuffers);
+        void destroyViewportDescriptorSets(const std::span<vk::DescriptorSet>& sets);
 
         void deferDestroy(const std::string& name, Carrot::Buffer* resource);
 

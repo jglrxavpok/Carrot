@@ -5,6 +5,8 @@
 #pragma once
 
 #include <vector>
+#include <core/containers/Vector.hpp>
+
 #include "RenderEye.h"
 #include "Camera.h"
 #include "engine/vulkan/SwapchainAware.h"
@@ -89,8 +91,8 @@ namespace Carrot::Render {
 
         std::unordered_map<Render::Eye, Camera> cameras{};
 
-        Render::PerFrame<Carrot::BufferView> cameraUniformBuffers;
-        Render::PerFrame<vk::DescriptorSet> cameraDescriptorSets;
+        Vector<Carrot::BufferView> cameraUniformBuffers;
+        Vector<vk::DescriptorSet> cameraDescriptorSets;
 
         Render::PerFrame<Carrot::BufferView> viewportUniformBuffers;
         Render::PerFrame<vk::DescriptorSet> viewportDescriptorSets;

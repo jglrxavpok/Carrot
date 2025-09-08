@@ -12,7 +12,6 @@
 namespace Carrot::Render {
     DebugRenderer::DebugRenderer(VulkanRenderer& renderer): renderer(renderer) {
         lines.setGrowthFactor(1.5f);
-        meshes.resize(MAX_FRAMES_IN_FLIGHT);
     }
 
     void DebugRenderer::drawLine(const glm::vec3& a, const glm::vec3& b, const glm::vec4& color) {

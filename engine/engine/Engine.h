@@ -447,13 +447,9 @@ namespace Carrot {
         std::uint32_t frames = 0;
         std::uint32_t swapchainImageIndexRightNow = 0;
 
-
-        vk::UniqueCommandPool tracyCommandPool{};
-        std::vector<vk::CommandBuffer> tracyCommandBuffers{};
-
-        std::vector<vk::CommandBuffer> mainCommandBuffers{};
-        std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
-        std::vector<vk::UniqueFence> inFlightFences{};
+        Render::PerFrame<vk::CommandBuffer> mainCommandBuffers{};
+        Render::PerFrame<vk::UniqueSemaphore> renderFinishedSemaphore{};
+        Render::PerFrame<vk::UniqueFence> inFlightFences{};
         Render::PerFrame<Carrot::Vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>>> additionalWaitSemaphores{};
         vk::UniqueQueryPool timingQueryPool{};
         std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};

@@ -153,9 +153,6 @@ namespace Carrot {
     }
 
     vk::Semaphore BLASHandle::getBoundSemaphore(std::size_t swapchainIndex) const {
-        if(boundSemaphores.empty()) {
-            return {};
-        }
         return boundSemaphores[swapchainIndex % boundSemaphores.size()];
     }
 
@@ -229,12 +226,10 @@ void Carrot::ASBuilder::createBuildCommandBuffers() {
             .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
     });
 
-    tlasBuildTracyCtx.resize(MAX_FRAMES_IN_FLIGHT);
     for(std::size_t i = 0; i < tlasBuildTracyCtx.size(); i++) {
-        tlasBuildTracyCtx[i] = GetEngine().createTracyContext(Carrot::sprintf("TLAS build %llu", i));
+        tlasBuildTracyCtx[i] = std::move(GetEngine().createTracyContext(Carrot::sprintf("TLAS build %llu", i)));
     }
 
-    blasBuildTracyContextes.resize(MAX_FRAMES_IN_FLIGHT);
     for(std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
         for(std::size_t i = 0; i < BLASBuildBucketCount; i++) {
             blasBuildTracyContextes[imageIndex][i] = GetEngine().createTracyContext(Carrot::sprintf("BLAS bucket %d", i));
@@ -292,11 +287,6 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::shar
 
 void Carrot::ASBuilder::createSemaphores() {
     std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
-    preCompactBLASSemaphore.resize(imageCount);
-    blasBuildSemaphore.resize(imageCount);
-    tlasBuildSemaphore.resize(imageCount);
-    instanceUploadSemaphore.resize(imageCount);
-    serializedCopySemaphore.resize(imageCount);
 
     for (size_t i = 0; i < imageCount; ++i) {
         preCompactBLASSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
@@ -1137,23 +1127,11 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
     createDescriptors();
 
     rtInstancesBufferPerFrame.clear();
-    rtInstancesBufferPerFrame.resize(newCount);
-
     rtInstancesScratchBufferPerFrame.clear();
-    rtInstancesScratchBufferPerFrame.resize(newCount);
-
     instancesBufferPerFrame.clear();
-    instancesBufferPerFrame.resize(newCount);
-
     geometriesBufferPerFrame.clear();
-    geometriesBufferPerFrame.resize(newCount);
-
     tlasPerFrame.clear();
-    tlasPerFrame.resize(newCount);
 
-    blasBuildCommandObjects.resize(newCount);
-    prebuiltBLASStorages.resize(newCount);
-    tlasBuildTimelineSemaphoreWaitValuesForRenderThread.resize(newCount);
     for(std::size_t i = 0; i < newCount; i++) {
         tlasBuildTimelineSemaphoreWaitValuesForRenderThread[i] = 0;
     }
