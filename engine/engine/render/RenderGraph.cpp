@@ -125,7 +125,7 @@ namespace Carrot::Render {
         return createTarget(true, name, format, size, vk::AttachmentLoadOp::eDontCare, {}, layout);
     }
 
-    FrameResource& GraphBuilder::createBuffer(std::string name, vk::DeviceSize size, vk::BufferUsageFlags usages, bool clearEachFrame) {
+    FrameResource& GraphBuilder::createBuffer(std::string name, const ComputedBufferSize& size, vk::BufferUsageFlags usages, bool clearEachFrame) {
         auto& r = resources.emplace_back();
         r.name = std::move(name);
         r.owner = this;
@@ -710,8 +710,8 @@ namespace Carrot::Render {
         return driver.getResourceRepository().getBuffer(resourceID, frameIndex);
     }
 
-    BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex) {
-        return driver.getResourceRepository().getOrCreateBuffer(resource, frameIndex,
+    BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
+        return driver.getResourceRepository().getOrCreateBuffer(resource, viewportSize, frameIndex,
             driver.getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags);
     }
 

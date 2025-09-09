@@ -54,6 +54,20 @@ namespace Carrot::Render {
         }
     };
 
+    /// Computes the size of a buffer based on the viewport size
+    struct ComputedBufferSize {
+        ComputedBufferSize(vk::DeviceSize size) {
+            computeCode = [size](const glm::ivec2&) { return size; };
+        }
+
+        template<typename Functor> requires std::is_invocable_v<Functor, const glm::ivec2&>
+        ComputedBufferSize(const Functor& code) {
+            computeCode = code;
+        }
+
+        std::function<vk::DeviceSize(const glm::ivec2& viewportSize)> computeCode;
+    };
+
     enum class ImageOrigin {
         SurfaceSwapchain, // image is part of window swapchain
         Created, // image is created by the engine
@@ -106,7 +120,7 @@ namespace Carrot::Render {
         void updateLayout(vk::ImageLayout newLayout);
 
         TextureSize size;
-        vk::DeviceSize bufferSize = 0;
+        ComputedBufferSize bufferSize{0};
         vk::Format format = vk::Format::eUndefined;
         ResourceType type = ResourceType::RenderTarget;
         ImageOrigin imageOrigin = ImageOrigin::Created;

@@ -32,10 +32,10 @@ namespace Carrot::Render {
         Texture& getOrCreateTexture(const FrameResource& id, u64 frameNumber, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         vk::ImageUsageFlags& getTextureUsages(const Carrot::UUID& id);
 
-        BufferChain& createBuffer(const FrameResource& texture, vk::BufferUsageFlags usages);
+        BufferChain& createBuffer(const FrameResource& texture, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages);
         BufferAllocation& getBuffer(const FrameResource& texture, u64 frameNumber);
         BufferAllocation& getBuffer(const Carrot::UUID& id, u64 frameNumber);
-        BufferAllocation& getOrCreateBuffer(const FrameResource& id, u64 frameNumber, vk::BufferUsageFlags usages);
+        BufferAllocation& getOrCreateBuffer(const FrameResource& id, const vk::Extent2D& viewportSize, u64 frameNumber, vk::BufferUsageFlags usages);
         vk::BufferUsageFlags& getBufferUsages(const Carrot::UUID& id);
         void setResourceReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength);
 
@@ -64,7 +64,7 @@ namespace Carrot::Render {
         public:
             BufferChain() = default;
 
-            void resize(const FrameResource& buffer, vk::BufferUsageFlags usages, std::size_t historyLength);
+            void resize(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages, std::size_t historyLength);
             Carrot::BufferAllocation& get(u64 frameNumber);
 
             BufferChain(const BufferChain&) = delete;

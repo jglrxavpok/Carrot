@@ -456,19 +456,20 @@ namespace Carrot::Render {
             [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
 
-                // TODO: buffers with size based on size of framebuffer?
-                const i32 w = 1920;
-                const i32 h = 1080;
+                auto getProbeCount = [](const glm::ivec2& viewportSize) {
+                    const i32 probesCountX = (viewportSize.x+ProbeScreenSize-1) / ProbeScreenSize;
+                    const i32 probesCountY = (viewportSize.y+ProbeScreenSize-1) / ProbeScreenSize;
+                    const i32 probeCount = probesCountX * probesCountY;
+                    return probeCount;
+                };
 
-                const i32 probesCountX = (w+ProbeScreenSize-1) / ProbeScreenSize;
-                const i32 probesCountY = (h+ProbeScreenSize-1) / ProbeScreenSize;
                 data.gi.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
-                const i32 probeCount = probesCountX * probesCountY;
-                data.screenProbes = graph.createBuffer("screen-probes", probeCount * sizeof(ScreenProbe), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.spawnedProbes = graph.createBuffer("spawned-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.emptyProbes = graph.createBuffer("empty-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.reprojectedProbes = graph.createBuffer("reprojected-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.spawnedRays = graph.createBuffer("spawned-rays", sizeof(u32) + probeCount * MaxRaysPerProbe * sizeof(SpawnedRay), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.screenProbes = graph.createBuffer("screen-probes", [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(ScreenProbe); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.spawnedProbes = graph.createBuffer("spawned-probes", [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(ScreenProbe) + sizeof(u32); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                ComputedBufferSize probeListSize = [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(u32) + sizeof(u32); };
+                data.emptyProbes = graph.createBuffer("empty-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.reprojectedProbes = graph.createBuffer("reprojected-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.spawnedRays = graph.createBuffer("spawned-rays", [=](const glm::ivec2& v) { return sizeof(u32) + getProbeCount(v) * MaxRaysPerProbe * sizeof(SpawnedRay); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 graph.reuseResourceAcrossFrames(data.screenProbes, 1); // need previous frame
 
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);

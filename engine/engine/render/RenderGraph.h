@@ -36,10 +36,10 @@ namespace Carrot::Render {
         [[nodiscard]] Render::Texture& getSwapchainTexture(const FrameResource& resource, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize);
 
-        [[nodiscard]] BufferAllocation& createBuffer(const FrameResource& resource, size_t frameIndex);
+        [[nodiscard]] BufferAllocation& createBuffer(const FrameResource& resource, const vk::Extent2D& viewportSize, size_t frameIndex);
         [[nodiscard]] BufferAllocation& getBuffer(const Carrot::UUID& resourceID, size_t frameIndex) const;
         [[nodiscard]] BufferAllocation& getBuffer(const FrameResource& resource, size_t frameIndex) const;
-        [[nodiscard]] BufferAllocation& getOrCreateBuffer(const FrameResource& resource, size_t frameIndex);
+        [[nodiscard]] BufferAllocation& getOrCreateBuffer(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize);
 
         VulkanDriver& getVulkanDriver() { return driver; }
 
@@ -133,7 +133,7 @@ namespace Carrot::Render {
         /// @param size Size in bytes of the buffer
         /// @param clearEachFrame Should clear the buffer to 0 each frame?
         /// @return resource handle to the buffer
-        FrameResource& createBuffer(std::string name, vk::DeviceSize size, vk::BufferUsageFlags usages, bool clearEachFrame);
+        FrameResource& createBuffer(std::string name, const ComputedBufferSize& size, vk::BufferUsageFlags usages, bool clearEachFrame);
         FrameResource& createStorageTarget(std::string name, vk::Format format, TextureSize size, vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(FrameResource& toPresent);
 

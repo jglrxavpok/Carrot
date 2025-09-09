@@ -309,7 +309,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 bool hasOnlyStorageBuffers = true;
                 for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                     if(output.resource.type == ResourceType::StorageBuffer) {
-                        DISCARD(graph.getOrCreateBuffer(output.resource, i));
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize));
                     } else {
                         hasOnlyStorageBuffers = false;
                         if (output.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
@@ -339,7 +339,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 for (const auto& output : outputs) {
                     // force create resources
                     if(output.resource.type == ResourceType::StorageBuffer) {
-                        DISCARD(graph.getOrCreateBuffer(output.resource, i));
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize));
                     } else {
                         DISCARD(graph.getOrCreateTexture(output.resource, i, viewportSize));
                     }
