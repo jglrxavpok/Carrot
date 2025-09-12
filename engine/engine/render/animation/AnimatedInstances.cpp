@@ -69,24 +69,20 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         });
     });
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        fullySkinnedVertexBuffers[i] = GetResourceAllocator().allocateDeviceBuffer(sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
-        fullySkinnedVertexBuffers[i].name(Carrot::sprintf("full skinned vertices %s", model->debugName.c_str()));
-    }
+    fullySkinnedVertexBuffer = GetResourceAllocator().allocateDeviceBuffer(sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+    fullySkinnedVertexBuffer.name(Carrot::sprintf("full skinned vertices %s", model->debugName.c_str()));
 
-    raytracingBLASes.reserve(maxInstanceCount * MAX_FRAMES_IN_FLIGHT);
-    raytracingInstances.reserve(maxInstanceCount * MAX_FRAMES_IN_FLIGHT);
+    raytracingBLASes.reserve(maxInstanceCount);
+    raytracingInstances.reserve(maxInstanceCount);
 
     for(int i = 0; i < maxInstanceCount; i++) {
-        std::array<std::vector<std::shared_ptr<Carrot::Mesh>>, MAX_FRAMES_IN_FLIGHT> instanceMeshes;
-        std::array<std::vector<glm::mat4>, MAX_FRAMES_IN_FLIGHT> meshTransforms;
-        std::array<std::vector<std::uint32_t>, MAX_FRAMES_IN_FLIGHT> meshMaterialSlots;
+        std::vector<std::shared_ptr<Carrot::Mesh>> instanceMeshes;
+        std::vector<glm::mat4> meshTransforms;
+        std::vector<std::uint32_t> meshMaterialSlots;
 
-        for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
-            instanceMeshes[bufferingIndex].reserve(meshes.size());
-            meshTransforms[bufferingIndex].reserve(meshes.size());
-            meshMaterialSlots[bufferingIndex].reserve(meshes.size());
-        }
+        instanceMeshes.reserve(meshes.size());
+        meshTransforms.reserve(meshes.size());
+        meshMaterialSlots.reserve(meshes.size());
 
         forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
             std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
@@ -100,23 +96,19 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
             });
 
             if(GetCapabilities().supportsRaytracing) {
-                for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
-                    Carrot::BufferView vertexBuffer = fullySkinnedVertexBuffers[bufferingIndex].view.subView(static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex));
-                    instanceMeshes[bufferingIndex].push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex), sizeof(std::uint32_t)));
-                    meshTransforms[bufferingIndex].push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform
-                    meshMaterialSlots[bufferingIndex].push_back(materialSlot);
-                }
+                Carrot::BufferView vertexBuffer = fullySkinnedVertexBuffer.view.subView(static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex));
+                instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex), sizeof(std::uint32_t)));
+                meshTransforms.emplace_back(1.0f); // TODO: use actual mesh transform
+                meshMaterialSlots.push_back(materialSlot);
             }
         });
 
         if(GetCapabilities().supportsRaytracing) {
-            for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
-                auto& asBuilder = GetRenderer().getASBuilder();
-                auto blas = asBuilder.addBottomLevel(instanceMeshes[bufferingIndex], meshTransforms[bufferingIndex], meshMaterialSlots[bufferingIndex], BLASGeometryFormat::Default);
-                blas->dynamicGeometry = true;
-                raytracingBLASes.push_back(blas);
-                raytracingInstances.push_back(asBuilder.addInstance(blas));
-            }
+            auto& asBuilder = GetRenderer().getASBuilder();
+            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots, BLASGeometryFormat::Default);
+            blas->dynamicGeometry = true;
+            raytracingBLASes.push_back(blas);
+            raytracingInstances.push_back(asBuilder.addInstance(blas));
         }
     }
 
@@ -133,11 +125,11 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     auto& computeCommandPool = engine.getComputeCommandPool();
 
     // command buffers which will be sent to the compute queue to compute skinning
-    skinningCommandBuffers = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+    skinningCommandBuffer = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = computeCommandPool,
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = MAX_FRAMES_IN_FLIGHT,
-    });
+            .commandBufferCount = 1,
+    })[0];
 
     // sets the mesh count (per instance) for this skinning pipeline
     vk::SpecializationMapEntry specEntries[] = {
@@ -175,7 +167,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                    .descriptorCount = 1,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
 
@@ -183,7 +175,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 1,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                    .descriptorCount = 1,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
 
@@ -191,7 +183,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             {
                     .binding = 2,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                    .descriptorCount = 1,
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
             },
     };
@@ -226,24 +218,22 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     // set0
     poolSizes.push_back(vk::DescriptorPoolSize {
             .type = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = static_cast<uint32_t>(set0Size * MAX_FRAMES_IN_FLIGHT),
+            .descriptorCount = static_cast<uint32_t>(set0Size),
     });
 
-    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        auto pool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-                .maxSets = 2*MAX_FRAMES_IN_FLIGHT,
-                .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
-                .pPoolSizes = poolSizes.data(),
-        });
+    auto pool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .maxSets = 2,
+            .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+            .pPoolSizes = poolSizes.data(),
+    });
 
-        computeDescriptorSet0.push_back(engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-                .descriptorPool = *pool,
-                .descriptorSetCount = 1,
-                .pSetLayouts = &(*computeSetLayout0)
-        })[0]);
+    computeDescriptorSet0 = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &(*computeSetLayout0)
+    })[0];
 
-        computeDescriptorPools[i] = std::move(pool);
-    }
+    computeDescriptorPool = std::move(pool);
 
     // write to descriptor sets
     vk::DescriptorBufferInfo originalVertexBuffer {
@@ -259,43 +249,41 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     };
 
     // TODO: fix validation error with arrays
-    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk::DescriptorBufferInfo outputBufferInfo = fullySkinnedVertexBuffers[i].view.asBufferInfo();
+    vk::DescriptorBufferInfo outputBufferInfo = fullySkinnedVertexBuffer.view.asBufferInfo();
 
-        using DT = vk::DescriptorType;
-        std::vector<vk::WriteDescriptorSet> writes = {
-                // set0, binding0, original vertex buffer
-                vk::WriteDescriptorSet {
-                        .dstSet = computeDescriptorSet0[i],
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = DT::eStorageBuffer,
-                        .pBufferInfo = &originalVertexBuffer,
-                },
+    using DT = vk::DescriptorType;
+    std::vector<vk::WriteDescriptorSet> writes = {
+            // set0, binding0, original vertex buffer
+            vk::WriteDescriptorSet {
+                    .dstSet = computeDescriptorSet0,
+                    .dstBinding = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = DT::eStorageBuffer,
+                    .pBufferInfo = &originalVertexBuffer,
+            },
 
-                // set0, binding1, instance buffer
-                vk::WriteDescriptorSet {
-                        .dstSet = computeDescriptorSet0[i],
-                        .dstBinding = 1,
-                        .descriptorCount = 1,
-                        .descriptorType = DT::eStorageBuffer,
-                        .pBufferInfo = &instanceBufferInfo,
-                },
+            // set0, binding1, instance buffer
+            vk::WriteDescriptorSet {
+                    .dstSet = computeDescriptorSet0,
+                    .dstBinding = 1,
+                    .descriptorCount = 1,
+                    .descriptorType = DT::eStorageBuffer,
+                    .pBufferInfo = &instanceBufferInfo,
+            },
 
-                // set0, binding2, output buffer
-                vk::WriteDescriptorSet {
-                        .dstSet = computeDescriptorSet0[i],
-                        .dstBinding = 2,
-                        .descriptorCount = 1,
-                        .descriptorType = DT::eStorageBuffer,
-                        .pBufferInfo = &outputBufferInfo,
-                },
-        };
+            // set0, binding2, output buffer
+            vk::WriteDescriptorSet {
+                    .dstSet = computeDescriptorSet0,
+                    .dstBinding = 2,
+                    .descriptorCount = 1,
+                    .descriptorType = DT::eStorageBuffer,
+                    .pBufferInfo = &outputBufferInfo,
+            },
+    };
 
-        assert(writes.size() == set0Size);
+    assert(writes.size() == set0Size);
 
-        engine.getLogicalDevice().updateDescriptorSets(writes, {});
-    }
+    engine.getLogicalDevice().updateDescriptorSets(writes, {});
 
     auto computeStage = ShaderModule("resources/shaders/compute/animation-skinning.compute.glsl.spv", "main");
 
@@ -317,47 +305,38 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 
     std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
     std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;
-    for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk::CommandBuffer& commands = skinningCommandBuffers[i];
-        commands.begin(vk::CommandBufferBeginInfo {
-        });
-        {
-            // TODO: tracy zone
-            commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
-            commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0[i], model->getAnimationDataDescriptorSet()}, {});
-            commands.dispatch(vertexGroups, instanceGroups, 1);
-        }
-        commands.end();
 
-        skinningSemaphores[i] = engine.getLogicalDevice().createSemaphoreUnique({});
-        DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphores[i]);
+    vk::CommandBuffer& commands = skinningCommandBuffer;
+    commands.begin(vk::CommandBufferBeginInfo {
+    });
+    {
+        // TODO: tracy zone
+        commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
+        commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0, model->getAnimationDataDescriptorSet()}, {});
+        commands.dispatch(vertexGroups, instanceGroups, 1);
     }
+    commands.end();
+
+    skinningSemaphore = engine.getLogicalDevice().createSemaphoreUnique({});
+    DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphore);
 }
 
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     ZoneScoped;
 
-    const std::size_t modFrameIndex = renderContext.frameNumber % MAX_FRAMES_IN_FLIGHT;
     if(GetCapabilities().supportsRaytracing) {
         verify(raytracingBLASes.size() == raytracingInstances.size(), "There must be as many BLASes as there are RT instances!");
         for(std::size_t instanceIndex = 0; instanceIndex < maxInstanceCount; instanceIndex ++) {
-            for (i32 bufferingIndex = 0; bufferingIndex < MAX_FRAMES_IN_FLIGHT; bufferingIndex++) {
-                const i32 globalIndex = instanceIndex * MAX_FRAMES_IN_FLIGHT + bufferingIndex;
-                auto& instance = raytracingInstances[globalIndex];
-                if (bufferingIndex == modFrameIndex % MAX_FRAMES_IN_FLIGHT) {
-                    auto& blas = raytracingBLASes[globalIndex];
+            auto& instance = raytracingInstances[instanceIndex];
+            auto& blas = raytracingBLASes[instanceIndex];
 
-                    const AnimatedInstanceData& animatedInstanceData = getInstance(instanceIndex);
-                    instance->transform = animatedInstanceData.transform;
+            const AnimatedInstanceData& animatedInstanceData = getInstance(instanceIndex);
+            instance->transform = animatedInstanceData.transform;
 
-                    const bool isEnabled = instanceIndex < currentInstanceCount && animatedInstanceData.raytraced;
-                    instance->enabled = isEnabled;
-                    if(isEnabled) {
-                        blas->setDirty();
-                    }
-                } else {
-                    instance->enabled = false;
-                }
+            const bool isEnabled = instanceIndex < currentInstanceCount && animatedInstanceData.raytraced;
+            instance->enabled = isEnabled;
+            if(isEnabled) {
+                blas->setDirty();
             }
         }
     }
@@ -365,10 +344,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
     vk::CommandBufferSubmitInfo commandBufferInfo {
-        .commandBuffer = skinningCommandBuffers[modFrameIndex],
+        .commandBuffer = skinningCommandBuffer,
     };
     vk::SemaphoreSubmitInfo signalInfo {
-        .semaphore = *skinningSemaphores[modFrameIndex],
+        .semaphore = *skinningSemaphore,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
 
@@ -377,10 +356,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     {
         submitAtLeastOneSkinningCompute = true;
         Render::PerFrame<vk::Semaphore> semaphores;
-        i32 index = 0;
-        for(auto& pSemaphore : skinningSemaphores) {
-            semaphores[index] = *pSemaphore;
-            index++;
+
+        // TODO: don't use perframe?
+        for(i32 index = 0; index < semaphores.size(); index++) {
+            semaphores[index] = *skinningSemaphore;
         }
 
         for(auto& blas : raytracingBLASes) {
@@ -388,6 +367,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
         }
     }
 
+    // TODO: wait on previous frame, or move to render graph
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
             .waitSemaphoreInfoCount = 0,
             .pWaitSemaphoreInfos = nullptr,
@@ -408,9 +388,9 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     }
 
     if (!hasRaytracedInstances) { // otherwise, the raytracing code will wait on the semaphore
-        GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[modFrameIndex]);
+        GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphore);
     }
-    return *skinningSemaphores[modFrameIndex];
+    return *skinningSemaphore;
 }
 
 void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass) {
@@ -432,7 +412,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     packet.instanceCount = 1;
     packet.commands.resize(1);
 
-    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffers[renderContext.frameNumber % MAX_FRAMES_IN_FLIGHT].view;
+    Carrot::BufferView skinnedVertices = fullySkinnedVertexBuffer.view;
     for (const auto&[mat, meshList]: model->skinnedMeshes) {
         data.materialIndex = mat;
         packet.clearPerDrawData();

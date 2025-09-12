@@ -33,8 +33,6 @@ namespace Carrot {
             return static_cast<std::int32_t>(instanceIndex * vertexCountPerInstance + meshOffsets[meshID]);
         }
 
-        vk::Semaphore& getSkinningSemaphore(std::size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
-
         void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass);
         void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass, std::size_t instanceCount);
 
@@ -50,26 +48,26 @@ namespace Carrot {
         std::size_t currentInstanceCount = 0;
         Carrot::Engine& engine;
         std::shared_ptr<Model> model = nullptr;
-        std::array<BufferAllocation, MAX_FRAMES_IN_FLIGHT> fullySkinnedVertexBuffers;
+        BufferAllocation fullySkinnedVertexBuffer;
         std::unique_ptr<Buffer> flatVertices = nullptr;
         std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* animatedInstances = nullptr;
         std::unique_ptr<Buffer> instanceBuffer = nullptr;
-        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes; // size is instanceCount * BufferingCount, access via [instanceIndex*2+frameIndexModBufferingCount]
-        std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances; // size is instanceCount * BufferingCount, access via [instanceIndex*2+frameIndexModBufferingCount]
+        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes; // size is instanceCount
+        std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances; // size is instanceCount
 
         std::unordered_map<MeshID, size_t> meshOffsets{};
         std::size_t vertexCountPerInstance = 0;
 
-        Render::PerFrame<vk::UniqueDescriptorPool> computeDescriptorPools{};
-        std::vector<vk::DescriptorSet> computeDescriptorSet0{};
-        std::vector<vk::DescriptorSet> computeDescriptorSet1{};
+        vk::UniqueDescriptorPool computeDescriptorPool{};
+        vk::DescriptorSet computeDescriptorSet0{};
+        vk::DescriptorSet computeDescriptorSet1{};
         vk::UniqueDescriptorSetLayout computeSetLayout0{};
         vk::UniqueDescriptorSetLayout computeSetLayout1{};
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
-        Render::PerFrame<vk::CommandBuffer> skinningCommandBuffers{};
-        Render::PerFrame<vk::UniqueSemaphore> skinningSemaphores{};
+        vk::CommandBuffer skinningCommandBuffer{};
+        vk::UniqueSemaphore skinningSemaphore{};
         bool submitAtLeastOneSkinningCompute = false;
 
         void createSkinningComputePipeline();
