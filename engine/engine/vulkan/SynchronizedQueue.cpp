@@ -16,7 +16,7 @@ namespace Carrot::Vulkan {
     SynchronizedQueue::SynchronizedQueue(vk::Queue queue): queue(queue) {}
 
     void SynchronizedQueue::waitIdle() {
-        std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
+        //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         try {
             queue.waitIdle();
@@ -71,7 +71,7 @@ namespace Carrot::Vulkan {
     }
 
     void SynchronizedQueue::submit(const vk::SubmitInfo& info, const vk::Fence& fence) {
-        std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
+        //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         try {
             /*std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
@@ -92,7 +92,7 @@ namespace Carrot::Vulkan {
 
     void SynchronizedQueue::submit(const vk::SubmitInfo2& info, const vk::Fence& fence) {
         {
-        std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
+        //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         try {
             /*std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
@@ -114,7 +114,7 @@ namespace Carrot::Vulkan {
     }
 
     void SynchronizedQueue::presentKHR(const vk::PresentInfoKHR& info) {
-        std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
+        //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         DISCARD(queue.presentKHR(&info));
     }
