@@ -37,7 +37,7 @@ namespace Carrot {
         void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass, std::size_t instanceCount);
 
 #pragma region RenderingUpdate
-        vk::Semaphore& onFrame(const Carrot::Render::Context& renderContext);
+        void onFrame(const Carrot::Render::Context& renderContext);
 #pragma endregion RenderingUpdate
 
     private:

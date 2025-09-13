@@ -288,28 +288,34 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::shar
 void Carrot::ASBuilder::createSemaphores() {
     std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
 
+    vk::SemaphoreTypeCreateInfo timelineSemaphoreCreateInfo {
+        .semaphoreType = vk::SemaphoreType::eTimeline,
+        .initialValue = 0,
+    };
+    blasBuildSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{
+        .pNext = &timelineSemaphoreCreateInfo
+    });
+    preCompactBLASSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{
+        .pNext = &timelineSemaphoreCreateInfo
+    });
+
+    DebugNameable::nameSingle("Precompact BLAS build", *preCompactBLASSemaphore);
+    DebugNameable::nameSingle("BLAS build", *blasBuildSemaphore);
+
+    tlasBuildTimelineSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
+        .pNext = &timelineSemaphoreCreateInfo
+    });
+    DebugNameable::nameSingle("TLAS build", *tlasBuildTimelineSemaphore);
+
     for (size_t i = 0; i < imageCount; ++i) {
-        preCompactBLASSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
-        blasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         tlasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         instanceUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         serializedCopySemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
 
-        DebugNameable::nameSingle("Precompact BLAS build", *preCompactBLASSemaphore[i]);
-        DebugNameable::nameSingle(Carrot::sprintf("BLAS build %d", (int)i), *blasBuildSemaphore[i]);
         DebugNameable::nameSingle(Carrot::sprintf("TLAS build, %d", (int)i), *tlasBuildSemaphore[i]);
         DebugNameable::nameSingle(Carrot::sprintf("Instance upload, %d", (int)i), *instanceUploadSemaphore[i]);
         DebugNameable::nameSingle("SerializedAS copy", *serializedCopySemaphore[i]);
     }
-
-    vk::SemaphoreTypeCreateInfo timelineCreateInfo {
-        .semaphoreType = vk::SemaphoreType::eTimeline,
-        .initialValue = 0,
-    };
-    tlasBuildTimelineSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
-        .pNext = &timelineCreateInfo
-    });
-    DebugNameable::nameSingle("TLAS build", *tlasBuildTimelineSemaphore);
 }
 
 void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
@@ -819,12 +825,14 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 if (isNew) {
                     vk::SemaphoreSubmitInfo& submitInfo = waitSemaphoreList.emplaceBack();
                     submitInfo.semaphore = boundSemaphore;
+                    submitInfo.value = renderContext.frameNumber;
                     submitInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
                 }
             }
         }
         vk::SemaphoreSubmitInfo signalInfo {
-            .semaphore = hasASToCompact ? (*preCompactBLASSemaphore[semaphoreIndex]) : (*blasBuildSemaphore[semaphoreIndex]),
+            .semaphore = hasASToCompact ? (*preCompactBLASSemaphore) : (*blasBuildSemaphore),
+            .value = renderContext.frameNumber,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         };
         GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -947,7 +955,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
         if (builtBLASThisFrame) {
             // ensure *someone* waits for the blas build
-            GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *blasBuildSemaphore[semaphoreIndex]);
+            GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *blasBuildSemaphore, renderContext.frameNumber);
         }
         return;
     }
@@ -1076,7 +1084,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     });
     if(builtBLASThisFrame) {
         waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
-            .semaphore = *blasBuildSemaphore[semaphoreIndex],
+            .semaphore = *blasBuildSemaphore,
+            .value = renderContext.frameNumber,
             .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
         });
     }

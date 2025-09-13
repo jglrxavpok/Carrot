@@ -104,7 +104,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph temporal-denoise");
-                    GPUZone(GetEngine().tracyCtx[frame.frameNumber], buffer, "temporal-denoise");
+                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "temporal-denoise");
                     auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass);
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.frameNumber), 0, 0, nullptr);
 

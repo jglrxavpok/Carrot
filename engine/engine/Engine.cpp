@@ -831,9 +831,14 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
 
         std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};
-        signalSemaphores.reserve(2);
+        signalSemaphores.reserve(3);
         signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
             .semaphore = *renderFinishedSemaphore[frameIndex],
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        });
+        signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = *renderFinishedTimelineSemaphore,
+            .value = mainRenderContext.frameNumber,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
         signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
@@ -843,11 +848,13 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         });
 
         auto& additionalWaitSemaphoresForThisFrame = additionalWaitSemaphores[mainRenderContext.frameNumber % additionalWaitSemaphores.size()];
-        for(auto [stage, semaphore] : additionalWaitSemaphoresForThisFrame) {
+        for(auto [stage, semaphoreWaitPair] : additionalWaitSemaphoresForThisFrame) {
+            auto [semaphore, waitValue] = semaphoreWaitPair;
             vk::PipelineStageFlags2 mask;
             mask = static_cast<vk::PipelineStageFlags2>(static_cast<VkPipelineStageFlags>(stage));
             waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
                 .semaphore = semaphore,
+                .value = waitValue,
                 .stageMask = mask,
             });
         }
@@ -1200,6 +1207,15 @@ void Carrot::Engine::createSynchronizationObjects() {
         DebugNameable::nameSingle("Render finished", *renderFinishedSemaphore[i]);
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
+
+    vk::SemaphoreTypeCreateInfo timelineCreateInfo {
+        .semaphoreType = vk::SemaphoreType::eTimeline,
+        .initialValue = 0,
+    };
+    renderFinishedTimelineSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
+        .pNext = &timelineCreateInfo
+    });
+    DebugNameable::nameSingle("Last finished frame timeline", *renderFinishedTimelineSemaphore);
 }
 
 void Carrot::Engine::createTimingQueryPools() {
@@ -1757,13 +1773,18 @@ Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
     return taskScheduler;
 }
 
-void Carrot::Engine::addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore) {
-    for (const auto& [_, sem] : additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()]) {
-        if (sem == semaphore) {
+void Carrot::Engine::addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore, u64 waitValue) {
+    for (auto& [_, sem] : additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()]) {
+        if (sem.first == semaphore) {
+            sem.second = std::max(waitValue, sem.second);
             return;
         }
     }
-    additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()].pushBack({stage, semaphore});
+    additionalWaitSemaphores[renderContext.frameNumber % additionalWaitSemaphores.size()].pushBack({stage, {semaphore, waitValue}});
+}
+
+vk::Semaphore Carrot::Engine::getRenderFinishedTimelineSemaphore() {
+    return *renderFinishedTimelineSemaphore;
 }
 
 void Carrot::Engine::grabCursor() {

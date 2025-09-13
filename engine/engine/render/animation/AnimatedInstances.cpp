@@ -317,11 +317,17 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     }
     commands.end();
 
-    skinningSemaphore = engine.getLogicalDevice().createSemaphoreUnique({});
+    vk::SemaphoreTypeCreateInfo timelineCreateInfo {
+        .semaphoreType = vk::SemaphoreType::eTimeline,
+        .initialValue = 0,
+    };
+    skinningSemaphore = engine.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
+        .pNext = &timelineCreateInfo
+    });
     DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphore);
 }
 
-vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
+void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     ZoneScoped;
 
     if(GetCapabilities().supportsRaytracing) {
@@ -348,6 +354,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     };
     vk::SemaphoreSubmitInfo signalInfo {
         .semaphore = *skinningSemaphore,
+        .value = renderContext.frameNumber,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
 
@@ -367,10 +374,15 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
         }
     }
 
-    // TODO: wait on previous frame, or move to render graph
+    vk::SemaphoreSubmitInfo waitRender {
+        .semaphore = engine.getRenderFinishedTimelineSemaphore(),
+        .value = renderContext.getPreviousFrameNumber(),
+        .stageMask = vk::PipelineStageFlagBits2::eComputeShader,
+    };
+
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
-            .waitSemaphoreInfoCount = 0,
-            .pWaitSemaphoreInfos = nullptr,
+            .waitSemaphoreInfoCount = renderContext.frameNumber == 0 ? 0u /*no frame to wait for on the first frame*/ : 1u,
+            .pWaitSemaphoreInfos = &waitRender,
             .commandBufferInfoCount = 1,
             .pCommandBufferInfos = &commandBufferInfo,
             .signalSemaphoreInfoCount = 1,
@@ -388,9 +400,8 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderC
     }
 
     if (!hasRaytracedInstances) { // otherwise, the raytracing code will wait on the semaphore
-        GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphore);
+        GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphore, renderContext.frameNumber);
     }
-    return *skinningSemaphore;
 }
 
 void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass) {

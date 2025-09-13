@@ -334,8 +334,8 @@ namespace Carrot {
         bool builtBLASThisFrame = false;
         Render::PerFrame<vk::UniqueSemaphore> instanceUploadSemaphore;
         Render::PerFrame<vk::UniqueSemaphore> tlasBuildSemaphore;
-        Render::PerFrame<vk::UniqueSemaphore> preCompactBLASSemaphore;
-        Render::PerFrame<vk::UniqueSemaphore> blasBuildSemaphore;
+        vk::UniqueSemaphore preCompactBLASSemaphore;
+        vk::UniqueSemaphore blasBuildSemaphore;
 
         std::int8_t framesBeforeRebuildingTLAS = 0;
         std::size_t previousActiveInstances = 0;

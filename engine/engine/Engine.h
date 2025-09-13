@@ -397,7 +397,11 @@ namespace Carrot {
 
         TaskScheduler& getTaskScheduler();
 
-        void addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore);
+        void addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore, u64 waitValue = 0);
+
+        /// Timeline Semaphore that has the value of the last finished rendered frame
+        /// Can be used to wait for the render of the previous frame to finish
+        vk::Semaphore getRenderFinishedTimelineSemaphore();
 
     public:
         IO::VFS& getVFS() { return vfs; }
@@ -449,8 +453,9 @@ namespace Carrot {
 
         Render::PerFrame<vk::CommandBuffer> mainCommandBuffers{};
         Render::PerFrame<vk::UniqueSemaphore> renderFinishedSemaphore{};
+        vk::UniqueSemaphore renderFinishedTimelineSemaphore{};
         Render::PerFrame<vk::UniqueFence> inFlightFences{};
-        Render::PerFrame<Carrot::Vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>>> additionalWaitSemaphores{};
+        Render::PerFrame<Carrot::Vector<Carrot::Pair<vk::PipelineStageFlags, Carrot::Pair<vk::Semaphore, u64>>>> additionalWaitSemaphores{};
         vk::UniqueQueryPool timingQueryPool{};
         std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};
 
