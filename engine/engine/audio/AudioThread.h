@@ -25,7 +25,7 @@ namespace Carrot::Audio {
     private:
         bool requestedStopAllSources = false;
         bool running = false;
-        std::thread backingThread;
+        std::jthread backingThread;
         std::mutex sourceMutex;
         std::vector<std::shared_ptr<SoundSource>> currentSources;
         ThreadSafeQueue<std::shared_ptr<SoundSource>> newSources;

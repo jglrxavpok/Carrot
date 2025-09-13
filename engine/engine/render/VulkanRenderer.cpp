@@ -70,7 +70,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
         renderThreadProc();
     });
     RenderThreadID = renderThread.get_id();
-    Carrot::Threads::setName(renderThread, "Carrot Render Thread");
+    Carrot::Threads::setName(renderThread, "Render Thread");
 
     nullBuffer = std::make_unique<Buffer>(driver,
                                           1,

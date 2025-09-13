@@ -122,7 +122,7 @@ namespace Carrot {
                 GetRenderer().makeCurrentThreadRenderCapable();
                 threadProc(isInFrame ? FrameParallelWork : AssetLoading);
             });
-            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sParallelTask #%d", isInFrame ? "Frame" : "AssetLoading", isInFrame ? i+1 : i - inFrameCount + 1));
+            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sTask#%d", isInFrame ? "Frame" : "Async", isInFrame ? i+1 : i - inFrameCount + 1));
         }
     }
 

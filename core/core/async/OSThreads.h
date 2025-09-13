@@ -11,6 +11,7 @@ namespace Carrot::Threads {
     void setName(std::jthread& thread, std::string_view name);
     void setName(std::thread& thread, std::string_view name);
     void setName(void* nativeHandle, std::string_view name);
+    void setCurrentThreadName(std::string_view name);
 
     void reduceCPULoad();
 }

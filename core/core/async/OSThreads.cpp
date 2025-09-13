@@ -36,8 +36,21 @@ namespace Carrot::Threads {
         setName(reinterpret_cast<void*>(thread.native_handle()), name);
     }
 
+    void setCurrentThreadName(std::string_view name) {
+#ifdef _MSC_VER
+        void* currentHandle = (void*)GetCurrentThread();
+#elif __has_include(<unistd.h>)
+        void* currentHandle = (void*)pthread_self();
+#else
+#error "Don't know how to set thread name on this OS. Please fix."
+#endif
+        setName(currentHandle, name);
+    }
+
     void setName(void* nativeHandle, std::string_view name) {
         // https://stackoverflow.com/questions/10121560/stdthread-naming-your-thread
+
+        verify(name.size() <= 15, "Names longer than 15 characters are not supported on Linux, find a smaller name.");
 
 #ifdef _MSC_VER
         std::wstring stemp = s2ws(name); // Temporary buffer is required

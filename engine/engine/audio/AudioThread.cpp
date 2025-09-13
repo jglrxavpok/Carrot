@@ -8,7 +8,7 @@
 namespace Carrot::Audio {
     AudioThread::AudioThread() {
         running = true;
-        backingThread = std::thread([&](){ threadCode(); });
+        backingThread = std::jthread([&](){ threadCode(); });
         Carrot::Threads::setName(backingThread, "Audio");
     }
 

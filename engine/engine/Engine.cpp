@@ -128,6 +128,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     {
     ZoneScoped;
     instance = this;
+    Carrot::Threads::setCurrentThreadName("Main");
     changeTickRate(config.tickRate);
     setShutdownRequestHandler([this]() {
         running = false;
