@@ -78,8 +78,8 @@ void main() {
     vec3 xyz = rgb2xyz(rgb);
     vec3 reinhard = reinhard(xyz);
     vec3 aces = Tonemap_Aces(rgb);
-    //outColor = fragmentColor;
-    outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
+    outColor = fragmentColor;
+    //outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
     //outColor = vec4(aces, fragmentColor.a);
     //outColor = vec4(rgb, fragmentColor.a);
 

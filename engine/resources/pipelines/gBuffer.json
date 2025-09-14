@@ -31,6 +31,6 @@
   },
   "fragmentShader": {
     "file": "resources/shaders/raster/draw_gbuffer.slang",
-    "entry_point": "main"
+    "entry_point": "pixel"
   }
 }

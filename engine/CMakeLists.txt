@@ -208,7 +208,6 @@ set(PIPELINES
         compute/debug-buffer-viewer
         compute/debug-texture-viewer
         compute/firefly-rejection
-        compute/spatial-denoise
 
         lighting/gi/apply-gi
         lighting/gi/debug-gi
@@ -260,7 +259,6 @@ set(PIPELINES
         lighting-raytracing
         material-pass
         particles
-        skybox
         text-rendering
         unlitGBuffer
         unlitGBufferWireframe

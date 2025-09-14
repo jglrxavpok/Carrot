@@ -725,13 +725,11 @@ namespace Carrot::Render {
                 preparePushConstant(block, frame);
                 frame.renderer.pushConstantBlock<PushConstantRT>("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
 
-                HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
-                frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameNumber).view, 1, 1);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameNumber).view, 1, 2);
+                frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameNumber).view, 0, 1);
+                /*frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameNumber).view, 1, 2);
                 frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.emptyProbes, frame.frameNumber).view, 1, 3);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameNumber).view, 1, 4);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameNumber).view, 1, 4);*/
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 32;

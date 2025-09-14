@@ -7,7 +7,7 @@
     }
   ],
   "computeShader": {
-    "file": "resources/shaders/compute/clear-visibility-buffer.compute.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/compute/clear.slang",
+    "entry_point": "clearU64Image"
   }
 }

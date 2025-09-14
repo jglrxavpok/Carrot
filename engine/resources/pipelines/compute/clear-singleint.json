@@ -1,7 +1,7 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/compute/clear-singleint.compute.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/compute/clear.slang",
+    "entry_point": "clearSingleInt"
   }
 }

@@ -133,7 +133,15 @@ namespace SlangCompiler {
         for (SlangUInt entryPointIndex = 0; entryPointIndex < layout->getEntryPointCount(); entryPointIndex++) {
             EntryPointReflection* entryPoint = layout->getEntryPointByIndex(entryPointIndex);
             if (entryPoint->getStage() == expectedStage) {
-                programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+                if (inferEntryPointName) {
+                    programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+                    break;
+                } else {
+                    if (stricmp(entryPoint->getName(), entryPointName) == 0) {
+                        programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+                        break;
+                    }
+                }
             }
         }
 

@@ -1,7 +1,7 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/debug-gi.compute.glsl",
+    "file": "resources/shaders/lighting/gi/debug-gi.slang",
     "entry_point": "main"
   },
   "descriptorSets": [

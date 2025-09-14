@@ -13,8 +13,8 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/blit.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/blit.slang",
+    "entry_point": "blit"
   },
   "descriptorSets": [
     {
