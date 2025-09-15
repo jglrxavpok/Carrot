@@ -1,25 +1,13 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/debug-gi.slang",
-    "entry_point": "main"
+    "file": "resources/shaders/lighting/gi/read-screen-probes.slang",
+    "entry_point": "debug"
   },
   "descriptorSets": [
     {
       "type": "autofill",
       "setID": 0
-    },
-    {
-      "type": "autofill",
-      "setID": 1
-    },
-    {
-      "type": "autofill",
-      "setID": 2
-    },
-    {
-      "type": "camera",
-      "setID": 3
     }
   ]
 }
