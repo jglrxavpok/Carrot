@@ -32,7 +32,7 @@ float3 quad(int vertexID) {
 }
 
 [shader("vertex")]
-VSOutput vertex(int vertexID: SV_VertexID) {
+VSOutput vertex(uint vertexID: SV_VertexID) {
     VSOutput o;
 
     vec3 inPosition = quad(vertexID);

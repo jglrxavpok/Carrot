@@ -18,16 +18,43 @@ public struct VSGBufferOutput {
 
 // Intended to be used in a ParameterBlock<>
 public struct GBufferInputs {
-    public ConstantBuffer<Texture2D> albedo;
-    public ConstantBuffer<Texture2D> viewPos;
-    public ConstantBuffer<Texture2D> viewNormalTangents;
-    public ConstantBuffer<Sampler2D<uvec4>> intPropertiesInput;
-    public ConstantBuffer<Texture2D<IntProperties::__Tag>> entityID;
-    public ConstantBuffer<Texture2D> metallicRoughnessValuesVelocityXY;
-    public ConstantBuffer<Texture2D> emissiveValuesVelocityZ;
-    public ConstantBuffer<Texture2D> _unused;
-    public ConstantBuffer<Texture2D> depth;
-    public ConstantBuffer<SamplerCube> skybox3D;
-    public ConstantBuffer<SamplerState> linearSampler;
-    public ConstantBuffer<SamplerState> gNearestSampler;
+    public Texture2D albedo;
+    public Texture2D viewPos;
+    public Texture2D viewNormalTangents;
+    public Sampler2D<IntProperties::__Tag> intPropertiesInput;
+    public Texture2D<uvec4> entityID;
+    public Texture2D metallicRoughnessValuesVelocityXY;
+    public Texture2D emissiveValuesVelocityZ;
+    public Texture2D _unused;
+    public Texture2D depth;
+    public SamplerCube skybox3D;
+    public SamplerState linearSampler;
+    public SamplerState gNearestSampler;
+
+    public GBuffer read(float2 uv) {
+        GBuffer result;
+        result.albedo = albedo.Sample(gNearestSampler, uv);
+        result.viewPosition = viewPos.Sample(gNearestSampler, uv).xyz;
+
+        const float4 compressedTBN = viewNormalTangents.Sample(gNearestSampler, uv);
+        
+        const IntProperties properties = IntProperties(intPropertiesInput.Sample(uv).r);
+        result.intProperty = properties;
+        const bool negativeNormal = properties & IntProperties::NegativeViewNormalZ;
+        const bool negativeTangent = properties & IntProperties::NegativeViewTangentZ;
+        const bool negativeBitangent = properties & IntProperties::NegativeViewBitangentZ;
+        decompressTBN(compressedTBN, negativeNormal, negativeTangent, negativeBitangent, result.viewTBN);
+
+        result.entityID = entityID.Sample(gNearestSampler, uv);
+
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Sample(gNearestSampler, uv);
+
+        result.metallicness = metallicRoughnessVelocityXY.x;
+        result.roughness = metallicRoughnessVelocityXY.y;
+
+        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.Sample(gNearestSampler, uv);
+        result.emissiveColor = emissiveAndVelocityZ.xyz;
+        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in clip space
+        return result;
+    }
 }

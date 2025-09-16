@@ -77,6 +77,30 @@ namespace SlangCompiler {
                 .intValue0 = static_cast<int>(globalSession->findProfile("glsl_460"))
             }
         });
+        compilerOptions.emplace_back(CompilerOptionEntry {
+            .name = CompilerOptionName::DebugInformation,
+            .value = CompilerOptionValue {
+                .kind = CompilerOptionValueKind::Int,
+                .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
+            }
+        });
+        compilerOptions.emplace_back(CompilerOptionEntry {
+            .name = CompilerOptionName::Optimization,
+            .value = CompilerOptionValue {
+                .kind = CompilerOptionValueKind::Int,
+                .intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE
+            }
+        });
+
+        // TODO: This is currently required because Carrot binds to unused parameters, which Slang removes.
+        //  This creates GPU hangs/crashes on RADV :c
+        compilerOptions.emplace_back(CompilerOptionEntry {
+            .name = CompilerOptionName::PreserveParameters,
+            .value = CompilerOptionValue {
+                .kind = CompilerOptionValueKind::Int,
+                .intValue0 = 1
+            }
+        });
 
         TargetDesc target{};
         target.compilerOptionEntries = compilerOptions.data();
@@ -126,19 +150,21 @@ namespace SlangCompiler {
             std::cerr << request->getDiagnosticOutput() << std::endl;
             return result;
         }
+        Slang::ComPtr<IComponentType> linkedProgram;
+        programWithEntryPoints->link(linkedProgram.writeRef(), nullptr);
 
         SlangStage expectedStage = toSlangStage(stageCarrot);
-        ProgramLayout* layout = programWithEntryPoints->getLayout();
+        ProgramLayout* layout = linkedProgram->getLayout();
         Slang::ComPtr<IBlob> code;
         for (SlangUInt entryPointIndex = 0; entryPointIndex < layout->getEntryPointCount(); entryPointIndex++) {
             EntryPointReflection* entryPoint = layout->getEntryPointByIndex(entryPointIndex);
             if (entryPoint->getStage() == expectedStage) {
                 if (inferEntryPointName) {
-                    programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+                    linkedProgram->getEntryPointCode(entryPointIndex, 0, code.writeRef());
                     break;
                 } else {
                     if (stricmp(entryPoint->getName(), entryPointName) == 0) {
-                        programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+                        linkedProgram->getEntryPointCode(entryPointIndex, 0, code.writeRef());
                         break;
                     }
                 }
