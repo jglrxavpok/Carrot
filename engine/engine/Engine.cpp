@@ -84,6 +84,7 @@
 
 Carrot::Engine* Carrot::Engine::instance = nullptr;
 static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
+static Carrot::RuntimeOption showToneMappingSelector{"Engine/Tone mapping selector", false};
 static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
 static Carrot::RuntimeOption showSettingsDebug("Engine/Show Settings", false);
 
@@ -1074,6 +1075,19 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             onFrame(v);
         }
         onFrame(getMainViewport());
+
+        if (showToneMappingSelector) {
+            if (ImGui::Begin("Tone mapping selector", &showToneMappingSelector.getValueRef())) {
+                GraphicsSettings::ToneMappingOption& option = settings.graphicsSettings.toneMapping;
+                int asInt = static_cast<int>(option);
+                ImGui::RadioButton("None", &asInt, 0);
+                ImGui::RadioButton("Reinhard", &asInt, 1);
+                ImGui::RadioButton("Aces", &asInt, 2);
+
+                option = static_cast<GraphicsSettings::ToneMappingOption>(asInt);
+            }
+            ImGui::End();
+        }
 
         if(showFPS) {
             bool bOpen = true;

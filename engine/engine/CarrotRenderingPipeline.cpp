@@ -19,6 +19,7 @@
 #include "engine/render/resources/Texture.h"
 #include "engine/CarrotGame.h"
 #include "stb_image_write.h"
+#include "console/RuntimeOption.hpp"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
 #include "core/Macros.h"
@@ -245,6 +246,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
 
+                const GraphicsSettings::ToneMappingOption& toneMappingOption = renderer.getEngine().getSettings().graphicsSettings.toneMapping;
+                renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, toneMappingOption);
                 pipeline->bind(pass, frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(buffer);

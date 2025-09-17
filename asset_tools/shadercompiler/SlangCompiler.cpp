@@ -84,6 +84,9 @@ namespace SlangCompiler {
                 .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
             }
         });
+
+        // TODO: This is currently required because Carrot binds to unused parameters, which Slang removes.
+        //  This creates GPU hangs/crashes on RADV :c
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::Optimization,
             .value = CompilerOptionValue {
@@ -91,9 +94,6 @@ namespace SlangCompiler {
                 .intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE
             }
         });
-
-        // TODO: This is currently required because Carrot binds to unused parameters, which Slang removes.
-        //  This creates GPU hangs/crashes on RADV :c
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::PreserveParameters,
             .value = CompilerOptionValue {

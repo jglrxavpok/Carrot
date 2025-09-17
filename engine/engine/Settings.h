@@ -7,6 +7,14 @@
 #include <cstdint>
 
 namespace Carrot {
+    struct GraphicsSettings {
+        enum class ToneMappingOption: u8 {
+            None,
+            Reinhard,
+            Aces
+        } toneMapping = ToneMappingOption::Aces;
+    };
+
     struct Settings {
         Settings(int argc, char** argv);
 
@@ -33,5 +41,7 @@ namespace Carrot {
          * Force the engine to use a single Vulkan queue. Slow and maybe unstable, only for debug
          */
         bool singleQueue = false;
+
+        GraphicsSettings graphicsSettings;
     };
 }

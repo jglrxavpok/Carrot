@@ -1,7 +1,7 @@
 {
   "_import": "_post-process.json",
   "fragmentShader": {
-    "file": "resources/shaders/post-process/tone-mapping.fragment.glsl",
+    "file": "resources/shaders/post-process/tone-mapping.slang",
     "entry_point": "main"
   }
 }

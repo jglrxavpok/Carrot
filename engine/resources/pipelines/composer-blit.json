@@ -14,7 +14,7 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/composer-blit.fragment.glsl",
+    "file": "resources/shaders/composer-blit.slang",
     "entry_point": "main"
   },
   "descriptorSets": [
