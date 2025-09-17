@@ -108,7 +108,7 @@ void main() {
         RandomSampler rng;
 
         GBuffer gbuffer = unpackGBuffer(inUV);
-        vec3 albedo = gbuffer.albedo.rgb;
+        vec3 albedo = vec3(1);//gbuffer.albedo.rgb;
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
         vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 

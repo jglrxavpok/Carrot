@@ -61,6 +61,9 @@ ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
 
 groupshared ExtractedGBuffer sharedGBufferReads[LOCAL_SIZE_X][LOCAL_SIZE_Y];
 
+static uint outputWidth;
+static uint outputHeight;
+
 ExtractedGBuffer readGBuffer(uint2 globalCoords, uint2 localCoords, int2 coordsOffset/* offset from current pixel */) {
     int2 localCoords = localCoords + coordsOffset;
     if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE_X
@@ -68,20 +71,17 @@ ExtractedGBuffer readGBuffer(uint2 globalCoords, uint2 localCoords, int2 coordsO
         return sharedGBufferReads[localCoords.x][localCoords.y];
     }
 
-    // TODO: avoid redoing this
-    uint w, h;
-    io.output.GetDimensions(w, h);
     const int2 coords = int2(globalCoords) + coordsOffset;
 
-    if(coords.x >= w
-    || coords.y >= h
+    if(coords.x >= outputWidth
+    || coords.y >= outputHeight
     || coords.x < 0
     || coords.y < 0
     ) {
         return nullGBuffer();
     }
 
-    const float2 filterUV = float2(coords) / float2(w, h);
+    const float2 filterUV = float2(coords) / float2(outputWidth, outputHeight);
     return extractUsefulInfo(gbufferInputs.read(filterUV));
 }
 
@@ -107,17 +107,16 @@ void denoise(
     const float sigmaPositions = 32.0f;
     const float sigmaLuminance = 2.0f;
 
-    uint w, h;
-    io.output.GetDimensions(w, h);
+    io.output.GetDimensions(outputWidth, outputHeight);
 
-    if(coords.x >= w
-    || coords.y >= h) {
+    if(coords.x >= outputWidth
+    || coords.y >= outputHeight) {
         sharedGBufferReads[localCoords.x][localCoords.y] = nullGBuffer();
         return;
     }
     float4 finalPixel = config.swizzle(io.input.Load(coords));
 
-    const float2 currentUV = float2(coords.xy)/float2(w, h);
+    const float2 currentUV = float2(coords.xy)/float2(outputWidth, outputHeight);
     ExtractedGBuffer currentGBuffer = extractUsefulInfo(gbufferInputs.read(currentUV));
     sharedGBufferReads[localCoords.x][localCoords.y] = currentGBuffer;
 
@@ -143,7 +142,7 @@ void denoise(
             const int2 filterCoord = int2(coords.xy) + dCoord;
 
             if(filterCoord.x < 0 || filterCoord.y < 0
-            || filterCoord.x >= w || filterCoord.y >= h) {
+            || filterCoord.x >= outputWidth || filterCoord.y >= outputHeight) {
                 continue;
             }
 
@@ -154,6 +153,7 @@ void denoise(
             }
             const ExtractedGBuffer filterGBuffer = readGBuffer(coords.xy, localCoords.xy, dCoord);
             // TODO: use index for mesh on top of entity (for instance curtains of Sponza)
+            // TODO: use groupshared for sampling input
             float4 filterPixel = config.swizzle(io.input.Load(int3(filterCoord, 0)));
             if(filterGBuffer.albedo.a <= 1.0f/256.0f) {
                 continue;

@@ -1,7 +1,7 @@
 {
   "_import": "denoise-base.json",
   "computeShader": {
-    "file": "resources/shaders/lighting/denoise-direct.compute.glsl",
+    "file": "resources/shaders/lighting/denoise-direct.slang",
     "entry_point": "main"
   }
 }
