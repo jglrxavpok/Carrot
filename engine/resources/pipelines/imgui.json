@@ -7,12 +7,12 @@
   "cull": false,
   "alphaBlending": true,
   "vertexShader": {
-    "file": "resources/shaders/imgui.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/imgui.slang",
+    "entry_point": "vertex"
   },
   "fragmentShader": {
-    "file": "resources/shaders/imgui.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/imgui.slang",
+    "entry_point": "pixel"
   },
   "descriptorSets": [
     {
