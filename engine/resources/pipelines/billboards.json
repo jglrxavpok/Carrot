@@ -7,12 +7,12 @@
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": {
-    "file": "resources/shaders/billboards.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/billboards.slang",
+    "entry_point": "vertex"
   },
   "fragmentShader": {
-    "file": "resources/shaders/billboards.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/billboards.slang",
+    "entry_point": "pixel"
   },
   "descriptorSets": [
     {
