@@ -544,7 +544,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
         }
     }
 
-    for(auto binding : bindings) {
+    for(auto& binding : bindings) {
         if(binding.vkBinding.descriptorCount == 0) {
             Carrot::Log::warn("DescriptorCount is set to 0, replacing to 255 not to crash");
             binding.vkBinding.descriptorCount = 255;

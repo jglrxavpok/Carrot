@@ -38,6 +38,7 @@ static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 
 static thread_local Carrot::VulkanRenderer::ThreadPackets* threadLocalRenderPackets = nullptr;
 static thread_local std::array<Carrot::Render::PacketContainer, 2>* threadLocalPacketStorage = nullptr;
+static thread_local std::array<Carrot::Render::PacketContainer, 2>* threadLocalAsyncPacketStorage = nullptr;
 
 static std::thread::id RenderThreadID{};
 
@@ -727,6 +728,17 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     for (auto& pair : perThreadPacketStorage.snapshot()) {
         TaskDescription task {
             .name = "Reset thread local render packet storage",
+            .task = [pair, currentIndex](TaskHandle&) {
+                auto& ppArray = pair.second;
+                (*(*ppArray))[currentIndex].beginFrame();
+            },
+            .joiner = &prepareThreadRenderPackets,
+        };
+        GetTaskScheduler().schedule(std::move(task), TaskScheduler::FrameParallelWork);
+    }
+    for (auto& pair : perThreadAsyncPacketStorage.snapshot()) {
+        TaskDescription task {
+            .name = "Reset thread local async packet storage",
             .task = [pair, currentIndex](TaskHandle&) {
                 auto& ppArray = pair.second;
                 (*(*ppArray))[currentIndex].beginFrame();
@@ -1702,19 +1714,46 @@ Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassNam
 }
 
 Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location) {
-    return (*threadLocalPacketStorage)[getCurrentBufferPointerForMain()].make(pass, packetType, &viewport, location);
+    return (*threadLocalPacketStorage)[getCurrentBufferPointerForMain()].make(pass, packetType, &viewport, false, location);
+}
+
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeAsyncPacket(std::source_location location) {
+    static MAKE_PASS_NAME(AsyncCompute);
+    return (*threadLocalAsyncPacketStorage)[getCurrentBufferPointerForMain()].make(AsyncCompute, Render::PacketType::Compute, nullptr, true, location);
 }
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     ASSERT_NOT_RENDER_THREAD();
     ZoneScopedN("Queue RenderPacket");
     packet.validate();
-    verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
-    threadLocalRenderPackets->unsorted[getCurrentBufferPointerForMain()].emplace_back(packet);
 
-    if(!packet.perDrawData.empty()) {
-        mainData.perDrawElementCount += packet.perDrawData.size() / sizeof(GBufferDrawData);
-        mainData.perDrawOffsetCount++;
+    if (packet.async) {
+        Allocator& alloc = Allocator::getDefault(); // TODO: reuse between frames?
+        auto renderContext = getEngine().newRenderContext((currentEngineFrame+1) % MAX_FRAMES_IN_FLIGHT, 0, *static_cast<Render::Viewport*>(nullptr));
+        vk::CommandBuffer cmds = driver.recordStandaloneComputeBuffer([&](vk::CommandBuffer& cmds) {
+            packet.record(alloc, {}, renderContext, cmds, nullptr);
+        });
+
+        vk::CommandBufferSubmitInfo cmdBufferInfo {
+            .commandBuffer = cmds,
+        };
+        vk::SubmitInfo2 submitInfo {
+            .waitSemaphoreInfoCount = static_cast<u32>(packet.waitSemaphores.size()),
+            .pWaitSemaphoreInfos = packet.waitSemaphores.data(),
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &cmdBufferInfo,
+            .signalSemaphoreInfoCount = static_cast<u32>(packet.signalSemaphores.size()),
+            .pSignalSemaphoreInfos = packet.signalSemaphores.data(),
+        };
+        driver.getComputeQueue().submit(submitInfo);
+    } else {
+        verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
+        threadLocalRenderPackets->unsorted[getCurrentBufferPointerForMain()].emplace_back(packet);
+
+        if(!packet.perDrawData.empty()) {
+            mainData.perDrawElementCount += packet.perDrawData.size() / sizeof(GBufferDrawData);
+            mainData.perDrawOffsetCount++;
+        }
     }
 }
 
@@ -1745,13 +1784,15 @@ const Carrot::BufferView Carrot::VulkanRenderer::getNullBufferInfo() const {
 void Carrot::VulkanRenderer::makeCurrentThreadRenderCapable() {
     Async::LockGuard lk { threadRegistrationLock };
     auto& packetsEntry = threadRenderPackets.getOrCompute(std::this_thread::get_id(), [](){ return ThreadPackets{}; });
-    auto& storageEntry = perThreadPacketStorage.getOrCompute(std::this_thread::get_id(),
-     []()
-     {
+    auto gen = []()
+    {
         return std::make_unique<std::array<Render::PacketContainer, 2>>();
-     });
+    };
+    auto& storageEntry = perThreadPacketStorage.getOrCompute(std::this_thread::get_id(), gen);
+    auto& asyncStorageEntry = perThreadAsyncPacketStorage.getOrCompute(std::this_thread::get_id(), gen);
     threadLocalRenderPackets = &packetsEntry;
     threadLocalPacketStorage = storageEntry.get();
+    threadLocalAsyncPacketStorage = asyncStorageEntry.get();
 }
 
 std::int8_t Carrot::VulkanRenderer::getCurrentBufferPointerForMain() {

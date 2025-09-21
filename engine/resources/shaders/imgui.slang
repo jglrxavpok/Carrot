@@ -18,7 +18,7 @@ struct DisplayRect {
     uint textureIndex;
 }
 
-Sampler2D textures[];
+Sampler2D textures[1024];
 
 [shader("vertex")]
 VSOutput vertex(uniform DisplayRect display, Vertex v) {

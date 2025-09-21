@@ -59,14 +59,7 @@ namespace Carrot {
         std::unordered_map<MeshID, size_t> meshOffsets{};
         std::size_t vertexCountPerInstance = 0;
 
-        vk::UniqueDescriptorPool computeDescriptorPool{};
-        vk::DescriptorSet computeDescriptorSet0{};
-        vk::DescriptorSet computeDescriptorSet1{};
-        vk::UniqueDescriptorSetLayout computeSetLayout0{};
-        vk::UniqueDescriptorSetLayout computeSetLayout1{};
-        vk::UniquePipelineLayout computePipelineLayout{};
-        vk::UniquePipeline computePipeline{};
-        vk::CommandBuffer skinningCommandBuffer{};
+        std::shared_ptr<Carrot::Pipeline> skinningPipeline;
         vk::UniqueSemaphore skinningSemaphore{};
         bool submitAtLeastOneSkinningCompute = false;
 

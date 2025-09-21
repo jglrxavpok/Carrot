@@ -30,7 +30,7 @@ namespace Carrot::Render {
         return Carrot::CRC64(name.data(), name.size());
     }
 
-#define MAKE_PASS_NAME(x) constexpr Carrot::Render::PassName x = makePassNameHash(#x);
+#define MAKE_PASS_NAME(x) constexpr Carrot::Render::PassName x = Carrot::Render::makePassNameHash(#x);
 
     namespace PassEnum {
         MAKE_PASS_NAME(Undefined)

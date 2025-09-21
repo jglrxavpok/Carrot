@@ -3,6 +3,8 @@
 //
 
 #include "ShaderStages.h"
+
+#include <core/io/Logging.hpp>
 #include <engine/vulkan/VulkanDriver.h>
 
 Carrot::ShaderStages::ShaderStages(
@@ -42,6 +44,10 @@ vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout(st
 
     std::vector<vk::DescriptorSetLayoutBinding> vkBindings{bindings.size()};
     for (int i = 0; i < vkBindings.size(); ++i) {
+        if (bindings[i].vkBinding.descriptorCount == 0) {
+            bindings[i].vkBinding.descriptorCount = 255;
+            Carrot::Log::warn("Setting descriptor count of set %u, binding %d to 255 instead of 0", setID, i);
+        }
         vkBindings[i] = bindings[i].vkBinding;
     }
     vk::DescriptorSetLayoutCreateInfo createInfo{

@@ -259,6 +259,10 @@ namespace Carrot {
         Render::Packet& makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location = std::source_location::current());
         Render::Packet& makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
+        /// Reference is valid only for the current frame
+        /// Contrary to render packets, async packets are sent immediately to the async compute queue
+        Render::Packet& makeAsyncPacket(std::source_location location = std::source_location::current());
+
         void renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
@@ -413,6 +417,7 @@ namespace Carrot {
 
         Async::ParallelMap<std::thread::id, ThreadPackets> threadRenderPackets{};
         Async::ParallelMap<std::thread::id, std::unique_ptr<std::array<Render::PacketContainer, 2>>> perThreadPacketStorage{};
+        Async::ParallelMap<std::thread::id, std::unique_ptr<std::array<Render::PacketContainer, 2>>> perThreadAsyncPacketStorage{};
 
         // render thread only
         std::vector<Render::Packet> preparedRenderPackets;

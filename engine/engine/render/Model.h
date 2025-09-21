@@ -102,6 +102,7 @@ namespace Carrot {
         const AnimationMetadata* getAnimationMetadata(const std::string& animationName) const;
         const std::map<std::string, AnimationMetadata>& getAnimationMetadata() const;
         vk::DescriptorSet getAnimationDataDescriptorSet() const;
+        Carrot::Render::Texture& getAnimationDataTexture(u32 animationIndex) const;
 
     public:
         void renderStatic(Render::ModelRendererStorage& rendererStorage, const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassName renderPass = Render::PassEnum::OpaqueGBuffer);

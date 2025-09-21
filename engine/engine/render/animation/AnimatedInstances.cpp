@@ -122,200 +122,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 }
 
 void Carrot::AnimatedInstances::createSkinningComputePipeline() {
-    auto& computeCommandPool = engine.getComputeCommandPool();
-
-    // command buffers which will be sent to the compute queue to compute skinning
-    skinningCommandBuffer = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = computeCommandPool,
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = 1,
-    })[0];
-
-    // sets the mesh count (per instance) for this skinning pipeline
-    vk::SpecializationMapEntry specEntries[] = {
-            {
-                    .constantID = 0,
-                    .offset = 0,
-                    .size = sizeof(uint32_t),
-            },
-
-            {
-                    .constantID = 1,
-                    .offset = 1*sizeof(uint32_t),
-                    .size = sizeof(uint32_t),
-            },
-    };
-
-    std::uint32_t specData[] = {
-            static_cast<uint32_t>(vertexCountPerInstance),
-            static_cast<uint32_t>(maxInstanceCount),
-    };
-    vk::SpecializationInfo specialization {
-            .mapEntryCount = 2,
-            .pMapEntries = specEntries,
-
-            .dataSize = 2*sizeof(uint32_t),
-            .pData = specData,
-    };
-
-    // Describe descriptors used by compute shader
-
-    constexpr std::size_t set0Size = 3;
-    constexpr std::size_t set1Size = 2;
-    vk::DescriptorSetLayoutBinding bindings[set0Size] = {
-            // original vertices
-            {
-                    .binding = 0,
-                    .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
-            },
-
-            // instance info
-            {
-                    .binding = 1,
-                    .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
-            },
-
-            // output buffer
-            {
-                    .binding = 2,
-                    .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
-            },
-    };
-
-    // TODO: share with Model.cpp
-    std::array animationBindings = {
-            vk::DescriptorSetLayoutBinding {
-                    .binding = 0,
-                    .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
-            },
-            vk::DescriptorSetLayoutBinding {
-                    .binding = 1,
-                    .descriptorType = vk::DescriptorType::eStorageImage,
-                    .descriptorCount = static_cast<uint32_t>(model->getAnimationMetadata().size()),
-                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
-            }
-    };
-
-    computeSetLayout0 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-            .bindingCount = set0Size,
-            .pBindings = bindings,
-    });
-
-    computeSetLayout1 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-            .bindingCount = animationBindings.size(),
-            .pBindings = animationBindings.data(),
-    });
-
-    std::vector<vk::DescriptorPoolSize> poolSizes{};
-    // set0
-    poolSizes.push_back(vk::DescriptorPoolSize {
-            .type = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = static_cast<uint32_t>(set0Size),
-    });
-
-    auto pool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-            .maxSets = 2,
-            .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
-            .pPoolSizes = poolSizes.data(),
-    });
-
-    computeDescriptorSet0 = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-            .descriptorPool = *pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &(*computeSetLayout0)
-    })[0];
-
-    computeDescriptorPool = std::move(pool);
-
-    // write to descriptor sets
-    vk::DescriptorBufferInfo originalVertexBuffer {
-            .buffer = flatVertices->getVulkanBuffer(),
-            .offset = 0,
-            .range = flatVertices->getSize(),
-    };
-
-    vk::DescriptorBufferInfo instanceBufferInfo {
-            .buffer = instanceBuffer->getVulkanBuffer(),
-            .offset = 0,
-            .range = instanceBuffer->getSize(),
-    };
-
-    // TODO: fix validation error with arrays
-    vk::DescriptorBufferInfo outputBufferInfo = fullySkinnedVertexBuffer.view.asBufferInfo();
-
-    using DT = vk::DescriptorType;
-    std::vector<vk::WriteDescriptorSet> writes = {
-            // set0, binding0, original vertex buffer
-            vk::WriteDescriptorSet {
-                    .dstSet = computeDescriptorSet0,
-                    .dstBinding = 0,
-                    .descriptorCount = 1,
-                    .descriptorType = DT::eStorageBuffer,
-                    .pBufferInfo = &originalVertexBuffer,
-            },
-
-            // set0, binding1, instance buffer
-            vk::WriteDescriptorSet {
-                    .dstSet = computeDescriptorSet0,
-                    .dstBinding = 1,
-                    .descriptorCount = 1,
-                    .descriptorType = DT::eStorageBuffer,
-                    .pBufferInfo = &instanceBufferInfo,
-            },
-
-            // set0, binding2, output buffer
-            vk::WriteDescriptorSet {
-                    .dstSet = computeDescriptorSet0,
-                    .dstBinding = 2,
-                    .descriptorCount = 1,
-                    .descriptorType = DT::eStorageBuffer,
-                    .pBufferInfo = &outputBufferInfo,
-            },
-    };
-
-    assert(writes.size() == set0Size);
-
-    engine.getLogicalDevice().updateDescriptorSets(writes, {});
-
-    auto computeStage = ShaderModule("resources/shaders/compute/animation-skinning.compute.glsl.spv", "main");
-
-    // create the pipeline
-    vk::DescriptorSetLayout setLayouts[] = {
-            *computeSetLayout0,
-            *computeSetLayout1,
-    };
-    computePipelineLayout = engine.getLogicalDevice().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo {
-            .setLayoutCount = 2,
-            .pSetLayouts = setLayouts,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr,
-    }, engine.getAllocator());
-    computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
-            .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
-            .layout = *computePipelineLayout,
-    }, engine.getAllocator()).value;
-
-    std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
-    std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;
-
-    vk::CommandBuffer& commands = skinningCommandBuffer;
-    commands.begin(vk::CommandBufferBeginInfo {
-    });
-    {
-        // TODO: tracy zone
-        commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
-        commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0, model->getAnimationDataDescriptorSet()}, {});
-        commands.dispatch(vertexGroups, instanceGroups, 1);
-    }
-    commands.end();
+    skinningPipeline = engine.getRenderer().getOrCreatePipelineFullPath("resources/pipelines/compute/animation-skinning.pipeline", reinterpret_cast<u64>(this));
 
     vk::SemaphoreTypeCreateInfo timelineCreateInfo {
         .semaphoreType = vk::SemaphoreType::eTimeline,
@@ -347,16 +154,55 @@ void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
         }
     }
 
+    const std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
+    const std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;
+
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
-    vk::CommandBufferSubmitInfo commandBufferInfo {
-        .commandBuffer = skinningCommandBuffer,
-    };
+    Carrot::Render::Packet& packet = renderContext.renderer.makeAsyncPacket();
+    auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eCompute);
+    struct PushConstantData {
+        u32 vertexCount;
+        u32 instanceCount;
+    } push;
+    push.vertexCount = vertexCountPerInstance;
+    push.instanceCount = maxInstanceCount;
+    pushConstant.setData(push);
+    packet.pipeline = skinningPipeline;
+    auto& command = packet.commands.emplace_back();
+    command.compute.x = vertexGroups;
+    command.compute.y = instanceGroups;
+    command.compute.z = 1;
+
+    // Set 0
+    renderContext.renderer.bindBuffer(*skinningPipeline, renderContext, flatVertices->getWholeView(), 0, 0);
+    renderContext.renderer.bindBuffer(*skinningPipeline, renderContext, instanceBuffer->getWholeView(), 0, 1);
+    renderContext.renderer.bindBuffer(*skinningPipeline, renderContext, fullySkinnedVertexBuffer.view, 0, 2);
+
+    // Set 1
+    renderContext.renderer.bindBuffer(*skinningPipeline, renderContext, model->getAnimationDataBuffer().getWholeView(), 1, 0);
+    for (const auto& [_, binding] : model->getAnimationMetadata()) {
+        renderContext.renderer.bindStorageImage(*skinningPipeline, renderContext, model->getAnimationDataTexture(binding.index), 1, 1,
+            vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, binding.index /*array index*/, vk::ImageLayout::eGeneral);
+    }
+
+    if (renderContext.frameNumber != 0) {
+        vk::SemaphoreSubmitInfo waitRender {
+            .semaphore = engine.getRenderFinishedTimelineSemaphore(),
+            .value = renderContext.getPreviousFrameNumber(),
+            .stageMask = vk::PipelineStageFlagBits2::eComputeShader,
+        };
+        packet.waitSemaphores.emplaceBack(waitRender);
+    }
+
     vk::SemaphoreSubmitInfo signalInfo {
         .semaphore = *skinningSemaphore,
         .value = renderContext.frameNumber,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
+    packet.signalSemaphores.emplaceBack(signalInfo);
+
+    renderContext.render(packet); // submits because this is an async packet
 
     // do not bind the semaphore earlier, it is possible the creation of the AnimatedInstances finishes and ASBuilder kicks off, without the skinning semaphore ever signaled
     if (!submitAtLeastOneSkinningCompute)
@@ -373,21 +219,6 @@ void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
             blas->bindSemaphores(semaphores);
         }
     }
-
-    vk::SemaphoreSubmitInfo waitRender {
-        .semaphore = engine.getRenderFinishedTimelineSemaphore(),
-        .value = renderContext.getPreviousFrameNumber(),
-        .stageMask = vk::PipelineStageFlagBits2::eComputeShader,
-    };
-
-    GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
-            .waitSemaphoreInfoCount = renderContext.frameNumber == 0 ? 0u /*no frame to wait for on the first frame*/ : 1u,
-            .pWaitSemaphoreInfos = &waitRender,
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = &commandBufferInfo,
-            .signalSemaphoreInfoCount = 1,
-            .pSignalSemaphoreInfos = &signalInfo,
-    });
 
     bool hasRaytracedInstances = false;
     if (GetCapabilities().supportsRaytracing) {

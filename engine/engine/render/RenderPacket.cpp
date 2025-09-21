@@ -14,20 +14,21 @@
 
 
 namespace Carrot::Render {
-    Packet::Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, std::source_location sourceLocation)
+    Packet::Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, bool async, std::source_location sourceLocation)
     : container(container)
     , source(sourceLocation)
     , pass(pass)
     , packetType(packetType)
+    , async(async)
     {
         viewport = &GetEngine().getMainViewport();
     };
 
-    Packet::Packet(const Packet& toCopy): container(toCopy.container) {
+    Packet::Packet(const Packet& toCopy): container(toCopy.container), async(toCopy.async) {
         *this = toCopy;
     }
 
-    Packet::Packet(Packet&& toMove): container(toMove.container) {
+    Packet::Packet(Packet&& toMove): container(toMove.container), async(toMove.async) {
         *this = std::move(toMove);
     }
 
@@ -131,6 +132,10 @@ namespace Carrot::Render {
     }
 
     void Packet::record(Carrot::Allocator& tempAllocator, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
+        record(tempAllocator, pass.getPipelineCreateInfo(), renderContext, cmds, previousPacket);
+    }
+
+    void Packet::record(Carrot::Allocator& tempAllocator, const Carrot::RenderingPipelineCreateInfo& renderingInfo, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
         ZoneScoped;
 
         if(commands.empty()) {
@@ -156,7 +161,7 @@ namespace Carrot::Render {
             dynamicOffsets.push_back(renderer.uploadPerDrawData(std::span{ (GBufferDrawData*)perDrawData.data(), perDrawData.size_bytes() / sizeof(GBufferDrawData) }));
         if(!skipPipelineBind) {
             ZoneScopedN("Change pipeline");
-            pipeline->bind(pass, renderContext, cmds, bindPoint, dynamicOffsets);
+            pipeline->bind(renderingInfo, renderContext, cmds, bindPoint, dynamicOffsets);
         } else {
             pipeline->bindOnlyDescriptorSets(renderContext, cmds, bindPoint, dynamicOffsets);
         }
@@ -301,7 +306,7 @@ namespace Carrot::Render {
         verify(pass != Render::PassEnum::Undefined, "Render pass must be defined");
 
         verify(commands.size() > 0, "Must have at least one draw command");
-        verify(viewport, "Viewport must not be null");
+        verify(viewport != nullptr ^ async, "Non-async packets must have a viewport that is not null");
         switch(packetType) {
             case PacketType::DrawIndexedInstanced: {
                 verify(indexBuffer, "Index buffer must not be null if there are indexed draw commands");
@@ -314,7 +319,7 @@ namespace Carrot::Render {
             case PacketType::Compute:
             case PacketType::Mesh:
             case PacketType::Procedural:
-                verify(!vertexBuffer, "Cannot use index buffer in compute or mesh shaders");
+                verify(!vertexBuffer, "Cannot use vertex buffer in compute or mesh shaders");
                 verify(!indexBuffer, "Cannot use index buffer in compute or mesh shaders");
                 break;
 
@@ -324,13 +329,27 @@ namespace Carrot::Render {
                 break;
         }
 
+        if (packetType == PacketType::Compute) {
+            for (const auto& cmd : commands) {
+                verify(cmd.compute.x != 0, "Group X size of 0!");
+                verify(cmd.compute.y != 0, "Group Y size of 0!");
+                verify(cmd.compute.z != 0, "Group Z size of 0!");
+            }
+        }
+
         if(!perDrawData.empty()) {
             verify(commands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many commands than per draw data!");
+        }
+
+        if (!async) {
+            verify(waitSemaphores.empty(), "Wait semaphores not supported for non async packets");
+            verify(signalSemaphores.empty(), "Signal semaphores not supported for non async packets");
         }
     }
 
     Packet& Packet::operator=(Packet&& toMove) {
         ZoneScopedN("Packet::operator= move");
+        verify(toMove.async == async, "Can move only same type");
         pipeline = std::move(toMove.pipeline);
         pass = std::move(toMove.pass);
         viewport = std::move(toMove.viewport);
@@ -357,6 +376,7 @@ namespace Carrot::Render {
 
     Packet& Packet::operator=(const Packet& toCopy) {
         ZoneScopedN("Packet::operator= copy");
+        verify(toCopy.async == async, "Need to copy same type");
         if(this == &toCopy)
             return *this;
 

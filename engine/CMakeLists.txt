@@ -201,6 +201,7 @@ set(ENGINE-SOURCES
         )
 
 set(PIPELINES
+        compute/animation-skinning
         compute/clear-singleint
         compute/clear-visibility-buffer
         compute/compute-rt-clusters
@@ -273,10 +274,6 @@ foreach(pipeline_name ${PIPELINES})
     set(ENGINE-PIPELINES "${ENGINE-PIPELINES}" "${CMAKE_BINARY_DIR}/resources/pipelines/${pipeline_name}.pipeline")
 endforeach()
 
-#only one which is not supported by new .pipeline format (TODO)
-add_spirv_shader(compute compute/animation-skinning.compute.glsl compute/animation-skinning.compute.glsl.spv)
-set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/compute/animation-skinning.compute.glsl.spv")
-
 set(THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_vulkan.cpp
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_glfw.cpp
@@ -307,7 +304,7 @@ file(COPY "resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/icon128.ktx2" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
-add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
+add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation

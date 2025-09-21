@@ -532,6 +532,10 @@ const std::map<std::string, Carrot::AnimationMetadata>& Carrot::Model::getAnimat
     return animationMapping;
 }
 
+Carrot::Render::Texture& Carrot::Model::getAnimationDataTexture(u32 animationIndex) const {
+    return *animationBoneTransformData[animationIndex];
+}
+
 vk::DescriptorSet Carrot::Model::getAnimationDataDescriptorSet() const {
     verify(animationDescriptorSets.size() > 0, "This model is not animated!");
     return animationDescriptorSets[0];

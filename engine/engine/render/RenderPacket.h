@@ -10,6 +10,7 @@
 #include <list>
 #include <span>
 #include <core/Allocator.h>
+#include <core/containers/Vector.hpp>
 
 #include "resources/Buffer.h"
 #include "resources/BufferView.h"
@@ -17,6 +18,7 @@
 #include "GBufferDrawData.h"
 
 namespace Carrot {
+    struct RenderingPipelineCreateInfo;
     class Pipeline;
     class Mesh;
     class VulkanRenderer;
@@ -104,6 +106,7 @@ namespace Carrot::Render {
         Carrot::BufferView indexBuffer;
 
         std::uint32_t instanceCount = 1; // Total number of instances for this packet, used to offset firstInstance when merging packets
+        const bool async = false;
 
         PacketType packetType = PacketType::Unknown;
         std::vector<PacketCommand> commands;
@@ -115,8 +118,12 @@ namespace Carrot::Render {
         std::optional<vk::Viewport> viewportExtents;
         std::optional<vk::Rect2D> scissor;
 
+        // TODO: allocators
+        Carrot::Vector<vk::SemaphoreSubmitInfo> waitSemaphores;
+        Carrot::Vector<vk::SemaphoreSubmitInfo> signalSemaphores;
+
     public:
-        explicit Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, std::source_location location = std::source_location::current());
+        explicit Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, bool async, std::source_location location = std::source_location::current());
 
         Packet(const Packet&);
         Packet(Packet&& toMove);
@@ -152,6 +159,7 @@ namespace Carrot::Render {
         /// \param commands
         /// \param previousRenderPacket if you know the proper state is already bound, you can skip its bind thanks to this parameter to save time
         void record(Carrot::Allocator& tempAllocator, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
+        void record(Carrot::Allocator& tempAllocator, const Carrot::RenderingPipelineCreateInfo& renderingInfo, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
 
     private:
         std::span<std::uint8_t> allocateGeneric(std::size_t size);

@@ -1,0 +1,17 @@
+{
+  "type": "compute",
+  "computeShader": {
+    "file": "resources/shaders/compute/animation-skinning.compute.glsl",
+    "entry_point": "main"
+  },
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    }
+  ]
+}
