@@ -186,7 +186,7 @@ void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
             vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, binding.index /*array index*/, vk::ImageLayout::eGeneral);
     }
 
-    if (renderContext.frameNumber != 0) {
+    if (submitAtLeastOneSkinningCompute && renderContext.frameNumber != 0) {
         vk::SemaphoreSubmitInfo waitRender {
             .semaphore = engine.getRenderFinishedTimelineSemaphore(),
             .value = renderContext.getPreviousFrameNumber(),

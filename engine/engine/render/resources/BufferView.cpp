@@ -109,20 +109,20 @@ void Carrot::BufferView::stageUpload(vk::Semaphore semaphore, const void* data, 
 
 static Carrot::Async::SpinLock l;
 
-void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset, const std::source_location& sourceLocation) {
     verify(length-offset <= size, "Cannot upload more data than this view allows");
     Carrot::BufferView staging = GetRenderer().getSingleFrameHostBuffer(length);
     staging.directUpload(data, length, 0);
 
-    GetRenderer().queueAsyncCopy(false, staging, this->subView(offset, length));
+    GetRenderer().queueAsyncCopy(false, staging, this->subView(offset, length), sourceLocation);
 }
 
-void Carrot::BufferView::uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+void Carrot::BufferView::uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset, const std::source_location& sourceLocation) {
     verify(length-offset <= size, "Cannot upload more data than this view allows");
     Carrot::BufferView staging = GetRenderer().getSingleFrameHostBufferOnRenderThread(length);
     staging.directUpload(data, length, 0);
 
-    GetRenderer().queueAsyncCopy(true, staging, this->subView(offset, length));
+    GetRenderer().queueAsyncCopy(true, staging, this->subView(offset, length), sourceLocation);
 }
 
 void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {

@@ -280,7 +280,7 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::shar
     if(!enabled)
         return nullptr;
     ASStorage<InstanceHandle>::Reservation slot = instances.reserveSlot();
-    auto ptr = std::make_shared<InstanceHandle>(correspondingGeometry, this);;
+    auto ptr = std::make_shared<InstanceHandle>(correspondingGeometry, this);
     *slot = ptr;
     return ptr;
 }
@@ -308,11 +308,9 @@ void Carrot::ASBuilder::createSemaphores() {
     DebugNameable::nameSingle("TLAS build", *tlasBuildTimelineSemaphore);
 
     for (size_t i = 0; i < imageCount; ++i) {
-        tlasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         instanceUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         serializedCopySemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
 
-        DebugNameable::nameSingle(Carrot::sprintf("TLAS build, %d", (int)i), *tlasBuildSemaphore[i]);
         DebugNameable::nameSingle(Carrot::sprintf("Instance upload, %d", (int)i), *instanceUploadSemaphore[i]);
         DebugNameable::nameSingle("SerializedAS copy", *serializedCopySemaphore[i]);
     }
@@ -1077,11 +1075,11 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .semaphore = *instanceUploadSemaphore[semaphoreIndex],
         .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
     });
-    waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+    /* TODO: waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
         .semaphore = *tlasBuildTimelineSemaphore,
         .value = tlasValueToWait,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
-    });
+    });*/
     if(builtBLASThisFrame) {
         waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
             .semaphore = *blasBuildSemaphore,
@@ -1094,7 +1092,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .commandBuffer = buildCommand,
     };
     vk::SemaphoreSubmitInfo signalInfo {
-        .semaphore = (*tlasBuildSemaphore[semaphoreIndex]),
+        .semaphore = (*tlasBuildTimelineSemaphore),
+        .value = renderContext.frameNumber,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -1108,7 +1107,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .pSignalSemaphoreInfos = &signalInfo,
     });
 
-    GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[semaphoreIndex]);
+    GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *tlasBuildTimelineSemaphore, renderContext.frameNumber);
 
     prevPrimitiveCount = vkInstances.size();
 }
@@ -1159,14 +1158,6 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
     return instancesBufferPerFrame[renderContext.frameIndex]->view;
-}
-
-vk::Semaphore Carrot::ASBuilder::getTlasBuildTimelineSemaphore() const {
-    return *tlasBuildTimelineSemaphore;
-}
-
-std::uint64_t Carrot::ASBuilder::getTlasBuildTimelineSemaphoreSignalValue(const Render::Context& renderContext) const {
-    return renderContext.frameNumber;
 }
 
 /*static*/ vk::TransformMatrixKHR Carrot::ASBuilder::glmToRTTransformMatrix(const glm::mat4& mat) {

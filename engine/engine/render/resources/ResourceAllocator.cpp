@@ -157,12 +157,34 @@ namespace Carrot {
         currentFrame = renderContext.frameNumber;
 
         // clear buffers that are no longer used
-        for(std::int64_t index = 0; index < dedicatedBufferGraveyard.size();) {
-            auto& [frameIndex, _] = dedicatedBufferGraveyard[index];
-            if(frameIndex >= currentFrame) {
-                dedicatedBufferGraveyard.remove(index);
-            } else {
-                index++;
+        {
+            Carrot::Vector<UniquePtr<Buffer>> toDelete; // outside of lock so that calling Buffer destructor does not deadlock
+            Carrot::Async::LockGuard g { graveyardAccess };
+
+            for(std::int64_t index = 0; index < dedicatedBufferGraveyard.size();) {
+                auto& [frameIndex, pBuffer] = dedicatedBufferGraveyard[index];
+                if(frameIndex <= currentFrame) {
+                    toDelete.emplaceBack(std::move(pBuffer));
+                    dedicatedBufferGraveyard.remove(index);
+                } else {
+                    index++;
+                }
+            }
+            for(std::int64_t index = 0; index < nonDedicatedBufferGraveyard.size();) {
+                auto& [frameIndex, block, isStaging] = nonDedicatedBufferGraveyard[index];
+                if(frameIndex <= currentFrame) {
+                    if(isStaging) {
+                        Carrot::Async::LockGuard g { stagingAccess };
+                        vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, block);
+                    } else {
+                        Carrot::Async::LockGuard g { deviceAccess };
+                        vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, block);
+                    }
+
+                    nonDedicatedBufferGraveyard.remove(index);
+                } else {
+                    index++;
+                }
             }
         }
 
@@ -217,20 +239,25 @@ namespace Carrot {
     }
 
     vk::DeviceSize ResourceAllocator::computeAlignment(vk::BufferUsageFlags usageFlags) const {
+        vk::DeviceSize alignment = 1;
         if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
-            return accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment;
-        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
-            return physicalLimits.minUniformBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
-            return physicalLimits.minStorageBufferOffsetAlignment;
-        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
-            // TODO: which value is valid?
-            return std::max(static_cast<vk::DeviceSize>(16), physicalLimits.minStorageBufferOffsetAlignment);
+            alignment = std::max(alignment, static_cast<vk::DeviceSize>(accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
         }
-        return 0;
+        if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
+            alignment = std::max(alignment, static_cast<vk::DeviceSize>(physicalLimits.minUniformBufferOffsetAlignment));
+        }
+        if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
+            alignment = std::max(alignment, static_cast<vk::DeviceSize>(physicalLimits.minStorageBufferOffsetAlignment));
+        }
+        if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
+            // TODO: which value is valid?
+            alignment = std::max(alignment, static_cast<vk::DeviceSize>(std::max(static_cast<vk::DeviceSize>(16), physicalLimits.minStorageBufferOffsetAlignment)));
+        }
+        return alignment;
     }
 
     void ResourceAllocator::freeStagingBuffer(BufferAllocation* buffer) {
+        Carrot::Async::LockGuard g { graveyardAccess };
         if(buffer->dedicated) {
             // it is possible that the buffer is deleted from the "tick"/"logic" part of the engine, but the renderer still uses it
             //  so don't delete the buffer immediately
@@ -238,7 +265,7 @@ namespace Carrot {
                 for(std::int64_t index = 0; index < buffers.size();) {
                     auto& pBuffer = buffers[index];
                     if(pBuffer.get() == (Carrot::Buffer*)buffer->allocation) {
-                        dedicatedBufferGraveyard.emplaceBack(Pair{ currentFrame+3, std::move(pBuffer) });
+                        dedicatedBufferGraveyard.emplaceBack(Pair{ currentFrame+MAX_FRAMES_IN_FLIGHT, std::move(pBuffer) });
                         buffers.remove(index);
                     } else {
                         index++;
@@ -253,14 +280,7 @@ namespace Carrot {
                 moveToGraveyard(dedicatedDeviceBuffers);
             }
         } else {
-            // TODO: add a graveyard for virtual blocks too?
-            if(buffer->staging) {
-                Carrot::Async::LockGuard g { stagingAccess };
-                vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
-            } else {
-                Carrot::Async::LockGuard g { deviceAccess };
-                vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
-            }
+            nonDedicatedBufferGraveyard.emplaceBack(Triplet{ currentFrame + MAX_FRAMES_IN_FLIGHT, static_cast<VmaVirtualAllocation>(buffer->allocation), buffer->staging});
         }
     }
 

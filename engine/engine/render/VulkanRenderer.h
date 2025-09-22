@@ -304,7 +304,7 @@ namespace Carrot {
 
         /// Queues a copy that will be performed before rendering the current frame.
         /// Buffers pointed by both source and destination must be valid until the next frame!
-        void queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination);
+        void queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination, const std::source_location& sourceLocation = std::source_location::current());
 
         /// Adds SemaphoreSubmitInfo corresponding to the copy semaphores that will be signaled for this frame (ie fetched via fetchACopySemaphore)
         /// This will also reset the underlying pool (to let semaphores be reused for next frame)
@@ -366,6 +366,7 @@ namespace Carrot {
         struct AsyncCopyDesc {
             BufferView source;
             BufferView destination;
+            std::source_location sourceLocation;
         };
         std::array<ThreadSafeQueue<AsyncCopyDesc>, 2> asyncCopiesQueues;
 

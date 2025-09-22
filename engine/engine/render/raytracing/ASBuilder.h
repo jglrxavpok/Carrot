@@ -124,7 +124,7 @@ namespace Carrot {
 
         std::uint8_t mask = 0xFF;
         std::uint32_t customIndex = 0;
-        bool enabled = true;
+        bool enabled = false;
 
     private:
         glm::mat4 oldTransform{1.0f};
@@ -261,9 +261,6 @@ namespace Carrot {
 
         static vk::TransformMatrixKHR glmToRTTransformMatrix(const glm::mat4& mat);
 
-        vk::Semaphore getTlasBuildTimelineSemaphore() const;
-        std::uint64_t getTlasBuildTimelineSemaphoreSignalValue(const Render::Context& renderContext) const;
-
     private:
         void createGraveyard();
         void createSemaphores();
@@ -333,7 +330,6 @@ namespace Carrot {
 
         bool builtBLASThisFrame = false;
         Render::PerFrame<vk::UniqueSemaphore> instanceUploadSemaphore;
-        Render::PerFrame<vk::UniqueSemaphore> tlasBuildSemaphore;
         vk::UniqueSemaphore preCompactBLASSemaphore;
         vk::UniqueSemaphore blasBuildSemaphore;
 

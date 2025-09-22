@@ -5,6 +5,7 @@
 #pragma once
 
 #include <memory>
+#include <source_location>
 #include <span>
 #include <core/async/ParallelMap.hpp>
 #include <core/data/Hashes.h>
@@ -84,8 +85,8 @@ namespace Carrot {
          * @param length length, in bytes, of the contents of 'data'
          * @param offset offset, in bytes, of where to copy data inside this buffer view
          */
-        void uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
-        void uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
+        void uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0, const std::source_location& sourceLocation = std::source_location::current());
+        void uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0, const std::source_location& sourceLocation = std::source_location::current());
 
         void copyToAndWait(Carrot::BufferView destination) const;
         void copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const;

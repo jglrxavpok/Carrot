@@ -16,7 +16,7 @@ const uint InvalidCellIndex = 0xFFFFFFFFu;
 
 // keep in sync with LightingPasses.cpp
 const uint HashGridCellsPerBucket = 8;
-const uint HashGridBucketCount = 1024*256*4;
+const uint HashGridBucketCount = 1024*256;
 const uint HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
 layout(buffer_reference, scalar) buffer BufferToUints {

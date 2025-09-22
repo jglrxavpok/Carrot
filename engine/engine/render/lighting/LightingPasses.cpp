@@ -146,7 +146,7 @@ namespace Carrot::Render {
                 };
 
                 // FIXME wtf
-                WaitDeviceIdle();
+//                WaitDeviceIdle();
                 cmds.copyBuffer(lastFrameBuffer.view.getVulkanBuffer(), buffer.view.getVulkanBuffer(), {region});
 
                 cmds.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0),

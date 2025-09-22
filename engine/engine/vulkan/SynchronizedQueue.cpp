@@ -10,6 +10,8 @@
 #include "engine/Engine.h"
 #include "engine/vulkan/VulkanDriver.h"
 
+static constexpr bool DebugSemaphores = false;
+
 namespace Carrot::Vulkan {
     static Carrot::Log::Category debugCategory { "Synchronisation debug" };
 
@@ -30,7 +32,7 @@ namespace Carrot::Vulkan {
         if (info.waitSemaphoreCount > 0) {
             std::string s = "";
             for (u32 i = 0; i < info.waitSemaphoreCount; i++) {
-                s += Carrot::sprintf("%llx (%s), ", info.pWaitSemaphores[i], DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pWaitSemaphores[i])].c_str());
+                s += Carrot::sprintf("%llx (%s) = (binary), ", info.pWaitSemaphores[i], DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pWaitSemaphores[i])].c_str());
             }
             return s;
         }
@@ -41,7 +43,7 @@ namespace Carrot::Vulkan {
         if (info.signalSemaphoreCount > 0) {
             std::string s = "";
             for (u32 i = 0; i < info.signalSemaphoreCount; i++) {
-                s += Carrot::sprintf("%llx (%s), ", info.pSignalSemaphores[i], DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pSignalSemaphores[i])].c_str());
+                s += Carrot::sprintf("%llx (%s) = (binary), ", info.pSignalSemaphores[i], DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pSignalSemaphores[i])].c_str());
             }
             return s;
         }
@@ -52,7 +54,10 @@ namespace Carrot::Vulkan {
         if (info.signalSemaphoreInfoCount > 0) {
             std::string s = "";
             for (u32 i = 0; i < info.signalSemaphoreInfoCount; i++) {
-                s += Carrot::sprintf("%llx (%s), ", info.pSignalSemaphoreInfos[i].semaphore, DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pSignalSemaphoreInfos[i].semaphore)].c_str());
+                s += Carrot::sprintf("%llx (%s) = %d, ",
+                    info.pSignalSemaphoreInfos[i].semaphore,
+                    DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pSignalSemaphoreInfos[i].semaphore)].c_str(),
+                    info.pSignalSemaphoreInfos[i].value);
             }
             return s;
         }
@@ -63,7 +68,10 @@ namespace Carrot::Vulkan {
         if (info.waitSemaphoreInfoCount > 0) {
             std::string s = "";
             for (u32 i = 0; i < info.waitSemaphoreInfoCount; i++) {
-                s += Carrot::sprintf("%llx (%s), ", info.pWaitSemaphoreInfos[i].semaphore, DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pWaitSemaphoreInfos[i].semaphore)].c_str());
+                s += Carrot::sprintf("%llx (%s) = %d, ",
+                    info.pWaitSemaphoreInfos[i].semaphore,
+                    DebugNameable::objectNames[vk::Semaphore::objectType][(u64)(VkSemaphore)(info.pWaitSemaphoreInfos[i].semaphore)].c_str(),
+                    info.pWaitSemaphoreInfos[i].value);
             }
             return s;
         }
@@ -74,16 +82,18 @@ namespace Carrot::Vulkan {
         //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         try {
-            /*std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
-            std::string signalSemaphoreList = makeSignalSemaphoreList(info);
-            if (!waitSemaphoreList.empty()) {
-                Carrot::Log::debug(debugCategory, "Queue %llx is waiting on semaphores: %s", (u64)this, waitSemaphoreList.c_str());
-                Carrot::Log::flush();
+            if constexpr (DebugSemaphores) {
+                std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
+                std::string signalSemaphoreList = makeSignalSemaphoreList(info);
+                if (!waitSemaphoreList.empty()) {
+                    Carrot::Log::debug(debugCategory, "Queue %llx is waiting on semaphores: %s", (u64)this, waitSemaphoreList.c_str());
+                    Carrot::Log::flush();
+                }
+                if (!signalSemaphoreList.empty()) {
+                    Carrot::Log::debug(debugCategory, "Queue %llx is signaling semaphores: %s", (u64)this, signalSemaphoreList.c_str());
+                    Carrot::Log::flush();
+                }
             }
-            if (!signalSemaphoreList.empty()) {
-                Carrot::Log::debug(debugCategory, "Queue %llx is signaling semaphores: %s", (u64)this, signalSemaphoreList.c_str());
-                Carrot::Log::flush();
-            }*/
             queue.submit(info, fence);
         } catch(vk::DeviceLostError& deviceLost) {
             GetVulkanDriver().onDeviceLost();
@@ -95,17 +105,18 @@ namespace Carrot::Vulkan {
         //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
         try {
-            /*std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
-            std::string signalSemaphoreList = makeSignalSemaphoreList(info);
-            if (!waitSemaphoreList.empty()) {
-                Carrot::Log::debug(debugCategory, "Queue %llx is waiting on semaphores: %s", (u64)this, waitSemaphoreList.c_str());
-                Carrot::Log::flush();
+            if constexpr (DebugSemaphores) {
+                std::string waitSemaphoreList = makeWaitingSemaphoreList(info);
+                std::string signalSemaphoreList = makeSignalSemaphoreList(info);
+                if (!waitSemaphoreList.empty()) {
+                    Carrot::Log::debug(debugCategory, "Queue %llx is waiting on semaphores: %s", (u64)this, waitSemaphoreList.c_str());
+                    Carrot::Log::flush();
+                }
+                if (!signalSemaphoreList.empty()) {
+                    Carrot::Log::debug(debugCategory, "Queue %llx is signaling semaphores: %s", (u64)this, signalSemaphoreList.c_str());
+                    Carrot::Log::flush();
+                }
             }
-            if (!signalSemaphoreList.empty()) {
-                Carrot::Log::debug(debugCategory, "Queue %llx is signaling semaphores: %s", (u64)this, signalSemaphoreList.c_str());
-                Carrot::Log::flush();
-            }
-*/
             queue.submit2(info, fence);
         } catch(vk::DeviceLostError& deviceLost) {
             GetVulkanDriver().onDeviceLost();

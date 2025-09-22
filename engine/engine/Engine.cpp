@@ -843,11 +843,6 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             .value = mainRenderContext.frameNumber,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
-        signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
-            .semaphore = renderer.getASBuilder().getTlasBuildTimelineSemaphore(),
-            .value = renderer.getASBuilder().getTlasBuildTimelineSemaphoreSignalValue(mainRenderContext),
-            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        });
 
         auto& additionalWaitSemaphoresForThisFrame = additionalWaitSemaphores[mainRenderContext.frameNumber % additionalWaitSemaphores.size()];
         for(auto [stage, semaphoreWaitPair] : additionalWaitSemaphoresForThisFrame) {

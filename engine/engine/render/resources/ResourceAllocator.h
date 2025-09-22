@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <vk_mem_alloc.h>
 #include <core/UniquePtr.hpp>
 #include <core/containers/Pair.hpp>
 #include <core/containers/Vector.hpp>
@@ -81,10 +82,12 @@ namespace Carrot {
 
         Carrot::Async::SpinLock stagingAccess;
         Carrot::Async::SpinLock deviceAccess;
+        Carrot::Async::SpinLock graveyardAccess;
         Vector<UniquePtr<Buffer>> dedicatedStagingBuffers;
         Vector<UniquePtr<Buffer>> dedicatedDeviceBuffers;
 
         Vector<Pair<std::uint32_t, UniquePtr<Buffer>>> dedicatedBufferGraveyard;
+        Vector<Triplet<std::uint32_t, VmaVirtualAllocation, bool/* is staging buffer */>> nonDedicatedBufferGraveyard;
 
         std::uint32_t currentFrame = 0;
 

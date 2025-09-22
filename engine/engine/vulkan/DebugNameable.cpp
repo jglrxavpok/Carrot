@@ -10,7 +10,7 @@ namespace Carrot {
     std::unordered_map<vk::ObjectType, std::unordered_map<std::uint64_t, std::string>> DebugNameable::objectNames{};
 
     /* static */ void DebugNameable::doNaming(const vk::DebugUtilsObjectNameInfoEXT& nameInfo) {
-        //objectNames[nameInfo.objectType][nameInfo.objectHandle] = nameInfo.pObjectName;
+        objectNames[nameInfo.objectType][nameInfo.objectHandle] = nameInfo.pObjectName;
         if(GetVulkanDriver().hasDebugNames()) {
             GetVulkanDriver().getLogicalDevice().setDebugUtilsObjectNameEXT(nameInfo);
         }

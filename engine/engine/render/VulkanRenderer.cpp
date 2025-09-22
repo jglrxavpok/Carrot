@@ -1450,9 +1450,9 @@ vk::Semaphore Carrot::VulkanRenderer::fetchACopySemaphore() {
     return r;
 }
 
-void Carrot::VulkanRenderer::queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination) {
+void Carrot::VulkanRenderer::queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination, const std::source_location& sourceLocation) {
     auto* pAsyncCopyQueue = onRenderThread ? renderData.pAsyncCopyQueue : mainData.pAsyncCopyQueue;
-    pAsyncCopyQueue->push(AsyncCopyDesc{source, destination});
+    pAsyncCopyQueue->push(AsyncCopyDesc{source, destination, sourceLocation});
 }
 
 
