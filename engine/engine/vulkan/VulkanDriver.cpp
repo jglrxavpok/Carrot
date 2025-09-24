@@ -79,6 +79,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
         VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME,
+        VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -624,6 +625,9 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {
                     .nullDescriptor = true,
+            },
+            vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR {
+                    .computeDerivativeGroupQuads = true,
             },
             vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
                     .shaderImageInt64Atomics = true,

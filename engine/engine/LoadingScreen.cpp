@@ -89,6 +89,9 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
         .clearValue = color,
     };
 
+    swapchainTexture->assumeLayout(vk::ImageLayout::eUndefined);
+    swapchainTexture->transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal);
+
     cmds.beginRendering(vk::RenderingInfo {
             .renderArea = {
                     .offset = vk::Offset2D{0, 0},
@@ -99,14 +102,15 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .pColorAttachments = &colorAttachmentInfo,
     });
 
-        RenderingPipelineCreateInfo createInfo {
-                .colorAttachments = {swapchainTexture->getImage().getFormat()}
-        };
+    RenderingPipelineCreateInfo createInfo {
+            .colorAttachments = {swapchainTexture->getImage().getFormat()}
+    };
     pipeline.bind(createInfo, engine.newRenderContext(frameIndex, imageIndex, engine.getMainViewport()), cmds);
     quad.bind(cmds);
     quad.draw(cmds);
 
     cmds.endRendering();
+    swapchainTexture->transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
 
     cmds.end();
     vk::CommandBufferSubmitInfo commandInfo {

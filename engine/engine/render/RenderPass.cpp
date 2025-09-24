@@ -340,7 +340,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                     // force create resources
                     if(output.resource.type == ResourceType::StorageBuffer) {
                         DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize));
-                    } else {
+                    } else if (output.resource.imageOrigin != ImageOrigin::SurfaceSwapchain) {
                         DISCARD(graph.getOrCreateTexture(output.resource, i, viewportSize));
                     }
                 }

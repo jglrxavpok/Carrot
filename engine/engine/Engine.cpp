@@ -207,11 +207,10 @@ void Carrot::Engine::init() {
     initVulkan();
 
     auto addPresentPass = [&](Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent) {
-        mainGraph.addPass<Carrot::Render::PassData::Present>("present",
+        auto& blitToSwapchain = mainGraph.addPass<Carrot::Render::PassData::Present>("blit-to-swapchain",
                                                              [toPresent](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
                                                                  data.input = builder.read(toPresent, vk::ImageLayout::eShaderReadOnlyOptimal);
                                                                  data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                                                                 builder.present(data.output);
                                                              },
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                                  ZoneScopedN("CPU RenderGraph present");
@@ -221,6 +220,17 @@ void Carrot::Engine::init() {
 
                                                                  renderer.recordImGuiPass(cmds, pass, frame);
                                                              }
+        );
+        struct PresentFinal {
+            Render::FrameResource swapchainImage;
+        };
+        mainGraph.addPass<PresentFinal>("present",
+                                                             [toPresent, previousPassData = blitToSwapchain.getData()](Render::GraphBuilder& builder, Render::Pass<PresentFinal>& pass, PresentFinal& data) {
+                                                                 pass.rasterized = false;
+                                                                 data.swapchainImage = builder.write(previousPassData.output, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::ePresentSrcKHR, vk::ClearColorValue(std::array{0,0,0,0}));
+                                                                 builder.present(data.swapchainImage);
+                                                             },
+                                                             [this](const Render::CompiledPass& pass, const Render::Context& frame, const PresentFinal& data, vk::CommandBuffer& cmds) {}
         );
     };
 

@@ -14,7 +14,7 @@ import modules.gbuffer;
 ParameterBlock<GBufferInputs> gbufferInputs;
 
 struct DenoiserIO {
-    Texture2D<float4> input;
+    RWTexture2D<float4> input;
     RWTexture2D<float4> output;
 }
 ParameterBlock<DenoiserIO> io;
@@ -114,7 +114,7 @@ void denoise(
         sharedGBufferReads[localCoords.x][localCoords.y] = nullGBuffer();
         return;
     }
-    float4 finalPixel = config.swizzle(io.input.Load(coords));
+    float4 finalPixel = config.swizzle(io.input.Load(coords.xy));
 
     const float2 currentUV = float2(coords.xy)/float2(outputWidth, outputHeight);
     ExtractedGBuffer currentGBuffer = extractUsefulInfo(gbufferInputs.read(currentUV));
@@ -154,7 +154,7 @@ void denoise(
             const ExtractedGBuffer filterGBuffer = readGBuffer(coords.xy, localCoords.xy, dCoord);
             // TODO: use index for mesh on top of entity (for instance curtains of Sponza)
             // TODO: use groupshared for sampling input
-            float4 filterPixel = config.swizzle(io.input.Load(int3(filterCoord, 0)));
+            float4 filterPixel = config.swizzle(io.input.Load(filterCoord));
             if(filterGBuffer.albedo.a <= 1.0f/256.0f) {
                 continue;
             }

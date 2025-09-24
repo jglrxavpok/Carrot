@@ -247,7 +247,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
 
                 const GraphicsSettings::ToneMappingOption& toneMappingOption = renderer.getEngine().getSettings().graphicsSettings.toneMapping;
-                renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, toneMappingOption);
+                renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, toneMappingOption);
                 pipeline->bind(pass, frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(buffer);
