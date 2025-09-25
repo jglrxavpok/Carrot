@@ -761,6 +761,8 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             ZoneScopedN("mainCommandBuffers[frameIndex].begin(beginInfo)");
             mainCommandBuffers[frameIndex].begin(beginInfo);
 
+            mainCommandBuffers[frameIndex].resetQueryPool(*timingQueryPool, frameIndex*2, 2);
+
             if(timestampsWithAvailability[2*frameIndex * 2 + 1] != 0) {
                 mainCommandBuffers[frameIndex].writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, frameIndex*2 + 0);
             }
