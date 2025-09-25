@@ -92,11 +92,11 @@ namespace Carrot {
 
         const vk::AllocationCallbacks* getAllocationCallbacks() { return allocator; };
 
-        Vulkan::SynchronizedQueue& getPresentQueue() { return presentQueue; };
-        Vulkan::SynchronizedQueue& getTransferQueue() { return transferQueue; };
-        Vulkan::SynchronizedQueue& getGraphicsQueue() { return graphicsQueue; };
+        Vulkan::SynchronizedQueue& getPresentQueue() { return *pPresentQueue; };
+        Vulkan::SynchronizedQueue& getTransferQueue() { return *pTransferQueue; };
+        Vulkan::SynchronizedQueue& getGraphicsQueue() { return *pGraphicsQueue; };
         std::uint32_t getGraphicsQueueIndex();
-        Vulkan::SynchronizedQueue& getComputeQueue() { return computeQueue; };
+        Vulkan::SynchronizedQueue& getComputeQueue() { return *pComputeQueue; };
 
         /// Queries the format and present modes from a given physical device
         Carrot::SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device);
@@ -246,10 +246,11 @@ namespace Carrot {
         vk::UniqueDevice device{};
         QueuePartition queuePartition{};
 
-        Vulkan::SynchronizedQueue graphicsQueue;
-        Vulkan::SynchronizedQueue presentQueue;
-        Vulkan::SynchronizedQueue transferQueue;
-        Vulkan::SynchronizedQueue computeQueue;
+        // shared_ptr because two queues can be the same
+        std::shared_ptr<Vulkan::SynchronizedQueue> pGraphicsQueue;
+        std::shared_ptr<Vulkan::SynchronizedQueue> pPresentQueue;
+        std::shared_ptr<Vulkan::SynchronizedQueue> pTransferQueue;
+        std::shared_ptr<Vulkan::SynchronizedQueue> pComputeQueue;
 
         std::list<DeferredImageDestruction> deferredImageDestructions;
         std::list<DeferredImageViewDestruction> deferredImageViewDestructions;

@@ -243,8 +243,8 @@ namespace Carrot::Render {
             return;// nothing to render
         }
 
-        pImpl->perWindow[windowID].vertexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
-        pImpl->perWindow[windowID].indexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
+        pImpl->perWindow[windowID].vertexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+        pImpl->perWindow[windowID].indexBuffers[renderContext.frameIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
         Carrot::BufferView& vertexBuffer = pImpl->perWindow[windowID].vertexBuffers[renderContext.frameIndex].view;
         Carrot::BufferView& indexBuffer = pImpl->perWindow[windowID].indexBuffers[renderContext.frameIndex].view;
 

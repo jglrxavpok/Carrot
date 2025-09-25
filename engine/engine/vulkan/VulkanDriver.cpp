@@ -702,17 +702,25 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-    transferQueue = device->getQueue(queuePartition.transferFamily.value(), queuePartition.transferQueueIndex);
-    transferQueue.name("Transfer queue");
+    std::unordered_map<Carrot::Pair<u32, u32>, std::shared_ptr<Vulkan::SynchronizedQueue>> queues;
+    auto getQueue = [&](u32 familyIndex, u32 index) {
+        queues[{familyIndex, index}] = std::make_shared<Vulkan::SynchronizedQueue>(device->getQueue(familyIndex, index));
+    };
 
-    graphicsQueue = device->getQueue(queuePartition.graphicsFamily.value(), queuePartition.graphicsQueueIndex);
-    graphicsQueue.name("Graphics queue");
+    getQueue(queuePartition.transferFamily.value(), queuePartition.transferQueueIndex);
+    getQueue(queuePartition.presentFamily.value(), queuePartition.presentQueueIndex);
+    getQueue(queuePartition.graphicsFamily.value(), queuePartition.graphicsQueueIndex);
+    getQueue(queuePartition.computeFamily.value(), queuePartition.computeQueueIndex);
 
-    computeQueue = device->getQueue(queuePartition.computeFamily.value(), queuePartition.computeQueueIndex);
-    graphicsQueue.name("Compute queue");
+    pTransferQueue = queues[{queuePartition.transferFamily.value(), queuePartition.transferQueueIndex}];
+    pPresentQueue = queues[{queuePartition.presentFamily.value(), queuePartition.presentQueueIndex}];
+    pGraphicsQueue = queues[{queuePartition.graphicsFamily.value(), queuePartition.graphicsQueueIndex}];
+    pComputeQueue = queues[{queuePartition.computeFamily.value(), queuePartition.computeQueueIndex}];
 
-    presentQueue = device->getQueue(queuePartition.presentFamily.value(), queuePartition.presentQueueIndex);
-    graphicsQueue.name("Present queue");
+    pTransferQueue->name("Transfer queue");
+    pPresentQueue->name("Present queue");
+    pGraphicsQueue->name("Graphics queue");
+    pComputeQueue->name("Compute queue");
 }
 
 bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
@@ -887,10 +895,14 @@ bool Carrot::QueuePartition::isComplete() const {
 void Carrot::QueuePartition::toCreateInfo(Vector<vk::DeviceQueueCreateInfo>& output, Carrot::Vector<float>& priorities) {
     verify(isComplete(), "Partition is not valid!");
     std::unordered_map<u32, u32> familyToCount; // how many queues per family?
-    familyToCount[graphicsFamily.value()]++;
-    familyToCount[presentFamily.value()]++;
-    familyToCount[computeFamily.value()]++;
-    familyToCount[transferFamily.value()]++;
+    std::unordered_set<Carrot::Pair<u32, u32>> distinctQueues;
+    distinctQueues.insert({graphicsFamily.value(), graphicsQueueIndex});
+    distinctQueues.insert({presentFamily.value(), presentQueueIndex});
+    distinctQueues.insert({computeFamily.value(), computeQueueIndex});
+    distinctQueues.insert({transferFamily.value(), transferQueueIndex});
+    for (const auto& [family, queueIndex] : distinctQueues) {
+        familyToCount[family]++;
+    }
 
     output.ensureReserve(familyToCount.size());
 
@@ -1373,20 +1385,20 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 }
 
 void Carrot::VulkanDriver::submitGraphics(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
-    graphicsQueue.submit(submit, completeFence);
+    pGraphicsQueue->submit(submit, completeFence);
 }
 
 void Carrot::VulkanDriver::submitCompute(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
-    computeQueue.submit(submit, completeFence);
+    pComputeQueue->submit(submit, completeFence);
 }
 
 void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
-    transferQueue.submit(submit, completeFence);
+    pTransferQueue->submit(submit, completeFence);
 }
 
 
 void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
-    transferQueue.submit(submit, completeFence);
+    pTransferQueue->submit(submit, completeFence);
 }
 
 void Carrot::VulkanDriver::waitGraphics() {

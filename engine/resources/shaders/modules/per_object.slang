@@ -9,9 +9,9 @@ public struct ObjectDrawData {
 
 public struct PerObjectDrawBuffers {
     public StructuredBuffer<ObjectDrawData, ScalarDataLayout> drawData;
-    public StructuredBuffer<uint> offsets;
+    public ConstantBuffer<uint> offset;
 
     public ObjectDrawData Load(uint drawIndex) {
-        return drawData[offsets.Load(0) + drawIndex];
+        return drawData[offset + drawIndex];
     }
 }
