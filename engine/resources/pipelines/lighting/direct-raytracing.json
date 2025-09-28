@@ -1,7 +1,7 @@
 {
   "_import": "direct.json",
   "computeShader": {
-    "file": "resources/shaders/lighting/direct-raytracing.compute.glsl",
+    "file": "resources/shaders/lighting/direct-raytracing.slang",
     "entry_point": "main"
   },
   "descriptorSets": [
