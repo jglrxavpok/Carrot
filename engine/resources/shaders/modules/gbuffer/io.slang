@@ -35,6 +35,7 @@ public struct GBufferInputs {
         GBuffer result;
         result.albedo = albedo.Sample(gNearestSampler, uv);
         result.viewPosition = viewPos.Sample(gNearestSampler, uv).xyz;
+        result.readDepth = depth.Sample(gNearestSampler, uv).r;
 
         const float4 compressedTBN = viewNormalTangents.Sample(gNearestSampler, uv);
         

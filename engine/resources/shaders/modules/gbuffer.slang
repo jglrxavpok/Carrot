@@ -31,6 +31,8 @@ public struct GBuffer {
     public vec3 emissiveColor;
     public vec3 motionVector; // motion vector, in clip space
 
+    public float readDepth; // depth of this pixel, only valid when *reading* from the gbuffer
+
     public __init() {
         albedo = vec4(0.0);
         viewPosition = vec3(0.0);
@@ -46,6 +48,7 @@ public struct GBuffer {
 
         emissiveColor = vec3(0.0);
         motionVector = vec3(0.0);
+        readDepth = 0.0f/0.0f;
     }
 };
 

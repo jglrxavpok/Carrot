@@ -3,14 +3,8 @@ import modules.gbuffer;
 import modules.camera;
 import modules.materials;
 import modules.base;
-
-interface IConfiguration {
-    uint getSampleCount();
-
-    bool checkVisibility(float3 from, float3 to);
-}
-
-extern struct Configuration : IConfiguration;
+import modules.compute_fullscreen;
+import modules.raytracing_capabilities;
 
 ParameterBlock<GBufferInputs> gBufferInputs;
 ParameterBlock<Camera> cameras;
@@ -27,7 +21,7 @@ struct IO {
 }
 ParameterBlock<IO> io;
 
-float3 sampleLights(out float lightPDF, in Configuration config, PbrInputs pbr, float3 worldPos, float3 normal, float3 tangent, float metallic, float roughness) {
+float3 sampleLights(out float lightPDF, in IRaytracingCapabilities config, PbrInputs pbr, float3 worldPos, float3 normal, float3 tangent, float metallic, float roughness) {
     float3 contribution = 0;
     lightPDF = 1.0f;
     for(uint i = 0; i < lighting.activeLights.count; i++) {
@@ -40,7 +34,8 @@ float3 sampleLights(out float lightPDF, in Configuration config, PbrInputs pbr, 
         }
 
         const float3 L = l.getLightPositionRelativeTo(worldPos);
-        const float visibility = float(config.checkVisibility(worldPos, worldPos+L));
+        const float3 smallOffset = normalize(L) * 0.001f;
+        const float visibility = float(config.checkVisibility(worldPos+smallOffset, worldPos+L));
         float3 singleLightContribution = l.computeContribution(worldPos, normal) /* cos term already in computeLightContribution */;
         singleLightContribution *= l.intensity;
 
@@ -67,9 +62,7 @@ float3 sampleLights(out float lightPDF, in Configuration config, PbrInputs pbr, 
     return contribution;
 }
 
-void computeDirectLighting(uint2 coords, LightingPassUniforms push) {
-    Configuration config;
-
+void computeDirectLighting(IRaytracingCapabilities config, uint2 coords, LightingPassUniforms push) {
     uint w, h;
     io.outDirectLightingImage.GetDimensions(w, h);
 
@@ -79,39 +72,32 @@ void computeDirectLighting(uint2 coords, LightingPassUniforms push) {
 
     const float2 uv = float2(coords.xy) / float2(w, h);
 
-    float depth = gBufferInputs.depth.Sample(gBufferInputs.gNearestSampler, uv).r;
+    PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
     float distanceToCamera; // used for fog
     float3 finalColor;
-    if(depth < 1.0) { // check if not hitting the sky
+    if(!pixelInfo.isSky) { // check if not hitting the sky
         float3 lightContribution = float3(0);
+        distanceToCamera = length(pixelInfo.gBuffer.viewPosition);
 
-        const float3 cameraPos = (cameras.CurrentFrame().inverseView * float4(0, 0, 0, 1)).xyz;
-        const GBuffer gbuffer = gBufferInputs.read(uv);
-        const float4 hWorldPos = cameras.CurrentFrame().inverseView * float4(gbuffer.viewPosition, 1);
-        const float3 worldPos = hWorldPos.xyz / hWorldPos.w;
-
-        const float3x3 cboNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().view)));
-        const float3x3 inverseNormalView = inverse(cboNormalView);
-        const float3 normal = inverseNormalView * gbuffer.viewTBN[2];
-        const float3 tangent = inverseNormalView * gbuffer.viewTBN[0];
-        
-        const int sampleCount = config.getSampleCount();
+        const int sampleCount = config.getLightSampleCount();
         PbrInputs pbr;
-        pbr.alpha = gbuffer.roughness*gbuffer.roughness;
-        pbr.metallic = gbuffer.metallicness;
-        pbr.baseColor = gbuffer.albedo.rgb;
-        pbr.V = -normalize(worldPos-cameraPos);
-        pbr.N = normal;
+        pbr.alpha = pixelInfo.gBuffer.roughness*pixelInfo.gBuffer.roughness;
+        pbr.metallic = pixelInfo.gBuffer.metallicness;
+        pbr.baseColor = pixelInfo.gBuffer.albedo.rgb;
+        pbr.V = -normalize(pixelInfo.worldPosition-pixelInfo.cameraPos);
+        pbr.N = pixelInfo.worldNormal;
         pbr.NdotV = abs(dot(pbr.N, pbr.V));
         for(int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
             float lightPDF = 0.0f;
-            float3 sample = sampleLights(lightPDF, config, pbr, worldPos, normal, tangent, gbuffer.metallicness, gbuffer.roughness);
+            float3 sample = sampleLights(lightPDF, config, pbr, 
+                pixelInfo.worldPosition, pixelInfo.worldNormal, pixelInfo.worldTangent, 
+                pixelInfo.gBuffer.metallicness, pixelInfo.gBuffer.roughness);
             lightContribution += sample * lightPDF;
         }
         lightContribution /= sampleCount;
 
         lightContribution += lighting.lightArray.ambientColor;
-        lightContribution += gbuffer.emissiveColor;
+        lightContribution += pixelInfo.gBuffer.emissiveColor;
 
         finalColor = lightContribution;
     } else {
@@ -131,6 +117,7 @@ void computeDirectLighting(uint2 coords, LightingPassUniforms push) {
         finalColor = skyboxRGB;
     }
 
+    // TODO: move out of lighting, albedo is multiplied with the fog color
     const float fogFactor = clamp(distanceToCamera - lighting.lightArray.fogDistance / lighting.lightArray.fogDepth, 0, 1);
     finalColor = lerp(finalColor, lighting.lightArray.fogColor, fogFactor);
 

@@ -1,7 +1,7 @@
 {
   "_import": "ao.json",
   "computeShader": {
-    "file": "resources/shaders/lighting/ao-raytracing.compute.glsl",
+    "file": "resources/shaders/lighting/ao-raytracing.slang",
     "entry_point": "main"
   },
   "descriptorSets": [

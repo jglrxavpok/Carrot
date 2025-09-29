@@ -59,8 +59,8 @@ public struct Material {
 };
 
 public struct GlobalTextures {
-    uint blueNoises[64];
-    uint dithering;
+    public uint blueNoises[64];
+    public uint dithering;
 }
 
 public struct MaterialSystem {
