@@ -13,6 +13,8 @@ export struct Configuration : IConfiguration {
     }
 
     bool checkVisibility(float3 from, float3 to) {
+        // TODO: attempt screen space first?
+
         RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_NON_OPAQUE> query;
         RayDesc ray;
         float3 deltaPos = to-from;
