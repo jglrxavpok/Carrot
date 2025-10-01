@@ -1,7 +1,7 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/compute/animation-skinning.compute.glsl",
+    "file": "resources/shaders/compute/animation-skinning.slang",
     "entry_point": "main"
   },
   "descriptorSets": [
