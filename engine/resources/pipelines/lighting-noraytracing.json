@@ -1,7 +1,0 @@
-{
-  "_import": "lighting.json",
-  "computeShader": {
-    "file": "resources/shaders/compute/lighting-noraytracing.fragment.glsl",
-    "entry_point": "main"
-  }
-}

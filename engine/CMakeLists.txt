@@ -208,7 +208,6 @@ set(PIPELINES
         compute/copy-variance
         compute/debug-buffer-viewer
         compute/debug-texture-viewer
-        compute/firefly-rejection
 
         lighting/gi/apply-gi
         lighting/gi/debug-gi
@@ -255,9 +254,6 @@ set(PIPELINES
         gBufferSprite
         gBufferWireframe
         imgui
-        lighting
-        lighting-noraytracing
-        lighting-raytracing
         material-pass
         particles
         text-rendering
