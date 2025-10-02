@@ -30,10 +30,10 @@
   "depthTest": false,
   "vertexShader": {
     "file": "resources/shaders/screenQuad.vertex.glsl",
-    "entry_point": "main"
+    "entry_point": "vertex"
   },
   "fragmentShader": {
-    "file": "resources/shaders/post-process/merge-lighting.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/post-process/merge-lighting.slang",
+    "entry_point": "pixel"
   }
 }

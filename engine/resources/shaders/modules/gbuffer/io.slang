@@ -58,4 +58,9 @@ public struct GBufferInputs {
         result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in clip space
         return result;
     }
+
+    public float2 readMotionVector(float2 at) {
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Sample(gNearestSampler, at);
+        return metallicRoughnessVelocityXY.zw;
+    }
 }
