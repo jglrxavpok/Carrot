@@ -1,5 +1,6 @@
 module lighting;
 import base;
+import raytracing_capabilities;
 
 __include lighting.pbr;
 
@@ -136,7 +137,7 @@ public struct Light {
                 const float3 lightDirection = -getDirection();
                 const float force = dot(point2light, lightDirection);
                 const float cutoffRange = getOuterCutoffCosAngle() - getCutoffCosAngle();
-                return clamp((force - getOuterCutoffCosAngle()) / cutoffRange, 0, 1);
+                return clamp((getOuterCutoffCosAngle() - force) / cutoffRange, 0, 1);
             } break;
         }
 
@@ -178,4 +179,45 @@ public struct Lighting {
     public GLSLShaderStorageBuffer<LightArray, ScalarDataLayout> lightArray;
 
     public GLSLShaderStorageBuffer<ActiveLights> activeLights;
+
+    public float3 sampleLights(out float lightPDF, in IRaytracingCapabilities config, PbrInputs pbr, float3 worldPos, float3 normal, float3 tangent, float metallic, float roughness) {
+        float3 contribution = 0;
+        lightPDF = 1.0f;
+        for(uint i = 0; i < activeLights.count; i++) {
+            uint lightIndex = activeLights.indices[i];
+            
+            const Light l = lightArray.lights[lightIndex];
+            
+            if(!l.isEnabled()) {
+                continue;
+            }
+
+            const float3 L = l.getLightPositionRelativeTo(worldPos);
+            const float3 smallOffset = normalize(L) * 0.001f;
+            const float visibility = float(config.checkVisibility(worldPos+smallOffset, worldPos+L));
+            float3 singleLightContribution = l.computeContribution(worldPos, normal) /* cos term already in computeLightContribution */;
+            singleLightContribution *= l.intensity * l.color;
+
+            pbr.L = normalize(L);
+            pbr.H = normalize(pbr.L + pbr.V);
+
+            float NdotL = dot(pbr.N, pbr.L);
+            if(NdotL < 0) {
+                continue;
+            }
+
+            pbr.NdotH = dot(pbr.N, pbr.H);
+            pbr.NdotL = abs(NdotL);
+            pbr.HdotL = dot(pbr.H, pbr.L);
+            pbr.HdotV = dot(pbr.H, pbr.V);
+
+            const float3 brdf = glTF_BRDF_WithoutImportanceSampling(pbr);
+            if(isnan(brdf.x)) {
+                return float3(10, 0, 0);
+            }
+
+            contribution += brdf * visibility * singleLightContribution;
+        }
+        return contribution;
+    }
 }

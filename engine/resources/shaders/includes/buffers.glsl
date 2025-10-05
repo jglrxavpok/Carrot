@@ -34,12 +34,17 @@ layout(buffer_reference, scalar) buffer IndexBuffer16 {
     uint16_t i[];
 };
 
+layout(buffer_reference, std140) buffer TransformBuffer {
+    mat4x3 m;
+};
+
 #define GEOMETRY_FORMAT_DEFAULT 0
 #define GEOMETRY_FORMAT_PACKED 1
 
 struct Geometry {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
+    TransformBuffer transformBuffer;
     uint materialIndex;
     uint8_t geometryFormat;
 };

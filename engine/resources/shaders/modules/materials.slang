@@ -8,8 +8,8 @@ public struct MaterialOutput {
     public float4 albedo;
     public float3 emissive;
     public float3 normal; // normal in texture space (+Z up / on top of texture)
-    public float metallic;
-    public float roughness;
+    public float metallic = 1;
+    public float roughness = 1;
 }
 
 public struct Material {
@@ -44,7 +44,7 @@ public struct Material {
         output.metallic = metallicRoughnessFactor.x;
         output.roughness = metallicRoughnessFactor.y;
         if (metallicRoughness >= 0) {
-            const vec2 metallicRoughnessValues = materials.Sample(NonUniformResourceIndex(metallicRoughness), sampler, uv).xy;
+            const vec2 metallicRoughnessValues = materials.Sample(NonUniformResourceIndex(metallicRoughness), sampler, uv).bg;
             output.metallic *= metallicRoughnessValues.x;
             output.roughness *= metallicRoughnessValues.y;
         }
@@ -83,4 +83,21 @@ public struct MaterialSystem {
         const vec2 ditherUV = vec2(coords % DitherSize) / DitherSize;
         return textures[globalTextures.dithering].Sample(nearestSampler, ditherUV).r;
     }
+}
+
+// Computes which miplevel to select for RT-based workloads
+// - screenWidth: width in pixels of target viewport
+// - viewDistance: distance between camera and ray origin
+// - hit distance: distance between hit point and ray origin
+// - maxRayDistance: tMax used for the ray
+public float computeMipForRT(uint screenWidth, float viewDistance, float hitDistance, float maxRayDistance) {
+    float mip = max(log2(3840.0 / screenWidth), 0.0);
+    vec2 f;
+    f.x = viewDistance; // ray origin
+    f.y = hitDistance; // ray length
+    f = clamp(f / maxRayDistance, 0, 1);
+    f = sqrt(f);
+    mip += f.x * 10.0f;
+    mip += f.y * 10.0f;
+    return mip;
 }

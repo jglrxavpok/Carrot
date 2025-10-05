@@ -14,6 +14,7 @@ namespace Carrot {
         struct Geometry {
             vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
             vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
+            vk::DeviceAddress transformAddress = (vk::DeviceAddress)-1;
             std::uint32_t materialIndex = (std::uint32_t)-1;
             BLASGeometryFormat geometryFormat = (BLASGeometryFormat)-1; // See Carrot::BLASGeometryFormat
         };

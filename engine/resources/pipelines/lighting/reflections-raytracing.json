@@ -1,7 +1,7 @@
 {
   "_import": "reflections.json",
   "computeShader": {
-    "file": "resources/shaders/lighting/reflections-raytracing.compute.glsl",
+    "file": "resources/shaders/lighting/reflections-raytracing.slang",
     "entry_point": "main"
   },
   "descriptorSets": [

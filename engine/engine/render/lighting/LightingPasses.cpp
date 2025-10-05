@@ -581,14 +581,14 @@ namespace Carrot::Render {
                        block.frameHeight = framebufferSize.height;
                    }
 
-                   auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo, int hashGridSetID) {
+                   auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo, int hashGridSetID, const char* pushConstantName) {
                        Carrot::AccelerationStructure* pTLAS = nullptr;
                        if(useRaytracingVersion) {
                            pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
                            block.hasTLAS = pTLAS != nullptr;
-                           renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                           renderer.pushConstantBlock<PushConstantRT>(pushConstantName, pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                        } else {
-                           renderer.pushConstantBlock<PushConstantNoRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                           renderer.pushConstantBlock<PushConstantNoRT>(pushConstantName, pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                        }
 
                        // GBuffer inputs
@@ -627,15 +627,15 @@ namespace Carrot::Render {
                        const std::uint8_t localSizeY = 32;
                        std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                        std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
-                       setupPipeline(data.directLighting.noisy, *directLightingPipeline, false, useRaytracingVersion ? 7 : 6);
+                       setupPipeline(data.directLighting.noisy, *directLightingPipeline, false, useRaytracingVersion ? 7 : 6, "entryPointParams");
                        directLightingPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
-                       setupPipeline(data.ambientOcclusion.noisy, *aoPipeline, false, -1);
+                       setupPipeline(data.ambientOcclusion.noisy, *aoPipeline, false, -1, "entryPointParams");
                        aoPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
-                       setupPipeline(data.reflections.noisy, *reflectionsPipeline, true, useRaytracingVersion ? 7 : 6);
+                       setupPipeline(data.reflections.noisy, *reflectionsPipeline, true, useRaytracingVersion ? 7 : 6, "entryPointParams");
                        // setup first bounce textures
                        {
                             auto& outputPos = pass.getGraph().getTexture(data.reflectionsFirstBounceViewPositions, frame.frameIndex);

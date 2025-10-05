@@ -568,6 +568,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 allGeometries[j + geometryIndexStart] = (SceneDescription::Geometry {
                         .vertexBufferAddress = blas.geometries[j].geometry.triangles.vertexData.deviceAddress,
                         .indexBufferAddress = blas.geometries[j].geometry.triangles.indexData.deviceAddress,
+                        .transformAddress = blas.geometries[j].geometry.triangles.transformData.deviceAddress,
                         .materialIndex = blas.materialSlots[j],
                         .geometryFormat = blas.geometryFormat,
                 });

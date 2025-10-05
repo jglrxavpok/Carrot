@@ -13,7 +13,7 @@ void decompressTBN(vec4 compressed, bool negativeNormal, bool negativeTangent, b
     outTBN = mat3(tangent, bitangent, normal);
 }
 
-void compressTBN(mat3 tbn, out vec4 compressed, out bool negativeNormal, out bool negativeTangent, out bool negativeBitangent) {
+public void compressTBN(mat3 tbn, out vec4 compressed, out bool negativeNormal, out bool negativeTangent, out bool negativeBitangent) {
     vec3 tangent = normalize(tbn[0]);
     vec3 normal = normalize(tbn[2]);
     compressed = vec4(normal.xy, tangent.xy);

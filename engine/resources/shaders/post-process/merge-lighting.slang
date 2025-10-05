@@ -44,7 +44,7 @@ float4 pixel(uniform LightingPassUniforms push, in float2 uv) {
         color = directLighting;
     } else {
         const float3 reflections = lightingInputs.reflections.Sample(gBufferInputs.linearSampler, uv).rgb;
-        color = lerp(gBuffer.albedo.rgb * directLighting, reflections, gBuffer.metallicness);
+        color = gBuffer.albedo.rgb * lerp(directLighting, reflections, gBuffer.metallicness);
         color += gBuffer.emissiveColor;
     }
     return float4(color, 1);

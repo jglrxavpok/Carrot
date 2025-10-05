@@ -1,7 +1,7 @@
 {
   "_import": "reflections.json",
   "computeShader": {
-    "file": "resources/shaders/lighting/reflections-noraytracing.compute.glsl",
+    "file": "resources/shaders/lighting/reflections-noraytracing.slang",
     "entry_point": "main"
   }
 }
