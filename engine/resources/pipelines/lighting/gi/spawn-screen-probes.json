@@ -1,12 +1,8 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/update-cells.compute.glsl",
+    "file": "resources/shaders/lighting/gi/update-cells.slang",
     "entry_point": "spawnScreenProbes"
-  },
-  "constants": {
-    "LocalSizeX": 8,
-    "LocalSizeY": 8
   },
   "descriptorSets": [
     {

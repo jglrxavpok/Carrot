@@ -439,6 +439,14 @@ const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view 
     return pushConstantMap[std::string(name)];
 }
 
+bool Carrot::Pipeline::hasBinding(u32 setID, u32 bindingID) const {
+    auto iter = presentBindings.find(setID);
+    if (iter != presentBindings.end()) {
+        return iter->second.contains(bindingID);
+    }
+    return false;
+}
+
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const {
     auto it = vkPipelines.find(createInfo);
     if(it == vkPipelines.end()) {
@@ -545,6 +553,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     }
 
     for(auto& binding : bindings) {
+        presentBindings[binding.setID].emplace(binding.vkBinding.binding);
         if(binding.vkBinding.descriptorCount == 0) {
             Carrot::Log::warn("DescriptorCount is set to 0, replacing to 255 not to crash");
             binding.vkBinding.descriptorCount = 255;

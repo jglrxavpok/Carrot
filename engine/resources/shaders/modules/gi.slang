@@ -52,13 +52,37 @@ public static const uint ScreenProbeSize = 8;
 
 public struct ScreenProbe {
     int3 radiance;
-    float3 worldPos;
-    float3 normal;
-    int2 bestPixel;
+    public float3 worldPos;
+    public float3 normal;
+    public int2 bestPixel;
     uint sampleCount;
 
     public float3 readRadiance() {
         return unpackRadiance(radiance) / sampleCount;
+    }
+
+    [mutating]
+    public void addSample(float3 sample) {
+        int3 quantizedSample = packRadiance(sample);
+        InterlockedAdd(radiance.x, quantizedSample.x);
+        InterlockedAdd(radiance.y, quantizedSample.y);
+        InterlockedAdd(radiance.z, quantizedSample.z);
+        InterlockedAdd(sampleCount, 1);
+    }
+
+    [mutating]
+    public void reset(float3 worldPos, float3 normal, int2 bestPixel) {
+        worldPos = worldPos;
+        normal = normal;
+        radiance = int3(0);
+        sampleCount = 0;
+        bestPixel = bestPixel;
+    }
+
+    [mutating]
+    public void copyRadiance(in ScreenProbe other) {
+        radiance = other.radiance;
+        sampleCount = other.sampleCount;
     }
 }
 
@@ -81,6 +105,11 @@ public struct ScreenProbes {
         return probes[NonUniformResourceIndex(probeIndex)];
     }
 }
+
+// position, in screen space of the pixel that will spawn the rays used to fill the GI grid
+public struct SpawnedRay { 
+    public uint probeIndex;
+};
 
 static const float radianceQuantum = 1.0f / 16384.0f;
 static const float invRadianceQuantum = 1.0f / radianceQuantum;

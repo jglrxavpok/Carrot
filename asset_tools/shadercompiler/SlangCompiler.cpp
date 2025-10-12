@@ -77,6 +77,15 @@ namespace SlangCompiler {
                 .intValue0 = static_cast<int>(globalSession->findProfile("glsl_460"))
             }
         });
+
+        // Without this, Slang does not generate AtomicExchange ?
+        compilerOptions.emplace_back(CompilerOptionEntry {
+            .name = CompilerOptionName::Capability,
+            .value = CompilerOptionValue {
+                .kind = CompilerOptionValueKind::Int,
+                .intValue0 = static_cast<int>(globalSession->findCapability("spirv_1_6"))
+            }
+        });
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::DebugInformation,
             .value = CompilerOptionValue {

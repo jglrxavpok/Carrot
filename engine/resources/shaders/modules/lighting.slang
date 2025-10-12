@@ -11,6 +11,12 @@ public struct LightingPassUniforms {
     public uint frameWidth;
     public uint frameHeight;
     public bool hasTLAS;
+
+    public property uint2 frameDimensions {
+        get {
+            return uint2(frameWidth, frameHeight);
+        }
+    }
 }
 
 [Flags]

@@ -131,6 +131,11 @@ namespace Carrot {
 
         const vk::PushConstantRange& getPushConstant(std::string_view name) const;
 
+        /**
+         * Does this pipeline have the given binding slot?
+         */
+        bool hasBinding(u32 setID, u32 bindingID) const;
+
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
         [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout(std::uint32_t setID) const;
@@ -223,6 +228,7 @@ namespace Carrot {
         std::unique_ptr<ShaderStages> stages = nullptr;
         std::vector<std::vector<vk::DescriptorSet>> descriptorSets{};
         std::vector<vk::UniqueDescriptorSetLayout> descriptorSetLayouts{};
+        std::unordered_map<u32, std::unordered_set<u32>> presentBindings;
 
         u32 generationNumber = 0;
 

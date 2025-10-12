@@ -306,6 +306,10 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
 }
 
 void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundSamplers[{pipeline, frame.frameIndex, setID, bindingID}] == samplerToBind) {
         return;
     }
@@ -333,6 +337,9 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
 
 void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, Carrot::AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundAS[{pipeline, frame.frameIndex, setID, bindingID}] == as.getVulkanAS()) {
         return;
     }
@@ -364,6 +371,9 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
 
 void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] == view) {
         return;
     }
@@ -389,6 +399,9 @@ void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render:
 
 void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] == view) {
         return;
     }
@@ -421,6 +434,9 @@ void Carrot::VulkanRenderer::bindStorageImage(Carrot::Pipeline& pipeline, const 
                                          std::uint32_t arrayIndex,
                                          vk::ImageLayout textureLayout) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundStorageImages[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
@@ -461,6 +477,9 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
                                          vk::ImageLayout textureLayout) {
     // TODO: maybe interesting to batch these writes right before starting the rendering
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     if(boundTextures[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
@@ -500,6 +519,9 @@ void Carrot::VulkanRenderer::unbindSampler(Carrot::Pipeline& pipeline, const Car
 
 void Carrot::VulkanRenderer::unbindTexture(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
     std::erase_if(boundTextures, [&](const auto& pair) {
         return pair.first == k; // leave out layout by design
@@ -530,6 +552,9 @@ void Carrot::VulkanRenderer::unbindTexture(Pipeline& pipeline, const Render::Con
 
 void Carrot::VulkanRenderer::unbindStorageImage(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
     std::erase_if(boundStorageImages, [&](const auto& pair) {
         return pair.first == k; // leave out layout by design
@@ -560,6 +585,9 @@ void Carrot::VulkanRenderer::unbindStorageImage(Pipeline& pipeline, const Render
 
 void Carrot::VulkanRenderer::unbindAccelerationStructure(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
     std::erase_if(boundAS, [&](const auto& pair) {
         return pair.first == k; // leave out layout by design
@@ -592,6 +620,9 @@ void Carrot::VulkanRenderer::unbindAccelerationStructure(Pipeline& pipeline, con
 
 void Carrot::VulkanRenderer::unbindBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
     std::erase_if(boundBuffers, [&](const auto& pair) {
         return pair.first == k;
@@ -623,6 +654,9 @@ void Carrot::VulkanRenderer::unbindBuffer(Pipeline& pipeline, const Render::Cont
 
 void Carrot::VulkanRenderer::unbindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
     BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
     std::erase_if(boundBuffers, [&](const auto& pair) {
         return pair.first == k;

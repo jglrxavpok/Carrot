@@ -453,7 +453,7 @@ namespace Fertilizer {
         Builder builder(spv::SpvVersion::Spv_1_5, 0, &logger);
 
         builder.setSource(spv::SourceLanguageGLSL, 450);
-        builder.setDebugSourceFile(projectName);
+        builder.setDebugMainSourceFile(projectName);
         builder.addCapability(spv::CapabilityShader);
         builder.addCapability(spv::CapabilityShaderNonUniform);
         auto glslImport = builder.import("GLSL.std.450");
