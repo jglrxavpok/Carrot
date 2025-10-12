@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 #define _START_ENGINE_INTERNAL(APP_NAME)                    \
 Carrot::Configuration config;                               \
 config.applicationName = APP_NAME;                          \
-Carrot::Engine e{ config };
+Carrot::Engine e{ 0, nullptr, config };
 
 #define START_ENGINE() _START_ENGINE_INTERNAL(__FUNCTION__)
 
@@ -93,8 +93,8 @@ public class TestSystem : LogicSystem {
     // register TestSystem
     const std::string id = "C#/.TestSystem";
     systems.add(id,
-                [&](const rapidjson::Value& json, World& world) {
-                    return std::make_unique<CSharpLogicSystem>(json, world);
+                [&](const Carrot::DocumentElement& doc, World& world) {
+                    return std::make_unique<CSharpLogicSystem>(doc, world, "", "TestSystem");
                 },
                 [&](Carrot::ECS::World& world) {
                     return std::make_unique<CSharpLogicSystem>(world, "", "TestSystem");
@@ -304,8 +304,8 @@ public class TestSystem : LogicSystem {
     // register TestSystem
     const std::string id = "C#/.TestSystem";
     systems.add(id,
-                [&](const rapidjson::Value& json, World& world) {
-                    return std::make_unique<CSharpLogicSystem>(json, world);
+                [&](const Carrot::DocumentElement& json, World& world) {
+                    return std::make_unique<CSharpLogicSystem>(json, world, "", "TestSystem");
                 },
                 [&](Carrot::ECS::World& world) {
                     return std::make_unique<CSharpLogicSystem>(world, "", "TestSystem");
