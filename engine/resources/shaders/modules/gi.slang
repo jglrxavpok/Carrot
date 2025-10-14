@@ -72,11 +72,11 @@ public struct ScreenProbe {
 
     [mutating]
     public void reset(float3 worldPos, float3 normal, int2 bestPixel) {
-        worldPos = worldPos;
-        normal = normal;
+        this.worldPos = worldPos;
+        this.normal = normal;
         radiance = int3(0);
         sampleCount = 0;
-        bestPixel = bestPixel;
+        this.bestPixel = bestPixel;
     }
 
     [mutating]
