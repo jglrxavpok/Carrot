@@ -67,7 +67,7 @@ void computeDirectLighting(IRaytracingCapabilities config, uint2 coords, Lightin
             float3(0.0, 1.0, 0.0)
         );
 
-        const float3 skyboxRGB = gBufferInputs.skybox3D.Sample(rot * worldViewDir).rgb;
+        const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * worldViewDir, float3(0), float3(0)).rgb;
         
         distanceToCamera = 1.0f / 0.0f; // set distance to infinite to allow fog to apply
         finalColor = skyboxRGB;

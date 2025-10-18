@@ -33,34 +33,34 @@ public struct GBufferInputs {
 
     public GBuffer read(float2 uv) {
         GBuffer result;
-        result.albedo = albedo.Sample(gNearestSampler, uv);
-        result.viewPosition = viewPos.Sample(gNearestSampler, uv).xyz;
-        result.readDepth = depth.Sample(gNearestSampler, uv).r;
+        result.albedo = albedo.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        result.viewPosition = viewPos.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).xyz;
+        result.readDepth = depth.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).r;
 
-        const float4 compressedTBN = viewNormalTangents.Sample(gNearestSampler, uv);
+        const float4 compressedTBN = viewNormalTangents.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
         
-        const IntProperties properties = IntProperties(intPropertiesInput.Sample(uv).r);
+        const IntProperties properties = IntProperties(intPropertiesInput.SampleGrad(uv, float2(0), float2(0)).r);
         result.intProperty = properties;
         const bool negativeNormal = properties & IntProperties::NegativeViewNormalZ;
         const bool negativeTangent = properties & IntProperties::NegativeViewTangentZ;
         const bool negativeBitangent = properties & IntProperties::NegativeViewBitangentZ;
         decompressTBN(compressedTBN, negativeNormal, negativeTangent, negativeBitangent, result.viewTBN);
 
-        result.entityID = entityID.Sample(gNearestSampler, uv);
+        result.entityID = entityID.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
 
-        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Sample(gNearestSampler, uv);
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
 
         result.metallicness = metallicRoughnessVelocityXY.x;
         result.roughness = metallicRoughnessVelocityXY.y;
 
-        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.Sample(gNearestSampler, uv);
+        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
         result.emissiveColor = emissiveAndVelocityZ.xyz;
         result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in clip space
         return result;
     }
 
     public float2 readMotionVector(float2 at) {
-        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Sample(gNearestSampler, at);
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.SampleGrad(gNearestSampler, at, float2(0), float2(0));
         return metallicRoughnessVelocityXY.zw;
     }
 }

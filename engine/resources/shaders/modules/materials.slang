@@ -71,17 +71,17 @@ public struct MaterialSystem {
     public ConstantBuffer<GlobalTextures, ScalarDataLayout> globalTextures;
 
     public float4 SampleAlbedo(in Material mat, in SamplerState sampler, float2 uv) {
-        return textures[NonUniformResourceIndex(mat.albedo)].Sample(sampler, uv);
+        return textures[NonUniformResourceIndex(mat.albedo)].SampleGrad(sampler, uv, float2(0), float2(0));
     }
 
     public float4 Sample(uint textureIndex, in SamplerState sampler, float2 uv) {
-        return textures[NonUniformResourceIndex(textureIndex)].Sample(sampler, uv);
+        return textures[NonUniformResourceIndex(textureIndex)].SampleGrad(sampler, uv, float2(0), float2(0));
     }
 
     public float Dither(uvec2 coords) {
         const uint DitherSize = 8;
         const vec2 ditherUV = vec2(coords % DitherSize) / DitherSize;
-        return textures[globalTextures.dithering].Sample(nearestSampler, ditherUV).r;
+        return textures[globalTextures.dithering].SampleGrad(nearestSampler, ditherUV, float2(0), float2(0)).r;
     }
 }
 

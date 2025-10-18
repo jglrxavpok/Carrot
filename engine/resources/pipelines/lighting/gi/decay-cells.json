@@ -1,7 +1,7 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/gi.compute.glsl",
+    "file": "resources/shaders/lighting/gi/update-cells.slang",
     "entry_point": "decayCells"
   },
   "descriptorSets": [

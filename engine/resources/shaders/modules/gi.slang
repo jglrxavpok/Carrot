@@ -1,6 +1,8 @@
 module gi;
 
 import modules.base;
+import modules.hash;
+import modules.rng;
 
 /**
 * Grid containing the radiance value for a given location & direction
@@ -11,11 +13,60 @@ namespace HashGrid {
     public static const uint BucketCount = 1024*256*4;
     public static const uint TotalCellCount = BucketCount * CellsPerBucket;
 
+    // loosely based on https://gpuopen.com/download/publications/SA2021_WorldSpace_ReSTIR.pdf
+    static const float cellSizeFactor = 32.0f;
+    static const float minCellSize = 0.005f;
+
+    uint giGetCellSizeStep(float3 hitPosition, float3 cameraPosition) {
+        float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
+        return uint(floor(log2(cellSizeStep / minCellSize )));
+    }
+
+    float giGetCellSize(float3 hitPosition, float3 cameraPosition) {
+        return minCellSize * giGetCellSizeStep(hitPosition, cameraPosition);
+    }
+
+    int3 quantizePosition(float3 pos, float cellSize) {
+        return int3(pos / cellSize);
+    }
+
+    float3 dequantizePosition(int3 posQuantized, float cellSize) {
+        return vec3(posQuantized) * cellSize;
+    }
+
+    static const float thetaQuantum = 0.05f;
+    static const float phiQuantum = 0.05f;
+
+    int2 quantizeNormal(float3 normal) {
+        // assumed already normalized
+        float theta = acos(normal.z);
+        float phi = atan2(normal.y, normal.x);
+        return int2(int(theta / thetaQuantum), int(phi / phiQuantum));
+    }
+
+    float3 dequantizeNormal(int2 normalQuantized) {
+        float phi = normalQuantized.y * phiQuantum;
+        return float3(cos(phi), sin(phi), 0) * cos(normalQuantized.x * thetaQuantum);
+    }
+
     public struct Key {
-        public float3 hitPosition;
-        public float3 direction;
-        public float3 cameraPosition;
-        public float rayLength;
+        public float3 hitPosition = float3(0.0f);
+        public float3 direction = float3(0.0f);
+        public float3 cameraPosition = float3(0.0f);
+        public float rayLength = 0.0f;
+
+        public Descriptor toDescriptor() {
+            Descriptor desc;
+            uint cellSizeStep = giGetCellSizeStep(hitPosition, cameraPosition);
+            float cellSize = minCellSize * cellSizeStep;
+            ivec3 posQuantized = quantizePosition(hitPosition, cellSize);
+            ivec2 dirQuantized = quantizeNormal(direction);
+            int lightLeakFix = rayLength < cellSize ? 1 : 0;
+            desc.bucketIndex = pcg_hash(lightLeakFix + pcg_hash(cellSizeStep + pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))))) % BucketCount;
+            desc.hash2 = xxhash32(lightLeakFix + xxhash32(cellSizeStep + xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y)))))));
+            
+            return desc;
+        }
     }
 
     public struct Descriptor {
@@ -23,14 +74,139 @@ namespace HashGrid {
         public uint hash2;
     }
 
+    public struct GIInputs {
+        public float3 hitPosition;
+        public float3 startOfRay;
+        public float3 cameraPosition;
+        public float3 surfaceNormal;
+    }
+
     public struct Storage {
-        public Key keys[TotalCellCount];
-        public uint hash2[TotalCellCount];
-        public int3 radiance[TotalCellCount];
-        public uint sampleCounts[TotalCellCount];
+        Key keys[TotalCellCount];
+        uint hash2[TotalCellCount];
+        int3 radiance[TotalCellCount];
+        uint sampleCounts[TotalCellCount];
 
         // Used to decay cells which have not been used recently
-        public uint lastTouchedFrames[TotalCellCount];
+        uint lastTouchedFrames[TotalCellCount];
+
+        [ForceInline]
+        public bool isOutdated(uint cellIndex, uint currentFrame) {
+            const uint decayTime = 100;
+            return lastTouchedFrames[cellIndex]+decayTime < currentFrame;
+        }
+
+        [mutating][ForceInline]
+        public void clearCell(uint cellIndex) {
+            keys[cellIndex] = Key();
+            hash2[cellIndex] = 0;
+            radiance[cellIndex] = packRadiance(0);
+            sampleCounts[cellIndex] = 0;
+        }
+
+        /// Inserts a tile inside the hash grid, returning the corresponding cell ID
+        /// 'wasNew' is used to know whether the cell already existed (false) or not
+        /// The hash grid *may* be full, and the returned cell ID will be none
+        [mutating]
+        public Optional<uint> insert(in Key key, out bool wasNew) {
+            wasNew = false;
+            Descriptor desc = key.toDescriptor();
+            uint cellIndex = desc.bucketIndex * CellsPerBucket;
+            uint boundary = (desc.bucketIndex+1) * CellsPerBucket;
+            // check if bucket already contains the cell
+            for(; cellIndex < boundary; cellIndex++) {
+                // either gets the cell, or adds it to the bucket
+                uint previousHash;
+                InterlockedCompareExchange(hash2[cellIndex], 0, desc.hash2, previousHash);
+                if(previousHash == 0) {
+                    wasNew = true;
+                    //hashGridClear(mapIndex, cellIndex);
+                    break;
+                }
+                if(previousHash == desc.hash2) {
+                    break;
+                }
+            }
+            if(cellIndex >= boundary) {
+                return none; // not enough space :c
+            }
+
+            return cellIndex;
+        }
+
+        [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
+        public Optional<uint> find(in Key key) {
+            const Descriptor desc = key.toDescriptor();
+            uint cellIndex = desc.bucketIndex * CellsPerBucket;
+            uint boundary = (desc.bucketIndex+1) * CellsPerBucket;
+
+            for(; cellIndex < boundary; cellIndex++) {
+                if(hash2[cellIndex] == desc.hash2) {
+                    break;
+                }
+            }
+            if(cellIndex >= boundary) {
+                return none; // not enough space :c
+            }
+
+            return cellIndex;
+        }
+
+        [mutating]
+        public void addToCell(uint cellIndex, in Key key, float3 radianceToAdd, uint sampleCountToAdd) {
+            keys[cellIndex] = key;
+            hash2[cellIndex] = key.toDescriptor().hash2;
+
+            int3 packedRadiance = packRadiance(radianceToAdd);
+            InterlockedAdd(radiance[cellIndex].x, packedRadiance.x);
+            InterlockedAdd(radiance[cellIndex].y, packedRadiance.y);
+            InterlockedAdd(radiance[cellIndex].z, packedRadiance.z);
+
+            InterlockedAdd(sampleCounts[cellIndex], sampleCountToAdd);
+        }
+
+        [mutating]
+        public void writeToCell(uint cellIndex, in Key key, float3 radianceValue, uint newSampleCount) {
+            keys[cellIndex] = key;
+            hash2[cellIndex] = key.toDescriptor().hash2;
+            radiance[cellIndex] = packRadiance(radianceValue);
+            sampleCounts[cellIndex] = newSampleCount;
+        }
+
+        [mutating]
+        public bool mark(uint cellIndex, uint frameID) {
+            uint previousFrameID;
+            InterlockedExchange(lastTouchedFrames[cellIndex], frameID, previousFrameID);
+            return previousFrameID != frameID;
+        }
+
+        public float3 computeJitterAmount(inout RandomSampler rng, in GIInputs giInputs) {
+            return float3(0.0); // TODO
+        }
+
+        [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
+        public float3 read(inout RandomSampler rng, in GIInputs giInputs) {
+            Key cellDesc;
+
+            const float3 jitter = computeJitterAmount(rng, giInputs);
+            cellDesc.cameraPosition = giInputs.cameraPosition;
+            cellDesc.hitPosition = giInputs.hitPosition + jitter;
+            
+            const float3 dRay = giInputs.hitPosition - giInputs.startOfRay;
+            cellDesc.rayLength = length(dRay);
+            cellDesc.direction = dRay / cellDesc.rayLength;
+
+            if(let cellIndex = find(cellDesc)) {
+                const uint sampleCount = sampleCounts[cellIndex];
+                if(sampleCount == 0) {
+                    return float3(0.0);
+                }
+
+                //return float3(10,0,0);
+                return unpackRadiance(radiance[cellIndex]) / sampleCount;
+            }
+            return float3(0,0,0);
+        }
     }
 
     public struct Constants {
@@ -39,12 +215,13 @@ namespace HashGrid {
     }
 
     public struct Grids {
-        public Storage grids[2]; // 0 = previous frame, 1 = current frame
+        public Storage* previousFrame;
+        public Storage* currentFrame;
     }
 
     public struct Block {
         public ConstantBuffer<Constants> constants;
-        public ConstantBuffer<Grids> grids;
+        public GLSLShaderStorageBuffer<Grids, ScalarDataLayout> grids;
     }
 }
 

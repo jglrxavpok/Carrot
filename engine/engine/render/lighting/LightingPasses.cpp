@@ -17,7 +17,7 @@ namespace Carrot::Render {
 
     // keep in sync with hash-grid.include.glsl
     static constexpr std::uint64_t HashGridCellsPerBucket = 8;
-    static constexpr std::uint64_t HashGridBucketCount = 1024*256;
+    static constexpr std::uint64_t HashGridBucketCount = 1024*256*4;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
     struct HashGrid {
@@ -337,7 +337,7 @@ namespace Carrot::Render {
                 const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber);
                 BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
                 BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
-                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
                     (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameNumber, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);

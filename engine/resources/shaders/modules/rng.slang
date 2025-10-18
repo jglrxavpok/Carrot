@@ -29,7 +29,7 @@ public struct RandomSampler {
         const uint coordinate = timeCoordinate % components;
         const uint blueNoiseIndex = (timeCoordinate / components) % NOISE_COUNT;
         const uint textureIndex = materialSystem.globalTextures.blueNoises[blueNoiseIndex];
-        float r = materialSystem.textures[textureIndex].Sample(materialSystem.nearestSampler, blueNoiseUV)[coordinate];
+        float r = materialSystem.textures[textureIndex].SampleGrad(materialSystem.nearestSampler, blueNoiseUV, float2(0), float2(0))[coordinate];
         sampleIndex++;
         return r;
     }
