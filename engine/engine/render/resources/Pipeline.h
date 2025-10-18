@@ -53,7 +53,7 @@ namespace Carrot {
     struct PipelineDescription {
         struct DescriptorSet {
             enum class Type {
-                Autofill,
+                Manual,
                 Empty,
                 Camera,
                 Materials,
@@ -66,7 +66,7 @@ namespace Carrot {
             };
 
             // --
-            Type type = Type::Autofill;
+            Type type = Type::Manual;
             std::uint32_t setID = -1;
         };
 
@@ -168,7 +168,7 @@ namespace Carrot {
         static PipelineType getPipelineType(const std::string& name);
 
     private:
-        std::vector<vk::DescriptorSet> allocateAutofillDescriptorSets(std::uint32_t setID);
+        std::vector<vk::DescriptorSet> allocateManualDescriptorSets(std::uint32_t setID);
 
         void allocateDescriptorSets();
 

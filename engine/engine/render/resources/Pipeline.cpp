@@ -26,7 +26,7 @@ static Carrot::Lookup PolygonModes = std::array {
 };
 
 static Carrot::Lookup DescriptorSetType = std::array {
-        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Autofill, "autofill"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Manual, "manual"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Empty, "empty"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Camera, "camera"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Materials, "materials"),
@@ -96,7 +96,7 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
         }
         const auto& set = setIt->second;
         switch(set.type) {
-            case PipelineDescription::DescriptorSet::Type::Autofill: {
+            case PipelineDescription::DescriptorSet::Type::Manual: {
                 descriptorSetLayouts[i] = stages->createDescriptorSetLayout(i, description.constants);
                 layouts.push_back(*descriptorSetLayouts[i]);
             } break;
@@ -508,7 +508,7 @@ const vk::PipelineLayout& Carrot::Pipeline::getPipelineLayout() const {
 const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uint32_t setID) const {
     const auto& set = description.descriptorSets.at(setID);
     switch(set.type) {
-        case PipelineDescription::DescriptorSet::Type::Autofill:
+        case PipelineDescription::DescriptorSet::Type::Manual:
             return *descriptorSetLayouts[setID];
 
         case PipelineDescription::DescriptorSet::Type::Empty:
@@ -542,10 +542,10 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     std::vector<vk::DescriptorPoolSize> sizes{};
 
     std::vector<NamedBinding> bindings{};
-    std::uint32_t autofillCount = 0;
+    std::uint32_t manualCount = 0;
     for(std::uint32_t setID = 0; setID < description.setCount; setID++) {
-        if(description.descriptorSets[setID].type == PipelineDescription::DescriptorSet::Type::Autofill) {
-            autofillCount++;
+        if(description.descriptorSets[setID].type == PipelineDescription::DescriptorSet::Type::Manual) {
+            manualCount++;
         }
         for(const auto& [stage, module] : stages->getModuleMap()) {
             module->addBindingsSet(stage, setID, bindings, description.constants);
@@ -569,7 +569,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     vk::DescriptorPoolCreateInfo poolInfo{
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = imageCount * std::max(1u, autofillCount),
+            .maxSets = imageCount * std::max(1u, manualCount),
             .poolSizeCount = static_cast<uint32_t>(sizes.size()),
             .pPoolSizes = sizes.data(),
     };
@@ -589,14 +589,14 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     for (std::uint32_t i = 0; i < description.setCount; ++i) {
         auto setIt = description.descriptorSets.find(i);
         if(setIt != description.descriptorSets.end()) { // not an empty set
-            if(setIt->second.type == PipelineDescription::DescriptorSet::Type::Autofill) {
-                descriptorSets[i] = allocateAutofillDescriptorSets(i);
+            if(setIt->second.type == PipelineDescription::DescriptorSet::Type::Manual) {
+                descriptorSets[i] = allocateManualDescriptorSets(i);
             }
         }
     }
 }
 
-std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(std::uint32_t setID) {
+std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateManualDescriptorSets(std::uint32_t setID) {
     if(!descriptorPool) {
         return std::vector<vk::DescriptorSet>{MAX_FRAMES_IN_FLIGHT, vk::DescriptorSet{}};
     }
@@ -609,7 +609,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
     std::vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
 
     for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        DebugNameable::nameSingle<vk::DescriptorSet>(Carrot::sprintf("Autofill descriptor pipeline %s, set %d, frame %llu", description.originatingResource.getName().c_str(), setID, i), sets[i]);
+        DebugNameable::nameSingle<vk::DescriptorSet>(Carrot::sprintf("Manual descriptor pipeline %s, set %d, frame %llu", description.originatingResource.getName().c_str(), setID, i), sets[i]);
     }
 
     std::vector<NamedBinding> bindings{};
@@ -672,7 +672,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
 std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render::Context& renderContext, std::uint32_t setID) const {
     const auto& set = description.descriptorSets.at(setID);
     switch(set.type) {
-        case PipelineDescription::DescriptorSet::Type::Autofill:
+        case PipelineDescription::DescriptorSet::Type::Manual:
             return descriptorSets[setID];
 
         case PipelineDescription::DescriptorSet::Type::Materials:

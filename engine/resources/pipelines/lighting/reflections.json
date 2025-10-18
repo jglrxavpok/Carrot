@@ -5,7 +5,7 @@
   "depthTest": false,
   "descriptorSets": [
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 0
     },
     {
@@ -25,11 +25,11 @@
       "setID": 4
     },
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 5
     },
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 6
     }
   ]

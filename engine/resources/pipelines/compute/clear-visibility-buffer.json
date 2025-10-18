@@ -2,7 +2,7 @@
   "type": "compute",
   "descriptorSets": [
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 0
     }
   ],

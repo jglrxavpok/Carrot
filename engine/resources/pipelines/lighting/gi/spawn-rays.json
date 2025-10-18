@@ -6,12 +6,12 @@
   },
   "descriptorSets": [
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 0,
       "_comment": "hash grid"
     },
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 1
     },
     {
@@ -23,7 +23,7 @@
       "setID": 3
     },
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 4
     },
     {
@@ -31,7 +31,7 @@
       "setID": 5
     },
     {
-      "type": "autofill",
+      "type": "manual",
       "setID": 6,
       "_comment": "RT"
     }
