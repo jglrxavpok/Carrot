@@ -46,6 +46,8 @@ namespace SlangCompiler {
         // create global session. This probably wastes some time recreating it for each compiled shader, but each shader is considered independent from a build-system point-of-view
         Slang::ComPtr<IGlobalSession> globalSession;
         SlangGlobalSessionDesc desc = {};
+        desc.minLanguageVersion = SLANG_LANGUAGE_VERSION_2026;
+        desc.enableGLSL = true;
         SlangResult result = createGlobalSession(&desc, globalSession.writeRef());
         if (result < 0) {
             std::cerr << "Slang createGlobalSession failed with error " << result << std::endl;
@@ -86,13 +88,13 @@ namespace SlangCompiler {
                 .intValue0 = static_cast<int>(globalSession->findCapability("spirv_1_6"))
             }
         });
-        compilerOptions.emplace_back(CompilerOptionEntry {
+        /*compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::DebugInformation,
             .value = CompilerOptionValue {
                 .kind = CompilerOptionValueKind::Int,
                 .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
             }
-        });
+        });*/
 
         // TODO: This is currently required because Carrot binds to unused parameters, which Slang removes.
         //  This creates GPU hangs/crashes on RADV :c
