@@ -8,7 +8,7 @@ import modules.raytracing;
 import modules.rng;
 import modules.compute_fullscreen;
 
-public static const uint MaxRaysPerProbe = 15;
+public static const uint MaxRaysPerProbe = 20;
 public static const float ProbeCellSize = 1.0f;
 
 public struct RayArray {
@@ -200,6 +200,7 @@ void spawnRays(uint3 coords : SV_DispatchThreadID) {
     }
 }
 
+// Shoot rays and accumulate radiance to the touched cells
 [shader("compute")]
 [numthreads(32, 1, 1)]
 void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms push) {
@@ -253,7 +254,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         giInputs.startOfRay = from;
 
         float3 jitter = 0;// TODO: modify giInputs, hashGridData.grids.currentFrame.computeJitterAmount(rng, giInputs);
-        float3 gi = hashGridData.grids.currentFrame->read(rng, giInputs);
+        float3 gi = hashGridData.grids.previousFrame->read(rng, giInputs);
         float3 directLighting = lightData.sampleLights(/*out*/ lightPDF, capability, pbr, 
             intersection.worldPosition, intersection.worldNormal, intersection.worldTangent, intersection.computedMaterial.metallic, intersection.computedMaterial.roughness);
         radiance += directLighting/*already contains BRDF*/ + brdf * (gi + intersection.computedMaterial.emissive);
@@ -261,14 +262,20 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         bool wasNew = false;
         HashGrid::Key key;
         key.hitPosition = giInputs.hitPosition;
-        key.direction = direction;
+        key.direction = -direction;
         key.cameraPosition = giInputs.cameraPosition;
         key.rayLength = length(key.hitPosition - from);
-        if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
-            hashGridData.grids.currentFrame.mark(cellIndex, push.frameCount);
-            hashGridData.grids.currentFrame.addToCell(cellIndex, key, radiance, 1);
+        // TODO: reservoirs
+        if(dot(radiance, radiance) > 0.01f) { // don't accumulate poor samples
+            if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
+                if(wasNew) {
+                    hashGridData.grids.currentFrame.writeToCell(cellIndex, key, 0, 0);
+                }
+                hashGridData.grids.currentFrame.mark(cellIndex, push.frameCount);
+                hashGridData.grids.currentFrame.accumulate(cellIndex, key, radiance);
+            }
+            // TODO: Radiance feedback
         }
-        // TODO: Radiance feedback
     } else {
         // correct orientation for skybox cubemap
         constexpr float3x3 rot = float3x3(
@@ -283,4 +290,16 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
     }
 
     probeData.probes[probeIndex].addSample(radiance);
+}
+
+// Merge accumulated radiance and already present radiance in each cell
+[shader("compute")]
+[numthreads(32, 1, 1)]
+void accumulateRadiance(uint cellIndex : SV_DispatchThreadID) {
+    if(cellIndex >= HashGrid::TotalCellCount) {
+        return;
+    }
+
+    HashGrid::Storage* grid = hashGridData.grids.currentFrame;
+    grid->mergeRadiance(cellIndex);
 }

@@ -23,7 +23,7 @@ namespace HashGrid {
     }
 
     float giGetCellSize(float3 hitPosition, float3 cameraPosition) {
-        return minCellSize * giGetCellSizeStep(hitPosition, cameraPosition);
+        return minCellSize * exp2(giGetCellSizeStep(hitPosition, cameraPosition));
     }
 
     int3 quantizePosition(float3 pos, float cellSize) {
@@ -58,7 +58,7 @@ namespace HashGrid {
         public Descriptor toDescriptor() {
             Descriptor desc;
             uint cellSizeStep = giGetCellSizeStep(hitPosition, cameraPosition);
-            float cellSize = minCellSize * cellSizeStep;
+            float cellSize = minCellSize * exp2(cellSizeStep);
             ivec3 posQuantized = quantizePosition(hitPosition, cellSize);
             ivec2 dirQuantized = quantizeNormal(direction);
             int lightLeakFix = rayLength < cellSize ? 1 : 0;
@@ -86,13 +86,15 @@ namespace HashGrid {
         uint hash2[TotalCellCount];
         int3 radiance[TotalCellCount];
         uint sampleCounts[TotalCellCount];
+        int3 radianceAccumulation[TotalCellCount];
+        uint sampleCountAccumulation[TotalCellCount];
 
         // Used to decay cells which have not been used recently
         uint lastTouchedFrames[TotalCellCount];
 
         [ForceInline]
         public bool isOutdated(uint cellIndex, uint currentFrame) {
-            const uint decayTime = 100;
+            const uint decayTime = 10;
             return lastTouchedFrames[cellIndex]+decayTime < currentFrame;
         }
 
@@ -153,24 +155,56 @@ namespace HashGrid {
         }
 
         [mutating]
-        public void addToCell(uint cellIndex, in Key key, float3 radianceToAdd, uint sampleCountToAdd) {
-            keys[cellIndex] = key;
-            hash2[cellIndex] = key.toDescriptor().hash2;
-
-            int3 packedRadiance = packRadiance(radianceToAdd);
-            InterlockedAdd(radiance[cellIndex].x, packedRadiance.x);
-            InterlockedAdd(radiance[cellIndex].y, packedRadiance.y);
-            InterlockedAdd(radiance[cellIndex].z, packedRadiance.z);
-
-            InterlockedAdd(sampleCounts[cellIndex], sampleCountToAdd);
-        }
-
-        [mutating]
         public void writeToCell(uint cellIndex, in Key key, float3 radianceValue, uint newSampleCount) {
             keys[cellIndex] = key;
             hash2[cellIndex] = key.toDescriptor().hash2;
             radiance[cellIndex] = packRadiance(radianceValue);
             sampleCounts[cellIndex] = newSampleCount;
+        }
+
+        [mutating]
+        public void accumulate(uint cellIndex, in Key key, float3 radianceToAdd) {
+            const int3 quantizedRadiance = packRadiance(radianceToAdd);
+            InterlockedAdd(radianceAccumulation[cellIndex].x, quantizedRadiance.x);
+            InterlockedAdd(radianceAccumulation[cellIndex].y, quantizedRadiance.y);
+            InterlockedAdd(radianceAccumulation[cellIndex].z, quantizedRadiance.z);
+            InterlockedAdd(sampleCountAccumulation[cellIndex], 1);
+        }
+
+        [mutating]
+        private float3 readRadiance(uint cellIndex) {
+            return unpackRadiance(radiance[cellIndex]) / sampleCounts[cellIndex];
+        }
+
+        [mutating]
+        private void writeRadiance(uint cellIndex, float3 newRadiance, uint sampleCount) {
+            radiance[cellIndex] = packRadiance(newRadiance);
+            sampleCounts[cellIndex] = sampleCount;
+        }
+
+        [mutating]
+        public void mergeRadiance(uint cellIndex) {
+            const uint oldSampleCount = sampleCounts[cellIndex];
+            const uint newSampleCount = sampleCountAccumulation[cellIndex];
+            if(newSampleCount == 0) {
+                return; // nothing to do
+            }
+            float3 oldRadiance = readRadiance(cellIndex);
+            float3 newRadiance = unpackRadiance(radianceAccumulation[cellIndex]) / newSampleCount;
+
+            if(oldSampleCount == 0) {
+                writeRadiance(cellIndex, newRadiance, newSampleCount);
+            } else {
+                // Temporal accumulation, based on GI 1.0 implementation
+                constexpr uint maxSampleCount = 32;
+                uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
+                const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
+                writeRadiance(cellIndex, finalRadiance, totalSampleCount);
+            }
+
+            // clear accumulation buffer
+            radianceAccumulation[cellIndex] = 0;
+            sampleCountAccumulation[cellIndex] = 0;
         }
 
         [mutating]
@@ -202,8 +236,7 @@ namespace HashGrid {
                     return float3(0.0);
                 }
 
-                //return float3(10,0,0);
-                return unpackRadiance(radiance[cellIndex]) / sampleCount;
+                return readRadiance(cellIndex);
             }
             return float3(0,0,0);
         }

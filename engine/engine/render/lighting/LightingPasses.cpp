@@ -53,7 +53,10 @@ namespace Carrot::Render {
             + sizeof(std::uint32_t)
             + sizeof(glm::ivec3)
             + sizeof(std::uint32_t)
+            + sizeof(glm::ivec3)
+            + sizeof(std::uint32_t)
         ;
+        static constexpr u32 SizeOfHashCellWithLastTouchedFrame = SizeOfHashCell + sizeof(u32);
         static constexpr std::uint32_t LastTouchedFrameOffset = DataOffset + SizeOfHashCell * HashGridTotalCellCount;
 
         static Carrot::Render::PassData::HashGridResources createResources(Carrot::Render::GraphBuilder& graph) {
@@ -109,7 +112,7 @@ namespace Carrot::Render {
 
         static std::size_t computeSizeOf(std::size_t bucketCount, std::size_t cellsPerBucket) {
             const std::size_t totalCellCount = bucketCount * cellsPerBucket;
-            return totalCellCount * SizeOfHashCell + totalCellCount * sizeof(std::uint32_t);
+            return totalCellCount * SizeOfHashCellWithLastTouchedFrame;
         }
     };
 
@@ -142,7 +145,7 @@ namespace Carrot::Render {
                 vk::BufferCopy region {
                     .srcOffset = lastFrameBuffer.view.getStart() + HashGrid::DataOffset,
                     .dstOffset = buffer.view.getStart() + HashGrid::DataOffset,
-                    .size = HashGrid::SizeOfHashCell * HashGridTotalCellCount
+                    .size = HashGrid::SizeOfHashCellWithLastTouchedFrame * HashGridTotalCellCount
                 };
 
                 // FIXME wtf
@@ -156,7 +159,7 @@ namespace Carrot::Render {
                             .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
                             .buffer = buffer.view.getVulkanBuffer(),
                             .offset = buffer.view.getStart() + HashGrid::DataOffset,
-                            .size = HashGrid::SizeOfHashCell * HashGridTotalCellCount,
+                            .size = HashGrid::SizeOfHashCellWithLastTouchedFrame * HashGridTotalCellCount,
                         }
                     }, {});
             });
@@ -497,7 +500,7 @@ namespace Carrot::Render {
                 cmds.dispatch(groupX, groupY, 1);
             });
 
-        auto addDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, bool needRaytracing, const std::string& pipelineName, i64 countMultiplier) {
+        auto addProbeDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, bool needRaytracing, const std::string& pipelineName, i64 countMultiplier) {
             return graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelineName.c_str()),
             [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
@@ -524,15 +527,41 @@ namespace Carrot::Render {
             });
         };
 
-        auto reorderSpawnedRays = addDispatchPass(spawnScreenProbes, false, "reorder-rays", 1);
-        auto spawnGIRays = addDispatchPass(reorderSpawnedRays, false, "spawn-rays", 1);
-        auto traceGIRays = addDispatchPass(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
+        auto addCellDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, const std::string& pipelineName) {
+            return graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelineName.c_str()),
+            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
+                pass.rasterized = false;
+                data.writeProbeData(graph, previous.getData());
+                data.gbuffer.readFrom(graph, previous.getData().gbuffer, vk::ImageLayout::eGeneral);
+                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);
+            },
+            [bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant, pipelineFullName = Carrot::sprintf("lighting/gi/%s", pipelineName.c_str())]
+            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "GI pass");
+
+                auto pipeline = frame.renderer.getOrCreatePipeline(pipelineFullName, (std::uint64_t)&pass);
+
+                PushConstantRT block;
+                bindBaseGIUpdateInputs(block, false, data, pass.getGraph(), frame, *pipeline, cmds);
+                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                const i64 groups = (HashGridTotalCellCount + 31) / 32;
+                cmds.dispatch(groups, 1, 1);
+            });
+        };
+
+        auto reorderSpawnedRays = addProbeDispatchPass(spawnScreenProbes, false, "reorder-rays", 1);
+        auto spawnGIRays = addProbeDispatchPass(reorderSpawnedRays, false, "spawn-rays", 1);
+        auto traceRays = addProbeDispatchPass(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
+        auto accumulateRadiance = addCellDispatchPass(traceRays, "accumulate-radiance");
+        auto& lastGIPass = accumulateRadiance;
 
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)
                {
                     pass.rasterized = false;
-                    resolveData.gBuffer.readFrom(graph, traceGIRays.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    resolveData.gBuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     addDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion);
                     addDenoisingResources(graph, "Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
@@ -712,12 +741,12 @@ namespace Carrot::Render {
             [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
                 pass.rasterized = false;
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.gi.hashGrid = HashGrid::write(graph, traceGIRays.getData().gi.hashGrid);
+                data.gi.hashGrid = HashGrid::write(graph, lastGIPass.getData().gi.hashGrid);
                 data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
-                data.screenProbes = graph.write(traceGIRays.getData().screenProbes, {}, {});
-                data.spawnedProbes = graph.write(traceGIRays.getData().spawnedProbes, {}, {});
-                data.emptyProbes = graph.write(traceGIRays.getData().emptyProbes, {}, {});
-                data.reprojectedProbes = graph.write(traceGIRays.getData().reprojectedProbes, {}, {});
+                data.screenProbes = graph.write(lastGIPass.getData().screenProbes, {}, {});
+                data.spawnedProbes = graph.write(lastGIPass.getData().spawnedProbes, {}, {});
+                data.emptyProbes = graph.write(lastGIPass.getData().emptyProbes, {}, {});
+                data.reprojectedProbes = graph.write(lastGIPass.getData().reprojectedProbes, {}, {});
             },
             [preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Debug GI cells");
@@ -748,7 +777,7 @@ namespace Carrot::Render {
             [&](GraphBuilder& graph, Pass<GIFinal>& pass, GIFinal& data) {
                 pass.rasterized = false;
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.screenProbesInput = graph.read(traceGIRays.getData().screenProbes, {});
+                data.screenProbesInput = graph.read(lastGIPass.getData().screenProbes, {});
                 addDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output);
                 data.output.iterationCount = 6;
             },

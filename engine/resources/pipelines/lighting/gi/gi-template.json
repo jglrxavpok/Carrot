@@ -1,0 +1,35 @@
+{
+  "type": "compute",
+  "descriptorSets": [
+    {
+      "type": "manual",
+      "setID": 0,
+      "_comment": "hash grid"
+    },
+    {
+      "type": "manual",
+      "setID": 1
+    },
+    {
+      "type": "materials",
+      "setID": 2
+    },
+    {
+      "type": "lights",
+      "setID": 3
+    },
+    {
+      "type": "manual",
+      "setID": 4
+    },
+    {
+      "type": "camera",
+      "setID": 5
+    },
+    {
+      "type": "manual",
+      "setID": 6,
+      "_comment": "RT"
+    }
+  ]
+}

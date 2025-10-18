@@ -209,9 +209,11 @@ set(PIPELINES
         compute/debug-buffer-viewer
         compute/debug-texture-viewer
 
+        lighting/gi/accumulate-radiance
         lighting/gi/apply-gi
         lighting/gi/debug-gi
         lighting/gi/decay-cells
+        lighting/gi/gi-template
         lighting/gi/reorder-rays
         lighting/gi/spawn-rays
         lighting/gi/spawn-screen-probes

@@ -1,0 +1,14 @@
+{
+  "type": "compute",
+  "computeShader": {
+    "file": "resources/shaders/lighting/gi/update-cells.slang",
+    "entry_point": "accumulateRadiance"
+  },
+  "descriptorSets": [
+    {
+      "type": "manual",
+      "setID": 0,
+      "_comment": "hash grid"
+    }
+  ]
+}
