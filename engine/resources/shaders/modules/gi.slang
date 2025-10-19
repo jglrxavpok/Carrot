@@ -9,13 +9,13 @@ import modules.rng;
 */
 namespace HashGrid {
     // keep in sync with LightingPasses.cpp
-    public static const uint CellsPerBucket = 8;
-    public static const uint BucketCount = 1024*256*4;
+    public static const uint CellsPerBucket = 16;
+    public static const uint BucketCount = 1024*4;
     public static const uint TotalCellCount = BucketCount * CellsPerBucket;
 
     // loosely based on https://gpuopen.com/download/publications/SA2021_WorldSpace_ReSTIR.pdf
     static const float cellSizeFactor = 32.0f;
-    static const float minCellSize = 0.005f;
+    static const float minCellSize = 0.1f;
 
     uint giGetCellSizeStep(float3 hitPosition, float3 cameraPosition) {
         float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
@@ -37,16 +37,8 @@ namespace HashGrid {
     static const float thetaQuantum = 0.05f;
     static const float phiQuantum = 0.05f;
 
-    int2 quantizeNormal(float3 normal) {
-        // assumed already normalized
-        float theta = acos(normal.z);
-        float phi = atan2(normal.y, normal.x);
-        return int2(int(theta / thetaQuantum), int(phi / phiQuantum));
-    }
-
-    float3 dequantizeNormal(int2 normalQuantized) {
-        float phi = normalQuantized.y * phiQuantum;
-        return float3(cos(phi), sin(phi), 0) * cos(normalQuantized.x * thetaQuantum);
+    uint3 quantizeNormal(float3 normal) {
+        return asuint(int3(floor((normal * 0.5f + 0.5f) * 4 +0.5f)));
     }
 
     public struct Key {
@@ -59,11 +51,26 @@ namespace HashGrid {
             Descriptor desc;
             uint cellSizeStep = giGetCellSizeStep(hitPosition, cameraPosition);
             float cellSize = minCellSize * exp2(cellSizeStep);
-            ivec3 posQuantized = quantizePosition(hitPosition, cellSize);
-            ivec2 dirQuantized = quantizeNormal(direction);
+            int3 posQuantized = quantizePosition(hitPosition, cellSize);
+            uint3 dirQuantized = quantizeNormal(direction);
             int lightLeakFix = rayLength < cellSize ? 1 : 0;
-            desc.bucketIndex = pcg_hash(lightLeakFix + pcg_hash(cellSizeStep + pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))))) % BucketCount;
-            desc.hash2 = xxhash32(lightLeakFix + xxhash32(cellSizeStep + xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y)))))));
+            desc.bucketIndex = pcg_hash(lightLeakFix 
+                + pcg_hash(cellSizeStep 
+                    + pcg_hash(posQuantized.x 
+                        + pcg_hash(posQuantized.y 
+                            + pcg_hash(posQuantized.z 
+                                + pcg_hash(dirQuantized.x 
+                                    + pcg_hash(dirQuantized.y
+                                        + pcg_hash(dirQuantized.z)))))))) 
+                                        % BucketCount;
+            desc.hash2 = xxhash32(lightLeakFix 
+                + xxhash32(cellSizeStep 
+                    + xxhash32(posQuantized.x 
+                        + xxhash32(posQuantized.y 
+                            + xxhash32(posQuantized.z 
+                                + xxhash32(dirQuantized.x 
+                                    + xxhash32(dirQuantized.y
+                                        + xxhash32(dirQuantized.z))))))));
             
             return desc;
         }
@@ -94,7 +101,7 @@ namespace HashGrid {
 
         [ForceInline]
         public bool isOutdated(uint cellIndex, uint currentFrame) {
-            const uint decayTime = 10;
+            const uint decayTime = 100;
             return lastTouchedFrames[cellIndex]+decayTime < currentFrame;
         }
 
@@ -196,10 +203,10 @@ namespace HashGrid {
                 writeRadiance(cellIndex, newRadiance, newSampleCount);
             } else {
                 // Temporal accumulation, based on GI 1.0 implementation
-                constexpr uint maxSampleCount = 32;
+                constexpr uint maxSampleCount = 16;
                 uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
                 const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
-                writeRadiance(cellIndex, finalRadiance, totalSampleCount);
+                writeRadiance(cellIndex, finalRadiance * totalSampleCount, totalSampleCount);
             }
 
             // clear accumulation buffer

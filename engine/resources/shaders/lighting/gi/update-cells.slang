@@ -254,10 +254,10 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         giInputs.startOfRay = from;
 
         float3 jitter = 0;// TODO: modify giInputs, hashGridData.grids.currentFrame.computeJitterAmount(rng, giInputs);
-        float3 gi = hashGridData.grids.previousFrame->read(rng, giInputs);
+        float3 gi = hashGridData.grids.currentFrame->read(rng, giInputs);
         float3 directLighting = lightData.sampleLights(/*out*/ lightPDF, capability, pbr, 
             intersection.worldPosition, intersection.worldNormal, intersection.worldTangent, intersection.computedMaterial.metallic, intersection.computedMaterial.roughness);
-        radiance += directLighting/*already contains BRDF*/ + brdf * (gi + intersection.computedMaterial.emissive);
+        radiance += directLighting/*already contains BRDF*/ + brdf * (intersection.computedMaterial.emissive);
 
         bool wasNew = false;
         HashGrid::Key key;
@@ -266,7 +266,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         key.cameraPosition = giInputs.cameraPosition;
         key.rayLength = length(key.hitPosition - from);
         // TODO: reservoirs
-        if(dot(radiance, radiance) > 0.01f) { // don't accumulate poor samples
+        /*if(dot(radiance, radiance) > 0.001f)*/ { // don't accumulate poor samples
             if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
                 if(wasNew) {
                     hashGridData.grids.currentFrame.writeToCell(cellIndex, key, 0, 0);
@@ -276,6 +276,8 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
             }
             // TODO: Radiance feedback
         }
+
+        radiance += brdf * gi;
     } else {
         // correct orientation for skybox cubemap
         constexpr float3x3 rot = float3x3(
@@ -289,7 +291,9 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         radiance += brdf * skyboxRGB;
     }
 
-    probeData.probes[probeIndex].addSample(radiance);
+    if(dot(radiance, radiance) > 0.001f) { // don't accumulate poor samples
+        probeData.probes[probeIndex].addSample(radiance);
+    }
 }
 
 // Merge accumulated radiance and already present radiance in each cell

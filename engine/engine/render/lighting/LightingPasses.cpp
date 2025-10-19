@@ -16,8 +16,8 @@
 namespace Carrot::Render {
 
     // keep in sync with hash-grid.include.glsl
-    static constexpr std::uint64_t HashGridCellsPerBucket = 8;
-    static constexpr std::uint64_t HashGridBucketCount = 1024*256*4;
+    static constexpr std::uint64_t HashGridCellsPerBucket = 16;
+    static constexpr std::uint64_t HashGridBucketCount = 1024*4;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
     struct HashGrid {
@@ -471,8 +471,8 @@ namespace Carrot::Render {
 
                 data.gi.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
                 data.screenProbes = graph.createBuffer("screen-probes", [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(ScreenProbe); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.spawnedProbes = graph.createBuffer("spawned-probes", [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(ScreenProbe); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 ComputedBufferSize probeListSize = [=](const glm::ivec2& v) { return getProbeCount(v) * sizeof(u32); };
+                data.spawnedProbes = graph.createBuffer("spawned-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.counts = graph.createBuffer("counts", sizeof(u32)*4, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.emptyProbes = graph.createBuffer("empty-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.reprojectedProbes = graph.createBuffer("reprojected-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
