@@ -394,11 +394,14 @@ namespace Carrot::Render {
 
         static constexpr i32 ProbeScreenSize = 8; // how many pixels a screen probe covers in one direction
         struct ScreenProbe {
-            glm::ivec3 radiance;
+            glm::vec3 radiance;
             glm::vec3 worldPos;
             glm::vec3 normal;
             glm::ivec2 bestPixel;
             u32 sampleCount;
+
+            glm::ivec3 accumulatedRadiance;
+            u32 accumulatedSamples;
         };
         struct SpawnedRay {
             std::uint32_t probeIndex;
@@ -446,7 +449,7 @@ namespace Carrot::Render {
             data.gbuffer.bindInputs(pipeline, frame, graph, 4, vk::ImageLayout::eGeneral);
         };
 
-        static constexpr i32 MaxRaysPerProbe = 20;
+        static constexpr i32 MaxRaysPerProbe = ProbeScreenSize*ProbeScreenSize;
 
         auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
             context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameNumber).view, 1, 0);
@@ -555,7 +558,8 @@ namespace Carrot::Render {
         auto spawnGIRays = addProbeDispatchPass(reorderSpawnedRays, false, "spawn-rays", 1);
         auto traceRays = addProbeDispatchPass(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
         auto accumulateRadiance = addCellDispatchPass(traceRays, "accumulate-radiance");
-        auto& lastGIPass = accumulateRadiance;
+        auto accumulateProbes = addCellDispatchPass(accumulateRadiance, "accumulate-probes");
+        auto& lastGIPass = accumulateProbes;
 
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)

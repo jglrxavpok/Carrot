@@ -3,6 +3,8 @@ module gi;
 import modules.base;
 import modules.hash;
 import modules.rng;
+import modules.sh;
+
 
 /**
 * Grid containing the radiance value for a given location & direction
@@ -268,23 +270,26 @@ namespace HashGrid {
 public static const uint ScreenProbeSize = 8;
 
 public struct ScreenProbe {
-    int3 radiance;
+    float3 radiance;
     public float3 worldPos;
     public float3 normal;
     public int2 bestPixel;
     uint sampleCount;
 
+    int3 accumulatedRadiance;
+    uint accumulatedSamples;
+
     public float3 readRadiance() {
-        return unpackRadiance(radiance) / sampleCount;
+        return radiance / sampleCount;
     }
 
     [mutating]
     public void addSample(float3 sample) {
         int3 quantizedSample = packRadiance(sample);
-        InterlockedAdd(radiance.x, quantizedSample.x);
-        InterlockedAdd(radiance.y, quantizedSample.y);
-        InterlockedAdd(radiance.z, quantizedSample.z);
-        InterlockedAdd(sampleCount, 1);
+        InterlockedAdd(accumulatedRadiance.x, quantizedSample.x);
+        InterlockedAdd(accumulatedRadiance.y, quantizedSample.y);
+        InterlockedAdd(accumulatedRadiance.z, quantizedSample.z);
+        InterlockedAdd(accumulatedSamples, 1);
     }
 
     [mutating]
@@ -294,12 +299,44 @@ public struct ScreenProbe {
         radiance = int3(0);
         sampleCount = 0;
         this.bestPixel = bestPixel;
+
+        accumulatedRadiance = 0;
+        accumulatedSamples = 0;
     }
 
     [mutating]
     public void copyRadiance(in ScreenProbe other) {
         radiance = other.radiance;
         sampleCount = other.sampleCount;
+        accumulatedRadiance = 0;
+        accumulatedSamples = 0;
+    }
+
+    [mutating]
+    public void accumulateSamples() {
+        const uint oldSampleCount = sampleCount;
+        const uint newSampleCount = accumulatedSamples;
+        if(newSampleCount == 0) {
+            return; // nothing to do
+        }
+        float3 oldRadiance = readRadiance();
+        float3 newRadiance = unpackRadiance(accumulatedRadiance) / newSampleCount;
+
+        if(oldSampleCount == 0) {
+            radiance = newRadiance;
+            sampleCount = newSampleCount;
+        } else {
+            // Temporal accumulation, based on GI 1.0 implementation
+            constexpr uint maxSampleCount = 64;
+            uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
+            const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
+            radiance = finalRadiance * totalSampleCount;
+            sampleCount = totalSampleCount;
+        }
+
+        // clear accumulation buffer
+        accumulatedRadiance = 0;
+        accumulatedSamples = 0;
     }
 }
 

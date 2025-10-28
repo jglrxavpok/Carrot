@@ -8,7 +8,7 @@ import modules.raytracing;
 import modules.rng;
 import modules.compute_fullscreen;
 
-public static const uint MaxRaysPerProbe = 20;
+public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
 public static const float ProbeCellSize = 1.0f;
 
 public struct RayArray {
@@ -48,7 +48,6 @@ uint packHalf(float f) {
 }
 
 Optional<uint> getReprojectedProbeIndex(uint2 frameDimensions, vec2 uv, vec2 motionVector) {
-    //return none;
     const uint probesPerWidth = (frameDimensions.x+ScreenProbeSize-1) / ScreenProbeSize;
 
     // reproject temporally, and check if pixel is reusable
@@ -196,6 +195,7 @@ void spawnRays(uint3 coords : SV_DispatchThreadID) {
     InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
     const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex].load(MemoryOrder::AcquireRelease);
     for(int i = 0; i < MaxRaysPerProbe; i++) {
+        // TODO: decide direction of ray at this point
         probeData.raySources[i + startRayIndex] = probeIndex;
     }
 }
@@ -291,6 +291,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         radiance += brdf * skyboxRGB;
     }
 
+    // TODO: find a better way: makes the probe too slow to react if light is turned off
     if(dot(radiance, radiance) > 0.001f) { // don't accumulate poor samples
         probeData.probes[probeIndex].addSample(radiance);
     }
@@ -306,4 +307,14 @@ void accumulateRadiance(uint cellIndex : SV_DispatchThreadID) {
 
     HashGrid::Storage* grid = hashGridData.grids.currentFrame;
     grid->mergeRadiance(cellIndex);
+}
+
+[shader("compute")]
+[numthreads(32, 1, 1)]
+void accumulateProbes(uint probeIndex : SV_DispatchThreadID) {
+    if(probeIndex >= probeData.probes.getCount()) {
+        return;
+    }
+
+    probeData.probes[probeIndex].accumulateSamples();
 }
