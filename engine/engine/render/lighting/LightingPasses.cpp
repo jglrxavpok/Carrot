@@ -379,7 +379,8 @@ namespace Carrot::Render {
             FrameResource spawnedProbes;
             FrameResource emptyProbes;
             FrameResource reprojectedProbes;
-            FrameResource spawnedRays;
+            FrameResource rayDataStart;
+            FrameResource rayData;
             PassData::GBuffer gbuffer;
 
             void writeProbeData(Render::GraphBuilder& graph, const GIUpdateData& other) {
@@ -388,23 +389,30 @@ namespace Carrot::Render {
                 spawnedProbes = graph.write(other.spawnedProbes, {}, {});
                 emptyProbes = graph.write(other.emptyProbes, {}, {});
                 reprojectedProbes = graph.write(other.reprojectedProbes, {}, {});
-                spawnedRays = graph.write(other.spawnedRays, {}, {});
+                rayDataStart = graph.write(other.rayDataStart, {}, {});
+                rayData = graph.write(other.rayData, {}, {});
             }
         };
 
         static constexpr i32 ProbeScreenSize = 8; // how many pixels a screen probe covers in one direction
         struct ScreenProbe {
-            glm::vec3 radiance;
+            float radianceR[9];
+            float radianceG[9];
+            float radianceB[9];
             glm::vec3 worldPos;
             glm::vec3 normal;
             glm::ivec2 bestPixel;
             u32 sampleCount;
 
-            glm::ivec3 accumulatedRadiance;
+            float accumulatedRadianceR[9];
+            float accumulatedRadianceG[9];
+            float accumulatedRadianceB[9];
             u32 accumulatedSamples;
         };
-        struct SpawnedRay {
+        struct RayData {
             std::uint32_t probeIndex;
+            glm::vec3 radiance;
+            glm::vec3 direction;
         };
 
         auto bindBaseGIUpdateInputs = [preparePushConstant](PushConstantRT& block, bool needRaytracing, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& frame, Carrot::Pipeline& pipeline, vk::CommandBuffer& cmds) {
@@ -458,7 +466,8 @@ namespace Carrot::Render {
             context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedProbes, context.frameNumber).view, 1, 3);
             context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.emptyProbes, context.frameNumber).view, 1, 4);
             context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.reprojectedProbes, context.frameNumber).view, 1, 5);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedRays, context.frameNumber).view, 1, 6);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.rayDataStart, context.frameNumber).view, 1, 6);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.rayData, context.frameNumber).view, 1, 7);
         };
 
         auto spawnScreenProbes = graph.addPass<GIUpdateData>("spawn-screen-probes",
@@ -479,7 +488,8 @@ namespace Carrot::Render {
                 data.counts = graph.createBuffer("counts", sizeof(u32)*4, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.emptyProbes = graph.createBuffer("empty-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 data.reprojectedProbes = graph.createBuffer("reprojected-probes", probeListSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.spawnedRays = graph.createBuffer("spawned-rays", [=](const glm::ivec2& v) { return sizeof(u32) + getProbeCount(v) * MaxRaysPerProbe * sizeof(SpawnedRay); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.rayDataStart = graph.createBuffer("ray-data-start", [=](const glm::ivec2& v) { return sizeof(u32) * getProbeCount(v); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.rayData = graph.createBuffer("ray-data", [=](const glm::ivec2& v) { return getProbeCount(v) * MaxRaysPerProbe * sizeof(RayData); }, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 graph.reuseResourceAcrossFrames(data.screenProbes, 1); // need previous frame
 
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);

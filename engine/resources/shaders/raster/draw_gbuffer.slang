@@ -54,7 +54,14 @@ EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
 
     vec4 clipPos = camera.CurrentFrame().nonJitteredProjection * vec4(input.viewPosition, 1.0);
     vec4 previousClipPos = camera.PreviousFrame().nonJitteredProjection * vec4(input.previousFrameViewPosition, 1.0);
-    result.motionVector = previousClipPos.xyz / previousClipPos.w - clipPos.xyz / clipPos.w;
+    previousClipPos.xyz /= previousClipPos.w;
+    clipPos.xyz /= clipPos.w;
+
+    previousClipPos.xy = (previousClipPos.xy+1) / 2.0f;
+    clipPos.xy = (clipPos.xy+1) / 2.0f;
+    
+
+    result.motionVector = float3(previousClipPos.xy - clipPos.xy, 0);
 
     return EncodedGBuffer(result);
 }

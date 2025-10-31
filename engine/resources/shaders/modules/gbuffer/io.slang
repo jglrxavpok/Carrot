@@ -55,7 +55,7 @@ public struct GBufferInputs {
 
         const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
         result.emissiveColor = emissiveAndVelocityZ.xyz;
-        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in clip space
+        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in UV space
         return result;
     }
 

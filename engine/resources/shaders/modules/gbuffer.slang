@@ -29,7 +29,7 @@ public struct GBuffer {
     public float roughness;
 
     public vec3 emissiveColor;
-    public vec3 motionVector; // motion vector, in clip space
+    public vec3 motionVector; // motion vector, in UV space
 
     public float readDepth; // depth of this pixel, only valid when *reading* from the gbuffer
 
@@ -83,9 +83,6 @@ public struct EncodedGBuffer {
         intProperty = gbuffer.intProperty;
         entityID = gbuffer.entityID;
         metallicRoughnessVelocityXY = vec4(gbuffer.metallicness, gbuffer.roughness, gbuffer.motionVector.xy);
-
-        // convert to UV space
-        metallicRoughnessVelocityXY.zw *= vec2(0.5, 0.5);
 
         emissiveVelocityZ = vec4(gbuffer.emissiveColor, gbuffer.motionVector.z);
 

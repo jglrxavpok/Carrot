@@ -116,21 +116,21 @@ namespace Carrot::Render {
 
             auto& leftBuffer = cameraUniformBuffers[context.frameIndex * 2];
             auto& rightBuffer = cameraUniformBuffers[context.frameIndex * 2 + 1];
-            leftBuffer.getBuffer().directUpload(&objLeftEye, sizeof(objLeftEye), leftBuffer.getStart());
-            rightBuffer.getBuffer().directUpload(&objRightEye, sizeof(objRightEye), rightBuffer.getStart());
+            leftBuffer.uploadForFrame(&objLeftEye, sizeof(objLeftEye));
+            rightBuffer.uploadForFrame(&objRightEye, sizeof(objRightEye));
         } else {
             CameraBufferObject obj{};
             auto& buffer = cameraUniformBuffers[context.frameIndex];
 
             obj.update(getCamera(), context);
 
-            buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
+            buffer.uploadForFrame(&obj, sizeof(obj));
         }
 
         ViewportBufferObject viewportBufferObject{};
         viewportBufferObject.update(context);
         auto& buffer = viewportUniformBuffers[context.frameIndex];
-        buffer.getBuffer().directUpload(&viewportBufferObject, sizeof(viewportBufferObject), buffer.getStart());
+        buffer.uploadForFrame(&viewportBufferObject, sizeof(viewportBufferObject));
 
         for(auto& pScene : scenes) {
             pScene->onFrame(context);

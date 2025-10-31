@@ -74,7 +74,7 @@ void main() {
     float reprojectionFactor = reprojectionInBounds ? 1.0f : 0.0f;
     vec4 momentHistoryHistoryLength = imageLoad(lastFrameHistoryLengthImage, ivec2(reprojectedUV * textureDimensions + 0.5));
     if(reprojectionInBounds) {
-        reprojectionFactor *= exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) / 0.01);
+        reprojectionFactor *= exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 1);
     }
 
     bool reprojected = false;
@@ -86,7 +86,7 @@ void main() {
 
     vec4 outColor = vec4(0);
 
-    const int clampRadius = push.isAO ? 5 : 1;
+    const int clampRadius = push.isAO ? 5 : 5;
 
     vec3 minColor = vec3(100000);
     vec3 maxColor = vec3(-100000);
@@ -98,13 +98,13 @@ void main() {
             maxColor = max(maxColor, color.rgb);
         }
     }
-    vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions + 0.5)));
+    vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions)));
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
     // TODO: downsample and/or variance?
 
     float historyLength = momentHistoryHistoryLength.b * (reprojected ? 1 : 0) + 1.0;
     float alpha = min(0.99, 1.0f - 1.0f / historyLength);
-    const float currentWeight = (1-alpha);
+    const float currentWeight = (1.0f-alpha);
     const float previousWeight = alpha;
     const float normalization = 1.0f / (currentWeight + previousWeight);
 

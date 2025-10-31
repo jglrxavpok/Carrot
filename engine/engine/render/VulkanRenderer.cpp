@@ -1349,8 +1349,9 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
     });
 
     verify(cameraDescriptorSets.size() == uniformBuffers.size(), "mismatched camera descriptor count and uniform buffer count");
+    const i32 maxFramesCount = MAX_FRAMES_IN_FLIGHT * vrMultiplier;
     for (int i = 0; i < cameraDescriptorSets.size(); i++) {
-        int nextFrameIndex = (i + 2 * vrMultiplier) % (MAX_FRAMES_IN_FLIGHT * vrMultiplier);
+        int nextFrameIndex = (i + maxFramesCount-1) % maxFramesCount;
         vk::DescriptorBufferInfo cameraBuffer = uniformBuffers[i].asBufferInfo();
         vk::DescriptorBufferInfo previousCameraBuffer = uniformBuffers[nextFrameIndex].asBufferInfo();
         std::vector<vk::WriteDescriptorSet> writes = {

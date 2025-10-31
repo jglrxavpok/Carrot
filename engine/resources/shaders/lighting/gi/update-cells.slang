@@ -30,7 +30,8 @@ struct Probes {
     RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> spawnedProbes;
     RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> emptyProbes;
     RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> reprojectedProbes;
-    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> raySources;
+    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> rayDataStart; // start into rayData, per probe
+    RWStructuredBuffer<RayData, ScalarDataLayout> rayData;
 }
 
 ParameterBlock<HashGrid::Block> hashGridData;
@@ -146,8 +147,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const uint reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, reprojectedUV, reprojectedGBuffer.motionVector.xy).value;
         const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
 
-        // TODO: reproject
-        probeData.probes[probeIndex].copyRadiance(reprojectedProbe);
+        probeData.probes[probeIndex].reprojectRadiance(reprojectedProbe);
         probeData.probes[probeIndex].worldPos = (cameras.CurrentFrame().inverseView * vec4(reprojectedGBuffer.viewPosition, 1)).xyz;
 
         const float3x3 inverseNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().inverseView)));
@@ -194,9 +194,12 @@ void spawnRays(uint3 coords : SV_DispatchThreadID) {
     uint startRayIndex = 0;
     InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
     const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex].load(MemoryOrder::AcquireRelease);
+    probeData.rayDataStart[probeIndex] = startRayIndex;
     for(int i = 0; i < MaxRaysPerProbe; i++) {
         // TODO: decide direction of ray at this point
-        probeData.raySources[i + startRayIndex] = probeIndex;
+        probeData.rayData[i + startRayIndex].probeIndex = probeIndex;
+        probeData.rayData[i + startRayIndex].radiance = float3(0);
+        probeData.rayData[i + startRayIndex].direction = float3(0);
     }
 }
 
@@ -210,7 +213,8 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         return;
     }
 
-    const uint probeIndex = probeData.raySources[rayIndex].load();
+    RayData* rayData = &probeData.rayData[rayIndex];
+    const uint probeIndex = rayData.probeIndex;
     const int2 pixel = probeData.probes[probeIndex].bestPixel;
     const uint2 size = uint2(push.frameWidth, push.frameHeight);
 
@@ -234,6 +238,8 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
     // avoid self shadowing
     from += direction * 0.01f;
+
+    rayData->direction = direction;
     
     if(let intersection = capability.raytrace(materialSystem, uv, from, direction, tMax)) {
         PbrInputs pbr;
@@ -291,10 +297,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         radiance += brdf * skyboxRGB;
     }
 
-    // TODO: find a better way: makes the probe too slow to react if light is turned off
-    if(dot(radiance, radiance) > 0.001f) { // don't accumulate poor samples
-        probeData.probes[probeIndex].addSample(radiance);
-    }
+    rayData->radiance = radiance;
 }
 
 // Merge accumulated radiance and already present radiance in each cell
@@ -316,5 +319,10 @@ void accumulateProbes(uint probeIndex : SV_DispatchThreadID) {
         return;
     }
 
-    probeData.probes[probeIndex].accumulateSamples();
+    const uint rayStart = probeData.rayDataStart[probeIndex].load();
+    for(uint rayIndex = rayStart; rayIndex < rayStart + MaxRaysPerProbe; rayIndex++) {
+        probeData.probes[probeIndex].accumulateSample(probeData.rayData[rayIndex]);
+    }
+
+    probeData.probes[probeIndex].finishAccumulateSamples();
 }

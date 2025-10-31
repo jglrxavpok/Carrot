@@ -269,73 +269,145 @@ namespace HashGrid {
 
 public static const uint ScreenProbeSize = 8;
 
+public struct RayData {
+    public uint32_t probeIndex;
+    public float3 radiance;
+    public float3 direction;
+}
+
+struct SHRadiance {
+    SH3 r;
+    SH3 g;
+    SH3 b;
+
+    [mutating]
+    void integrate(float3 value, float3 direction) {
+        r.integrate(value.r, direction);
+        g.integrate(value.g, direction);
+        b.integrate(value.b, direction);
+    }
+
+    [mutating]
+    void add(const in SHRadiance other) {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+    }
+
+    [mutating]
+    void reset() {
+        r.reset();
+        g.reset();
+        b.reset();
+    }
+
+    SHRadiance scale(float f) {
+        SHRadiance result;
+        result.r = r.scale(f);
+        result.g = g.scale(f);
+        result.b = b.scale(f);
+        return result;
+    }
+
+    float3 evalutateCosineLobe(float3 direction) {
+        return float3(
+            r.evaluateCosineLobe(direction),
+            g.evaluateCosineLobe(direction),
+            b.evaluateCosineLobe(direction),
+        );
+    }
+}
+
+SHRadiance operator*(const in SHRadiance a, float f) {
+    SHRadiance r = a;
+    r.r *= f;
+    r.g *= f;
+    r.b *= f;
+    return r;
+}
+
+SHRadiance operator/(const in SHRadiance a, float f) {
+    SHRadiance r = a;
+    r.r /= f;
+    r.g /= f;
+    r.b /= f;
+    return r;
+}
+
+SHRadiance lerp(const in SHRadiance a, const in SHRadiance b, float t) {
+    SHRadiance result = a.scale(1.0f - t);
+    SHRadiance tmp = b.scale(t);
+    result.add(tmp);
+    return result;
+}
+
 public struct ScreenProbe {
-    float3 radiance;
+    SHRadiance radiance;
     public float3 worldPos;
     public float3 normal;
     public int2 bestPixel;
     uint sampleCount;
 
-    int3 accumulatedRadiance;
+    SHRadiance accumulatedRadiance;
     uint accumulatedSamples;
 
     public float3 readRadiance() {
-        return radiance / sampleCount;
-    }
-
-    [mutating]
-    public void addSample(float3 sample) {
-        int3 quantizedSample = packRadiance(sample);
-        InterlockedAdd(accumulatedRadiance.x, quantizedSample.x);
-        InterlockedAdd(accumulatedRadiance.y, quantizedSample.y);
-        InterlockedAdd(accumulatedRadiance.z, quantizedSample.z);
-        InterlockedAdd(accumulatedSamples, 1);
+        // TODO: vector to camera
+        return radiance.evalutateCosineLobe(normal) / sampleCount;
     }
 
     [mutating]
     public void reset(float3 worldPos, float3 normal, int2 bestPixel) {
         this.worldPos = worldPos;
         this.normal = normal;
-        radiance = int3(0);
-        sampleCount = 0;
+        this.radiance.reset();
+        this.sampleCount = 0;
         this.bestPixel = bestPixel;
 
-        accumulatedRadiance = 0;
-        accumulatedSamples = 0;
+        this.accumulatedRadiance.reset();
+        this.accumulatedSamples = 0;
     }
 
     [mutating]
-    public void copyRadiance(in ScreenProbe other) {
-        radiance = other.radiance;
-        sampleCount = other.sampleCount;
-        accumulatedRadiance = 0;
-        accumulatedSamples = 0;
+    public void reprojectRadiance(in ScreenProbe other) {
+        this.radiance = other.radiance;
+        this.sampleCount = other.sampleCount;
+        this.accumulatedRadiance.reset();
+        this.accumulatedSamples = 0;
     }
 
     [mutating]
-    public void accumulateSamples() {
+    public void accumulateSample(const in RayData ray) {
+        if(dot(ray.radiance, ray.radiance) > 0.01f) {
+            accumulatedRadiance.integrate(ray.radiance, ray.direction);
+            accumulatedSamples++;
+        }
+    }
+
+    [mutating]
+    public void finishAccumulateSamples() {
         const uint oldSampleCount = sampleCount;
         const uint newSampleCount = accumulatedSamples;
         if(newSampleCount == 0) {
             return; // nothing to do
         }
-        float3 oldRadiance = readRadiance();
-        float3 newRadiance = unpackRadiance(accumulatedRadiance) / newSampleCount;
+        SHRadiance oldRadiance = radiance / oldSampleCount;
+        SHRadiance newRadiance = accumulatedRadiance / newSampleCount;
 
         if(oldSampleCount == 0) {
             radiance = newRadiance;
             sampleCount = newSampleCount;
         } else {
             // Temporal accumulation, based on GI 1.0 implementation
-            constexpr uint maxSampleCount = 64;
+            constexpr uint maxSampleCount = 128;
             uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
-            const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
-            radiance = finalRadiance * totalSampleCount;
+            radiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
+            radiance = radiance.scale(totalSampleCount);
             sampleCount = totalSampleCount;
         }
 
         // clear accumulation buffer
-        accumulatedRadiance = 0;
+        accumulatedRadiance.reset();
         accumulatedSamples = 0;
     }
 }
