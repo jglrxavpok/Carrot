@@ -10,8 +10,13 @@
       "setID": 0
     },
     {
+      "type": "manual",
+      "setID": 1,
+      "__comment": "gbuffer"
+    },
+    {
       "type": "camera",
-      "setID": 1
+      "setID": 2
     }
   ]
 }

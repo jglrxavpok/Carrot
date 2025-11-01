@@ -1,12 +1,15 @@
-import modules.gi;
-import modules.camera;
 import modules.base;
+import modules.camera;
+import modules.gbuffer;
+import modules.gi;
+import modules.compute_fullscreen;
 
 struct Data {
     RWTexture2D<float4> destination;
     ScreenProbes probes;
 }
 [[vk::binding(0,0)]] ParameterBlock<Data> data;
+ParameterBlock<GBufferInputs> gBufferInputs;
 ParameterBlock<Camera> cameras;
 
 struct PushConstants {
@@ -43,6 +46,13 @@ void main(
     else
     {
         coords.y -= halfScreenProbesize;
+    }
+
+    const float2 uv = float2(coords.xy) / float2(w, h);
+    PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+    if(pixelInfo.isSky) {
+        data.destination.Store(coords.xy, float4(1));
+        return;
     }
     
     // bilinear interpolation

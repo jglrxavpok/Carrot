@@ -101,19 +101,21 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
 
     GroupMemoryBarrier();
-    if(!pixelInfo.isSky) {
-        // check if we can reuse a probe from the previous frame
-        if(let reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, uv, pixelInfo.gBuffer.motionVector.xy)) {
-            const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
-            const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
-            const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
-            const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
-            // TODO: is it correct to use a constant cell size here?
-            if(planeDist < ProbeCellSize && normalCheck > 0.95) {
-                const float dist = length(dPos);
-                const uint probeScore = (packHalf(dist) << 16) | localIndex;
-                InterlockedMin(reprojectionScore, probeScore);
-            }
+    if(pixelInfo.isSky) {
+        return;
+    }
+
+    // check if we can reuse a probe from the previous frame
+    if(let reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, uv, pixelInfo.gBuffer.motionVector.xy)) {
+        const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
+        const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
+        const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
+        const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
+        // TODO: is it correct to use a constant cell size here?
+        if(planeDist < ProbeCellSize && normalCheck > 0.95) {
+            const float dist = length(dPos);
+            const uint probeScore = (packHalf(dist) << 16) | localIndex;
+            InterlockedMin(reprojectionScore, probeScore);
         }
     }
 

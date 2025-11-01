@@ -37,14 +37,15 @@ float4 pixel(uniform LightingPassUniforms push, in float2 uv) {
         return debugRendering(pixelInfo, uv, push);
     }
 
-    const float3 directLighting = computeLighting(uv);
     float3 color;
     if(pixelInfo.isSky) {
+        float3 directLighting = lightingInputs.directLighting.Sample(gBufferInputs.linearSampler, uv).rgb;
         // direct lighting contains skybox too
         color = directLighting;
     } else {
+        const float3 lighting = computeLighting(uv);
         const float3 reflections = lightingInputs.reflections.Sample(gBufferInputs.linearSampler, uv).rgb;
-        color = gBuffer.albedo.rgb * lerp(directLighting, reflections, gBuffer.metallicness);
+        color = gBuffer.albedo.rgb * lerp(lighting, reflections, gBuffer.metallicness);
         color += gBuffer.emissiveColor;
     }
     return float4(color, 1);

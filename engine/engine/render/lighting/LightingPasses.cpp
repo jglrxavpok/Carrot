@@ -807,6 +807,7 @@ namespace Carrot::Render {
                     frame.renderer.pushConstantBlock<PushConstantNoRT>("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                     frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbesInput, frame.frameNumber).view, 0, 1);
+                    data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral);
                     pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                     const std::size_t localSize = 32;
