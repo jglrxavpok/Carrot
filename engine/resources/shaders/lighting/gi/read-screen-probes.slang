@@ -1,10 +1,13 @@
 import modules.gi;
+import modules.camera;
+import modules.base;
 
 struct Data {
     RWTexture2D<float4> destination;
     ScreenProbes probes;
 }
 [[vk::binding(0,0)]] ParameterBlock<Data> data;
+ParameterBlock<Camera> cameras;
 
 struct PushConstants {
     uint frameCount;
@@ -52,10 +55,11 @@ void main(
     const float w21 = (coords.x - probePositionTopLeft.x*ScreenProbeSize)*(probePositionTopRight.y*ScreenProbeSize - coords.y);
     const float w22 = (coords.x - probePositionTopLeft.x*ScreenProbeSize)*(coords.y - probePositionBottomRight.y*ScreenProbeSize);
     float3 average = float3(0.0);
-    average += data.probes.getFromScreenPos(probePositionBottomLeft, push.frameWidth).readRadiance() * w11;
-    average += data.probes.getFromScreenPos(probePositionBottomRight, push.frameWidth).readRadiance() * w21;
-    average += data.probes.getFromScreenPos(probePositionTopLeft, push.frameWidth).readRadiance() * w12;
-    average += data.probes.getFromScreenPos(probePositionTopRight, push.frameWidth).readRadiance() * w22;
+    const float3 cameraPosition = (cameras.CurrentFrame().inverseView * float4(0,0,0,1)).xyz;
+    average += data.probes.getFromScreenPos(probePositionBottomLeft, push.frameWidth).readRadianceFromCameraPos(cameraPosition) * w11;
+    average += data.probes.getFromScreenPos(probePositionBottomRight, push.frameWidth).readRadianceFromCameraPos(cameraPosition) * w21;
+    average += data.probes.getFromScreenPos(probePositionTopLeft, push.frameWidth).readRadianceFromCameraPos(cameraPosition) * w12;
+    average += data.probes.getFromScreenPos(probePositionTopRight, push.frameWidth).readRadianceFromCameraPos(cameraPosition) * w22;
 
     const float denominator = w11 + w12 + w21 + w22;
     const float invDenominator = 1.0f / denominator;
@@ -75,7 +79,8 @@ void debug(
         return;
     }
     
+    const float3 cameraPosition = (cameras.CurrentFrame().inverseView * float4(0,0,0,1)).xyz;
     const ScreenProbe probe = data.probes.getFromScreenPos(coords.xy, push.frameWidth);
-    float3 pixel = probe.readRadiance();
+    float3 pixel = probe.readRadianceFromCameraPos(cameraPosition);
     data.destination.Store(coords.xy, float4(pixel, 1));
 }

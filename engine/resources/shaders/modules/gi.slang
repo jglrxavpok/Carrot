@@ -351,9 +351,9 @@ public struct ScreenProbe {
     SHRadiance accumulatedRadiance;
     uint accumulatedSamples;
 
-    public float3 readRadiance() {
-        // TODO: vector to camera
-        return radiance.evalutateCosineLobe(normal) / sampleCount;
+    public float3 readRadianceFromCameraPos(float3 cameraPos) {
+        const float3 direction = normalize(cameraPos - worldPos);
+        return radiance.evalutateCosineLobe(direction) / sampleCount;
     }
 
     [mutating]
