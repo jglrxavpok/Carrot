@@ -59,3 +59,9 @@ public matrix<float, 3, 3> inverse(in matrix<float, 3, 3> m) {
 
     return minv;
 }
+
+public void computeTangents(float3 normal, out float3 tangent, out float3 bitangent) {
+    float3 toUse = abs(normal.x) > 0.5f ? vec3(0, 0, 1) : vec3(1, 0, 0); // avoid cross product with a colinear vector
+    tangent = cross(normal, toUse);
+    bitangent = cross(normal, tangent);
+}

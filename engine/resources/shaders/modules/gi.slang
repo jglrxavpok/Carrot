@@ -4,6 +4,7 @@ import modules.base;
 import modules.hash;
 import modules.rng;
 import modules.sh;
+import modules.materials;
 
 
 /**
@@ -223,17 +224,24 @@ namespace HashGrid {
             return previousFrameID != frameID;
         }
 
-        public float3 computeJitterAmount(inout RandomSampler rng, in GIInputs giInputs) {
-            return float3(0.0); // TODO
+        public void jitter(inout RandomSampler rng, in MaterialSystem ms, inout GIInputs giInputs) {
+            float3 tangent;
+            float3 bitangent;
+            computeTangents(giInputs.surfaceNormal, tangent, bitangent);
+            const float jitterU = rng.next(ms) * 2 - 1;
+            const float jitterV = rng.next(ms) * 2 - 1;
+
+            float cellSize = giGetCellSize(giInputs.hitPosition, giInputs.cameraPosition);
+            const vec3 jitterAmount = (tangent * jitterU + bitangent * jitterV) * cellSize;
+            giInputs.hitPosition += jitterAmount;
         }
 
         [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
         public float3 read(inout RandomSampler rng, in GIInputs giInputs) {
             Key cellDesc;
 
-            const float3 jitter = computeJitterAmount(rng, giInputs);
             cellDesc.cameraPosition = giInputs.cameraPosition;
-            cellDesc.hitPosition = giInputs.hitPosition + jitter;
+            cellDesc.hitPosition = giInputs.hitPosition;
             
             const float3 dRay = giInputs.hitPosition - giInputs.startOfRay;
             cellDesc.rayLength = length(dRay);

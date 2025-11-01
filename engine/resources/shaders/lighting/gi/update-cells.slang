@@ -261,7 +261,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         giInputs.surfaceNormal = intersection.worldNormal;
         giInputs.startOfRay = from;
 
-        float3 jitter = 0;// TODO: modify giInputs, hashGridData.grids.currentFrame.computeJitterAmount(rng, giInputs);
+        hashGridData.grids.currentFrame->jitter(rng, materialSystem, giInputs);
         float3 gi = hashGridData.grids.currentFrame->read(rng, giInputs);
         float3 directLighting = lightData.sampleLights(/*out*/ lightPDF, capability, pbr, 
             intersection.worldPosition, intersection.worldNormal, intersection.worldTangent, intersection.computedMaterial.metallic, intersection.computedMaterial.roughness);
