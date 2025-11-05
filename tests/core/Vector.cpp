@@ -55,15 +55,24 @@ struct S2 {
     }
 };
 
-TEST(Vector, InitMustBeEmpty) {
-    ConstructorCalls = 0;
+struct VectorTest: public testing::Test {
+    void SetUp() override {
+        ConstructorCalls = 0;
+        StructCount = 0;
+    }
+
+    void TearDown() override {
+        EXPECT_EQ(StructCount, 0); // must not leak
+    }
+};
+
+TEST_F(VectorTest, InitMustBeEmpty) {
     Vector<S2> v { MallocAllocator::instance };
     EXPECT_EQ(v.size(), 0);
     EXPECT_EQ(v.capacity(), 0);
 }
 
-TEST(Vector, PushBackAndEmplaceBack) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, PushBackAndEmplaceBack) {
     Vector<S2> v { MallocAllocator::instance };
     EXPECT_EQ(v.size(), 0);
 
@@ -80,11 +89,10 @@ TEST(Vector, PushBackAndEmplaceBack) {
     EXPECT_EQ(v.size(), 2);
     EXPECT_EQ(newElement.a, 50);
     EXPECT_EQ(StructCount, 2);
-    EXPECT_EQ(ConstructorCalls, 3); // only a single additional call after emplaceBack
+    EXPECT_EQ(ConstructorCalls, 4); // 2 + move of [0] due to resize + emplaceBack creating a new instance
 }
 
-TEST(Vector, Remove) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Remove) {
     Vector<S2> v { MallocAllocator::instance };
     EXPECT_EQ(v.size(), 0);
 
@@ -107,8 +115,7 @@ TEST(Vector, Remove) {
     EXPECT_EQ(v.size(), 1);
 }
 
-TEST(Vector, DestructionDeletesEverything) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, DestructionDeletesEverything) {
     {
         Vector<S2> v { MallocAllocator::instance };
         v.pushBack(S2{});
@@ -119,8 +126,7 @@ TEST(Vector, DestructionDeletesEverything) {
     EXPECT_EQ(StructCount, 0);
 }
 
-TEST(Vector, Iteration) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Iteration) {
     int elementCount = 100;
     Vector<S2> v { MallocAllocator::instance };
 
@@ -151,8 +157,7 @@ TEST(Vector, Iteration) {
     }
 }
 
-TEST(Vector, Copy) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Copy) {
     auto createVector = [&](int elementCount)
     {
         Vector<S2> v { MallocAllocator::instance };
@@ -173,8 +178,7 @@ TEST(Vector, Copy) {
     EXPECT_EQ(StructCount, 25*2);
 }
 
-TEST(Vector, Move) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Move) {
     auto createVector = [&](Allocator& allocator, int elementCount)
     {
         Vector<S2> v { allocator };
@@ -246,8 +250,7 @@ TEST(Vector, Move) {
     }
 }
 
-TEST(Vector, Span) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Span) {
     auto createVector = [&](int elementCount)
     {
         Vector<S2> v { MallocAllocator::instance };
@@ -269,8 +272,7 @@ TEST(Vector, Span) {
     EXPECT_EQ(v2.cdata(), asSpan2.data());
 }
 
-TEST(Vector, IteratorOperations) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, IteratorOperations) {
     auto createVector = [&](int elementCount)
     {
         Vector<S2> v { MallocAllocator::instance };
@@ -355,8 +357,7 @@ TEST(Vector, IteratorOperations) {
     }
 }
 
-TEST(Vector, Sort) {
-    ConstructorCalls = 0;
+TEST_F(VectorTest, Sort) {
     auto createVector = [&](int elementCount)
     {
         Vector<S2> v { MallocAllocator::instance };
@@ -385,7 +386,7 @@ TEST(Vector, Sort) {
     }
 }
 
-TEST(Vector, GrowthFactor) {
+TEST_F(VectorTest, GrowthFactor) {
     {
         // on pushBack, if the size == capacity, set capacity to newSize * growthFactor
         Carrot::Vector<float> v;
@@ -447,11 +448,7 @@ TEST(Vector, GrowthFactor) {
     }
 }
 
-TEST(Vector, InitializationList) {
-    ConstructorCalls = 0;
-    EXPECT_EQ(StructCount, 0);
-    EXPECT_EQ(ConstructorCalls, 0);
-
+TEST_F(VectorTest, InitializationList) {
     Carrot::Vector<S2> fromList = {
         S2(40),
         S2(42),

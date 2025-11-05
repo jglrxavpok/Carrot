@@ -127,6 +127,7 @@ namespace Carrot::Scripting {
     std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input,
                                                               MonoDomain* appDomain,
                                                               std::optional<Carrot::IO::Resource> symbolInput) {
+        verify(input.isFile(), "Non file inputs are currently not supported");
         if(appDomain == nullptr) {
             appDomain = defaultAppDomain;
         }

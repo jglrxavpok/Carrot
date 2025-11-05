@@ -172,7 +172,8 @@ namespace Carrot {
             this->allocation = this->allocator.allocate(newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
             TElement* pData = data();
             for (std::size_t i = 0; i < this->elementCount; i++) {
-                new (&pData[i]) TElement(std::move(pOldData[i]));
+                new (&pData[i]) TElement(std::move(pOldData[i])); // move old data to new storage
+                pOldData[i].~TElement(); // destroy old data
             }
             this->allocator.deallocate(oldAlloc);
         }

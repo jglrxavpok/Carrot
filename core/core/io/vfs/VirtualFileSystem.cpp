@@ -73,7 +73,7 @@ namespace Carrot::IO {
 
     std::optional<VirtualFileSystem::Path> VirtualFileSystem::represent(const std::filesystem::path& path) const {
         for(const auto& [rootID, rootPath] : roots.snapshot()) {
-            std::filesystem::path relativePath = std::filesystem::relative(path, *rootPath);
+            std::filesystem::path relativePath = path.lexically_relative(*rootPath);
             if(!relativePath.empty()) {
                 std::string asStr = Carrot::toString(relativePath.u8string());
                 if(asStr.size() < 2 || asStr[0] != '.' || asStr[1] != '.') {
@@ -200,10 +200,18 @@ namespace Carrot::IO {
     }
 
     VirtualFileSystem::Path VirtualFileSystem::Path::relative(const BasicPath& other) const {
-        return Path {
-            root,
-            path.relative(other.asString())
-        };
+        if (other.isAbsolute()) {
+            const BasicPath legalizedPath = other.c_str()+1;
+            return Path {
+                root,
+                legalizedPath
+            };
+        } else {
+            return Path {
+                root,
+                path.relative(other.asString())
+            };
+        }
     }
 
 

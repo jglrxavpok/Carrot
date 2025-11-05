@@ -73,6 +73,8 @@ TEST_F(CSharpTests, SimpleCompilation) {
 TEST_F(CSharpTests, SimpleCompilationAndExecution) {
     fs::path tempDir = fs::temp_directory_path();
 
+    GetVFS().addRoot("code", tempDir);
+
     fs::path testFile = tempDir / "TestSimpleCompilation.cs";
     generateTestFile(testFile);
     CLEANUP(fs::remove(testFile));
@@ -85,8 +87,7 @@ TEST_F(CSharpTests, SimpleCompilationAndExecution) {
     ASSERT_TRUE(r);
 
     EXPECT_TRUE(fs::exists(assemblyOutput));
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto module = engine.loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+    auto module = engine.loadAssembly(Carrot::IO::Resource("code://TestSimpleCompilation.dll"));
     module->dumpTypes();
 
     auto clazz = module->findClass("", "SimpleClass");
@@ -102,6 +103,8 @@ TEST_F(CSharpTests, SimpleCompilationAndExecution) {
 TEST_F(CSharpTests, ObjectInstantiation) {
     fs::path tempDir = fs::temp_directory_path();
 
+    GetVFS().addRoot("code", tempDir);
+
     fs::path testFile = tempDir / "TestSimpleCompilation.cs";
     generateTestFile(testFile);
     CLEANUP(fs::remove(testFile));
@@ -114,8 +117,7 @@ TEST_F(CSharpTests, ObjectInstantiation) {
     ASSERT_TRUE(r);
 
     EXPECT_TRUE(fs::exists(assemblyOutput));
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto module = engine.loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+    auto module = engine.loadAssembly(Carrot::IO::Resource("code://TestSimpleCompilation.dll"));
     module->dumpTypes();
 
     auto clazz = module->findClass("", "SimpleClass");
@@ -139,6 +141,8 @@ TEST_F(CSharpTests, ObjectInstantiation) {
 TEST_F(CSharpTests, Fields) {
     fs::path tempDir = fs::temp_directory_path();
 
+    GetVFS().addRoot("code", tempDir);
+
     fs::path testFile = tempDir / "TestSimpleCompilationFields.cs";
     generateTestFile(testFile);
     CLEANUP(fs::remove(testFile));
@@ -151,8 +155,7 @@ TEST_F(CSharpTests, Fields) {
     ASSERT_TRUE(r);
 
     EXPECT_TRUE(fs::exists(assemblyOutput));
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto module = engine.loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+    auto module = engine.loadAssembly(Carrot::IO::Resource("code://TestSimpleCompilationFields.dll"));
     module->dumpTypes();
 
     auto clazz = module->findClass("", "SimpleClass");
@@ -178,6 +181,8 @@ TEST_F(CSharpTests, Fields) {
 TEST_F(CSharpTests, FindClassMultipleAssemblies) {
     fs::path tempDir = fs::temp_directory_path();
 
+    GetVFS().addRoot("code", tempDir);
+
     auto makeSimpleModule = [&](const std::string& className) -> std::shared_ptr<CSAssembly> {
         const std::string csFilename = className + ".cs";
         const fs::path testFile = tempDir / csFilename;
@@ -200,8 +205,7 @@ TEST_F(CSharpTests, FindClassMultipleAssemblies) {
         }
 
         EXPECT_TRUE(fs::exists(assemblyOutput));
-        auto contents = Carrot::IO::readFile(assemblyOutput.string());
-        auto m = engine.loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+        auto m = engine.loadAssembly(Carrot::IO::Resource(Carrot::sprintf("code://%s", dllName.c_str())));
         m->dumpTypes();
         return m;
     };
@@ -227,6 +231,8 @@ TEST_F(CSharpTests, FindClassMultipleAssemblies) {
 
 TEST_F(CSharpTests, FindSubclasses) {
     fs::path tempDir = fs::temp_directory_path();
+
+    GetVFS().addRoot("code", tempDir);
 
     fs::path testFile = tempDir / "TestFindSubclasses.cs";
 
@@ -255,8 +261,7 @@ namespace InsideNamespace {
     ASSERT_TRUE(r);
 
     EXPECT_TRUE(fs::exists(assemblyOutput));
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto module = engine.loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+    auto module = engine.loadAssembly(Carrot::IO::Resource("code://TestFindSubclasses.dll"));
 
     CSClass* subclass = module->findClass("", "BaseClass");
     ASSERT_NE(subclass, nullptr);
