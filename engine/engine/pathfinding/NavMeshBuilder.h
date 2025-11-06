@@ -8,7 +8,6 @@
 #include <engine/pathfinding/NavMesh.h>
 #include <engine/render/Model.h>
 #include <core/async/Counter.h>
-#include <core/async/Coroutines.hpp>
 #include <engine/task/TaskScheduler.h>
 #include <glm/gtx/hash.hpp>
 

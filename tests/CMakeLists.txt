@@ -36,7 +36,6 @@ add_engine_precompiled_headers(Engine-Tests)
 
 add_executable(
         Core-Tests
-        core/Coroutines.cpp
         core/Counters.cpp
         core/CSharpScripting.cpp
         core/Document.cpp

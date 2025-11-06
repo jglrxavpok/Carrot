@@ -67,14 +67,8 @@ namespace Carrot::Async {
 
         Counter& operator=(const Counter& other) = delete;
 
-    public: // support for coroutines
-        void onCoroutineSuspend(std::coroutine_handle<> h);
-
-        CounterLanePair resumeOnLane(const TaskLane& lane);
-
     private:
         std::atomic_uint32_t internalCounter;
-        std::coroutine_handle<> toContinue = nullptr;
 
         std::mutex sleepLock;
         std::condition_variable_any sleepCondition;
@@ -83,8 +77,5 @@ namespace Carrot::Async {
         std::source_location source; // helps debug
         Cider::SpinLock waitQueueLock;
         Cider::WaitQueue fibersWaiting;
-
-        template<typename T>
-        friend class CoroutinePromiseType;
     };
 }

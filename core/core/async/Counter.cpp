@@ -6,8 +6,6 @@
 
 #include <cider/Mutex.h>
 
-#include "Coroutines.hpp"
-
 namespace Carrot::Async {
     Counter::~Counter() {
         verify(internalCounter == 0, "Destroying a counter that has not yet reached 0");
@@ -37,9 +35,6 @@ namespace Carrot::Async {
 
         if(currentValue == 1) {
             sleepCondition.notify_all();
-            if(toContinue) {
-                toContinue();
-            }
 
             Cider::UniqueSpinLock g { waitQueueLock };
             fibersWaiting.notifyAll(g);
@@ -93,18 +88,4 @@ namespace Carrot::Async {
         }
         fibersWaiting.suspendAndWait(g, task);
     }
-
-    void Counter::onCoroutineSuspend(std::coroutine_handle<> h) {
-        verify(h, "Coroutine handle must be valid coroutine.");
-        verify(!toContinue, "There is already a coroutine waiting for this counter.");
-        toContinue = h;
-    }
-
-    CounterLanePair Counter::resumeOnLane(const TaskLane& lane) {
-        return {
-            .counter = *this,
-            .lane = lane,
-        };
-    }
-
 }

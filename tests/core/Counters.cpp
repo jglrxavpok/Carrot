@@ -3,7 +3,6 @@
 //
 #include <gtest/gtest.h>
 #include <future>
-#include <core/async/Coroutines.hpp>
 #include <core/async/Counter.h>
 
 using namespace Carrot::Async;
@@ -15,37 +14,6 @@ TEST(Counters, SingleThreadedBehaviour) {
     ASSERT_TRUE(!c.isIdle());
     c.decrement();
     ASSERT_TRUE(c.isIdle());
-}
-
-Task<> someTask(Counter& counter) {
-    counter.increment();
-    co_await counter;
-    co_return;
-}
-
-TEST(Counters, CoroutineWait) {
-    Counter c;
-    Task<> task = someTask(c);
-    ASSERT_TRUE(c.isIdle());
-    task();
-    ASSERT_TRUE(!c.isIdle());
-    ASSERT_FALSE(task.done());
-    ASSERT_FALSE(task()); // task must not continue
-    ASSERT_FALSE(task.done());
-    c.decrement(); // task is continued here
-    ASSERT_TRUE(task.done());
-}
-
-TEST(Counters, OnlyOneCoroutine) {
-    Counter c;
-    Task<> task1 = someTask(c);
-    Task<> task2 = someTask(c);
-    EXPECT_TRUE(c.isIdle());
-    task1();
-    EXPECT_THROW(task2(), Carrot::Assertions::Error);
-
-    c.decrement();
-    c.decrement();
 }
 
 TEST(Counters, BusyWait) {

@@ -7,7 +7,6 @@ set(CORE-SOURCES
         ${CoreRoot}allocators/StackAllocator.cpp
         ${CoreRoot}allocators/TrackingAllocator.cpp
 
-        ${CoreRoot}async/Coroutines.cpp
         ${CoreRoot}async/Counter.cpp
         ${CoreRoot}async/Executors.cpp
         ${CoreRoot}async/Locks.cpp

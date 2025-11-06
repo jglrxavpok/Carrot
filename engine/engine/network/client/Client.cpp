@@ -4,7 +4,6 @@
 
 #include "Client.h"
 #include <engine/utils/Macros.h>
-#include <coroutine>
 #include <core/utils/stringmanip.h>
 #include <core/io/Logging.hpp>
 #include <engine/network/packets/HandshakePackets.h>

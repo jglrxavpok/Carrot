@@ -26,7 +26,6 @@ namespace Carrot {
 #include "engine/Configuration.h"
 #include "engine/Capabilities.h"
 #include "engine/io/actions/InputVectors.h"
-#include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
 #include <engine/scene/SceneManager.h>
 #include <engine/audio/AudioManager.h>
@@ -384,13 +383,6 @@ namespace Carrot {
         void changeSettings(const Settings& newSettings);
 
     public: // async stuff
-        /// co_awaits the next engine frame. Used for coroutines.
-        Async::Task<> cowaitNextFrame();
-
-        void transferOwnership(Async::Task<>&& task) {
-            nextFrameAwaiter.transferOwnership(std::move(task));
-        }
-
         /// Adds a task that will run parallel to other systems during the frame.
         /// WARNING: WILL BE WAITED AT THE END OF THE FRAME. DON'T DO ANYTHING THAT COULD FREEZE THE MAIN LOOP
         void addFrameTask(FrameTask&& task);
@@ -492,7 +484,6 @@ namespace Carrot {
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
         std::unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
-        Async::DeferringAwaiter nextFrameAwaiter;
 
         std::function<void()> shutdownRequestHandler; // TODO GMTK: hook to Game::hasRequestedShutdown?
 

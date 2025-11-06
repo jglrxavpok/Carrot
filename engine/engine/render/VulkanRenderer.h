@@ -26,7 +26,6 @@
 #include <backends/imgui_impl_glfw.h>
 #include <engine/render/RenderPacketContainer.h>
 #include <engine/render/GBufferDrawData.h>
-#include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
 

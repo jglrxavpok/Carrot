@@ -485,11 +485,6 @@ void Carrot::Engine::run() {
         {
             ZoneScopedN("Setup frame");
             renderer.newFrame(frames);
-
-            {
-                ZoneScopedN("nextFrameAwaiter.resume_all()");
-                nextFrameAwaiter.resume_all();
-            }
         }
 
         if(showInputDebug) {
@@ -542,8 +537,6 @@ void Carrot::Engine::run() {
         drawFrame(currentFrame);
 
         Carrot::Log::flush();
-
-        nextFrameAwaiter.cleanup();
 
         if(settings.fpsLimit != 0) {
             auto entireFrameTime = std::chrono::steady_clock::now() - frameStartTime;
@@ -1697,10 +1690,6 @@ Carrot::VR::Session& Carrot::Engine::getVRSession() {
 void Carrot::Engine::changeSettings(const Settings& newSettings) {
     // may need fancier application in the future, for now a single float so easy
     settings = newSettings;
-}
-
-Carrot::Async::Task<> Carrot::Engine::cowaitNextFrame() {
-    co_await nextFrameAwaiter;
 }
 
 void Carrot::Engine::addFrameTask(FrameTask&& task) {

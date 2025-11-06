@@ -18,7 +18,6 @@
 #include <core/io/Logging.hpp>
 #include <core/io/FileFormats.h>
 #include <engine/utils/Profiling.h>
-#include <core/async/Coroutines.hpp>
 #include <engine/task/TaskScheduler.h>
 #include <engine/render/resources/ResourceAllocator.h>
 

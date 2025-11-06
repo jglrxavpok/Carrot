@@ -8,7 +8,6 @@
 #include <vector>
 #include <core/ThreadSafeQueue.hpp>
 #include <core/async/Counter.h>
-#include <core/async/Coroutines.hpp>
 #include <core/data/Hashes.h>
 #include <core/tasks/Tasks.h>
 #include <cider/Fiber.h>
