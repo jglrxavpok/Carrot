@@ -20,7 +20,7 @@ namespace Peeler {
                                      });
 
         engine.getVulkanDriver().getResourceRepository().getTextureUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
-        const auto& gbufferPass = graphBuilder.getPassData<PassData::GBuffer>("gbuffer").value();
+        const auto gbufferPass = graphBuilder.getPassData<PassData::GBuffer>("gbuffer").value();
         engine.getVulkanDriver().getResourceRepository().getTextureUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
 
         gameTexture = addOutlinePass(graphBuilder, resolvePassResult);
@@ -30,7 +30,7 @@ namespace Peeler {
     }
 
     Carrot::Render::FrameResource Application::addOutlinePass(GraphBuilder& graphBuilder, const Carrot::Render::FrameResource& finalRenderedImage) {
-        const auto& lightingPass = graphBuilder.getPassData<Carrot::Render::PassData::LightingResources>("lighting").value();
+        const auto lightingPass = graphBuilder.getPassData<Carrot::Render::PassData::LightingResources>("lighting").value();
         auto& outlinePass = graphBuilder.addPass<PassData::PostProcessing>("editor-outlines", [&](GraphBuilder& graph, Pass<PassData::PostProcessing>& pass, PassData::PostProcessing& data) {
             data.postLighting = graph.read(lightingPass.gBuffer.entityID, vk::ImageLayout::eShaderReadOnlyOptimal);
             data.postProcessed = graph.write(finalRenderedImage, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);

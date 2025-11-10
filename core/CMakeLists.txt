@@ -163,5 +163,11 @@ add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
 add_core_precompiled_headers(CarrotCore)
 
+add_library(CarrotCore-ASAN STATIC ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
+add_core_includes(CarrotCore-ASAN)
+target_link_libraries(CarrotCore-ASAN PUBLIC ${ALL_CORE_LIBS})
+add_core_precompiled_headers(CarrotCore-ASAN)
+make_asan_target(CarrotCore-ASAN)
+
 file(COPY ${MonoDLLs} DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.dll DESTINATION ${CMAKE_BINARY_DIR})

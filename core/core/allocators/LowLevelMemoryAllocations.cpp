@@ -7,7 +7,12 @@
 #include <mimalloc.h>
 #include <core/allocators/LowLevelMemoryAllocations.h>
 
+#ifdef USE_ASAN
+#define USE_DEFAULT_ALLOCATOR 1
+#else
 #define USE_DEFAULT_ALLOCATOR 0
+#endif
+
 #define MEM_TRACKING 0
 
 #if MEM_TRACKING == 1 and defined(TRACY_ENABLE)

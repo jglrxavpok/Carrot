@@ -190,6 +190,26 @@ set(SLANG_ENABLE_SLANGI FALSE)
 set(SLANG_ENABLE_GFX FALSE)
 add_subdirectory(thirdparty/slang)
 
+function(make_asan_target Target)
+    target_compile_definitions("${Target}" PRIVATE USE_ASAN=1)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+            #
+            #   Requires manual copy of ASAN dll inside output directory (next to final executable file)
+            #
+            set(ASSIMP_ASAN ON)
+            target_compile_options("${Target}" PRIVATE -fsanitize=address) # /MD will be used implicitly
+            #target_link_libraries("${Target}" PRIVATE clang_rt.asan_dynamic-x86_64 clang_rt.asan_dynamic_runtime_thunk-x86_64)
+            #target_link_options("${Target}" PRIVATE /wholearchive:clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+            target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=0)
+        endif()
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        set(ASSIMP_ASAN OFF)
+        target_compile_options("${Target}" PRIVATE -fsanitize=address)
+        target_link_options("${Target}" PRIVATE -fsanitize=address -static-libasan)
+    endif()
+endfunction()
+
 function(add_includes Target)
     add_core_includes(${Target})
     target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)
@@ -336,19 +356,6 @@ function(copy_all_resources)
     copy_resources(scenes)
     copy_resources(text)
     copy_resources(misc)
-endfunction()
-
-function(make_asan_target Target)
-    if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-        #
-        #   Requires manual copy of ASAN dll inside output directory (next to final executable file)
-        #
-        set(ASSIMP_ASAN ON)
-        target_compile_options("${Target}" PRIVATE -fsanitize=address) # /MD will be used implicitly
-        #target_link_libraries("${Target}" PRIVATE clang_rt.asan_dynamic-x86_64 clang_rt.asan_dynamic_runtime_thunk-x86_64)
-        #target_link_options("${Target}" PRIVATE /wholearchive:clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
-        target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=0)
-    endif()
 endfunction()
 
 add_subdirectory(engine)

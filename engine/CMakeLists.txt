@@ -287,10 +287,14 @@ set(ALL_BASE_LIBS
         gvc
         gvplugin_dot_layout
         gvplugin_core
-        CarrotCore fertilizer-lib
+        fertilizer-lib
         ${ADDITIONAL_LIBS})
 
 add_dependencies(CarrotCore
+        OpenXR::headers
+        OpenXR::openxr_loader
+        generate_headers)
+add_dependencies(CarrotCore-ASAN
         OpenXR::headers
         OpenXR::openxr_loader
         generate_headers)
@@ -305,12 +309,12 @@ file(COPY "resources/icon128.ktx2" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
 add_library(Engine-Base STATIC ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
-target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
+target_link_libraries(Engine-Base PUBLIC CarrotCore ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation
 
 add_library(Engine-ASAN STATIC ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
-target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
+target_link_libraries(Engine-ASAN PUBLIC CarrotCore-ASAN ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)
 add_dependencies(Engine-ASAN generate_headers) # OpenXR-Hpp header generation

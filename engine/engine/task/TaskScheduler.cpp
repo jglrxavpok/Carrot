@@ -144,7 +144,7 @@ namespace Carrot {
             ZoneScopedN("allocate TaskData");
             taskData = std::make_shared<TaskData>();
         }
-        std::string* pTracyID = new std::string{Carrot::sprintf("Fiber %ll", FiberCreatedCount++)};
+        std::string* pTracyID = new std::string{Carrot::sprintf("Fiber %lld", FiberCreatedCount++)};
         auto fiberProc = [pTracyID, pTaskKeepAlive = taskData, pTaskScheduler = this](Cider::FiberHandle& fiber) {
             {
                 struct Data {

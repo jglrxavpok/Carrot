@@ -10,7 +10,7 @@
 namespace Carrot {
     template<typename TElement>
     constexpr std::size_t getVectorElementAlignment() {
-        return std::max(static_cast<std::size_t>(__STDCPP_DEFAULT_NEW_ALIGNMENT__), alignof(TElement));
+        return alignof(TElement);
     }
 
 #define VECTOR_TEMPLATE template<typename TElement, typename Traits> requires IsValidVectorTraits<Traits>

@@ -91,10 +91,18 @@ add_includes(Peeler)
 add_editor_defines(Peeler)
 target_link_libraries(Peeler PUBLIC Peeler-Lib)
 
+add_executable(Peeler-ASAN ${EditorRoot}main.cpp)
+add_includes(Peeler-ASAN)
+add_editor_defines(Peeler-ASAN)
+target_link_libraries(Peeler-ASAN PUBLIC Peeler-ASAN-Lib)
+make_asan_target(Peeler-ASAN)
+
 add_dependencies(Peeler Runtime)
+add_dependencies(Peeler-ASAN Runtime)
 
 add_engine_precompiled_headers(Peeler-Lib)
 add_engine_precompiled_headers(Peeler-ASAN-Lib)
+add_engine_precompiled_headers(Peeler-ASAN)
 add_engine_precompiled_headers(Peeler)
 
 copy_all_resources() # game resources
