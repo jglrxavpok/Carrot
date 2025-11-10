@@ -157,8 +157,8 @@ function(add_core_includes Target)
 
 endfunction()
 
-set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp spirv-cross-core spirv-cross-glsl spirv-cross-reflect glm)
-add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
+set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp spirv-cross-core spirv-cross-glsl spirv-cross-reflect glm glslang SPIRV)
+add_library(CarrotCore STATIC ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
 add_core_precompiled_headers(CarrotCore)

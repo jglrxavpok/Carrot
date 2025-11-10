@@ -1,4 +1,4 @@
-add_library(shadercompiler-lib
+add_library(shadercompiler-lib STATIC
         FileIncluder.cpp
         GlslCompiler.cpp
         ShaderCompiler.cpp
@@ -7,7 +7,7 @@ add_library(shadercompiler-lib
         ../../thirdparty/glslang/glslang/ResourceLimits/ResourceLimits.cpp
 )
 add_core_includes(shadercompiler-lib)
-target_link_libraries(shadercompiler-lib PUBLIC glslang SPIRV CarrotCore slang)
+target_link_libraries(shadercompiler-lib PUBLIC glslang glslang::SPIRV CarrotCore slang)
 
 add_executable(shadercompiler main.cpp)
 target_link_libraries(shadercompiler PUBLIC shadercompiler-lib)

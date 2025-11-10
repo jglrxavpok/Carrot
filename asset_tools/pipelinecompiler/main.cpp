@@ -15,6 +15,10 @@
 
 #include "../shadercompiler/ShaderCompiler.h"
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_hpp_macros.hpp>
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 void printUsage() {
     std::cerr << "pipelinecompiler [base path] [output base path] [relative path of pipeline]\n"

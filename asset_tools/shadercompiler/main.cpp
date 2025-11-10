@@ -17,6 +17,11 @@
 #include "ShaderCompiler.h"
 #include "core/utils/PortabilityHelper.h"
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_hpp_macros.hpp>
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 void showUsage() {
     std::cerr <<
         "shadercompiler [base path] [input file] [output file] [stage] (entry point)" << '\n'

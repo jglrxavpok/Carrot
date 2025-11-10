@@ -279,14 +279,15 @@ set(THIRDPARTY-SOURCES
         )
 
 set(ALL_BASE_LIBS
-        CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV Jolt
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL Jolt
         OpenXR::headers
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
+        cgraph
         gvc
         gvplugin_dot_layout
         gvplugin_core
+        CarrotCore fertilizer-lib
         ${ADDITIONAL_LIBS})
 
 add_dependencies(CarrotCore
@@ -303,12 +304,12 @@ file(COPY "resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/icon128.ktx2" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
-add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
+add_library(Engine-Base STATIC ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation
 
-add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
+add_library(Engine-ASAN STATIC ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)

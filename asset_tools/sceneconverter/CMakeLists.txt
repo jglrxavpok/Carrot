@@ -1,4 +1,4 @@
-add_library(sceneconverter-lib
+add_library(sceneconverter-lib STATIC
         sceneconverter.cpp
 )
 add_executable(sceneconverter
