@@ -180,7 +180,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
 
     if(config.runInVR) {
         vrSession = vrInterface->createSession();
-        vkDriver.getResourceRepository().setXRSession(vrSession.get());
+        getResourceRepository().setXRSession(vrSession.get());
     }
 
     if(config.runInVR) {
@@ -553,6 +553,7 @@ void Carrot::Engine::run() {
         Carrot::Threads::reduceCPULoad();
     }
 
+    shuttingDown = true;
     glfwHideWindow(mainWindow.getGLFWPointer());
 
     WaitDeviceIdle();
@@ -714,12 +715,9 @@ void Carrot::Engine::initECS() {
 
 Carrot::Engine::~Engine() {
     Carrot::Render::Sprite::cleanup();
-    renderer.shutdownImGui();
+    ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    for(auto& ctx : tracyCtx) {
-        TracyVkDestroy(ctx);
-    }
     tracyCtx.clear();
     vkDriver.executeDeferredDestructionsNow();
 
@@ -729,13 +727,14 @@ Carrot::Engine::~Engine() {
         optLPPAgent.reset();
     }
 #endif
-/*    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        TracyVkDestroy(tracyCtx[i]);
-    }*/
 }
 
 std::unique_ptr<Carrot::CarrotGame>& Carrot::Engine::getGame() {
     return game;
+}
+
+bool Carrot::Engine::isShuttingDown() const {
+    return shuttingDown;
 }
 
 // TODO: move to renderer
@@ -804,7 +803,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             gpuTimeHistory.push(time);
         }
 
-        TracyVkCollect(tracyCtx[frameIndex], mainCommandBuffers[frameIndex]);
+        TracyVkCollect(tracyCtx[frameIndex].get(), mainCommandBuffers[frameIndex]);
     }
 
     mainCommandBuffers[frameIndex].end();
@@ -1425,14 +1424,14 @@ void Carrot::Engine::onScroll(Window& which, double xScroll, double yScroll) {
     }
 }
 
-TracyVkCtx Carrot::Engine::createTracyContext(const std::string_view& name) {
+Carrot::Profiling::TracyVulkanContext Carrot::Engine::createTracyContext(const std::string_view& name) {
     PFN_vkResetQueryPool ptr_vkResetQueryPool = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetQueryPool;
     PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceCalibrateableTimeDomainsKHR;
     PFN_vkGetCalibratedTimestampsKHR ptr_vkGetCalibratedTimestampsEXT = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetCalibratedTimestampsKHR;
 
     TracyVkCtx tracyCtx = TracyVkContextHostCalibrated(vkDriver.getPhysicalDevice(), getLogicalDevice(), ptr_vkResetQueryPool, ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, ptr_vkGetCalibratedTimestampsEXT);
     TracyVkContextName(tracyCtx, name.data(), name.size());
-    return tracyCtx;
+    return Carrot::Profiling::TracyVulkanContext{tracyCtx};
 }
 
 void Carrot::Engine::setShutdownRequestHandler(std::function<void()> handler) {
@@ -1444,8 +1443,7 @@ void Carrot::Engine::requestShutdown() {
 }
 
 void Carrot::Engine::createTracyContexts() {
-    tracyCtx = std::vector<TracyVkCtx>{ MAX_FRAMES_IN_FLIGHT, nullptr };
-
+    tracyCtx = std::vector<Carrot::Profiling::TracyVulkanContext>{ MAX_FRAMES_IN_FLIGHT };
 
     for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         tracyCtx[i] = createTracyContext(Carrot::sprintf("Main swapchainIndex %d", i));

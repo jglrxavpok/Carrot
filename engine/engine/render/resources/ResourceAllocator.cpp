@@ -5,8 +5,9 @@
 #include "ResourceAllocator.h"
 #include <engine/Engine.h>
 #include <engine/console/RuntimeOption.hpp>
-#include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
+
+#include <vk_mem_alloc.h>
 
 static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1GiB, no particular reason for this exact value
 static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", false);
@@ -61,6 +62,10 @@ namespace Carrot {
     }
 
     ResourceAllocator::~ResourceAllocator() {
+        // can hold references to staging buffers for copies
+        deviceHeap = nullptr;
+        stagingHeap = nullptr;
+        cleanup(std::numeric_limits<u32>::max());
         vmaDestroyVirtualBlock((VmaVirtualBlock)stagingVirtualBlock);
         vmaDestroyVirtualBlock((VmaVirtualBlock)deviceVirtualBlock);
     }
@@ -153,40 +158,48 @@ namespace Carrot {
         }
     }
 
+    void ResourceAllocator::cleanup(u32 expirationFrame) {
+
+        bool hasDeletedStuff = false;
+        do {
+            Carrot::Vector<UniquePtr<Buffer>> toDelete; // outside of lock so that calling Buffer destructor does not deadlock
+            Carrot::Async::LockGuard g { graveyardAccess };
+            if (!dedicatedBufferGraveyard.empty()) {
+                for(std::int64_t index = dedicatedBufferGraveyard.size()-1; index >= 0; index--) {
+                    auto& [frameIndex, pBuffer] = dedicatedBufferGraveyard[index];
+                    if(frameIndex <= expirationFrame) {
+                        toDelete.emplaceBack(std::move(pBuffer));
+                        dedicatedBufferGraveyard.remove(index);
+                    }
+                }
+            }
+            if (!nonDedicatedBufferGraveyard.empty()) {
+                for(std::int64_t index = nonDedicatedBufferGraveyard.size()-1; index >= 0; index--) {
+                    auto& [frameIndex, block, isStaging] = nonDedicatedBufferGraveyard[index];
+                    if(frameIndex <= expirationFrame) {
+                        if(isStaging) {
+                            Carrot::Async::LockGuard g { stagingAccess };
+                            vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, block);
+                        } else {
+                            Carrot::Async::LockGuard g { deviceAccess };
+                            vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, block);
+                        }
+
+                        nonDedicatedBufferGraveyard.remove(index);
+                    }
+                }
+            }
+
+            // TODO: request deletion from VulkanDriver?
+            hasDeletedStuff = !toDelete.empty();
+        } while (hasDeletedStuff);
+    }
+
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
         currentFrame = renderContext.frameNumber;
 
         // clear buffers that are no longer used
-        {
-            Carrot::Vector<UniquePtr<Buffer>> toDelete; // outside of lock so that calling Buffer destructor does not deadlock
-            Carrot::Async::LockGuard g { graveyardAccess };
-
-            for(std::int64_t index = 0; index < dedicatedBufferGraveyard.size();) {
-                auto& [frameIndex, pBuffer] = dedicatedBufferGraveyard[index];
-                if(frameIndex <= currentFrame) {
-                    toDelete.emplaceBack(std::move(pBuffer));
-                    dedicatedBufferGraveyard.remove(index);
-                } else {
-                    index++;
-                }
-            }
-            for(std::int64_t index = 0; index < nonDedicatedBufferGraveyard.size();) {
-                auto& [frameIndex, block, isStaging] = nonDedicatedBufferGraveyard[index];
-                if(frameIndex <= currentFrame) {
-                    if(isStaging) {
-                        Carrot::Async::LockGuard g { stagingAccess };
-                        vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, block);
-                    } else {
-                        Carrot::Async::LockGuard g { deviceAccess };
-                        vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, block);
-                    }
-
-                    nonDedicatedBufferGraveyard.remove(index);
-                } else {
-                    index++;
-                }
-            }
-        }
+        cleanup(currentFrame);
 
         if(!ShowAllocatorDebug) {
             return;
@@ -293,20 +306,22 @@ namespace Carrot {
             return makeDedicated(allocInfo.size);
         }
 
+        VmaVirtualAllocationCreateInfo copy = allocInfo;
+        copy.pUserData = (void*)(u64)GetRenderer().getFrameCount();
         VmaVirtualBlock block = reinterpret_cast<VmaVirtualBlock>(virtualBlock);
         VmaVirtualAllocation alloc;
         VkDeviceSize offset;
-        VkResult result = vmaVirtualAllocate(block, &allocInfo, &alloc, &offset);
+        VkResult result = vmaVirtualAllocate(block, &copy, &alloc, &offset);
         if(result == VK_SUCCESS) {
             BufferAllocation resultBuffer {this };
             resultBuffer.allocation = alloc;
             resultBuffer.dedicated = false;
-            resultBuffer.view = heapStorage.getWholeView().subView(offset, allocInfo.size);
+            resultBuffer.view = heapStorage.getWholeView().subView(offset, copy.size);
            // resultBuffer.name("Unnamed suballoc");
             return resultBuffer;
         } else {
             // if we reach here, no block has space available, create a dedicated buffer
-            return makeDedicated(allocInfo.size);
+            return makeDedicated(copy.size);
         }
     }
 }

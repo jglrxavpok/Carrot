@@ -65,6 +65,12 @@ namespace Carrot {
          */
         void beginFrame(const Carrot::Render::Context& renderContext);
 
+        /**
+         * Clean all resources that are past 'expirationFrame'
+         * @param expirationFrame frame used to expire resources. Use std::numeric_limits::max to clean everything
+         */
+        void cleanup(u32 expirationFrame);
+
     private:
         vk::DeviceSize computeAlignment(vk::BufferUsageFlags usageFlags) const;
 

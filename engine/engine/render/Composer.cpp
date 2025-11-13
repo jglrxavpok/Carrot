@@ -3,6 +3,9 @@
 //
 
 #include "Composer.h"
+
+#include <engine/Engine.h>
+
 #include "RenderPass.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/resources/Mesh.h"
@@ -13,7 +16,7 @@
 namespace Carrot::Render {
     PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
         // graph containing composer pass can be initialised after the 'toDraw' texture has been created
-        driver.getResourceRepository().getTextureUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        driver.getEngine().getResourceRepository().getTextureUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
         auto& r = regions.emplace_back();
         r.toDraw = toDraw;

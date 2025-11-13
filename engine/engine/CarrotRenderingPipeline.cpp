@@ -100,8 +100,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                                vk::ClearColorValue(std::array{0,0,0,0}),
                                                                                vk::ImageLayout::eGeneral
                     );
-                    GetVulkanDriver().getResourceRepository().getTextureUsages(data.momentsHistoryHistoryLength.rootID) |= vk::ImageUsageFlagBits::eSampled;
-                    GetVulkanDriver().getResourceRepository().getTextureUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    GetEngine().getResourceRepository().getTextureUsages(data.momentsHistoryHistoryLength.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    GetEngine().getResourceRepository().getTextureUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph temporal-denoise");

@@ -17,6 +17,10 @@ namespace vk {
     class CommandBuffer;
 }
 
+namespace tracy {
+    class VkCtx;
+}
+
 namespace Carrot::Profiling {
     class ScopedTimer {
     public:
@@ -53,6 +57,28 @@ namespace Carrot::Profiling {
 
     private:
         vk::CommandBuffer& cmds;
+    };
+
+    /**
+     * Wraps a TracyVkCtx to be move-aware
+     */
+    struct TracyVulkanContext {
+        explicit TracyVulkanContext();
+        explicit TracyVulkanContext(tracy::VkCtx* ctx);
+
+        TracyVulkanContext(TracyVulkanContext&& other);
+        TracyVulkanContext& operator=(TracyVulkanContext&& other);
+
+        TracyVulkanContext(const TracyVulkanContext& other) = delete;
+        TracyVulkanContext& operator=(const TracyVulkanContext& other) = delete;
+
+        ~TracyVulkanContext();
+
+        operator tracy::VkCtx*() const;
+        tracy::VkCtx* get() const;
+
+    private:
+        tracy::VkCtx* ctx = nullptr;
     };
 
 #define ScopedMarkerNamed(markerText, markerName) ZoneScopedN(markerText); Carrot::Profiling::ScopedPixMarker markerName { markerText }

@@ -21,7 +21,7 @@ namespace Carrot::Render {
     public:
         class BufferChain;
 
-        ResourceRepository(VulkanDriver& driver): driver(driver) {}
+        ResourceRepository() = default;
 
     public:
         Texture& getTexture(const FrameResource& texture, u64 frameNumber);
@@ -97,8 +97,6 @@ namespace Carrot::Render {
             Vector<Carrot::Render::Texture::Ref> textures;
         };
     private:
-
-        VulkanDriver& driver;
         std::unordered_map<Carrot::UUID, TextureChain> textures;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages;
         std::unordered_map<Carrot::UUID, Carrot::UUID> resourceOwners;

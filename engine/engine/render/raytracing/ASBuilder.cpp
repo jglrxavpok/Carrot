@@ -191,9 +191,7 @@ namespace Carrot {
 
 // --
 
-Carrot::ASBuilder::PerThreadCommandObjects::~PerThreadCommandObjects() {
-    TracyVkDestroy(tracyCtx);
-}
+Carrot::ASBuilder::PerThreadCommandObjects::~PerThreadCommandObjects() {}
 
 Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     enabled = GetCapabilities().supportsRaytracing;
@@ -213,9 +211,6 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
 }
 
 Carrot::ASBuilder::~ASBuilder() {
-    for(auto& ctx : tlasBuildTracyCtx) {
-        TracyVkDestroy(ctx);
-    }
 }
 
 
@@ -355,7 +350,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         // ensure we still get Tracy's profiling data even when not building BLASes
         GetEngine().getVulkanDriver().performSingleTimeComputeCommands([&](vk::CommandBuffer& commands) {
             for(auto& ctx : blasBuildTracyContextes[renderContext.frameIndex]) {
-                TracyVkCollect(ctx, commands);
+                TracyVkCollect(ctx.get(), commands);
             }
         }, false /* don't wait, just go */);
     }
@@ -482,7 +477,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         Carrot::Vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfos;
         Carrot::Vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges;
 
-        TracyVkCtx tracyContext;
+        Carrot::Profiling::TracyVulkanContext* pTracyContext;
     };
 
     struct PerBlas {
@@ -513,7 +508,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     for (std::size_t bucketIndex = 0; bucketIndex < BLASBuildBucketCount; bucketIndex++) {
         auto& bucket = buckets[bucketIndex];
-        bucket.tracyContext = blasBuildTracyContextes[renderContext.frameIndex][bucketIndex];
+        bucket.pTracyContext = &blasBuildTracyContextes[renderContext.frameIndex][bucketIndex];
         bucket.buildInfos.setGrowthFactor(2);
         bucket.pBuildRanges.setGrowthFactor(2);
         bucket.prebuiltContents.setGrowthFactor(2);
@@ -741,7 +736,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             ZoneScopedN("Record bucket");
             if(!bucket.buildInfos.empty() || !bucket.prebuiltContents.empty()) {
                 auto& cmds = bucket.cmds;
-                TracyVkCtx tracyCtx = bucket.tracyContext;
+                TracyVkCtx tracyCtx = bucket.pTracyContext->get();
                 cmds = getBlasBuildCommandBuffer(renderContext);
                 cmds.begin(vk::CommandBufferBeginInfo {
                     .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -1066,7 +1061,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         buildCommand.buildAccelerationStructuresKHR(buildInfo, &buildOffsetInfo);
         GetVulkanDriver().setFormattedMarker(buildCommand, "After TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
 
-        TracyVkCollect(tlasBuildTracyCtx[renderContext.frameIndex], buildCommand);
+        TracyVkCollect(tlasBuildTracyCtx[renderContext.frameIndex].get(), buildCommand);
     }
     buildCommand.end();
 

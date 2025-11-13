@@ -181,7 +181,7 @@ namespace Carrot::Render {
                                                              vk::Format::eR32G32B32A32Sfloat,
                                                              framebufferSize,
                                                              vk::ImageLayout::eGeneral);
-             graph.getVulkanDriver().getResourceRepository().getTextureUsages(data.historyLength.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+             graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.historyLength.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
              data.pingPong[0] = graph.createStorageTarget(Carrot::sprintf("%s (0)", name),
                                                              format,
                                                              framebufferSize,

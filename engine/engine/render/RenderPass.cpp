@@ -389,7 +389,7 @@ void Carrot::Render::CompiledPass::onSwapchainSizeChange(Window& window, int new
             .width = static_cast<std::uint32_t>(newWidth),
             .height = static_cast<std::uint32_t>(newHeight),
     };
-    getVulkanDriver().getResourceRepository().removeBelongingTo(passID);
+    getVulkanDriver().getEngine().getResourceRepository().removeBelongingTo(passID);
     recreateResources();
 }
 

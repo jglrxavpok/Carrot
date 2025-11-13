@@ -318,7 +318,7 @@ namespace Carrot::VR {
         this->leftEye = leftEye;
         this->rightEye = rightEye;
 
-        auto& repo = vr.getEngine().getVulkanDriver().getResourceRepository();
+        auto& repo = vr.getEngine().getResourceRepository();
         repo.getTextureUsages(leftEye.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
         repo.getTextureUsages(rightEye.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
     }
@@ -372,7 +372,7 @@ namespace Carrot::VR {
                 });
 
                 auto blit = [&](vk::CommandBuffer& cmds, const Render::FrameResource& eyeTexture, std::uint32_t index, std::uint32_t swapchainIndex) {
-                    auto& texture = vr.getEngine().getVulkanDriver().getResourceRepository().getTexture(eyeTexture, swapchainIndex);
+                    auto& texture = vr.getEngine().getResourceRepository().getTexture(eyeTexture, swapchainIndex);
                     vk::ImageBlit blitInfo;
                     blitInfo.dstSubresource.aspectMask = blitInfo.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
                     blitInfo.dstSubresource.layerCount = blitInfo.srcSubresource.layerCount = 1;

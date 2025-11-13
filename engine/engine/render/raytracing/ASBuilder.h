@@ -8,6 +8,8 @@
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
 #include <core/async/Locks.h>
+#include <core/utils/Profiling.h>
+
 #include "SceneElement.h"
 #include "engine/render/resources/PerFrame.h"
 #include "engine/vulkan/SwapchainAware.h"
@@ -290,7 +292,7 @@ namespace Carrot {
         Carrot::Render::PerFrame<vk::UniqueCommandBuffer> tlasBuildCommands{};
         std::vector<vk::UniqueQueryPool> queryPools{};
         std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
-        Carrot::Render::PerFrame<TracyVkCtx> tlasBuildTracyCtx; // [swapchainIndex]
+        Carrot::Render::PerFrame<Carrot::Profiling::TracyVulkanContext> tlasBuildTracyCtx; // [swapchainIndex]
 
         std::shared_ptr<Carrot::BufferAllocation> geometriesBuffer;
         std::shared_ptr<Carrot::BufferAllocation> instancesBuffer;
@@ -304,7 +306,7 @@ namespace Carrot {
         // BLAS build buckets will record commands on different threads, so we need a different pool & Tracy context per thread
         struct PerThreadCommandObjects {
             vk::UniqueCommandPool commandPool; //< where to allocate command buffers from for a given thread
-            TracyVkCtx tracyCtx;
+            Carrot::Profiling::TracyVulkanContext tracyCtx;
 
             PerThreadCommandObjects() = default;
             PerThreadCommandObjects(PerThreadCommandObjects&&) = default;
@@ -312,7 +314,7 @@ namespace Carrot {
             ~PerThreadCommandObjects();
         };
         Carrot::Render::PerFrame<std::unique_ptr<Carrot::Async::ParallelMap<std::thread::id, PerThreadCommandObjects>>> blasBuildCommandObjects;
-        Carrot::Render::PerFrame<std::array<TracyVkCtx, BLASBuildBucketCount>> blasBuildTracyContextes;
+        Carrot::Render::PerFrame<std::array<Carrot::Profiling::TracyVulkanContext, BLASBuildBucketCount>> blasBuildTracyContextes;
         Carrot::Render::PerFrame<std::array<BufferAllocation, 2>> prebuiltBLASStorages; // to avoid buffers being reused while GPU still reads from it (one staging, one device)
         Carrot::Render::PerFrame<vk::UniqueSemaphore> serializedCopySemaphore;
 

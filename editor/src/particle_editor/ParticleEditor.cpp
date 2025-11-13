@@ -266,7 +266,7 @@ void Peeler::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderCon
     ImGui::SetNextWindowSize(previewSize, ImGuiCond_FirstUseEver);
     if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
         auto windowSize = ImGui::GetContentRegionAvail();
-        auto& texture = renderContext.renderer.getVulkanDriver().getResourceRepository().getTexture(previewColorTexture, renderContext.frameNumber);
+        auto& texture = renderContext.renderer.getEngine().getResourceRepository().getTexture(previewColorTexture, renderContext.frameNumber);
         ImGui::Image(texture.getImguiID(), windowSize);
         // TODO camera controls
     }

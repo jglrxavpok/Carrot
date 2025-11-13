@@ -96,7 +96,7 @@ namespace Carrot {
     public:
         using FrameTask = std::function<void()>;
 
-        std::vector<TracyVkCtx> tracyCtx{};
+        std::vector<Carrot::Profiling::TracyVulkanContext> tracyCtx{};
 
         static Carrot::Engine& getInstance() { return *instance; }
 
@@ -110,6 +110,8 @@ namespace Carrot {
 
         /// Stops the game, triggering shutdown process and closing window.
         void stop();
+
+        bool isShuttingDown() const;
 
         std::unique_ptr<Carrot::CarrotGame>& getGame();
 
@@ -180,6 +182,8 @@ namespace Carrot {
 
         VulkanDriver& getVulkanDriver() { return vkDriver; };
 
+        Render::ResourceRepository& getResourceRepository() { return resourceRepository; }
+
         VulkanRenderer& getRenderer() { return renderer; };
 
         GBuffer& getGBuffer() { return renderer.getGBuffer(); };
@@ -228,7 +232,7 @@ namespace Carrot {
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
         VR::Session& getVRSession();
 
-        TracyVkCtx createTracyContext(const std::string_view& name);
+        Carrot::Profiling::TracyVulkanContext createTracyContext(const std::string_view& name);
 
         /**
          * Sets the code that is run when a game asks for shutdown.
@@ -429,6 +433,7 @@ namespace Carrot {
         float currentFPS = 0.0f;
         std::chrono::duration<float> timeBetweenUpdates;
         bool running = true;
+        bool shuttingDown = false;
         bool grabbingCursor = false;
 
         std::unique_ptr<VR::Interface> vrInterface = nullptr;
@@ -436,6 +441,7 @@ namespace Carrot {
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
+        Render::ResourceRepository resourceRepository;
         std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers; //< renderer depends on it (because it loads a few default pipelines)
         AssetServer assetServer{ vfs }; // before the renderer: the renderer needs a few default assets for its initialisation
         VulkanRenderer renderer;

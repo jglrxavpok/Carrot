@@ -14,6 +14,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
+#include <tracy/TracyVulkan.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -83,5 +84,33 @@ namespace Carrot::Profiling {
         cmds.endDebugUtilsLabelEXT();
     }
 
+    TracyVulkanContext::TracyVulkanContext() {}
 
+    TracyVulkanContext::TracyVulkanContext(tracy::VkCtx* ctx) {
+        this->ctx = ctx;
+    }
+
+    TracyVulkanContext::TracyVulkanContext(TracyVulkanContext&& other) {
+        *this = std::move(other);
+    }
+
+    TracyVulkanContext& TracyVulkanContext::operator=(TracyVulkanContext&& other) {
+        this->ctx = other.ctx;
+        other.ctx = nullptr;
+        return *this;
+    }
+
+    TracyVulkanContext::~TracyVulkanContext() {
+        if (ctx) {
+            TracyVkDestroy(ctx);
+        }
+    }
+
+    TracyVulkanContext::operator tracy::VkCtx*() const {
+        return ctx;
+    }
+
+    tracy::VkCtx* TracyVulkanContext::get() const {
+        return ctx;
+    }
 }

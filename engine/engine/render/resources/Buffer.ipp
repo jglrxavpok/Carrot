@@ -66,7 +66,7 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    heldStagingBuffer = internalStagingBuffer(totalLength);
+    heldStagingBuffer = internalStagingBuffer(totalLength); // TODO: actually quite dangerous when 'this' is a heap from ResourceAllocator??
     auto stagingBuffer = heldStagingBuffer.view;
 
     // upload data to staging buffer

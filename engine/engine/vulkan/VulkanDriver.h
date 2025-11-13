@@ -161,8 +161,6 @@ namespace Carrot {
 
         vk::Format getDepthFormat() { return depthFormat; };
 
-        Render::ResourceRepository& getResourceRepository() { return *resourceRepository; };
-
         const Configuration& getConfiguration() { return config; }
 
         bool hasDebugNames() const;
@@ -272,8 +270,6 @@ namespace Carrot {
         vk::Format depthFormat = vk::Format::eUndefined;
 
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
-
-        std::unique_ptr<Render::ResourceRepository> resourceRepository = nullptr;
 
         Async::SpinLock deferredDestroysLock;
         std::unordered_map<std::uint32_t, std::vector<DeferredCommandBufferDestruction>> deferredCommandBufferDestructions;
