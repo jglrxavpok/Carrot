@@ -261,7 +261,7 @@ Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shar
         return {};
 
     BLASHandleSlot& slot = allocateSlot();
-    slot.pBlas = Carrot::makeUnique<BLAS>(Allocator::getDefault(), meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
+    slot.pBlas.emplace(meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
     slot.pBlas->self.pBuilder = this;
     slot.pBlas->self.generationIndex = slot.generationIndex;
     slot.pBlas->self.index = slot.index;
@@ -276,7 +276,7 @@ Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shar
     if(!enabled)
         return {};
     BLASHandleSlot& slot = allocateSlot();
-    slot.pBlas = Carrot::makeUnique<BLAS>(Allocator::getDefault(), meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
+    slot.pBlas.emplace(meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
     slot.pBlas->self.pBuilder = this;
     slot.pBlas->self.generationIndex = slot.generationIndex;
     slot.pBlas->self.index = slot.index;
@@ -348,11 +348,11 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         if(toBuild.size() > 1000) {
             return;
         }
-        BLAS* pBlas = slot.pBlas;
-        if (pBlas) {
-            if(!pBlas->isBuilt() || dirtyBlases) {
-                toBuild.push_back(pBlas->getHandle());
-                pBlas->built = false;
+        if (slot.pBlas.has_value()) {
+            BLAS& blas = slot.pBlas.value();
+            if(!blas.isBuilt() || dirtyBlases) {
+                toBuild.push_back(blas.getHandle());
+                blas.built = false;
             }
         }
     });
@@ -1209,8 +1209,37 @@ Carrot::BLASHandleSlot& Carrot::ASBuilder::allocateSlot() {
     return slot;
 }
 
+namespace std {
+    template<>
+    void swap(Carrot::BLAS& a, Carrot::BLAS& b) noexcept {
+        Carrot::BLAS tmp = std::move(a);
+        a = std::move(b);
+        b = std::move(a);
+    }
+}
+
 // Handle management
 namespace Carrot {
+    BLASHandleSlot::BLASHandleSlot(BLASHandleSlot&& toMove) {
+        *this = std::move(toMove);
+    }
+
+    BLASHandleSlot& BLASHandleSlot::operator=(BLASHandleSlot&& toMove) {
+        if (this == &toMove) {
+            return *this;
+        }
+        pBlas.swap(toMove.pBlas);
+        toMove.pBlas.reset();
+
+        refCount = toMove.index;
+        index = toMove.index;
+        generationIndex = toMove.generationIndex;
+        toMove.refCount = 0;
+        toMove.index = 0;
+        toMove.generationIndex = 0;
+        return *this;
+    }
+
     void BLASHandleSlot::increaseRef() {
         refCount++;
     }
@@ -1280,7 +1309,7 @@ namespace Carrot {
         BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
         if (pSlot) {
             pSlot->increaseRef(); // TODO: multithreading?
-            return pSlot->pBlas;
+            return &pSlot->pBlas.value();
         }
         return nullptr;
     }

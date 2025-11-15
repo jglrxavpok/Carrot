@@ -119,6 +119,9 @@ namespace Carrot {
                    const Render::PrecomputedBLAS* pPrecomputedBLAS,
                    ASBuilder* builder);
 
+        BLAS(BLAS&& toMove) = default;
+        BLAS& operator=(BLAS&& toMove) = default;
+
         bool isBuilt() const { return built; }
         void update();
         void setDirty();
@@ -159,15 +162,15 @@ namespace Carrot {
     };
 
     class BLASHandleSlot {
-        Carrot::UniquePtr<BLAS> pBlas;
+        std::optional<BLAS> pBlas;
         i32 refCount = 0;
         i32 index = 0;
         i32 generationIndex = 0;
 
     public:
         BLASHandleSlot() = default;
-        BLASHandleSlot(BLASHandleSlot&& toMove) = default;
-        BLASHandleSlot& operator=(BLASHandleSlot&& toMove) = default;
+        BLASHandleSlot(BLASHandleSlot&& toMove);
+        BLASHandleSlot& operator=(BLASHandleSlot&& toMove);
 
         void increaseRef();
         void decrementRef();
