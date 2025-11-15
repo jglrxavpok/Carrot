@@ -208,7 +208,7 @@ namespace Carrot::Render {
         };
 
         struct BLASHolder {
-            std::shared_ptr<BLASHandle> blas;
+            BLASHandle blas;
         };
 
         struct GroupInstances {

@@ -646,7 +646,7 @@ namespace Carrot::Render {
         auto& asBuilder = GetRenderer().getASBuilder();
 
         BLASHolder& correspondingBLAS = groupInstances.blases[groupInstanceID];
-        std::shared_ptr<BLASHandle> blas;
+        BLASHandle blas;
         {
             // if no BLAS exists for this group
             // can happen if instance was deleted, but the group is appropriate again

@@ -22,7 +22,7 @@
 namespace Carrot {
     static constexpr glm::mat4 IdentityMatrix = glm::identity<glm::mat4>();
 
-    BLASHandle::BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+    BLAS::BLAS(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<glm::mat4>& transforms,
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
@@ -76,7 +76,7 @@ namespace Carrot {
         innerInit(transformAddresses);
     }
 
-    BLASHandle::BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+    BLAS::BLAS(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<vk::DeviceAddress>& transforms,
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
@@ -86,7 +86,7 @@ namespace Carrot {
         innerInit(transforms);
     }
 
-    void BLASHandle::innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses) {
+    void BLAS::innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses) {
         geometries.reserve(meshes.size());
         buildRanges.reserve(meshes.size());
 
@@ -136,27 +136,35 @@ namespace Carrot {
         //builder->dirtyBlases = true;
     }
 
-    BLASHandle::~BLASHandle() noexcept {
+    BLAS::~BLAS() noexcept {
         //builder->dirtyBlases = true;
     }
 
-    void BLASHandle::update() {
+    void BLAS::update() {
         // no op for now
     }
 
-    void BLASHandle::setDirty() {
+    void BLAS::setDirty() {
         built = false;
     }
 
-    void BLASHandle::bindSemaphores(const Render::PerFrame<vk::Semaphore>& boundSemaphores) {
+    void BLAS::bindSemaphores(const Render::PerFrame<vk::Semaphore>& boundSemaphores) {
         this->boundSemaphores = boundSemaphores;
     }
 
-    vk::Semaphore BLASHandle::getBoundSemaphore(std::size_t swapchainIndex) const {
+    BLASHandle BLAS::getHandle() const {
+        return BLASHandle(self);
+    }
+
+    ASBuilder& BLAS::getBuilder() const {
+        return *builder;
+    }
+
+    vk::Semaphore BLAS::getBoundSemaphore(std::size_t swapchainIndex) const {
         return boundSemaphores[swapchainIndex % boundSemaphores.size()];
     }
 
-    InstanceHandle::InstanceHandle(std::shared_ptr<BLASHandle> geometry, ASBuilder* builder):
+    InstanceHandle::InstanceHandle(const BLASHandle& geometry, ASBuilder* builder):
             geometry(geometry), builder(builder) {
         builder->dirtyInstances = true;
     }
@@ -244,34 +252,38 @@ void Carrot::ASBuilder::createDescriptors() {
     instancesBufferPerFrame.clear();
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<vk::DeviceAddress>& transformAddresses,
                                                                       const std::vector<std::uint32_t>& materials,
                                                                       BLASGeometryFormat geometryFormat,
                                                                       const Render::PrecomputedBLAS* pPrecomputedBLAS) {
     if(!enabled)
-        return nullptr;
+        return {};
 
-    ASStorage<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
-    std::shared_ptr<BLASHandle> ptr = std::make_shared<BLASHandle>(meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
-    *slot = ptr;
-    return ptr;
+    BLASHandleSlot& slot = allocateSlot();
+    slot.pBlas = Carrot::makeUnique<BLAS>(Allocator::getDefault(), meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
+    slot.pBlas->self.pBuilder = this;
+    slot.pBlas->self.generationIndex = slot.generationIndex;
+    slot.pBlas->self.index = slot.index;
+    return BLASHandle(slot);
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<glm::mat4>& transforms,
                                                                       const std::vector<std::uint32_t>& materials,
                                                                       BLASGeometryFormat geometryFormat,
                                                                       const Render::PrecomputedBLAS* precomputedBLAS) {
     if(!enabled)
-        return nullptr;
-    ASStorage<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
-    auto ptr = std::make_shared<BLASHandle>(meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
-    *slot = ptr;
-    return ptr;
+        return {};
+    BLASHandleSlot& slot = allocateSlot();
+    slot.pBlas = Carrot::makeUnique<BLAS>(Allocator::getDefault(), meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
+    slot.pBlas->self.pBuilder = this;
+    slot.pBlas->self.generationIndex = slot.generationIndex;
+    slot.pBlas->self.index = slot.index;
+    return BLASHandle(slot);
 }
 
-std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::shared_ptr<Carrot::BLASHandle> correspondingGeometry) {
+std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(const Carrot::BLASHandle& correspondingGeometry) {
     if(!enabled)
         return nullptr;
     ASStorage<InstanceHandle>::Reservation slot = instances.reserveSlot();
@@ -326,14 +338,22 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         preallocateBlasBuildCommandBuffers(std::this_thread::get_id()); // main thread
         preallocatedBuildCommandBuffers = true;
     }
-    std::vector<std::shared_ptr<BLASHandle>> toBuild;
-    staticGeometries.iterate([&](std::shared_ptr<BLASHandle> pValue) {
+    std::vector<BLASHandle> toBuild;
+    // TODO: find something faster?
+    blasStorage.iterate([&](BLASHandleSlot& slot) {
+        if (slot.refCount == 0) {
+            slot.pBlas.reset();
+            blasStorageFreeList.pushBack(slot.index);
+        }
         if(toBuild.size() > 1000) {
             return;
         }
-        if(!pValue->isBuilt() || dirtyBlases) {
-            toBuild.push_back(pValue->shared_from_this());
-            pValue->built = false;
+        BLAS* pBlas = slot.pBlas;
+        if (pBlas) {
+            if(!pBlas->isBuilt() || dirtyBlases) {
+                toBuild.push_back(pBlas->getHandle());
+                pBlas->built = false;
+            }
         }
     });
 
@@ -447,7 +467,7 @@ vk::CommandBuffer Carrot::ASBuilder::getBlasBuildCommandBuffer(const Carrot::Ren
     return result[0];
 }
 
-void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild) {
+void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<BLASHandle>& toBuild) {
     ScopedMarker("buildBottomLevels");
     if(!enabled)
         return;
@@ -525,7 +545,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
 
     // TODO: fast build for virtual geometry
-    auto getBuildFlags = [](BLASHandle& blas) {
+    auto getBuildFlags = [](const BLAS& blas) {
         return blas.dynamicGeometry ?
             (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate) :
             (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
@@ -1164,4 +1184,140 @@ Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& 
         }
     }
     return rtTransform;
+}
+
+Carrot::BLASHandleSlot* Carrot::ASBuilder::getBLASSlot(i32 index, i32 expectedGenerationIndex) {
+    if(index >= blasStorage.size()) {
+        return nullptr;
+    }
+    BLASHandleSlot& slot = blasStorage.at(index);
+    return slot.generationIndex == expectedGenerationIndex ? &slot : nullptr;
+}
+
+Carrot::BLASHandleSlot& Carrot::ASBuilder::allocateSlot() {
+    i32 freeIndex;
+    if (!blasStorageFreeList.empty()) {
+        freeIndex = blasStorageFreeList[0];
+        blasStorageFreeList.remove(0);
+    } else {
+        freeIndex = blasStorage.size();
+        blasStorage.resize(freeIndex+1);
+    }
+    BLASHandleSlot& slot = blasStorage[freeIndex];
+    slot.index = freeIndex; // in case slot is new
+    slot.generationIndex++;
+    return slot;
+}
+
+// Handle management
+namespace Carrot {
+    void BLASHandleSlot::increaseRef() {
+        refCount++;
+    }
+
+    void BLASHandleSlot::decrementRef() {
+        --refCount;
+    }
+
+    BLASHandle::BLASHandle(const BLASHandle& toCopy) {
+        *this = toCopy;
+    }
+
+    BLASHandle::BLASHandle(BLASHandle&& toMove) noexcept {
+        *this = std::move(toMove);
+    }
+
+    BLASHandle::BLASHandle(BLASHandleSlot& slot) {
+        index = slot.index;
+        generationIndex = slot.generationIndex;
+        pBuilder = &slot.pBlas->getBuilder();
+        slot.increaseRef();
+    }
+
+    BLASHandle::BLASHandle(const WeakBLASHandle& weakHandle) {
+        index = weakHandle.index;
+        generationIndex = weakHandle.generationIndex;
+        pBuilder = weakHandle.pBuilder;
+
+        if (pBuilder) {
+            BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
+            if (pSlot) {
+                pSlot->increaseRef();
+            }
+        }
+    }
+
+    BLASHandle::~BLASHandle() {
+        clear();
+    }
+
+    void BLASHandle::clear() {
+        if (pBuilder) {
+            BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
+            verify(pSlot, "invalid handle");
+            pSlot->decrementRef();
+        }
+        index = 0;
+        generationIndex = 0;
+        pBuilder = nullptr;
+    }
+
+    BLAS& BLASHandle::operator*() const {
+        BLAS* ptr = get();
+        assert(ptr);
+        return *ptr;
+    }
+
+    BLAS* BLASHandle::operator->() const {
+        return get();
+    }
+
+    BLAS* BLASHandle::get() const {
+        if (!pBuilder) {
+            return nullptr;
+        }
+
+        BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
+        if (pSlot) {
+            pSlot->increaseRef(); // TODO: multithreading?
+            return pSlot->pBlas;
+        }
+        return nullptr;
+    }
+
+    BLASHandle::operator bool() const {
+        return get() != nullptr;
+    }
+
+    BLASHandle& BLASHandle::operator=(const BLASHandle& toCopy) {
+        if (this == &toCopy) {
+            return *this;
+        }
+        clear();
+        index = toCopy.index;
+        generationIndex = toCopy.generationIndex;
+        pBuilder = toCopy.pBuilder;
+        if (pBuilder) {
+            BLASHandleSlot* slot = pBuilder->getBLASSlot(index, generationIndex);
+            slot->increaseRef(); // TODO: multithreading?
+        }
+        return *this;
+    }
+
+    BLASHandle& BLASHandle::operator=(BLASHandle&& toMove) noexcept {
+        if (this == &toMove) {
+            return *this;
+        }
+        clear();
+        index = toMove.index;
+        generationIndex = toMove.generationIndex;
+        pBuilder = toMove.pBuilder;
+
+        // no need to mess with references as we are moving the value
+        toMove.index = 0;
+        toMove.generationIndex = 0;
+        toMove.pBuilder = nullptr;
+        return *this;
+    }
+
 }

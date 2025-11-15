@@ -380,7 +380,7 @@ std::unique_ptr<Carrot::Render::Texture> Carrot::Model::generateBoneTransformsSt
     }
     storageImage->stageUpload(std::span { (std::uint8_t*)pixels.data(), pixels.size() * sizeof(glm::vec4) });
     auto tex = std::make_unique<Carrot::Render::Texture>(std::move(storageImage));
-    tex->name(Carrot::sprintf("Animation data"));
+    tex->name("Animation data");
     tex->transitionNow(vk::ImageLayout::eGeneral);
     return tex;
 }
@@ -467,11 +467,11 @@ Carrot::Buffer& Carrot::Model::getAnimationDataBuffer() {
     return *animationData;
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getStaticBLAS() {
+Carrot::BLASHandle& Carrot::Model::getStaticBLAS() {
     return staticBLAS;
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
+Carrot::BLASHandle& Carrot::Model::getSkinnedBLAS() {
     return skinnedBLAS;
 }
 

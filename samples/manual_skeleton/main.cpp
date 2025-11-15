@@ -145,7 +145,7 @@ private:
     std::shared_ptr<Carrot::Render::LightHandle> flashlight;
 
     std::shared_ptr<Carrot::Model> staticModel;
-    std::shared_ptr<Carrot::BLASHandle> staticBLAS;
+    Carrot::BLASHandle staticBLAS;
     std::shared_ptr<Carrot::InstanceHandle> staticModelInstance;
 private:
     std::shared_ptr<Carrot::Model> skinnedModel;

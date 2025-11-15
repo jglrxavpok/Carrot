@@ -12,7 +12,7 @@
 #include <engine/render/resources/LightMesh.h>
 
 namespace Carrot {
-    class BLASHandle;
+    class BLAS;
     class InstanceHandle;
 }
 
@@ -65,7 +65,7 @@ namespace Carrot::Render {
         std::vector<glm::mat4> meshTransforms; // one per mesh inside the input model
         PerFrame<std::vector<std::unique_ptr<Carrot::Buffer>>> gpuSkeletons; // one per mesh
 
-        PerFrame<std::shared_ptr<Carrot::BLASHandle>> blas;
+        PerFrame<Carrot::BLASHandle> blas;
         PerFrame<std::shared_ptr<Carrot::InstanceHandle>> rtInstance;
     };
 }

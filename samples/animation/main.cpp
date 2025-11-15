@@ -172,7 +172,7 @@ private:
     Carrot::Edition::FreeCameraController cameraController;
 
     std::shared_ptr<Carrot::Model> staticModel;
-    std::shared_ptr<Carrot::BLASHandle> staticBLAS;
+    Carrot::BLASHandle staticBLAS;
     std::shared_ptr<Carrot::InstanceHandle> staticModelInstance;
 
     std::shared_ptr<Carrot::Model> skinnedModel;

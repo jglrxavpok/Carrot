@@ -10,7 +10,7 @@
 
 namespace Carrot {
     class Engine;
-    class BLASHandle;
+    class BLAS;
     class InstanceHandle;
 
     //! Used to render one or multiple skinned meshes, while playing their animation.
@@ -53,7 +53,7 @@ namespace Carrot {
         std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* animatedInstances = nullptr;
         std::unique_ptr<Buffer> instanceBuffer = nullptr;
-        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes; // size is instanceCount
+        std::vector<BLASHandle> raytracingBLASes; // size is instanceCount
         std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances; // size is instanceCount
 
         std::unordered_map<MeshID, size_t> meshOffsets{};

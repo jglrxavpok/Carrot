@@ -22,6 +22,7 @@
 #include "engine/render/resources/Pipeline.h"
 #include "core/render/Meshlet.h"
 #include "IDTypes.h"
+#include "raytracing/ASBuilder.h"
 
 namespace Carrot {
     class Mesh;
@@ -31,7 +32,7 @@ namespace Carrot {
     class Buffer;
     class AnimatedInstances;
 
-    class BLASHandle;
+    class BLAS;
     class TaskHandle;
 
     namespace Render {
@@ -74,8 +75,8 @@ namespace Carrot {
 
         Carrot::Buffer& getAnimationDataBuffer();
 
-        std::shared_ptr<BLASHandle> getStaticBLAS();
-        std::shared_ptr<BLASHandle> getSkinnedBLAS();
+        BLASHandle& getStaticBLAS();
+        BLASHandle& getSkinnedBLAS();
 
         std::shared_ptr<Render::ClustersTemplate> lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform);
         const Render::LoadedScene::PrecomputedBLASes& getPrecomputedBLASes(const Render::NodeKey& nodeKey) const;
@@ -147,8 +148,8 @@ namespace Carrot {
         std::vector<Carrot::GBufferDrawData> staticOpaqueDrawData;
         std::vector<Carrot::GBufferDrawData> staticTransparentDrawData;
 
-        std::shared_ptr<BLASHandle> staticBLAS;
-        std::shared_ptr<BLASHandle> skinnedBLAS;
+        BLASHandle staticBLAS;
+        BLASHandle skinnedBLAS;
 
         // indexed by mesh's static mesh index
         Async::SpinLock meshletsLoading;

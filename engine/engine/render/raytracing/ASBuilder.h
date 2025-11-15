@@ -4,10 +4,12 @@
 
 #pragma once
 #include <core/SparseArray.hpp>
+#include <core/UniquePtr.hpp>
 
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
 #include <core/async/Locks.h>
+#include <core/containers/Vector.hpp>
 #include <core/utils/Profiling.h>
 
 #include "SceneElement.h"
@@ -46,18 +48,63 @@ namespace Carrot {
     };
 
     class ASBuilder;
+    class BLAS;
+    class BLASHandleSlot;
+    class WeakBLASHandle;
 
+    /**
+     * Handle to a BLAS, managed by ASBuilder
+     */
+    class BLASHandle {
+    public:
+        BLASHandle() = default;
+        BLASHandle(const BLASHandle& toCopy);
+        BLASHandle(BLASHandle&& toMove) noexcept;
+        explicit BLASHandle(BLASHandleSlot& slot);
+        explicit BLASHandle(const WeakBLASHandle& weakHandle);
+        ~BLASHandle();
+
+        BLASHandle& operator=(const BLASHandle& toCopy);
+        BLASHandle& operator=(BLASHandle&& toMove) noexcept;
+
+        /**
+         * Checks if this handle is still valid
+         */
+        operator bool() const;
+
+    public: // pointer access
+        BLAS* get() const;
+        BLAS* operator->() const;
+        BLAS& operator*() const;
+
+    public: // utility
+        /**
+         * Removes the reference to the underlying object from this handle. Always called on destruction
+         */
+        void clear();
+
+    private:
+        ASBuilder* pBuilder = nullptr;
+        i32 index = 0;
+        i32 generationIndex = 0;
+    };
+
+    struct WeakBLASHandle {
+        ASBuilder* pBuilder = nullptr;
+        i32 index = 0;
+        i32 generationIndex = 0;
+    };
 
     enum class BLASGeometryFormat: std::uint8_t {
         Default = 0, // Carrot::Vertex
         ClusterCompressed = 1, // Carrot::PackedVertex
     };
 
-    class BLASHandle: public std::enable_shared_from_this<BLASHandle> {
+    class BLAS {
     public:
         bool dynamicGeometry = false;
 
-        BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        BLAS(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<glm::mat4>& transforms,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
@@ -65,7 +112,7 @@ namespace Carrot {
                    ASBuilder* builder);
 
         // Version of BLASHandle that does not hold its transform data but only refers to data already somewhere in memory
-        BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        BLAS(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transformAddresses,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
@@ -81,7 +128,10 @@ namespace Carrot {
         /// (one semaphore per swapchain image)
         void bindSemaphores(const Render::PerFrame<vk::Semaphore>& semaphores);
 
-        virtual ~BLASHandle() noexcept;
+        BLASHandle getHandle() const;
+        ASBuilder& getBuilder() const;
+
+        virtual ~BLAS() noexcept;
 
     private:
         void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
@@ -102,14 +152,33 @@ namespace Carrot {
         ASBuilder* builder = nullptr;
         BLASGeometryFormat geometryFormat = BLASGeometryFormat::Default;
         Render::PerFrame<vk::Semaphore> boundSemaphores;
+        WeakBLASHandle self;
 
         friend class ASBuilder;
         friend class InstanceHandle;
     };
 
+    class BLASHandleSlot {
+        Carrot::UniquePtr<BLAS> pBlas;
+        i32 refCount = 0;
+        i32 index = 0;
+        i32 generationIndex = 0;
+
+    public:
+        BLASHandleSlot() = default;
+        BLASHandleSlot(BLASHandleSlot&& toMove) = default;
+        BLASHandleSlot& operator=(BLASHandleSlot&& toMove) = default;
+
+        void increaseRef();
+        void decrementRef();
+
+        friend class ASBuilder;
+        friend class BLASHandle;
+    };
+
     class InstanceHandle {
     public:
-        InstanceHandle(std::shared_ptr<BLASHandle> geometry,
+        InstanceHandle(const BLASHandle& geometry,
                        ASBuilder* builder);
 
         bool isBuilt() const { return built; }
@@ -131,7 +200,7 @@ namespace Carrot {
     private:
         glm::mat4 oldTransform{1.0f};
         vk::AccelerationStructureInstanceKHR instance;
-        std::shared_ptr<BLASHandle> geometry;
+        BLASHandle geometry;
 
         bool modified = false;
         bool built = false;
@@ -223,16 +292,16 @@ namespace Carrot {
         explicit ASBuilder(VulkanRenderer& renderer);
         ~ASBuilder();
 
-        std::shared_ptr<InstanceHandle> addInstance(std::shared_ptr<BLASHandle> correspondingGeometry);
+        std::shared_ptr<InstanceHandle> addInstance(const BLASHandle& correspondingGeometry);
 
-        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        Carrot::BLASHandle addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                    const std::vector<glm::mat4>& transforms,
                                                    const std::vector<std::uint32_t>& materialSlots,
                                                    BLASGeometryFormat geometryFormat,
                                                    const Render::PrecomputedBLAS* pPrecomputedBLAS = nullptr);
 
         /// Version of addBottomLevel which does not have ownership over transform data
-        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        Carrot::BLASHandle addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                    const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transforms,
                                                    const std::vector<std::uint32_t>& materialSlots,
                                                    BLASGeometryFormat geometryFormat,
@@ -275,10 +344,14 @@ namespace Carrot {
         vk::CommandBuffer getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext);
         void preallocateBlasBuildCommandBuffers(const std::thread::id& threadID);
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
-        void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild);
+        void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<BLASHandle>& toBuild);
 
         /// Returns the buffer view which contains an identity matrix, intended for reusing the same memory location for BLASes which do not have a specific transform
         BufferView getIdentityMatrixBufferView() const;
+
+        /// Returns the slot corresponding ot the given index, if and only if its current generation index is the same as 'expectedGenerationIndex'.
+        BLASHandleSlot* getBLASSlot(i32 index, i32 expectedGenerationIndex);
+        BLASHandleSlot& allocateSlot();
 
     private:
         static constexpr std::size_t BLASBuildBucketCount = 16;
@@ -324,7 +397,10 @@ namespace Carrot {
 
         std::size_t lastInstanceCount = 0;
 
-        ASStorage<BLASHandle> staticGeometries;
+        // TODO: tests once generic
+        SparseArray<BLASHandleSlot> blasStorage;
+        Carrot::Vector<i32> blasStorageFreeList;
+
         ASStorage<InstanceHandle> instances;
 
         Render::PerFrame<std::shared_ptr<AccelerationStructure>> tlasPerFrame;
@@ -347,6 +423,7 @@ namespace Carrot {
         Carrot::BufferAllocation identityMatrixForBLASes;
 
     private:
+        friend class BLAS;
         friend class BLASHandle;
         friend class InstanceHandle;
     };
