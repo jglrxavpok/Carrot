@@ -258,10 +258,10 @@ namespace Carrot::IO {
         return Identifier { Carrot::sprintf("/user/glfw/keys/vec2/%d", vectorType) };
     }
 
-    static const ActionBinding GLFWMousePositionBinding = Identifier { "/user/glfw/mouse/pos" };
-    static const ActionBinding GLFWMouseDeltaBinding = Identifier { "/user/glfw/mouse/delta" };
-    static const ActionBinding GLFWMouseWheel = Identifier { "/user/glfw/mouse/wheel" };
-    static const ActionBinding GLFWGrabbedMouseDeltaBinding = Identifier { "/user/glfw/mouse/delta_grabbed" };
+    inline ActionBinding GLFWMousePositionBinding() { return Identifier { "/user/glfw/mouse/pos" }; };
+    inline ActionBinding GLFWMouseDeltaBinding() { return Identifier { "/user/glfw/mouse/delta" }; };
+    inline ActionBinding GLFWMouseWheel() { return Identifier { "/user/glfw/mouse/wheel" }; };
+    inline ActionBinding GLFWGrabbedMouseDeltaBinding() { return Identifier { "/user/glfw/mouse/delta_grabbed" }; };
 
     // Input profiles
     constexpr static const char* const SimpleController = "/interaction_profiles/khr/simple_controller";

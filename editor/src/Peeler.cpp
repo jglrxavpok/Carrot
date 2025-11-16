@@ -1554,7 +1554,7 @@ namespace Peeler {
 
             turnCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::RightStick));
             turnCamera.suggestBinding(Carrot::IO::GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType::ArrowKeys));
-            turnCamera.suggestBinding(Carrot::IO::GLFWGrabbedMouseDeltaBinding);
+            turnCamera.suggestBinding(Carrot::IO::GLFWGrabbedMouseDeltaBinding());
 
             moveCameraUp.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER));
             moveCameraUp.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_SPACE));

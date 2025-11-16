@@ -309,7 +309,7 @@ namespace Carrot::IO {
             if(!active)
                 return;
 
-            const auto correspondingPath = Carrot::IO::GLFWMousePositionBinding;
+            const auto correspondingPath = Carrot::IO::GLFWMousePositionBinding();
 
             changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, false);
         });
@@ -318,7 +318,7 @@ namespace Carrot::IO {
             if(!active)
                 return;
 
-            const auto correspondingPath = Carrot::IO::GLFWMouseDeltaBinding;
+            const auto correspondingPath = Carrot::IO::GLFWMouseDeltaBinding();
 
             changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
         });
@@ -327,7 +327,7 @@ namespace Carrot::IO {
             if(!active)
                 return;
 
-            const auto correspondingPath = Carrot::IO::GLFWGrabbedMouseDeltaBinding;
+            const auto correspondingPath = Carrot::IO::GLFWGrabbedMouseDeltaBinding();
 
             changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
         });
@@ -336,7 +336,7 @@ namespace Carrot::IO {
             if(!active)
                 return;
 
-            const auto correspondingPath = Carrot::IO::GLFWMouseWheel;
+            const auto correspondingPath = Carrot::IO::GLFWMouseWheel();
             bool isPressed = abs(dWheel) >= 0.5f;
             bool isReleased = !isPressed;
 
@@ -390,7 +390,7 @@ namespace Carrot::IO {
     }
 
     void ActionSet::resetDeltas() {
-        for(auto bindingPath : {Carrot::IO::GLFWGrabbedMouseDeltaBinding, Carrot::IO::GLFWMouseDeltaBinding}) {
+        for(auto bindingPath : {Carrot::IO::GLFWGrabbedMouseDeltaBinding(), Carrot::IO::GLFWMouseDeltaBinding()}) {
             for(auto& input : vec2Inputs) {
                 const auto& bindings = getMappedBindings(input);
                 if (std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {

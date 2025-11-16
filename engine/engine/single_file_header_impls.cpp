@@ -14,8 +14,12 @@
 #include "stb_vorbis.c"
 
 #define VMA_IMPLEMENTATION
+
+#if 0
 #define VMA_DEBUG_LOG_FORMAT(format, ...) do { \
 printf((format), __VA_ARGS__); \
 printf("\n"); \
 } while(false)
+#endif
+
 #include <vk_mem_alloc.h>
