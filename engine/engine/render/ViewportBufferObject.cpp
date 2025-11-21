@@ -6,7 +6,7 @@
 #include <engine/render/Viewport.h>
 #include <engine/Engine.h>
 #include <engine/render/VulkanRenderer.h>
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 
 namespace Carrot {
     void ViewportBufferObject::update(const Render::Context& renderContext) {
@@ -15,7 +15,7 @@ namespace Carrot {
         frameCount = GetRenderer().getFrameCount();
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
-            hasTLAS = GetRenderer().getASBuilder().getTopLevelAS(renderContext) != nullptr;
+            hasTLAS = GetRenderer().getRaytracingScene().getTopLevelAS(renderContext) != nullptr;
         }
     }
 }

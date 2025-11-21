@@ -91,7 +91,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/ClusterManager.cpp
         ${EngineRoot}render/VisibilityBuffer.cpp
         ${EngineRoot}render/raytracing/RayTracer.cpp
-        ${EngineRoot}render/raytracing/ASBuilder.cpp
+        ${EngineRoot}render/raytracing/RaytracingScene.cpp
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp
         ${EngineRoot}single_file_header_impls.cpp
         ${EngineRoot}LoadingScreen.cpp

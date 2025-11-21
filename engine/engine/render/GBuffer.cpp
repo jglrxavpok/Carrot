@@ -7,7 +7,7 @@
 #include <core/io/Logging.hpp>
 #include <engine/Engine.h>
 
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/render/Skybox.hpp"
 #include "resources/ResourceAllocator.h"
 #include <engine/render/VulkanRenderer.h>

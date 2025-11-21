@@ -13,7 +13,7 @@
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/GBufferDrawData.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/render/resources/LightMesh.h"
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/Engine.h"
@@ -104,11 +104,11 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         });
 
         if(GetCapabilities().supportsRaytracing) {
-            auto& asBuilder = GetRenderer().getASBuilder();
-            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots, BLASGeometryFormat::Default);
+            auto& raytracingScene = GetRenderer().getRaytracingScene();
+            auto blas = raytracingScene.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots, BLASGeometryFormat::Default);
             blas->dynamicGeometry = true;
             raytracingBLASes.push_back(blas);
-            raytracingInstances.push_back(asBuilder.addInstance(blas));
+            raytracingInstances.push_back(raytracingScene.addInstance(blas));
         }
     }
 
@@ -204,7 +204,7 @@ void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
 
     renderContext.render(packet); // submits because this is an async packet
 
-    // do not bind the semaphore earlier, it is possible the creation of the AnimatedInstances finishes and ASBuilder kicks off, without the skinning semaphore ever signaled
+    // do not bind the semaphore earlier, it is possible the creation of the AnimatedInstances finishes and RaytracingScene kicks off, without the skinning semaphore ever signaled
     if (!submitAtLeastOneSkinningCompute)
     {
         submitAtLeastOneSkinningCompute = true;

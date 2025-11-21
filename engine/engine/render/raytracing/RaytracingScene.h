@@ -47,13 +47,13 @@ namespace Carrot {
         std::uint32_t hitGroup;
     };
 
-    class ASBuilder;
+    class RaytracingScene;
     class BLAS;
     class BLASHandleSlot;
     class WeakBLASHandle;
 
     /**
-     * Handle to a BLAS, managed by ASBuilder
+     * Handle to a BLAS, managed by RaytracingScene
      */
     class BLASHandle {
     public:
@@ -84,13 +84,13 @@ namespace Carrot {
         void clear();
 
     private:
-        ASBuilder* pBuilder = nullptr;
+        RaytracingScene* pBuilder = nullptr;
         i32 index = 0;
         i32 generationIndex = 0;
     };
 
     struct WeakBLASHandle {
-        ASBuilder* pBuilder = nullptr;
+        RaytracingScene* pBuilder = nullptr;
         i32 index = 0;
         i32 generationIndex = 0;
     };
@@ -109,7 +109,7 @@ namespace Carrot {
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
                    const Render::PrecomputedBLAS* pPrecomputedBLAS,
-                   ASBuilder* builder);
+                   RaytracingScene* builder);
 
         // Version of BLASHandle that does not hold its transform data but only refers to data already somewhere in memory
         BLAS(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
@@ -117,7 +117,7 @@ namespace Carrot {
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
                    const Render::PrecomputedBLAS* pPrecomputedBLAS,
-                   ASBuilder* builder);
+                   RaytracingScene* builder);
 
         BLAS(BLAS&& toMove) = default;
         BLAS& operator=(BLAS&& toMove) = default;
@@ -132,7 +132,7 @@ namespace Carrot {
         void bindSemaphores(const Render::PerFrame<vk::Semaphore>& semaphores);
 
         BLASHandle getHandle() const;
-        ASBuilder& getBuilder() const;
+        RaytracingScene& getBuilder() const;
 
         virtual ~BLAS() noexcept;
 
@@ -152,12 +152,12 @@ namespace Carrot {
         std::vector<std::uint32_t> materialSlots;
         std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
         bool built = false;
-        ASBuilder* builder = nullptr;
+        RaytracingScene* builder = nullptr;
         BLASGeometryFormat geometryFormat = BLASGeometryFormat::Default;
         Render::PerFrame<vk::Semaphore> boundSemaphores;
         WeakBLASHandle self;
 
-        friend class ASBuilder;
+        friend class RaytracingScene;
         friend class InstanceHandle;
     };
 
@@ -175,14 +175,14 @@ namespace Carrot {
         void increaseRef();
         void decrementRef();
 
-        friend class ASBuilder;
+        friend class RaytracingScene;
         friend class BLASHandle;
     };
 
     class InstanceHandle {
     public:
         InstanceHandle(const BLASHandle& geometry,
-                       ASBuilder* builder);
+                       RaytracingScene* builder);
 
         bool isBuilt() const { return built; }
         bool hasBeenModified() const { return modified; }
@@ -207,9 +207,9 @@ namespace Carrot {
 
         bool modified = false;
         bool built = false;
-        ASBuilder* builder = nullptr;
+        RaytracingScene* builder = nullptr;
 
-        friend class ASBuilder;
+        friend class RaytracingScene;
     };
 
     template<typename T>
@@ -289,11 +289,10 @@ namespace Carrot {
     };
 
     /// Helpers to build Acceleration Structures for raytracing
-    // TODO: rename to RaytracingScene
-    class ASBuilder: public SwapchainAware {
+    class RaytracingScene: public SwapchainAware {
     public:
-        explicit ASBuilder(VulkanRenderer& renderer);
-        ~ASBuilder();
+        explicit RaytracingScene(VulkanRenderer& renderer);
+        virtual ~RaytracingScene();
 
         std::shared_ptr<InstanceHandle> addInstance(const BLASHandle& correspondingGeometry);
 

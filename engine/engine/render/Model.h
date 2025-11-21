@@ -22,7 +22,7 @@
 #include "engine/render/resources/Pipeline.h"
 #include "core/render/Meshlet.h"
 #include "IDTypes.h"
-#include "raytracing/ASBuilder.h"
+#include "raytracing/RaytracingScene.h"
 
 namespace Carrot {
     class Mesh;

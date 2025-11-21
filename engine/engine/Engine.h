@@ -172,7 +172,7 @@ namespace Carrot {
 
         vk::PhysicalDevice& getPhysicalDevice();
 
-        ASBuilder& getASBuilder();
+        RaytracingScene& getRaytracingScene();
 
         bool isGrabbingCursor() const { return grabbingCursor; };
 

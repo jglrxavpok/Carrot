@@ -14,7 +14,7 @@
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/utils/Time.h>
 
-#include "raytracing/ASBuilder.h"
+#include "raytracing/RaytracingScene.h"
 #include "resources/LightMesh.h"
 
 namespace Carrot::Render {
@@ -132,7 +132,7 @@ namespace Carrot::Render {
             cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
             cluster.vertexCount = static_cast<std::uint8_t>(meshlet.vertexCount);
 
-            transforms.emplace_back(ASBuilder::glmToRTTransformMatrix(desc.transform));
+            transforms.emplace_back(RaytracingScene::glmToRTTransformMatrix(desc.transform));
 
             cluster.boundingSphere = meshlet.boundingSphere;
             cluster.parentBoundingSphere = meshlet.parentBoundingSphere;
@@ -643,7 +643,7 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<Carrot::InstanceHandle> ClusterManager::createGroupInstanceAS(TaskHandle& task, std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& modelInstance, std::uint32_t groupInstanceID) {
-        auto& asBuilder = GetRenderer().getASBuilder();
+        auto& raytracingScene = GetRenderer().getRaytracingScene();
 
         BLASHolder& correspondingBLAS = groupInstances.blases[groupInstanceID];
         BLASHandle blas;
@@ -680,13 +680,13 @@ namespace Carrot::Render {
                 // add the BLAS corresponding to this group
                 // give a precomputed blas to skip building if the precomputed blas is compatible with current GPU and driver
                 const PrecomputedBLAS* pPrecomputedBLAS = groupInstances.precomputedBLASes[groupInstanceID];
-                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed, pPrecomputedBLAS);
+                correspondingBLAS.blas = raytracingScene.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed, pPrecomputedBLAS);
             }
 
             blas = correspondingBLAS.blas;
         }
 
-        return asBuilder.addInstance(blas);
+        return raytracingScene.addInstance(blas);
     }
 
     void ClusterManager::processSingleGroupReadbackData(

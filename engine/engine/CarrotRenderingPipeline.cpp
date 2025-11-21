@@ -12,7 +12,7 @@
 #include "engine/render/resources/Image.h"
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/raytracing/RayTracer.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/render/GBuffer.h"
 #include "engine/render/VisibilityBuffer.h"
 #include "engine/render/resources/ResourceAllocator.h"

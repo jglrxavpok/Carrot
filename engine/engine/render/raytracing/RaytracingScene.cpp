@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 30/12/2020.
 //
 
-#include "ASBuilder.h"
+#include "RaytracingScene.h"
 #include <engine/render/resources/Mesh.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
@@ -27,7 +27,7 @@ namespace Carrot {
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
                            const Render::PrecomputedBLAS* pPrecomputedBLAS,
-                           ASBuilder* builder):
+                           RaytracingScene* builder):
     meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat), pPrecomputedBLAS(pPrecomputedBLAS) {
         bool allIdentity = true;
         for(const auto& transform : transforms) {
@@ -60,7 +60,7 @@ namespace Carrot {
             vk::DeviceAddress baseTransformDataAddress = transformData.view.getDeviceAddress();
 
             for (int j = 0; j < transforms.size(); ++j) {
-                rtTransforms[j] = ASBuilder::glmToRTTransformMatrix(transforms[j]);
+                rtTransforms[j] = RaytracingScene::glmToRTTransformMatrix(transforms[j]);
 
                 transformAddresses[j] = baseTransformDataAddress + j * sizeof(vk::TransformMatrixKHR);
             }
@@ -81,7 +81,7 @@ namespace Carrot {
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
                            const Render::PrecomputedBLAS* pPrecomputedBLAS,
-                           ASBuilder* builder):
+                           RaytracingScene* builder):
     meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat), pPrecomputedBLAS(pPrecomputedBLAS) {
         innerInit(transforms);
     }
@@ -156,7 +156,7 @@ namespace Carrot {
         return BLASHandle(self);
     }
 
-    ASBuilder& BLAS::getBuilder() const {
+    RaytracingScene& BLAS::getBuilder() const {
         return *builder;
     }
 
@@ -164,7 +164,7 @@ namespace Carrot {
         return boundSemaphores[swapchainIndex % boundSemaphores.size()];
     }
 
-    InstanceHandle::InstanceHandle(const BLASHandle& geometry, ASBuilder* builder):
+    InstanceHandle::InstanceHandle(const BLASHandle& geometry, RaytracingScene* builder):
             geometry(geometry), builder(builder) {
         builder->dirtyInstances = true;
     }
@@ -199,9 +199,9 @@ namespace Carrot {
 
 // --
 
-Carrot::ASBuilder::PerThreadCommandObjects::~PerThreadCommandObjects() {}
+Carrot::RaytracingScene::PerThreadCommandObjects::~PerThreadCommandObjects() {}
 
-Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
+Carrot::RaytracingScene::RaytracingScene(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     enabled = GetCapabilities().supportsRaytracing;
     vk::PhysicalDeviceAccelerationStructurePropertiesKHR properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceAccelerationStructurePropertiesKHR>().get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
     scratchBufferAlignment = properties.minAccelerationStructureScratchOffsetAlignment;
@@ -218,11 +218,11 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
     identityMatrixForBLASes.view.stageUpload(std::span<const vk::TransformMatrixKHR>{ &identityValue, 1 });
 }
 
-Carrot::ASBuilder::~ASBuilder() {
+Carrot::RaytracingScene::~RaytracingScene() {
 }
 
 
-void Carrot::ASBuilder::createBuildCommandBuffers() {
+void Carrot::RaytracingScene::createBuildCommandBuffers() {
     tlasBuildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
             .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
@@ -240,19 +240,19 @@ void Carrot::ASBuilder::createBuildCommandBuffers() {
     }
 }
 
-void Carrot::ASBuilder::createQueryPools() {
+void Carrot::RaytracingScene::createQueryPools() {
     queryPools.resize(MAX_FRAMES_IN_FLIGHT);
 }
 
-void Carrot::ASBuilder::createGraveyard() {
+void Carrot::RaytracingScene::createGraveyard() {
 }
 
-void Carrot::ASBuilder::createDescriptors() {
+void Carrot::RaytracingScene::createDescriptors() {
     geometriesBuffer = nullptr;
     instancesBufferPerFrame.clear();
 }
 
-Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<vk::DeviceAddress>& transformAddresses,
                                                                       const std::vector<std::uint32_t>& materials,
                                                                       BLASGeometryFormat geometryFormat,
@@ -268,7 +268,7 @@ Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shar
     return BLASHandle(slot);
 }
 
-Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<glm::mat4>& transforms,
                                                                       const std::vector<std::uint32_t>& materials,
                                                                       BLASGeometryFormat geometryFormat,
@@ -283,7 +283,7 @@ Carrot::BLASHandle Carrot::ASBuilder::addBottomLevel(const std::vector<std::shar
     return BLASHandle(slot);
 }
 
-std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(const Carrot::BLASHandle& correspondingGeometry) {
+std::shared_ptr<Carrot::InstanceHandle> Carrot::RaytracingScene::addInstance(const Carrot::BLASHandle& correspondingGeometry) {
     if(!enabled)
         return nullptr;
     ASStorage<InstanceHandle>::Reservation slot = instances.reserveSlot();
@@ -292,7 +292,7 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(const Car
     return ptr;
 }
 
-void Carrot::ASBuilder::createSemaphores() {
+void Carrot::RaytracingScene::createSemaphores() {
     std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
 
     vk::SemaphoreTypeCreateInfo timelineSemaphoreCreateInfo {
@@ -323,13 +323,13 @@ void Carrot::ASBuilder::createSemaphores() {
     }
 }
 
-void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
+void Carrot::RaytracingScene::onFrame(const Carrot::Render::Context& renderContext) {
     if(!enabled)
         return;
     if(renderContext.pViewport != &GetEngine().getMainViewport()) {
         return;
     }
-    ScopedMarker("ASBuilder::onFrame");
+    ScopedMarker("RaytracingScene::onFrame");
 
     if(!preallocatedBuildCommandBuffers) {
         for(const auto& threadID : GetTaskScheduler().getParallelThreadIDs()) {
@@ -425,7 +425,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     tlasPerFrame[renderContext.frameIndex] = currentTLAS;
 }
 
-void Carrot::ASBuilder::resetBlasBuildCommands(const Carrot::Render::Context& renderContext) {
+void Carrot::RaytracingScene::resetBlasBuildCommands(const Carrot::Render::Context& renderContext) {
     auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.frameIndex];
     if(!perThreadCommandPools) {
         perThreadCommandPools = std::make_unique<Carrot::Async::ParallelMap<std::thread::id, PerThreadCommandObjects>>();
@@ -435,7 +435,7 @@ void Carrot::ASBuilder::resetBlasBuildCommands(const Carrot::Render::Context& re
     }
 }
 
-void Carrot::ASBuilder::preallocateBlasBuildCommandBuffers(const std::thread::id& threadID) {
+void Carrot::RaytracingScene::preallocateBlasBuildCommandBuffers(const std::thread::id& threadID) {
     for(std::size_t imageIndex = 0; imageIndex < MAX_FRAMES_IN_FLIGHT; imageIndex++) {
         auto& perThreadCommandPools = blasBuildCommandObjects[imageIndex];
         if(!perThreadCommandPools) {
@@ -450,7 +450,7 @@ void Carrot::ASBuilder::preallocateBlasBuildCommandBuffers(const std::thread::id
     }
 }
 
-vk::CommandBuffer Carrot::ASBuilder::getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext) {
+vk::CommandBuffer Carrot::RaytracingScene::getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext) {
     auto& perThreadCommandPools = blasBuildCommandObjects[renderContext.frameIndex];
     std::thread::id currentThreadID = std::this_thread::get_id();
     PerThreadCommandObjects& objects = perThreadCommandPools->getOrCompute(currentThreadID, [&]() {
@@ -467,7 +467,7 @@ vk::CommandBuffer Carrot::ASBuilder::getBlasBuildCommandBuffer(const Carrot::Ren
     return result[0];
 }
 
-void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<BLASHandle>& toBuild) {
+void Carrot::RaytracingScene::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<BLASHandle>& toBuild) {
     ScopedMarker("buildBottomLevels");
     if(!enabled)
         return;
@@ -927,12 +927,12 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     */
 }
 
-Carrot::BufferView Carrot::ASBuilder::getIdentityMatrixBufferView() const {
+Carrot::BufferView Carrot::RaytracingScene::getIdentityMatrixBufferView() const {
     return identityMatrixForBLASes.view;
 }
 
-void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
-    ScopedMarker("ASBuilder::buildTopLevelAS");
+void Carrot::RaytracingScene::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
+    ScopedMarker("RaytracingScene::buildTopLevelAS");
     if(!enabled)
         return;
  //   Carrot::Log::debug("buildTopLevelAS %llu", renderContext.frameCount);
@@ -1128,22 +1128,22 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     prevPrimitiveCount = vkInstances.size();
 }
 
-void Carrot::ASBuilder::startFrame() {
+void Carrot::RaytracingScene::startFrame() {
     if(!enabled)
         return;
 }
 
-void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
+void Carrot::RaytracingScene::waitForCompletion(vk::CommandBuffer& cmds) {
     if(!enabled)
         return;
 }
 
-Carrot::AccelerationStructure* Carrot::ASBuilder::getTopLevelAS(const Carrot::Render::Context& renderContext) {
+Carrot::AccelerationStructure* Carrot::RaytracingScene::getTopLevelAS(const Carrot::Render::Context& renderContext) {
     verify(GetCapabilities().supportsRaytracing, "Raytracing is not supported");
     return tlasPerFrame[renderContext.frameIndex].get();
 }
 
-void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
+void Carrot::RaytracingScene::onSwapchainImageCountChange(size_t newCount) {
     createSemaphores();
     createBuildCommandBuffers();
     createQueryPools();
@@ -1161,22 +1161,22 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
     }
 }
 
-void Carrot::ASBuilder::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
+void Carrot::RaytracingScene::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
 
 }
 
-Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context& renderContext) {
+Carrot::BufferView Carrot::RaytracingScene::getGeometriesBuffer(const Render::Context& renderContext) {
     if(!geometriesBuffer) {
         return Carrot::BufferView{};
     }
     return geometriesBufferPerFrame[renderContext.frameIndex]->view;
 }
 
-Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
+Carrot::BufferView Carrot::RaytracingScene::getInstancesBuffer(const Render::Context& renderContext) {
     return instancesBufferPerFrame[renderContext.frameIndex]->view;
 }
 
-/*static*/ vk::TransformMatrixKHR Carrot::ASBuilder::glmToRTTransformMatrix(const glm::mat4& mat) {
+/*static*/ vk::TransformMatrixKHR Carrot::RaytracingScene::glmToRTTransformMatrix(const glm::mat4& mat) {
     vk::TransformMatrixKHR rtTransform;
     for (int column = 0; column < 4; ++column) {
         for (int row = 0; row < 3; ++row) {
@@ -1186,7 +1186,7 @@ Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& 
     return rtTransform;
 }
 
-Carrot::BLASHandleSlot* Carrot::ASBuilder::getBLASSlot(i32 index, i32 expectedGenerationIndex) {
+Carrot::BLASHandleSlot* Carrot::RaytracingScene::getBLASSlot(i32 index, i32 expectedGenerationIndex) {
     if(index >= blasStorage.size()) {
         return nullptr;
     }
@@ -1194,7 +1194,7 @@ Carrot::BLASHandleSlot* Carrot::ASBuilder::getBLASSlot(i32 index, i32 expectedGe
     return slot.generationIndex == expectedGenerationIndex ? &slot : nullptr;
 }
 
-Carrot::BLASHandleSlot& Carrot::ASBuilder::allocateSlot() {
+Carrot::BLASHandleSlot& Carrot::RaytracingScene::allocateSlot() {
     i32 freeIndex;
     if (!blasStorageFreeList.empty()) {
         freeIndex = blasStorageFreeList[0];

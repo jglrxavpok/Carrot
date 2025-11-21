@@ -7,7 +7,7 @@
 #include "engine/render/resources/Image.h"
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/TextureRepository.h"
-#include "ASBuilder.h"
+#include "RaytracingScene.h"
 #include "SceneElement.h"
 #include <iostream>
 
@@ -37,7 +37,7 @@ void Carrot::RayTracer::onFrame(const Carrot::Render::Context& renderContext) {
     if(renderContext.pViewport != &renderer.getEngine().getMainViewport())
         return;
     ZoneScoped;
-    renderer.getASBuilder().startFrame();
+    renderer.getRaytracingScene().startFrame();
 }
 
 std::vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {

@@ -7,7 +7,7 @@
 #include <engine/render/resources/Mesh.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <core/render/Animation.h>
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/Engine.h>
 #include <utility>
@@ -202,9 +202,9 @@ namespace Carrot::Render {
             });
 
             if(GetCapabilities().supportsRaytracing) {
-                auto& asBuilder = GetRenderer().getASBuilder();
-                blas[imageIndex] = asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials, BLASGeometryFormat::Default);
-                rtInstance[imageIndex] = asBuilder.addInstance(blas[imageIndex]);
+                auto& raytracingScene = GetRenderer().getRaytracingScene();
+                blas[imageIndex] = raytracingScene.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials, BLASGeometryFormat::Default);
+                rtInstance[imageIndex] = raytracingScene.addInstance(blas[imageIndex]);
             }
         }
     }

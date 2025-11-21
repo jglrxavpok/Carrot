@@ -5,7 +5,7 @@
 #include <engine/CarrotGame.h>
 #include <engine/render/Model.h>
 #include <engine/render/Camera.h>
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
 #include <engine/edition/FreeCameraController.h>
@@ -49,9 +49,9 @@ public:
         }
 
         if(GetCapabilities().supportsRaytracing) {
-            auto& asBuilder = GetRenderer().getASBuilder();
+            auto& raytracingScene = GetRenderer().getRaytracingScene();
             staticBLAS = staticModel->getStaticBLAS();
-            staticModelInstance = asBuilder.addInstance(staticBLAS);
+            staticModelInstance = raytracingScene.addInstance(staticBLAS);
         }
 
         flashlight = GetRenderer().getLighting().create();

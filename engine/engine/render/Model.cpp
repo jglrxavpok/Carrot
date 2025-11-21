@@ -15,7 +15,7 @@
 #include <engine/render/GBufferDrawData.h>
 #include <engine/render/RenderPacket.h>
 #include <engine/utils/Profiling.h>
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/model_loading/SceneLoader.h"
@@ -326,7 +326,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     }
 
     if(GetCapabilities().supportsRaytracing) {
-        auto& builder = GetRenderer().getASBuilder();
+        auto& builder = GetRenderer().getRaytracingScene();
 
         std::vector<std::shared_ptr<Mesh>> allStaticMeshes{};
         std::vector<glm::mat4> transforms{};

@@ -12,15 +12,11 @@ namespace Carrot {
 
     class VulkanRenderer;
 
+    // TODO: merge into RaytracingScene or renderer
     /// Class responsible for creating acceleration structures & scene information buffers and updating them
     /// Modeled on NVIDIA's tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
     class RayTracer: public SwapchainAware {
     public:
-        // TODO: scene buffers
-        // TODO: mesh registration
-        // TODO: mesh un-registration
-        // TODO: Provide a descriptor set for rayqueries (AS + scene information)
-
         /// Extensions required for raytracing
         static std::vector<const char*> getRequiredDeviceExtensions();
 

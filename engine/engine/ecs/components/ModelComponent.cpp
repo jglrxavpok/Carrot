@@ -82,7 +82,7 @@ namespace Carrot::ECS {
             Async::LockGuard l{ tlasAccess };
             if(tlasIsWaitingForModel) {
                 tlasIsWaitingForModel = false;
-                tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
+                tlas = GetRenderer().getRaytracingScene().addInstance(asyncModel->getStaticBLAS());
                 tlas->enabled = true;
             }
         }

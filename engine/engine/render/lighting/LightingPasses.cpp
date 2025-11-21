@@ -9,7 +9,7 @@
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/RenderContext.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/utils/Profiling.h"
 #include "engine/Engine.h"
 
@@ -423,7 +423,7 @@ namespace Carrot::Render {
             Carrot::AccelerationStructure* pTLAS = nullptr;
             if (pipeline.getPushConstant("push").offset != (u32)-1) {
                 if(useRaytracingVersion) {
-                    pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                    pTLAS = frame.renderer.getRaytracingScene().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;
                     renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                 } else {
@@ -436,8 +436,8 @@ namespace Carrot::Render {
                if(pTLAS) {
                    renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
                    if(needSceneInfo) {
-                       renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
-                       renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getGeometriesBuffer(frame), 6, 2);
+                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getInstancesBuffer(frame), 6, 3);
                    }
                } else {
                    renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);
@@ -631,7 +631,7 @@ namespace Carrot::Render {
                    auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo, int hashGridSetID, const char* pushConstantName) {
                        Carrot::AccelerationStructure* pTLAS = nullptr;
                        if(useRaytracingVersion) {
-                           pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                           pTLAS = frame.renderer.getRaytracingScene().getTopLevelAS(frame);
                            block.hasTLAS = pTLAS != nullptr;
                            renderer.pushConstantBlock<PushConstantRT>(pushConstantName, pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                        } else {
@@ -651,8 +651,8 @@ namespace Carrot::Render {
                            if(pTLAS) {
                                renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
                                if(needSceneInfo) {
-                                   renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
-                                   renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                                   renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getGeometriesBuffer(frame), 6, 2);
+                                   renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getInstancesBuffer(frame), 6, 3);
                                }
                            } else {
                                renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);

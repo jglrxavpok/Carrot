@@ -29,7 +29,7 @@
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
 
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 #include <engine/render/raytracing/RayTracer.h>
 #include <engine/render/ClusterManager.h>
 #include <engine/render/GBuffer.h>
@@ -97,7 +97,7 @@ namespace std {
 
 namespace Carrot {
     class GBuffer;
-    class ASBuilder;
+    class RaytracingScene;
     class AccelerationStructure;
     class RayTracer;
     class Mesh;
@@ -157,7 +157,7 @@ namespace Carrot {
         std::size_t getSwapchainImagesCount() const;
         VulkanDriver& getVulkanDriver() { return driver; };
 
-        ASBuilder& getASBuilder() { return *asBuilder; };
+        RaytracingScene& getRaytracingScene() { return *raytracingScene; };
         RayTracer& getRayTracer() { return *raytracer; };
 
         GBuffer& getGBuffer() { return *gBuffer; };
@@ -387,7 +387,7 @@ namespace Carrot {
             ThreadSafeQueue<AsyncCopyDesc>* pAsyncCopyQueue = nullptr;
         } renderData;
 
-        std::unique_ptr<ASBuilder> asBuilder = nullptr;
+        std::unique_ptr<RaytracingScene> raytracingScene = nullptr;
 
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;

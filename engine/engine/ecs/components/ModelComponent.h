@@ -8,7 +8,7 @@
 #include "engine/render/ModelRenderer.h"
 #include "engine/render/AsyncResource.hpp"
 #include "engine/assets/AssetServer.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include <core/async/Locks.h>
 
 namespace Carrot {

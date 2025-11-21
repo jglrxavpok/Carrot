@@ -14,7 +14,7 @@
 #include "engine/render/animation/AnimatedInstances.h"
 #include <iostream>
 #include <engine/render/shaders/ShaderModule.h>
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 #include <engine/render/raytracing/RayTracer.h>
 
 #include <engine/ecs/components/Component.h>
@@ -88,7 +88,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
             glm::mat4(1.0f)
     };
 
-    auto& as = engine.getASBuilder();
+    auto& as = engine.getRaytracingScene();
     const float spacing = 0.5f;
     auto meshes = animatedUnits->getModel().getSkinnedMeshes();
 
@@ -195,8 +195,8 @@ void Game::Game::onFrame(Carrot::Render::Context renderContext) {
     {
         ZoneScopedN("Update Raytracing AS");
         // TODO: proper indexing
-        engine.getASBuilder().updateBottomLevelAS(blasIndices, skinningSemaphore);
-        engine.getASBuilder().updateTopLevelAS();
+        engine.getRaytracingScene().updateBottomLevelAS(blasIndices, skinningSemaphore);
+        engine.getRaytracingScene().updateTopLevelAS();
     }
 
     {

@@ -6,7 +6,7 @@
 #include "GBuffer.h"
 #include "engine/render/VisibilityBuffer.h"
 #include "engine/render/ClusterManager.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/console/RuntimeOption.hpp"
 #include "core/utils/Assert.h"
@@ -204,7 +204,7 @@ void Carrot::VulkanRenderer::createGBuffer() {
 
 void Carrot::VulkanRenderer::createRayTracer() {
     raytracer = std::make_unique<RayTracer>(*this);
-    asBuilder = std::make_unique<ASBuilder>(*this);
+    raytracingScene = std::make_unique<RaytracingScene>(*this);
 }
 
 static void imguiCheckVkResult(VkResult err) {
@@ -247,8 +247,8 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
         DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[j]);
     }
 
-    if(asBuilder) {
-        asBuilder->onSwapchainImageCountChange(newCount);
+    if(raytracingScene) {
+        raytracingScene->onSwapchainImageCountChange(newCount);
     }
     for(const auto& [name, pipePtrPtr]: GetAssetServer().pipelines.snapshot()) {
         (*pipePtrPtr)->onSwapchainImageCountChange(newCount);
@@ -261,8 +261,8 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(Window& window, int newWidth,
     gBuffer->onSwapchainSizeChange(window, newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(window, newWidth, newHeight);
     lighting.onSwapchainSizeChange(window, newWidth, newHeight);
-    if(asBuilder) {
-        asBuilder->onSwapchainSizeChange(window, newWidth, newHeight);
+    if(raytracingScene) {
+        raytracingScene->onSwapchainSizeChange(window, newWidth, newHeight);
     }
     for(const auto& [name, pipePtrPtr]: GetAssetServer().pipelines.snapshot()) {
         (*pipePtrPtr)->onSwapchainSizeChange(window, newWidth, newHeight);
@@ -1014,7 +1014,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
         buffer->directUpload(&obj, sizeof(obj));
     }
 
-    asBuilder->onFrame(renderContext);
+    raytracingScene->onFrame(renderContext);
 }
 
 std::size_t Carrot::VulkanRenderer::getSwapchainImagesCount() const {
@@ -1585,18 +1585,18 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(const Render::Compiled
             .frameWidth = renderContext.pViewport->getWidth(),
             .frameHeight = renderContext.pViewport->getHeight(),
 
-            .hasTLAS = useRaytracingVersion ? getASBuilder().getTopLevelAS(renderContext) != nullptr : false
+            .hasTLAS = useRaytracingVersion ? getRaytracingScene().getTopLevelAS(renderContext) != nullptr : false
     };
 
     forwardRenderingFrameInfoBuffer->directUpload(&frameInfo, sizeof(frameInfo));
     bindUniformBuffer(*forwardPipeline, renderContext, forwardRenderingFrameInfoBuffer->getWholeView(), 5, 1);
     if(useRaytracingVersion) {
-        auto* pTLAS = getASBuilder().getTopLevelAS(renderContext);
+        auto* pTLAS = getRaytracingScene().getTopLevelAS(renderContext);
         if(pTLAS) {
             bindAccelerationStructure(*forwardPipeline, renderContext, *pTLAS, 5, 2);
             bindTexture(*forwardPipeline, renderContext, *getMaterialSystem().getBlueNoiseTextures()[renderContext.frameIndex % Render::BlueNoiseTextureCount]->texture, 5, 3, nullptr);
-            bindBuffer(*forwardPipeline, renderContext, getASBuilder().getGeometriesBuffer(renderContext), 5, 4);
-            bindBuffer(*forwardPipeline, renderContext, getASBuilder().getInstancesBuffer(renderContext), 5, 5);
+            bindBuffer(*forwardPipeline, renderContext, getRaytracingScene().getGeometriesBuffer(renderContext), 5, 4);
+            bindBuffer(*forwardPipeline, renderContext, getRaytracingScene().getInstancesBuffer(renderContext), 5, 5);
         }
     }
 

@@ -23,7 +23,7 @@
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/Camera.h"
 #include "engine/render/raytracing/RayTracer.h"
-#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/raytracing/RaytracingScene.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/CarrotGame.h"
@@ -1454,8 +1454,8 @@ Carrot::Vulkan::SynchronizedQueue& Carrot::Engine::getComputeQueue() {
     return vkDriver.getComputeQueue();
 }
 
-Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
-    return renderer.getASBuilder();
+Carrot::RaytracingScene& Carrot::Engine::getRaytracingScene() {
+    return renderer.getRaytracingScene();
 }
 
 void Carrot::Engine::tick(double deltaTime) {

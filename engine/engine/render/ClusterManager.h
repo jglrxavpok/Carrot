@@ -20,7 +20,7 @@
 
 #include "MaterialSystem.h"
 #include <core/memory/OptionalRef.h>
-#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RaytracingScene.h>
 #include <engine/render/raytracing/AccelerationStructure.h>
 
 #include <engine/task/TaskScheduler.h>
