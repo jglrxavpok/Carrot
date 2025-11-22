@@ -148,7 +148,7 @@ vec4 getDebugColor(uint64_t index) {
 
 void main() {
     uvec2 visibilityBufferImageSize = imageSize(visibilityBuffer);
-    ivec2 pixelCoords = ivec2(visibilityBufferImageSize * screenUV);
+    ivec2 pixelCoords = ivec2(visibilityBufferImageSize * screenUV + 0.5);
     uint64_t visibilityBufferSample = imageLoad(visibilityBuffer, pixelCoords).r;
     if(visibilityBufferSample == 0) {
         discard;
@@ -184,7 +184,7 @@ void main() {
     uint normalMap = nonuniformEXT(material.normalMap);
     uint emissiveTexture = nonuniformEXT(material.emissive);
     uint metallicRoughnessTexture = nonuniformEXT(material.metallicRoughness);
-    vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
+    vec4 texColor = texture(sampler2D(textures[nonuniformEXT(albedoTexture)], linearSampler), uv);
     texColor *= material.baseColor;
     texColor *= modelData[modelDataIndex].instanceData.color;
 
@@ -218,7 +218,7 @@ void main() {
 
     vec3 B_ = normalize(bitangentSign * cross(N_, T_));
 
-    vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
+    vec3 mappedNormal = texture(sampler2D(textures[nonuniformEXT(normalMap)], linearSampler), uv).xyz;
     mappedNormal = mappedNormal * 2 -1;
     mappedNormal = normalize(mappedNormal.x * T_ + mappedNormal.y * B_ + mappedNormal.z * N_);
 
@@ -231,10 +231,10 @@ void main() {
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = modelData[modelDataIndex].instanceData.uuid;
 
-    vec2 metallicRoughness = texture(sampler2D(textures[metallicRoughnessTexture], linearSampler), uv).bg * material.metallicRoughnessFactor;
+    vec2 metallicRoughness = texture(sampler2D(textures[nonuniformEXT(metallicRoughnessTexture)], linearSampler), uv).bg * material.metallicRoughnessFactor;
     o.metallicness = metallicRoughness.x;
     o.roughness = metallicRoughness.y;
-    o.emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
+    o.emissiveColor = texture(sampler2D(textures[nonuniformEXT(emissiveTexture)], linearSampler), uv).rgb * material.emissiveColor;
 
     mat4 previousFrameModelTransform = modelData[modelDataIndex].instanceData.lastFrameTransform;
     mat4 previousFrameModelview = previousFrameCBO.view * previousFrameModelTransform * clusterTransform;
