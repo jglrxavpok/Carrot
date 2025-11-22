@@ -17,19 +17,21 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 make_test(core/Logging)
-make_test(engine/Audio)
-make_test(engine/Resources)
-make_test(engine/Network-Client)
-make_test(engine/Network-Server)
-make_test(engine/Lua)
-make_test(engine/GeneralMaterials)
+make_test(engine/old/Audio)
+make_test(engine/old/Resources)
+make_test(engine/old/Network-Client)
+make_test(engine/old/Network-Server)
+make_test(engine/old/Lua)
+make_test(engine/old/GeneralMaterials)
 
 enable_testing()
 
 add_executable(
         Engine-Tests
         engine/CSharpECS.cpp
-        engine/test_game_main.cpp
+        engine/TestFramework.cpp
+
+        engine/Fundamentals.cpp
 )
 add_core_includes(Engine-Tests)
 add_engine_precompiled_headers(Engine-Tests)

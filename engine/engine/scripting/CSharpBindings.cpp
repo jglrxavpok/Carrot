@@ -190,7 +190,13 @@ namespace Carrot::Scripting {
     }
 
     CSharpBindings::~CSharpBindings() {
-        unloadGameAssembly();
+        if (gameModule) {
+            unloadGameAssembly();
+        } else {
+            if (baseModule) {
+                unloadOnlyEngineAssembly();
+            }
+        }
     }
 
     void CSharpBindings::tick(double deltaTime) {

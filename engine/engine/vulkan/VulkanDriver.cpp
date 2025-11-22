@@ -606,6 +606,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .uniformAndStorageBuffer8BitAccess = true,
                 .storagePushConstant8 = true, // TODO: not on AMD Windows?
                 .shaderBufferInt64Atomics = true,
+                .shaderFloat16 = true,
                 .shaderInt8 = true,
                 .shaderSampledImageArrayNonUniformIndexing  = true,
                 .shaderStorageBufferArrayNonUniformIndexing = true,
@@ -616,8 +617,10 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .hostQueryReset = true,
                 .timelineSemaphore = true,
                 .bufferDeviceAddress = true,
+
             },
             vk::PhysicalDeviceVulkan13Features {
+                .shaderDemoteToHelperInvocation = true,
                 .synchronization2 = true,
                 .dynamicRendering = true,
             },

@@ -177,14 +177,20 @@ namespace Carrot {
         }
     }
 
-    Window::~Window() {
+    void Window::destroy() {
         if(!glfwWindow || !ownsWindow) {
             return;
         }
 
+        swapchainTextures.clear();
+        imageAvailableSemaphores.clear();
         glfwDestroyWindow(glfwWindow);
         glfwWindow = nullptr;
         glfwTerminate();
+    }
+
+    Window::~Window() {
+        destroy();
     }
 
     void Window::setCurrentSwapchainIndex(std::int32_t mainWindowSwapchainIndex, std::int32_t thisWindowSwapchainIndex) {

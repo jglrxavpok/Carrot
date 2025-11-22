@@ -62,6 +62,7 @@ namespace Carrot {
 
         vk::SurfaceKHR getSurface() const;
 
+        void destroy();
         ~Window();
 
     public:

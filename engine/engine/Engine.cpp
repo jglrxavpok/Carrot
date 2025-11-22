@@ -714,12 +714,18 @@ void Carrot::Engine::initECS() {
 }
 
 Carrot::Engine::~Engine() {
+    shuttingDown = true;
     Carrot::Render::Sprite::cleanup();
     ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     tracyCtx.clear();
     vkDriver.executeDeferredDestructionsNow();
+
+    for (auto& w : externalWindows) {
+        w.destroy();
+    }
+    mainWindow.destroy();
 
 #if USE_LIVEPP
     if (optLPPAgent.has_value()) {

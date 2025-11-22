@@ -1,7 +1,7 @@
 //
 // Created by jglrxavpok on 25/08/2021.
 //
-#include "test_game_main.cpp"
+#include "../TestFramework.cpp"
 #include <iostream>
 #include <asio.hpp>
 

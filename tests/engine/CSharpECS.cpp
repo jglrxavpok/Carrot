@@ -29,10 +29,6 @@ Carrot::Engine e{ 0, nullptr, config };
 
 #define START_ENGINE() _START_ENGINE_INTERNAL(__FUNCTION__)
 
-TEST(CSharpECS, EngineBoots) {
-    START_ENGINE();
-}
-
 TEST(CSharpECS, ManualRegistration) {
     using namespace Carrot::ECS;
 
@@ -65,6 +61,7 @@ public class TestSystem : LogicSystem {
 
     // compile C# code
     fs::path tempDir = fs::temp_directory_path();
+    GetVFS().addRoot("tmp", tempDir);
 
     fs::path testFile = tempDir / "TestManualRegistration.cs";
 
@@ -85,8 +82,7 @@ public class TestSystem : LogicSystem {
     EXPECT_TRUE(fs::exists(assemblyOutput));
 
     // load C# code
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto module = GetCSharpScripting().loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */));
+    auto module = GetCSharpScripting().loadAssembly(Carrot::IO::Resource("tmp://TestManualRegistration.dll"));
 
     auto& systems = getSystemLibrary();
 
