@@ -209,14 +209,24 @@ namespace Carrot {
          */
         Bank* getBank(std::size_t index) {
             std::size_t startIndex = index - index % Granularity;
-            for(auto& b : banks) {
-                if(b.startIndex == startIndex) {
-                    return &b;
-                }
 
-                if(b.startIndex > startIndex) {
-                    return nullptr;
-                }
+            // based on: https://stackoverflow.com/a/13354638
+            struct BankSortHelper
+            {
+                std::size_t ordering;
+                BankSortHelper( Bank const& bank ):ordering(bank.startIndex) {}
+                BankSortHelper( std::size_t i ): ordering(i) {}
+                BankSortHelper( BankSortHelper const& other):ordering(other.ordering) {}
+                bool operator<( BankSortHelper const& other ) { return ordering < other.ordering; }
+            };
+
+            auto lower = std::lower_bound( banks.begin(), banks.end(), startIndex,
+              []( BankSortHelper left, BankSortHelper right ) {
+                return left < right;
+              }
+            );
+            if (lower != banks.end()) {
+                return &(*lower);
             }
 
             return nullptr;

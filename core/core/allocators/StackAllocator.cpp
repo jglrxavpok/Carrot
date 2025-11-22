@@ -29,28 +29,19 @@ namespace Carrot {
                 if(checkBank(currentBank, cursor)) {
                     return banks[currentBank];
                 } else {
-                    if(cursor == 0) {
-                        deallocateBank(currentBank);
-                        freeBank--;
+                    if(cursor != 0) { // if not at start of current bank, don't modify it (because someone is using the memory)
+                        currentBank++;
+                        cursor = 0;
                     }
 
-                    cursor = 0; // we necessarily start from the beginning of a bank if the current bank is not enough
-                    // search for a bank that can fit the allocation
-                    for(; freeBank < banks.size(); freeBank++) {
-                        if(checkBank(freeBank, 0)) {
-                            // allocation can fit in this bank, stop search
-                            break;
-                        }
+                    // remove all banks starting from current bank that cannot fit allocation
+                    while (currentBank < banks.size() && !checkBank(currentBank, 0)) {
+                        deallocateBank(currentBank);
                     }
                 }
 
-                if(freeBank < banks.size()) {
-                    while(currentBank+1 != freeBank) {
-                        deallocateBank(currentBank+1);
-                        freeBank--;
-                    }
-
-                    currentBank = freeBank;
+                // if found available bank, use it
+                if(currentBank < banks.size()) {
                     return banks[currentBank];
                 }
             }

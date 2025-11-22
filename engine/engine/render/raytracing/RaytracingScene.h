@@ -400,6 +400,7 @@ namespace Carrot {
         std::size_t lastInstanceCount = 0;
 
         // TODO: tests once generic
+        std::recursive_mutex blasStorageMutex;
         SparseArray<BLASHandleSlot> blasStorage;
         Carrot::Vector<i32> blasStorageFreeList;
 

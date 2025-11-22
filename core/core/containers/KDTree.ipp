@@ -55,13 +55,15 @@ namespace Carrot {
         const glm::vec3 pos = from.getPosition();
         const glm::vec3 min = pos - glm::vec3(maxDistance);
         const glm::vec3 max = pos + glm::vec3(maxDistance);
-        rangeSearch(out, min, max);
-        // TODO: remove all > maxDistance (range search = hyperrectangle, neighbor search = hypersphere)
+        const float maxDistanceSq = maxDistance * maxDistance;
+        rangeSearchInner(out, &root, min, max, [&](const Node* pElement) {
+            return glm::distance2(pos, pElement->medianPoint) <= maxDistanceSq;
+        });
     }
 
     KD_TREE_TEMPLATE
     void KDTree<TElement>::rangeSearch(Vector<std::size_t>& out, const glm::vec3& min, const glm::vec3& max) const {
-        rangeSearchInner(out, &root, min, max);
+        rangeSearchInner(out, &root, min, max, [](std::size_t elementIndex) { return true; });
     }
 
     KD_TREE_TEMPLATE
@@ -202,12 +204,15 @@ namespace Carrot {
     }
 
     KD_TREE_TEMPLATE
-    void KDTree<TElement>::rangeSearchInner(Vector<std::size_t>& out, const Node* pRoot, const glm::vec3& min, const glm::vec3& max) const {
+    template<typename TFunctor>
+    void KDTree<TElement>::rangeSearchInner(Vector<std::size_t>& out, const Node* pRoot, const glm::vec3& min, const glm::vec3& max, const TFunctor& checkResult) const {
         const bool isLeaf = pRoot->pLeft == nullptr && pRoot->pRight == nullptr;
         if(isLeaf) {
             if(glm::all(glm::greaterThanEqual(pRoot->medianPoint, min))
                 && glm::all(glm::lessThan(pRoot->medianPoint, max))) {
-                out.pushBack(pRoot->elementIndex);
+                if (checkResult(pRoot)) {
+                    out.pushBack(pRoot->elementIndex);
+                }
             }
         } else {
             auto regionFullyContained = [&](const Node& node) -> bool {
@@ -219,7 +224,9 @@ namespace Carrot {
             };
 
             std::function<void(const Node&)> reportSubTree = [&](const Node& node) {
-                out.pushBack(node.elementIndex);
+                if (checkResult(pRoot)) {
+                    out.pushBack(node.elementIndex);
+                }
                 if(node.pLeft) {
                     reportSubTree(*node.pLeft);
                 }
@@ -232,14 +239,14 @@ namespace Carrot {
                 if(regionFullyContained(*pRoot->pLeft)) {
                     reportSubTree(*pRoot->pLeft);
                 } else if(regionIntersects(*pRoot->pLeft)) {
-                    rangeSearchInner(out, pRoot->pLeft, min, max);
+                    rangeSearchInner(out, pRoot->pLeft, min, max, checkResult);
                 }
             }
             if(pRoot->pRight) {
                 if(regionFullyContained(*pRoot->pRight)) {
                     reportSubTree(*pRoot->pRight);
                 } else if(regionIntersects(*pRoot->pRight)) {
-                    rangeSearchInner(out, pRoot->pRight, min, max);
+                    rangeSearchInner(out, pRoot->pRight, min, max, checkResult);
                 }
             }
         }

@@ -133,3 +133,20 @@ TEST(StackAllocator, ReallocateBehaviour) {
 
     EXPECT_NE(reallocated.ptr, block.ptr); // current bank is not enough for this reallocation, will be moved to a new bank
 }
+
+TEST(StackAllocator, Bug1_ClearThenReallocateWithBiggerThanInsideBanks) {
+    const std::size_t bankSize = 64;
+    RecordingAllocator rAlloc;
+    StackAllocator allocator { rAlloc, bankSize };
+
+    allocator.allocate(bankSize);
+    allocator.allocate(bankSize*3);
+
+    EXPECT_EQ(allocator.getBankCount(), 2);
+
+    allocator.clear();
+    EXPECT_EQ(allocator.getBankCount(), 2); // memory not modified
+
+    allocator.allocate(bankSize*2); // first bank is too small, will get deleted, and allocation will go to previously-second-now-first bank
+    EXPECT_EQ(allocator.getBankCount(), 1);
+}

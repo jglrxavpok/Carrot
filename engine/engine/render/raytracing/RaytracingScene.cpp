@@ -260,6 +260,7 @@ Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std
     if(!enabled)
         return {};
 
+    std::lock_guard g { blasStorageMutex };
     BLASHandleSlot& slot = allocateSlot();
     slot.pBlas.emplace(meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
     slot.pBlas->self.pBuilder = this;
@@ -275,6 +276,7 @@ Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std
                                                                       const Render::PrecomputedBLAS* precomputedBLAS) {
     if(!enabled)
         return {};
+    std::lock_guard g { blasStorageMutex };
     BLASHandleSlot& slot = allocateSlot();
     slot.pBlas.emplace(meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
     slot.pBlas->self.pBuilder = this;
@@ -340,22 +342,25 @@ void Carrot::RaytracingScene::onFrame(const Carrot::Render::Context& renderConte
     }
     std::vector<BLASHandle> toBuild;
     // TODO: find something faster?
-    blasStorage.iterate([&](BLASHandleSlot& slot) {
-        if (slot.refCount == 0) {
-            slot.pBlas.reset();
-            blasStorageFreeList.pushBack(slot.index);
-        }
-        if(toBuild.size() > 1000) {
-            return;
-        }
-        if (slot.pBlas.has_value()) {
-            BLAS& blas = slot.pBlas.value();
-            if(!blas.isBuilt() || dirtyBlases) {
-                toBuild.push_back(blas.getHandle());
-                blas.built = false;
+    {
+        std::lock_guard g { blasStorageMutex };
+        blasStorage.iterate([&](BLASHandleSlot& slot) {
+            /*if (slot.refCount == 0) {
+                slot.pBlas.reset();
+                blasStorageFreeList.pushBack(slot.index);
+            }*/
+            if(toBuild.size() > 1000) {
+                return;
             }
-        }
-    });
+            if (slot.pBlas.has_value()) {
+                BLAS& blas = slot.pBlas.value();
+                if(!blas.isBuilt() || dirtyBlases) {
+                    toBuild.push_back(blas.getHandle());
+                    blas.built = false;
+                }
+            }
+        });
+    }
 
     builtBLASThisFrame = false;
     if(dirtyBlases) {
@@ -367,6 +372,7 @@ void Carrot::RaytracingScene::onFrame(const Carrot::Render::Context& renderConte
             v->built = true;
         }
     } else {
+        ScopedMarker("Collect tracy data");
         // ensure we still get Tracy's profiling data even when not building BLASes
         GetEngine().getVulkanDriver().performSingleTimeComputeCommands([&](vk::CommandBuffer& commands) {
             for(auto& ctx : blasBuildTracyContextes[renderContext.frameIndex]) {
@@ -1187,6 +1193,7 @@ Carrot::BufferView Carrot::RaytracingScene::getInstancesBuffer(const Render::Con
 }
 
 Carrot::BLASHandleSlot* Carrot::RaytracingScene::getBLASSlot(i32 index, i32 expectedGenerationIndex) {
+    std::lock_guard g { blasStorageMutex };
     if(index >= blasStorage.size()) {
         return nullptr;
     }
@@ -1195,6 +1202,7 @@ Carrot::BLASHandleSlot* Carrot::RaytracingScene::getBLASSlot(i32 index, i32 expe
 }
 
 Carrot::BLASHandleSlot& Carrot::RaytracingScene::allocateSlot() {
+    std::lock_guard g { blasStorageMutex };
     i32 freeIndex;
     if (!blasStorageFreeList.empty()) {
         freeIndex = blasStorageFreeList[0];

@@ -89,7 +89,9 @@ namespace Carrot {
 
         void buildInner(Node* pDestination, Carrot::Allocator& tempAllocator, std::span<const TElement> allElements, const Carrot::Vector<std::size_t>& subset, std::size_t depth, const glm::vec3& regionMin, const glm::vec3& regionMax);
         Node* findClosest(const TElement& element) const;
-        void rangeSearchInner(Vector<std::size_t>& out, const Node* pRoot, const glm::vec3& min, const glm::vec3& max) const;
+
+        template<typename TFunctor>
+        void rangeSearchInner(Vector<std::size_t>& out, const Node* pRoot, const glm::vec3& min, const glm::vec3& max, const TFunctor& checkResult) const;
 
         Allocator& allocator;
         Node root;
