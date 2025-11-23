@@ -507,6 +507,11 @@ namespace Carrot::Render {
             activeGroupOffsetsBufferView.directUpload(std::span<const std::uint64_t>(activeGroupOffsets));
         }
 
+        if (activeInstances.empty()) {
+            verify(activeGroupOffsets.empty(), "Invalid state, activeGroupOffsets.size != activeInstances.size");
+            return;
+        }
+
         clusterDataPerFrame[renderContext.frameIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         auto& instancesPerFrame = perViewport[renderContext.pViewport].instancesPerFrame;
         instancesPerFrame[renderContext.frameIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
