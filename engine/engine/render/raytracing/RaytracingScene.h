@@ -9,6 +9,7 @@
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
 #include <core/async/Locks.h>
+#include <core/containers/HandleStorage.hpp>
 #include <core/containers/Vector.hpp>
 #include <core/utils/Profiling.h>
 
@@ -49,51 +50,8 @@ namespace Carrot {
 
     class RaytracingScene;
     class BLAS;
-    class BLASHandleSlot;
-    class WeakBLASHandle;
-
-    /**
-     * Handle to a BLAS, managed by RaytracingScene
-     */
-    class BLASHandle {
-    public:
-        BLASHandle() = default;
-        BLASHandle(const BLASHandle& toCopy);
-        BLASHandle(BLASHandle&& toMove) noexcept;
-        explicit BLASHandle(BLASHandleSlot& slot);
-        explicit BLASHandle(const WeakBLASHandle& weakHandle);
-        ~BLASHandle();
-
-        BLASHandle& operator=(const BLASHandle& toCopy);
-        BLASHandle& operator=(BLASHandle&& toMove) noexcept;
-
-        /**
-         * Checks if this handle is still valid
-         */
-        operator bool() const;
-
-    public: // pointer access
-        BLAS* get() const;
-        BLAS* operator->() const;
-        BLAS& operator*() const;
-
-    public: // utility
-        /**
-         * Removes the reference to the underlying object from this handle. Always called on destruction
-         */
-        void clear();
-
-    private:
-        RaytracingScene* pBuilder = nullptr;
-        i32 index = 0;
-        i32 generationIndex = 0;
-    };
-
-    struct WeakBLASHandle {
-        RaytracingScene* pBuilder = nullptr;
-        i32 index = 0;
-        i32 generationIndex = 0;
-    };
+    using BLASHandle = Handle<BLAS>;
+    using WeakBLASHandle = HandleDetails::Weak<BLAS>;
 
     enum class BLASGeometryFormat: std::uint8_t {
         Default = 0, // Carrot::Vertex
@@ -137,6 +95,8 @@ namespace Carrot {
         virtual ~BLAS() noexcept;
 
     private:
+        void setHandle(WeakBLASHandle h);
+
         void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
 
         /// semaphore to wait for before building this BLAS
@@ -159,24 +119,7 @@ namespace Carrot {
 
         friend class RaytracingScene;
         friend class InstanceHandle;
-    };
-
-    class BLASHandleSlot {
-        std::optional<BLAS> pBlas;
-        i32 refCount = 0;
-        i32 index = 0;
-        i32 generationIndex = 0;
-
-    public:
-        BLASHandleSlot() = default;
-        BLASHandleSlot(BLASHandleSlot&& toMove);
-        BLASHandleSlot& operator=(BLASHandleSlot&& toMove);
-
-        void increaseRef();
-        void decrementRef();
-
-        friend class RaytracingScene;
-        friend class BLASHandle;
+        friend class HandleStorage<BLAS>;
     };
 
     class InstanceHandle {
@@ -351,10 +294,6 @@ namespace Carrot {
         /// Returns the buffer view which contains an identity matrix, intended for reusing the same memory location for BLASes which do not have a specific transform
         BufferView getIdentityMatrixBufferView() const;
 
-        /// Returns the slot corresponding ot the given index, if and only if its current generation index is the same as 'expectedGenerationIndex'.
-        BLASHandleSlot* getBLASSlot(i32 index, i32 expectedGenerationIndex);
-        BLASHandleSlot& allocateSlot();
-
     private:
         static constexpr std::size_t BLASBuildBucketCount = 16;
 
@@ -401,8 +340,7 @@ namespace Carrot {
 
         // TODO: tests once generic
         std::recursive_mutex blasStorageMutex;
-        SparseArray<BLASHandleSlot> blasStorage;
-        Carrot::Vector<i32> blasStorageFreeList;
+        HandleStorage<BLAS> blasStorage;
 
         ASStorage<InstanceHandle> instances;
 
@@ -427,7 +365,6 @@ namespace Carrot {
 
     private:
         friend class BLAS;
-        friend class BLASHandle;
         friend class InstanceHandle;
     };
 }

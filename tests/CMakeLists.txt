@@ -42,6 +42,7 @@ add_executable(
         core/CSharpScripting.cpp
         core/Document.cpp
         core/FileWatching.cpp
+        core/Handles.cpp
         core/InlineAllocator.cpp
         core/Lookup.cpp
         core/Paths.cpp

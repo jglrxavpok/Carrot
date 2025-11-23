@@ -261,12 +261,7 @@ Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std
         return {};
 
     std::lock_guard g { blasStorageMutex };
-    BLASHandleSlot& slot = allocateSlot();
-    slot.pBlas.emplace(meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
-    slot.pBlas->self.pBuilder = this;
-    slot.pBlas->self.generationIndex = slot.generationIndex;
-    slot.pBlas->self.index = slot.index;
-    return BLASHandle(slot);
+    return blasStorage.emplace(meshes, transformAddresses, materials, geometryFormat, pPrecomputedBLAS, this);
 }
 
 Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
@@ -277,12 +272,7 @@ Carrot::BLASHandle Carrot::RaytracingScene::addBottomLevel(const std::vector<std
     if(!enabled)
         return {};
     std::lock_guard g { blasStorageMutex };
-    BLASHandleSlot& slot = allocateSlot();
-    slot.pBlas.emplace(meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
-    slot.pBlas->self.pBuilder = this;
-    slot.pBlas->self.generationIndex = slot.generationIndex;
-    slot.pBlas->self.index = slot.index;
-    return BLASHandle(slot);
+    return blasStorage.emplace(meshes, transforms, materials, geometryFormat, precomputedBLAS, this);
 }
 
 std::shared_ptr<Carrot::InstanceHandle> Carrot::RaytracingScene::addInstance(const Carrot::BLASHandle& correspondingGeometry) {
@@ -344,20 +334,14 @@ void Carrot::RaytracingScene::onFrame(const Carrot::Render::Context& renderConte
     // TODO: find something faster?
     {
         std::lock_guard g { blasStorageMutex };
-        blasStorage.iterate([&](BLASHandleSlot& slot) {
-            /*if (slot.refCount == 0) {
-                slot.pBlas.reset();
-                blasStorageFreeList.pushBack(slot.index);
-            }*/
+        // TODO: blasStorage.cleanup();
+        blasStorage.iterate([&](BLAS& blas) {
             if(toBuild.size() > 1000) {
                 return;
             }
-            if (slot.pBlas.has_value()) {
-                BLAS& blas = slot.pBlas.value();
-                if(!blas.isBuilt() || dirtyBlases) {
-                    toBuild.push_back(blas.getHandle());
-                    blas.built = false;
-                }
+            if(!blas.isBuilt() || dirtyBlases) {
+                toBuild.push_back(blas.getHandle());
+                blas.built = false;
             }
         });
     }
@@ -1192,30 +1176,10 @@ Carrot::BufferView Carrot::RaytracingScene::getInstancesBuffer(const Render::Con
     return rtTransform;
 }
 
-Carrot::BLASHandleSlot* Carrot::RaytracingScene::getBLASSlot(i32 index, i32 expectedGenerationIndex) {
-    std::lock_guard g { blasStorageMutex };
-    if(index >= blasStorage.size()) {
-        return nullptr;
-    }
-    BLASHandleSlot& slot = blasStorage.at(index);
-    return slot.generationIndex == expectedGenerationIndex ? &slot : nullptr;
+void Carrot::BLAS::setHandle(WeakBLASHandle h) {
+    self = h;
 }
 
-Carrot::BLASHandleSlot& Carrot::RaytracingScene::allocateSlot() {
-    std::lock_guard g { blasStorageMutex };
-    i32 freeIndex;
-    if (!blasStorageFreeList.empty()) {
-        freeIndex = blasStorageFreeList[0];
-        blasStorageFreeList.remove(0);
-    } else {
-        freeIndex = blasStorage.size();
-        blasStorage.resize(freeIndex+1);
-    }
-    BLASHandleSlot& slot = blasStorage[freeIndex];
-    slot.index = freeIndex; // in case slot is new
-    slot.generationIndex++;
-    return slot;
-}
 
 namespace std {
     template<>
@@ -1224,137 +1188,4 @@ namespace std {
         a = std::move(b);
         b = std::move(a);
     }
-}
-
-// Handle management
-namespace Carrot {
-    BLASHandleSlot::BLASHandleSlot(BLASHandleSlot&& toMove) {
-        *this = std::move(toMove);
-    }
-
-    BLASHandleSlot& BLASHandleSlot::operator=(BLASHandleSlot&& toMove) {
-        if (this == &toMove) {
-            return *this;
-        }
-        pBlas.swap(toMove.pBlas);
-        toMove.pBlas.reset();
-
-        refCount = toMove.index;
-        index = toMove.index;
-        generationIndex = toMove.generationIndex;
-        toMove.refCount = 0;
-        toMove.index = 0;
-        toMove.generationIndex = 0;
-        return *this;
-    }
-
-    void BLASHandleSlot::increaseRef() {
-        refCount++;
-    }
-
-    void BLASHandleSlot::decrementRef() {
-        --refCount;
-    }
-
-    BLASHandle::BLASHandle(const BLASHandle& toCopy) {
-        *this = toCopy;
-    }
-
-    BLASHandle::BLASHandle(BLASHandle&& toMove) noexcept {
-        *this = std::move(toMove);
-    }
-
-    BLASHandle::BLASHandle(BLASHandleSlot& slot) {
-        index = slot.index;
-        generationIndex = slot.generationIndex;
-        pBuilder = &slot.pBlas->getBuilder();
-        slot.increaseRef();
-    }
-
-    BLASHandle::BLASHandle(const WeakBLASHandle& weakHandle) {
-        index = weakHandle.index;
-        generationIndex = weakHandle.generationIndex;
-        pBuilder = weakHandle.pBuilder;
-
-        if (pBuilder) {
-            BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
-            if (pSlot) {
-                pSlot->increaseRef();
-            }
-        }
-    }
-
-    BLASHandle::~BLASHandle() {
-        clear();
-    }
-
-    void BLASHandle::clear() {
-        if (pBuilder) {
-            BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
-            verify(pSlot, "invalid handle");
-            pSlot->decrementRef();
-        }
-        index = 0;
-        generationIndex = 0;
-        pBuilder = nullptr;
-    }
-
-    BLAS& BLASHandle::operator*() const {
-        BLAS* ptr = get();
-        assert(ptr);
-        return *ptr;
-    }
-
-    BLAS* BLASHandle::operator->() const {
-        return get();
-    }
-
-    BLAS* BLASHandle::get() const {
-        if (!pBuilder) {
-            return nullptr;
-        }
-
-        BLASHandleSlot* pSlot = pBuilder->getBLASSlot(index, generationIndex);
-        if (pSlot) {
-            pSlot->increaseRef(); // TODO: multithreading?
-            return &pSlot->pBlas.value();
-        }
-        return nullptr;
-    }
-
-    BLASHandle::operator bool() const {
-        return get() != nullptr;
-    }
-
-    BLASHandle& BLASHandle::operator=(const BLASHandle& toCopy) {
-        if (this == &toCopy) {
-            return *this;
-        }
-        clear();
-        index = toCopy.index;
-        generationIndex = toCopy.generationIndex;
-        pBuilder = toCopy.pBuilder;
-        if (pBuilder) {
-            BLASHandleSlot* slot = pBuilder->getBLASSlot(index, generationIndex);
-            slot->increaseRef(); // TODO: multithreading?
-        }
-        return *this;
-    }
-
-    BLASHandle& BLASHandle::operator=(BLASHandle&& toMove) noexcept {
-        if (this == &toMove) {
-            return *this;
-        }
-        clear();
-        index = toMove.index;
-        generationIndex = toMove.generationIndex;
-        pBuilder = toMove.pBuilder;
-
-        // no need to mess with references as we are moving the value
-        toMove.index = 0;
-        toMove.generationIndex = 0;
-        toMove.pBuilder = nullptr;
-        return *this;
-    }
-
 }
