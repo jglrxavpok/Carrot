@@ -256,7 +256,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                 vk::Format vkFormat = static_cast<vk::Format>(texture->vkFormat);
 
                 if (ktxTexture2_NeedsTranscoding(texture)) {
-                    ktx_texture_transcode_fmt_e tf;
+                    ktx_transcode_fmt_e tf;
 
                     const vk::PhysicalDeviceFeatures& deviceFeatures = GetVulkanDriver().getPhysicalDeviceFeatures();
                     if (deviceFeatures.textureCompressionETC2) {

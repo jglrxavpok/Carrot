@@ -4,7 +4,7 @@
 
 #include "Sphere.h"
 #include "core/Macros.h"
-#include "glm/gtx/norm.hpp"
+#include <glm/gtx/norm.hpp>
 
 namespace Carrot::Math {
 

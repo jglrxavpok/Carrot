@@ -135,6 +135,7 @@ function(add_core_includes Target)
     target_compile_definitions("${Target}" PUBLIC TRACY_ON_DEMAND=1)
     target_compile_definitions("${Target}" PUBLIC TRACY_FIBERS=1)
     target_compile_definitions("${Target}" PUBLIC USE_PIX=1)
+    target_compile_definitions("${Target}" PUBLIC GLM_ENABLE_EXPERIMENTAL=1)
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
     target_link_libraries("${Target}" PUBLIC mimalloc-static)
     target_link_libraries("${Target}" PUBLIC tomlplusplus::tomlplusplus)
@@ -152,6 +153,10 @@ function(add_core_includes Target)
     else()
         # GKlib is added twice to ensure CMake puts GKlib before metis during link, otherwise metis does not find symbols of GKlib
         target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libGKlib.a ${ProjectRoot}thirdparty/libMETIS/libmetis.a ${ProjectRoot}thirdparty/libMETIS/libGKlib.a)
+
+        # https://en.cppreference.com/w/cpp/algorithm/execution_policy_tag.html
+        # GCC depends on an external dependency to use <execution> ??
+        target_link_libraries("${Target}" PUBLIC tbb)
     endif()
 
 

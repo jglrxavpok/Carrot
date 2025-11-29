@@ -10,7 +10,9 @@ endfunction()
 
 FetchContent_Declare(
         googletest
-        URL https://github.com/google/googletest/archive/609281088cfefc76f9d0ce82e1ff6c30cc3591e5.zip
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG        1b96fa13f549387b7549cc89e1a785cf143a1a50
+        FIND_PACKAGE_ARGS NAMES GTest
 )
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

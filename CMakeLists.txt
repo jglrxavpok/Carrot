@@ -128,10 +128,8 @@ set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
 set(SLANG_ENABLE_SLANGRT OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(thirdparty/KTX-Software)
-
-add_subdirectory(thirdparty/glfw-3.3.2/)
-add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
+add_subdirectory(thirdparty/glfw/)
+add_subdirectory(thirdparty/glm/)
 
 add_subdirectory(thirdparty/assimp)
 
@@ -149,12 +147,13 @@ add_subdirectory(thirdparty/tinygltf)
 
 add_subdirectory(thirdparty/SPIRV-Cross)
 set(ENABLE_OPT 0)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # for glslang
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # for glslang and KTX Software
 add_subdirectory(thirdparty/glslang)
+add_subdirectory(thirdparty/KTX-Software)
 
 FetchContent_Declare(openal-soft
         GIT_REPOSITORY      https://github.com/kcat/openal-soft.git
-        GIT_TAG             1.24.1)
+        GIT_TAG             1.24.3)
 FetchContent_MakeAvailable(openal-soft)
 
 add_subdirectory(thirdparty/cider)
@@ -174,7 +173,7 @@ add_subdirectory(thirdparty/OpenXR-Hpp)
 set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/mimalloc)
-add_subdirectory(thirdparty/bc7enc_rdo)
+#add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
 
 # Without this, on Linux, libslang.so conflicts with another dynamic library of the same name, but used for networking

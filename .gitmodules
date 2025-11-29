@@ -97,3 +97,12 @@
 [submodule "thirdparty/graphviz"]
 	path = thirdparty/graphviz
 	url = https://gitlab.com/graphviz/graphviz.git
+[submodule "thirdparty/glfw"]
+	path = thirdparty/glfw
+	url = https://github.com/glfw/glfw
+[submodule "thirdparty/glm"]
+	path = thirdparty/glm
+	url = https://github.com/g-truc/glm
+[submodule "thirdparty/googletest"]
+	path = thirdparty/googletest
+	url = https://github.com/google/googletest
