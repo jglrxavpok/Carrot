@@ -460,14 +460,14 @@ namespace Carrot::Render {
         static constexpr i32 MaxRaysPerProbe = ProbeScreenSize*ProbeScreenSize;
 
         auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameNumber).view, 1, 0);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameNumber-1).view, 1, 1);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.counts, context.frameNumber).view, 1, 2);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedProbes, context.frameNumber).view, 1, 3);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.emptyProbes, context.frameNumber).view, 1, 4);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.reprojectedProbes, context.frameNumber).view, 1, 5);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.rayDataStart, context.frameNumber).view, 1, 6);
-            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.rayData, context.frameNumber).view, 1, 7);
+            pipeline.setStorageBuffer(context, "probeData.probes", graph.getBuffer(data.screenProbes, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.previousFrameProbes", graph.getBuffer(data.screenProbes, context.getPreviousFrameNumber()).view);
+            pipeline.setStorageBuffer(context, "probeData.counts", graph.getBuffer(data.counts, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.emptyProbes", graph.getBuffer(data.emptyProbes, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.reprojectedProbes", graph.getBuffer(data.reprojectedProbes, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.rayDataStart", graph.getBuffer(data.rayDataStart, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.spawnedProbes", graph.getBuffer(data.spawnedProbes, context.frameNumber).view);
+            pipeline.setStorageBuffer(context, "probeData.rayData", graph.getBuffer(data.rayData, context.frameNumber).view);
         };
 
         auto spawnScreenProbes = graph.addPass<GIUpdateData>("spawn-screen-probes",

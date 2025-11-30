@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <core/data/ShaderMetadata.h>
 #include <core/render/ImageFormats.h>
 
 #include "engine/vulkan/SwapchainAware.h"
@@ -13,6 +14,10 @@
 #include <core/utils/Lookup.hpp>
 
 #include "engine/vulkan/DebugNameable.h"
+
+namespace Carrot {
+    class BufferView;
+}
 
 namespace Carrot::Render {
     class CompiledPass;
@@ -76,6 +81,7 @@ namespace Carrot {
         Carrot::VertexFormat vertexFormat = Carrot::VertexFormat::Invalid;
         std::map<std::string, std::uint32_t> constants;
         std::unordered_map<std::uint32_t, DescriptorSet> descriptorSets;
+        std::unordered_map<std::string /*maybe change to precomputed hash if needed in future*/, ShaderCompiler::BindingSlot> descriptorReflection;
         std::uint32_t setCount = 0; // how many sets this pipeline uses. May be higher than descriptorSets.size() if IDs are skipped (eg sets 0, 2, and 3 are used, but not 1)
 
         std::uint64_t subpassIndex = -1;
@@ -135,6 +141,9 @@ namespace Carrot {
          * Does this pipeline have the given binding slot?
          */
         bool hasBinding(u32 setID, u32 bindingID) const;
+
+    public: // pass data to pipeline
+        void setStorageBuffer(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::BufferView& buffer);
 
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;

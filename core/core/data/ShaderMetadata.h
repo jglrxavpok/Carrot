@@ -11,6 +11,11 @@
 #include <core/utils/JSON.h>
 
 namespace ShaderCompiler {
+    struct BindingSlot {
+        u32 setID = 0;
+        u32 bindingID = 0;
+    };
+
     struct Metadata {
         std::vector<std::filesystem::path> sourceFiles; // all source files used to create this shader (original .glsl + included files)
         std::array<std::string, 5> commandArguments; // command to launch to recompile this shader

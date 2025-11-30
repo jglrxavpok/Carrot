@@ -189,6 +189,10 @@ set(SLANG_ENABLE_SLANGI FALSE)
 set(SLANG_ENABLE_GFX FALSE)
 add_subdirectory(thirdparty/slang)
 
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+add_subdirectory(thirdparty/SPIRV-Reflect)
+
 function(make_asan_target Target)
     target_compile_definitions("${Target}" PRIVATE USE_ASAN=1)
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")

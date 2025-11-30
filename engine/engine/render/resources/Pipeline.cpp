@@ -447,6 +447,14 @@ bool Carrot::Pipeline::hasBinding(u32 setID, u32 bindingID) const {
     return false;
 }
 
+void Carrot::Pipeline::setStorageBuffer(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::BufferView& buffer) {
+    auto iter = description.descriptorReflection.find(slotName);
+    if (iter != description.descriptorReflection.end()) {
+        const ShaderCompiler::BindingSlot& slot = iter->second;
+        renderContext.renderer.bindBuffer(*this, renderContext, buffer, slot.setID, slot.bindingID);
+    }
+}
+
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const {
     auto it = vkPipelines.find(createInfo);
     if(it == vkPipelines.end()) {
@@ -840,6 +848,17 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
             };
 
             setCount = std::max(setCount, setID+1);
+        }
+    }
+
+    if (auto bindingIter = json.FindMember("bindings"); bindingIter != json.MemberEnd()) {
+        auto asObj = bindingIter->value.GetObject();
+        for (auto iter = asObj.MemberBegin(); iter != asObj.MemberEnd(); ++iter) {
+            std::string_view bindingName { iter->name.GetString(), iter->name.GetStringLength() };
+            auto asArray = iter->value.GetArray();
+            const u32 setID = asArray[0].GetInt();
+            const u32 bindingID = asArray[1].GetInt();
+            descriptorReflection[std::string{bindingName}] = ShaderCompiler::BindingSlot { setID, bindingID };
         }
     }
 

@@ -16,6 +16,7 @@
 #include "../shadercompiler/ShaderCompiler.h"
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#include <core/data/ShaderMetadata.h>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_hpp_macros.hpp>
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -60,6 +61,8 @@ int main(int argc, char** argv) {
 
     const std::filesystem::path shaderCompilerBasePath = basePath / "resources" / "shaders";
     std::vector<std::filesystem::path> dependencies;
+    std::unordered_map<std::string, ShaderCompiler::BindingSlot> bindings;
+
     auto handleShaderRef = [&](const char* memberName, ShaderCompiler::Stage stage) -> bool{
         auto memberIter = d.FindMember(memberName);
         if(memberIter == d.MemberEnd()) {
@@ -111,8 +114,8 @@ int main(int argc, char** argv) {
             shaderAbsoluteOutputPath.string().data(),
             stage,
             dependencies,
-            entryPointName.c_str()
-            );
+            entryPointName.c_str(),
+            bindings);
 
         dependencies.push_back(shaderAbsoluteInputPath);
 
@@ -120,6 +123,9 @@ int main(int argc, char** argv) {
             std::cerr << "shadercompiler failed." << std::endl;
             return false;
         }
+
+        ShaderCompiler::Metadata m{};
+
         return true;
     };
 
@@ -144,6 +150,17 @@ int main(int argc, char** argv) {
         std::filesystem::path importVal { importIter->value.GetString() };
         importVal.replace_extension(".pipeline");
         importIter->value = rapidjson::Value { importVal.string().c_str(), d.GetAllocator() };
+    }
+
+    {
+        rapidjson::Value bindingsObj{rapidjson::kObjectType};
+        for (const auto& [name, bindingSlot] : bindings) {
+            rapidjson::Value slotAsArray{rapidjson::kArrayType};
+            slotAsArray.PushBack(bindingSlot.setID, d.GetAllocator());
+            slotAsArray.PushBack(bindingSlot.bindingID, d.GetAllocator());
+            bindingsObj.AddMember(rapidjson::Value{name, d.GetAllocator()}, slotAsArray, d.GetAllocator());
+        }
+        d.AddMember("bindings", bindingsObj, d.GetAllocator());
     }
 
     if(!std::filesystem::exists(outFilename.parent_path())) {

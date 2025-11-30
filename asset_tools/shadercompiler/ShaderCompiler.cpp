@@ -12,6 +12,9 @@
 #include <core/utils/stringmanip.h>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
+#include <spirv_reflect.h>
+#include <core/containers/Vector.hpp>
+#include <core/io/Logging.hpp>
 
 #include "FileIncluder.h"
 #include "GlslCompiler.h"
@@ -62,7 +65,8 @@ namespace ShaderCompiler {
         return compiled.string();
     }
 
-    int compileShader(const char *basePath, const char *inputFilepath, const char *outputFilepath, Stage stageCarrot, std::vector<std::filesystem::path>& includedFiles, const char* entryPointName) {
+    int compileShader(const char *basePath, const char *inputFilepath, const char *outputFilepath, Stage stageCarrot, std::vector<std::filesystem::path>& includedFiles, const char* entryPointName,
+        std::unordered_map<std::string, ShaderCompiler::BindingSlot>& outBindings) {
         if(!glslang::InitializeProcess()) {
             std::cerr << "Failed to setup glslang." << std::endl;
             return -2;
@@ -98,15 +102,35 @@ namespace ShaderCompiler {
             throw std::invalid_argument(Carrot::sprintf("File %s has extension %s which is not supported: only glsl and slang are supported", inputFile.string().c_str(), extension.string().c_str()));
         }
 
+        // runtime metadata file (for hot reload & reflection)
+        ShaderCompiler::Metadata metadata{};
+
+        // write reflection data
+        {
+            spv_reflect::ShaderModule mod{spirv};
+
+            u32 count;
+            SpvReflectResult res = mod.EnumerateDescriptorBindings(&count, nullptr);
+            verify(res == SpvReflectResult::SPV_REFLECT_RESULT_SUCCESS, "Failed to enumerate");
+
+            Carrot::Vector<SpvReflectDescriptorBinding*> bindings { count };
+            res = mod.EnumerateDescriptorBindings(&count, bindings.data());
+            verify(res == SpvReflectResult::SPV_REFLECT_RESULT_SUCCESS, "Failed to enumerate");
+
+            for (u32 index = 0; index < count; index++) {
+                ShaderCompiler::BindingSlot& slot = outBindings[bindings[index]->name];
+                slot.setID = bindings[index]->set;
+                slot.bindingID = bindings[index]->binding;
+            }
+        }
 
         {
             std::ofstream outputFile(outputPath, std::ios::binary);
             outputFile.write(reinterpret_cast<const char *>(spirv.data()), spirv.size() * sizeof(std::uint32_t));
         }
 
-        // runtime metadata file (for hot reload)
+        // hot reload support
         {
-            ShaderCompiler::Metadata metadata;
             for (const auto& includedFile: includer.includedFiles) {
                 metadata.sourceFiles.push_back(std::filesystem::absolute(includedFile));
 

@@ -70,7 +70,8 @@ int main(int argc, const char** argv) {
         return -1;
     }
     std::vector<std::filesystem::path> includedFiles;
-    int res = ShaderCompiler::compileShader(basePath, filename, outFilename, stage, includedFiles, entryPointName);
+    std::unordered_map<std::string, ShaderCompiler::BindingSlot> bindings; // not used when compiling a single shader
+    int res = ShaderCompiler::compileShader(basePath, filename, outFilename, stage, includedFiles, entryPointName, bindings);
     if(res == 0) {
         // depfile (for CMake)
         std::filesystem::path depfilePath = outFilename;
