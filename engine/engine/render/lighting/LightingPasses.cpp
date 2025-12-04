@@ -291,17 +291,20 @@ namespace Carrot::Render {
 
                    // first iteration
                    {
+                       GPUZoneColored(GetEngine().tracyCtx[frame.frameIndex], cmds, "Temporal pass", glm::vec4(0,0,1,1));
                        renderer.pushConstants("push", *temporalDenoisePipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, isAO ? (u32)1 : (u32)0);
                        temporalDenoisePipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
                    {
+                       GPUZoneColored(GetEngine().tracyCtx[frame.frameIndex], cmds, "Spatial pass 0", glm::vec4(0,0,1,1));
                        denoiseBlock.iterationIndex = 0;
                        renderer.pushConstantBlock("push", *spatialDenoisePipelines[0], frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
                        spatialDenoisePipelines[0]->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
                    for(std::uint8_t i = 0; i < data.iterationCount-1; i++) {
+                       GPUZoneColored(GetEngine().tracyCtx[frame.frameIndex], cmds, "Spatial pass i", glm::vec4(0,0,1,1));
                        auto& pipeline = *spatialDenoisePipelines[i % 2 +1];
                        denoiseBlock.iterationIndex = i;
                        renderer.pushConstantBlock("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
