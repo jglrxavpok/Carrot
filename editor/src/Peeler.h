@@ -275,6 +275,7 @@ namespace Peeler {
         Carrot::Vector<Carrot::IO::VFS::Path> knownScenes;
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
         Carrot::UUID entityIDPickedThisFrame;
+        std::unordered_set<Carrot::IO::VFS::Path> openScenes; // "open", basically a shortcut for the "recent scenes" menu
 
     public:
         Carrot::Scene& currentScene;

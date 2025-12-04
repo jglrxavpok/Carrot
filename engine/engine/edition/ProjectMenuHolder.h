@@ -220,6 +220,7 @@ namespace Tools {
         virtual void saveToFile(std::filesystem::path path) = 0;
         virtual bool showUnsavedChangesPopup() = 0;
         virtual bool canSave() const { return true; };
+        bool hasUnsavedPopupOpen() const { return unsavedChangePopupIsOpen; }
 
         virtual bool drawCantSavePopup() {
             return true;

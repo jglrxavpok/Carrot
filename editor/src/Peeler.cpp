@@ -1002,8 +1002,51 @@ namespace Peeler {
 
     void Application::UIGameView(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
+        if (ImGui::BeginTabBar("scene list", ImGuiTabBarFlags_Reorderable)) {
+            u32 index = 0;
+            std::optional<Carrot::IO::VFS::Path> sceneToRemove;
+            std::optional<Carrot::IO::VFS::Path> requestedScene;
+            static bool couldForceSelectionLastFrame = hasUnsavedPopupOpen();
+            bool canForceSelection = !hasUnsavedPopupOpen();
+            for (const auto& scene : openScenes) {
+                std::string id = Carrot::sprintf("%s##scene tab", scene.toString().c_str(), index++);
+
+                ImGuiTabItemFlags flags = 0;
+                if (scene == scenePath && canForceSelection) {
+                    flags |= ImGuiTabItemFlags_SetSelected;
+                }
+
+                bool keepOpen = true;
+                bool* pKeepOpen = nullptr;
+                if (scene != scenePath) {
+                    pKeepOpen = &keepOpen;
+                }
+
+                if (ImGui::BeginTabItem(id.c_str(), pKeepOpen, flags)) {
+                    if (!hasUnsavedPopupOpen() && scene != scenePath && couldForceSelectionLastFrame) {
+                        requestedScene = scene;
+                    }
+                    ImGui::EndTabItem();
+                }
+                if (!keepOpen) {
+                    sceneToRemove = scene;
+                }
+            }
+            couldForceSelectionLastFrame = canForceSelection;
+
+            if (requestedScene.has_value()) {
+                openScene(requestedScene.value());
+            }
+
+            if (sceneToRemove.has_value()) {
+                const Carrot::IO::VFS::Path& scene = sceneToRemove.value();
+                verify (scene != scenePath, "Currently not supported to close current scene");
+                std::erase_if(openScenes, [&](const Carrot::IO::VFS::Path& path) { return path == sceneToRemove.value(); });
+            }
+            ImGui::EndTabBar();
+        }
         ImGuizmo::BeginFrame();
-        
+
         ImVec2 entireRegion = ImGui::GetContentRegionAvail();
         verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
         gameTextureRef = GetEngine().getResourceRepository().getTextureRef(gameTexture, renderContext.frameNumber);
@@ -1745,6 +1788,8 @@ namespace Peeler {
     void Application::openScene(const Carrot::IO::VFS::Path& path) {
         openUnsavedChangesPopup([this, path]() {
             scenePath = path;
+            openScenes.insert(path);
+
             try {
                 currentScene.clear();
                 currentScene.deserialise(scenePath);
@@ -1929,6 +1974,19 @@ namespace Peeler {
         } else {
             knownScenes.pushBack(scenePath);
         }
+
+        openScenes.clear();
+        if(description.HasMember("open_scenes")) {
+            const auto scenesArray = description["open_scenes"].GetArray();
+            for (const auto& sceneElement : scenesArray) {
+                std::string_view path { sceneElement.GetString(), sceneElement.GetStringLength() };
+                Carrot::IO::VFS::Path scenePath = path;
+                openScenes.insert(scenePath);
+            }
+        } else {
+            openScenes.insert(scenePath);
+        }
+
         {
             openScene(description["scene"].GetString());
         }
@@ -2002,11 +2060,18 @@ namespace Peeler {
             document.AddMember("scene", scenePath.toString(), document.GetAllocator());
 
             if(!knownScenes.empty()) {
-                rapidjson::Value knownScenesArray { rapidjson::kArrayType };
+                rapidjson::Value scenesArray { rapidjson::kArrayType };
                 for(const auto& knownScene : knownScenes) {
-                    knownScenesArray.PushBack(rapidjson::Value { knownScene.toString().c_str(), document.GetAllocator() }, document.GetAllocator());
+                    scenesArray.PushBack(rapidjson::Value { knownScene.toString().c_str(), document.GetAllocator() }, document.GetAllocator());
                 }
-                document.AddMember("scenes", knownScenesArray, document.GetAllocator());
+                document.AddMember("scenes", scenesArray, document.GetAllocator());
+            }
+            if (!openScenes.empty()) {
+                rapidjson::Value scenesArray { rapidjson::kArrayType };
+                for(const auto& knownScene : openScenes) {
+                    scenesArray.PushBack(rapidjson::Value { knownScene.toString().c_str(), document.GetAllocator() }, document.GetAllocator());
+                }
+                document.AddMember("open_scenes", scenesArray, document.GetAllocator());
             }
         }
 
