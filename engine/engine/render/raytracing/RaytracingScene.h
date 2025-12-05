@@ -338,7 +338,6 @@ namespace Carrot {
 
         std::size_t lastInstanceCount = 0;
 
-        // TODO: tests once generic
         std::recursive_mutex blasStorageMutex;
         HandleStorage<BLAS> blasStorage;
 
