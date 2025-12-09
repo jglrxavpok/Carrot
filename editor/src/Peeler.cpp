@@ -108,6 +108,9 @@ namespace Peeler {
             if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F2) == GLFW_PRESS) {
                 inspectorPanel.focusNameInput();
             }
+            if(isPlaying && glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
+                pauseSimulation();
+            }
         }
         if(renderContext.pViewport == &gameViewport) {
             ZoneScopedN("Game viewport");
