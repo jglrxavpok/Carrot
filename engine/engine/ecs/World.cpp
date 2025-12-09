@@ -774,6 +774,12 @@ namespace Carrot::ECS {
         for(auto& s : renderSystems) {
             s->reload();
         }
+
+        for (auto& [entity, componentList] : entityComponents) {
+            for (auto& [id, pComp] : componentList) {
+                pComp->reloadComponent();
+            }
+        }
     }
 
     void World::unloadSystems() {
@@ -782,6 +788,12 @@ namespace Carrot::ECS {
         }
         for(auto& s : logicSystems) {
             s->unload();
+        }
+
+        for (auto& [entity, componentList] : entityComponents) {
+            for (auto& [id, pComp] : componentList) {
+                pComp->unloadComponent();
+            }
         }
     }
 

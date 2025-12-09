@@ -19,7 +19,9 @@
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 
+#include "Character.h"
 #include "PhysicsBody.h"
+#include "RigidBody.h"
 
 using namespace JPH;
 
@@ -212,13 +214,14 @@ namespace Carrot::Physics {
             switch(bodyUserData->type) {
                 case BodyUserData::Type::Rigidbody:
                     raycastInfo.rigidBody = (RigidBody*)bodyUserData->ptr;
+                    raycastInfo.collider = raycastInfo.rigidBody->getColliderFromSubShapeID_Locked(rayResult.mSubShapeID2);
                     break;
 
                 case BodyUserData::Type::Character:
                     raycastInfo.character = (Character*)bodyUserData->ptr;
+                    raycastInfo.collider = &raycastInfo.character->getCollider();
                     break;
             }
-            raycastInfo.collider = nullptr; // TODO
         }
         return intersected;
     }
@@ -313,7 +316,8 @@ namespace Carrot::Physics {
     }
 
     void PhysicsSystem::destroyRigidbody(const JPH::BodyID& bodyID) {
-        jolt->GetBodyInterface().RemoveBody(bodyID);
+        if (jolt->GetBodyInterface().IsAdded(bodyID))
+            jolt->GetBodyInterface().RemoveBody(bodyID);
         jolt->GetBodyInterface().DestroyBody(bodyID);
     }
 

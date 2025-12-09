@@ -34,8 +34,8 @@ namespace Carrot::ECS {
             return result;
         }
 
-        void reload();
-        void unload();
+        void reloadComponent() override;
+        void unloadComponent() override;
         void dispatchEventsPostPhysicsMainThread();
 
         bool& getRegisteredForContactsRef();

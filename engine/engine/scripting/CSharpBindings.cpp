@@ -35,6 +35,7 @@
 #include <engine/utils/Profiling.h>
 #include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
+#include <engine/ecs/components/LightComponent.h>
 #include <engine/render/DebugRenderer.h>
 
 #include "engine/ecs/components/ModelComponent.h"
@@ -161,6 +162,7 @@ namespace Carrot::Scripting {
 
         {
             mono_add_internal_call("Carrot.Physics.Collider::Raycast", (void*)RaycastCollider);
+            mono_add_internal_call("Carrot.Physics.Collider::GetEntity", (void*)_ColliderGetEntity);
         }
 
         mono_add_internal_call("Carrot.Components.AnimatedModelComponent::SelectAnimation", (void*)SelectAnimatedModelAnimation);
@@ -168,6 +170,11 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationIndex", (void*)_SetAnimatedModelAnimationIndex);
         mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationTime", (void*)_GetAnimatedModelAnimationTime);
         mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationTime", (void*)_SetAnimatedModelAnimationTime);
+
+        mono_add_internal_call("Carrot.Components.LightComponent::_GetEnabled", (void*)_GetLightEnabled);
+        mono_add_internal_call("Carrot.Components.LightComponent::_SetEnabled", (void*)_SetLightEnabled);
+        mono_add_internal_call("Carrot.Components.LightComponent::_GetIntensity", (void*)_GetLightIntensity);
+        mono_add_internal_call("Carrot.Components.LightComponent::_SetIntensity", (void*)_SetLightIntensity);
 
         mono_add_internal_call("Carrot.Input.ActionSet::Create", (void*)CreateActionSet);
         mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", (void*)_ActivateActionSet);
@@ -186,7 +193,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Input.Vec2InputAction::Create", (void*)CreateVec2InputAction);
         mono_add_internal_call("Carrot.Input.Vec2InputAction::_GetValue", (void*)_GetVec2InputValue);
 
-        mono_add_internal_call("Carrot.Input.Aim::GetDirectionFromScreen", (void*)GetAimDirectionFromScreen);
+        mono_add_internal_call("Carrot.Input.Utils::GetDirectionFromScreen", (void*)GetAimDirectionFromScreen);
+        mono_add_internal_call("Carrot.Input.Utils::GrabCursor", (void*)GrabCursor);
+        mono_add_internal_call("Carrot.Input.Utils::UngrabCursor", (void*)UngrabCursor);
     }
 
     CSharpBindings::~CSharpBindings() {
@@ -539,6 +548,7 @@ namespace Carrot::Scripting {
         LOAD_CLASS(CameraComponent);
         LOAD_CLASS(KinematicsComponent);
         LOAD_CLASS_NS("Carrot.Components", AnimatedModelComponent);
+        LOAD_CLASS_NS("Carrot.Components", LightComponent);
 
         {
             LOAD_CLASS(NavPath);
@@ -610,6 +620,10 @@ namespace Carrot::Scripting {
             hardcodedComponents["Carrot.Components.ModelComponent"] = {
                     .id = ECS::ModelComponent::getID(),
                     .clazz = ModelComponentClass,
+            };
+            hardcodedComponents["Carrot.Components.LightComponent"] = {
+                    .id = ECS::LightComponent::getID(),
+                    .clazz = LightComponentClass,
             };
         }
 
@@ -890,6 +904,46 @@ namespace Carrot::Scripting {
         return entity.getComponent<ECS::Kinematics>()->velocity;
     }
 
+    bool CSharpBindings::_GetLightEnabled(MonoObject* comp)
+    {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        return (light.flags & Render::LightFlags::Enabled) != Render::LightFlags::None;
+    }
+
+    void CSharpBindings::_SetLightEnabled(MonoObject* comp, bool value)
+    {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+
+        // TODO: macro for flag operators?
+        using IntType = std::underlying_type_t<Render::LightFlags>;
+        auto flags = static_cast<IntType>(light.flags);
+        flags &= ~static_cast<IntType>(Render::LightFlags::Enabled);
+        if (value) {
+            flags |= static_cast<IntType>(Render::LightFlags::Enabled);
+        }
+        light.flags = static_cast<Render::LightFlags>(flags);
+    }
+
+    float CSharpBindings::_GetLightIntensity(MonoObject* comp)
+    {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        return light.intensity;
+    }
+
+    void CSharpBindings::_SetLightIntensity(MonoObject* comp, float value)
+    {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        light.intensity = value;
+    }
+
     void CSharpBindings::TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
@@ -1078,6 +1132,21 @@ namespace Carrot::Scripting {
         return instance().requestCarrotReference(instance().ColliderClass, &rigidbody.getCollider(index))->toMono();
     }
 
+    MonoObject* CSharpBindings::_ColliderGetEntity(MonoObject* pColliderWrapper) {
+        Physics::Collider& collider = getReference<Physics::Collider>(pColliderWrapper);
+        Carrot::Engine& engine = GetEngine();
+        Physics::RigidBody* rigidBody = collider.getRigidBody();
+        if (rigidBody == nullptr) {
+            return nullptr;
+        }
+        std::optional<ECS::Entity> owningEntity = ECS::RigidBodySystem::entityFromBody(engine.getSceneManager().getMainScene().world, *rigidBody);
+        if (!owningEntity.has_value()) {
+            return nullptr;
+        }
+
+        return entityToCSObject(owningEntity.value())->toMono();
+    }
+
     bool CSharpBindings::RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* pCSRaycastInfo) {
         auto& colliderRef = getReference<Carrot::Physics::Collider>(collider);
 
@@ -1089,7 +1158,9 @@ namespace Carrot::Scripting {
             instance().RaycastInfoWorldPointField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldPoint));
             instance().RaycastInfoWorldNormalField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldNormal));
             instance().RaycastInfoTField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.t));
-            instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+            if (raycastInfo.collider) {
+                instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+            }
         }
 
         return hasHit;
@@ -1156,7 +1227,12 @@ namespace Carrot::Scripting {
             instance().RaycastInfoWorldPointField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldPoint));
             instance().RaycastInfoWorldNormalField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldNormal));
             instance().RaycastInfoTField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.t));
-           // instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+
+            // TODO: rigidbody
+
+            if (raycastInfo.collider) {
+                instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+            }
         }
 
         return hasHit;
@@ -1419,6 +1495,14 @@ namespace Carrot::Scripting {
                                cameraProjection,
                                viewportRect)
                 - cameraPosition;
+    }
+
+    void CSharpBindings::GrabCursor() {
+        GetEngine().grabCursor();
+    }
+
+    void CSharpBindings::UngrabCursor() {
+        GetEngine().ungrabCursor();
     }
 
     float CSharpBindings::_GetAnimatedModelAnimationTime(MonoObject* comp) {

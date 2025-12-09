@@ -242,6 +242,14 @@ namespace Carrot::Physics {
         Carrot::Math::Transform getLocalTransform() const;
         Carrot::DocumentElement serialise() const;
 
+        RigidBody* getRigidBody() const;
+
+        /**
+         * Checks if this shape contains the other, as-in this shape represents the underlying shape, but transformed, or in a compound.
+         * Not related to intersections.
+         */
+        bool containsJoltShape(const JPH::Shape* pJoltShape) const;
+
     private:
         void addToBody(RigidBody& body);
         void removeFromBody(RigidBody& body);

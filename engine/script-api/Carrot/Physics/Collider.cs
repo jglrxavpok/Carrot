@@ -24,5 +24,11 @@ namespace Carrot.Physics {
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern bool Raycast(Vec3 start, Vec3 dir, float maxLength, ref RaycastInfo raycastInfo);
+
+        /**
+         * Returns the entity associated to this collider
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern Entity GetEntity();
     }
 }

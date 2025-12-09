@@ -57,6 +57,9 @@ namespace Carrot::Physics {
         Collider& getCollider(std::size_t index);
         const Collider& getCollider(std::size_t index) const;
 
+        // call only if body is locked
+        Collider* getColliderFromSubShapeID_Locked(JPH::SubShapeID) const;
+
     public:
         glm::vec3 getPointVelocityInLocalSpace(const glm::vec3& point);
         void addForceAtPointInLocalSpace(const glm::vec3& force, const glm::vec3& point);

@@ -65,6 +65,7 @@ namespace Carrot::Scripting {
 
         CSClass* CameraComponentClass = nullptr;
         CSClass* KinematicsComponentClass = nullptr;
+        CSClass* LightComponentClass = nullptr;
         CSClass* AnimatedModelComponentClass = nullptr;
         CSClass* ModelComponentClass = nullptr;
 
@@ -235,6 +236,11 @@ namespace Carrot::Scripting {
         static glm::vec3 _GetKinematicsLocalVelocity(MonoObject* comp);
         static void _SetKinematicsLocalVelocity(MonoObject* comp, glm::vec3 value);
 
+        static bool _GetLightEnabled(MonoObject* comp);
+        static void _SetLightEnabled(MonoObject* comp, bool value);
+        static float _GetLightIntensity(MonoObject* comp);
+        static void _SetLightIntensity(MonoObject* comp, float value);
+
         static void TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos);
         static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);
         static void _SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value);
@@ -262,6 +268,8 @@ namespace Carrot::Scripting {
         static void _RigidBodyAddForceAtPointInLocalSpace(MonoObject* comp, glm::vec3 force, glm::vec3 point);
         static void _RigidBodyAddRelativeForceInLocalSpace(MonoObject* comp, glm::vec3 force);
 
+        static MonoObject* _ColliderGetEntity(MonoObject* pColliderWrapper);
+
         static std::uint64_t GetRigidBodyColliderCount(MonoObject* comp);
         static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);
 
@@ -275,6 +283,8 @@ namespace Carrot::Scripting {
         static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);
 
         static glm::vec3 GetAimDirectionFromScreen(MonoObject* cameraComponent, glm::vec2 screenPosition);
+        static void GrabCursor();
+        static void UngrabCursor();
 
         static float _GetAnimatedModelAnimationTime(MonoObject* comp);
         static void _SetAnimatedModelAnimationTime(MonoObject* comp, float newTime);

@@ -101,6 +101,10 @@ namespace Carrot::Physics {
         return data;
     }
 
+    RigidBody* Collider::getRigidBody() const {
+        return rigidbody;
+    }
+
     void Collider::addToBody(RigidBody& body) {
         rigidbody = &body;
     }
@@ -140,6 +144,15 @@ namespace Carrot::Physics {
         if(rigidbody) {
             rigidbody->recreateBodyIfNeeded();
         }
+    }
+
+    bool Collider::containsJoltShape(const JPH::Shape* pJoltShape) const {
+        const JPH::Shape* leafShape = shape->shape.GetPtr();
+        while (leafShape->GetSubType() == JPH::EShapeSubType::RotatedTranslated) {
+            leafShape = static_cast<const JPH::RotatedTranslatedShape*>(leafShape)->GetInnerShape();
+        }
+
+        return leafShape == pJoltShape;
     }
 
     // ---- Collision shapes ----

@@ -126,6 +126,18 @@ namespace Carrot::Physics {
         return *colliders[index];
     }
 
+    Collider* RigidBody::getColliderFromSubShapeID_Locked(JPH::SubShapeID shapeID) const {
+        JPH::SubShapeID remainder;
+        JPH::Body* body = GetPhysics().lockedGetBody(bodyID);
+        const JPH::Shape* shape = body->GetShape()->GetLeafShape(shapeID, remainder);
+        for (auto& pCollider : colliders) {
+            if (pCollider->containsJoltShape(shape)) {
+                return pCollider.get();
+            }
+        }
+        return nullptr;
+    }
+
     glm::vec3 RigidBody::getPointVelocityInLocalSpace(const glm::vec3& point) {
         BodyAccessRead r {bodyID};
         verify(!glm::any(glm::isnan(point)), "NaN point!");

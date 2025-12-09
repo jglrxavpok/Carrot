@@ -51,6 +51,7 @@
         <Compile Include="ComponentPropertyAttributes\Ranges.cs" />
         <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
         <Compile Include="Components\AnimatedModelComponent.cs" />
+        <Compile Include="Components\LightComponent.cs" />
         <Compile Include="Components\ModelComponent.cs" />
         <Compile Include="Components\NavMeshTestComponent.cs" />
         <Compile Include="Debug.cs" />
@@ -60,7 +61,7 @@
         <Compile Include="IComponent.cs" />
         <Compile Include="Input\Actions.cs" />
         <Compile Include="Input\ActionSet.cs" />
-        <Compile Include="Input\Aim.cs" />
+        <Compile Include="Input\Utils.cs" />
         <Compile Include="KinematicsComponent.cs" />
         <Compile Include="LogicSystem.cs" />
         <Compile Include="NavMeshComponent.cs" />

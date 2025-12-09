@@ -35,6 +35,16 @@ namespace Carrot::ECS {
         };
 
         /**
+         * Called when (re)loading a scene or loading a prefab, should be used for components that register themselves to other systems (Physics, Audio, etc.)
+         */
+        virtual void reloadComponent() {}
+
+        /**
+         * Called when unloading a scene or at the end of loading a prefab, should be used for components that register themselves to other systems (Physics, Audio, etc.)
+         */
+        virtual void unloadComponent() {}
+
+        /**
          * Called when duplicating entities, to ensure components of this entity (and its children) reference the newly created entities.
          * 'remap' should return the input if the input ID does NOT correspond to an entity that was duplicated
          */

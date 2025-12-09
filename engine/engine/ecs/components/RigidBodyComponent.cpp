@@ -115,11 +115,11 @@ namespace Carrot::ECS {
         return Physics::BodyType::Dynamic;
     }
 
-    void RigidBodyComponent::reload() {
+    void RigidBodyComponent::reloadComponent() {
         rigidbody.setActive(wasActive);
     }
 
-    void RigidBodyComponent::unload() {
+    void RigidBodyComponent::unloadComponent() {
         wasActive = rigidbody.isActive();
         rigidbody.setActive(false);
     }

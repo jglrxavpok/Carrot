@@ -37,18 +37,6 @@ namespace Carrot::ECS {
         return std::make_unique<RigidBodySystem>(newOwner);
     }
 
-    void RigidBodySystem::reload() {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
-            rigidBodyComp.reload();
-        });
-    }
-
-    void RigidBodySystem::unload() {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
-            rigidBodyComp.unload();
-        });
-    }
-
     /*static*/ std::optional<Entity> RigidBodySystem::entityFromBody(const Carrot::ECS::World& world, const Physics::RigidBody& body) {
         void* pData = body.getUserData();
         if(!pData) {
