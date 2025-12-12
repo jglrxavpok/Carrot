@@ -822,18 +822,24 @@ namespace Peeler {
             auto dragAndDrop = [&]() {
                 bool dragging = false;
                 // TODO: makes drag and drop into editor complicated
-                if (selectedEntityIDs.contains(entity.getID())) {
-                    dragging = ImGui::BeginDragDropSource();
-                    if(dragging) {
-                        Carrot::Vector<Carrot::ECS::EntityID> draggedEntities;
-                        draggedEntities.ensureReserve(selectedEntityIDs.size());
+                dragging = ImGui::BeginDragDropSource();
+                if(dragging) {
+                    Carrot::Vector<Carrot::ECS::EntityID> draggedEntities;
+                    draggedEntities.ensureReserve(selectedEntityIDs.size());
+                    if (selectedEntityIDs.contains(entity.getID())) {
                         for (const auto& selectedEntity : selectedEntityIDs) {
                             draggedEntities.emplaceBack() = selectedEntity;
-                            ImGui::Text("%s", currentScene.world.getName(selectedEntity).c_str());
                         }
-                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs, draggedEntities.cdata(), draggedEntities.bytes_size());
-                        ImGui::EndDragDropSource();
+                    } else {
+                        draggedEntities.emplaceBack() = entity;
                     }
+
+                    for (const auto& selectedEntity : draggedEntities) {
+                        ImGui::Text("%s", currentScene.world.getName(selectedEntity).c_str());
+                    }
+
+                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUIDs, draggedEntities.cdata(), draggedEntities.bytes_size());
+                    ImGui::EndDragDropSource();
                 }
 
                 if(ImGui::BeginDragDropTarget()) {
@@ -916,7 +922,7 @@ namespace Peeler {
                     return;
                 }
 
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !isDragging) {
                     if (!isControlHeld) {
                         selectEntity(entity.getID(), false); // only select this entity, clear previous selection
                     } else {
