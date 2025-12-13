@@ -272,8 +272,8 @@ namespace Peeler {
 
                     std::optional<Carrot::IO::VFS::Path> updateToPath;
                     for(const auto& entry : resourcesInCurrentFolder) {
-                        std::string filename = entry.path.toString();
-                        if(!searchFilter.PassFilter(filename.c_str())) {
+                        const std::string_view filename = entry.path.getPath().getFilename();
+                        if(!searchFilter.PassFilter(filename.data(), filename.data()+filename.size())) {
                             continue;
                         }
                         ImGui::TableNextColumn();
@@ -402,8 +402,20 @@ namespace Peeler {
             for(const auto& file : std::filesystem::directory_iterator(GetVFS().resolve(currentFolder))) {
                 ResourceType type = file.is_directory() ? ResourceType::Folder : ResourceType::GenericFile;
                 Carrot::IO::VFS::Path p = GetVFS().represent(file.path()).value();
-                resourcesInCurrentFolder.emplace_back(type, p);
+                resourcesInCurrentFolder.emplaceBack(type, p);
             }
+
+            resourcesInCurrentFolder.sort([](const ResourceEntry& a, const ResourceEntry& b) {
+                if (a.type == ResourceType::Folder) { // put folders first in list
+                    return b.type != ResourceType::Folder || Carrot::icompareAscii(a.path.getPath().getFilename(),
+                        b.path.getPath().getFilename()) < 0;
+                }
+                if (b.type == ResourceType::Folder) {
+                    return false;
+                }
+
+                return Carrot::icompareAscii(a.path.getPath().getFilename(), b.path.getPath().getFilename()) < 0;
+            });
         }
     }
 

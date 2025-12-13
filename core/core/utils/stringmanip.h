@@ -11,6 +11,10 @@
 #include <core/utils/Types.h>
 
 namespace Carrot {
+    /**
+     * Case insensitive compare for ASCII text
+     */
+    int icompareAscii(const std::string_view& a, const std::string_view& b);
     std::vector<std::string> splitString(const std::string& toSplit, const std::string& delimiter);
     std::string joinStrings(const std::span<std::string_view>& toJoin, std::string_view joiner);
 

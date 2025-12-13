@@ -46,7 +46,7 @@ namespace Peeler {
             Carrot::IO::VFS::Path path;
         };
         Carrot::IO::VFS::Path currentFolder = "engine://";
-        std::vector<ResourceEntry> resourcesInCurrentFolder;
+        Carrot::Vector<ResourceEntry> resourcesInCurrentFolder;
 
         std::unordered_map<Carrot::IO::FileFormat, Carrot::Render::Texture::Ref> filetypeIcons;
         std::unordered_map<Carrot::IO::VFS::Path, Carrot::Render::Texture::Ref> thumbnails;

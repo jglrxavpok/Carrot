@@ -8,6 +8,23 @@
 #include <cstring>
 #include <core/Macros.h>
 
+int Carrot::icompareAscii(const std::string_view& a, const std::string_view& b) {
+    i64 minSize = std::min(a.size(), b.size());
+    for (i64 index = 0; index < minSize; index++) {
+        const char toUppercaseAsciiA = std::toupper(a[index]);
+        const char toUppercaseAsciiB = std::toupper(b[index]);
+        if (toUppercaseAsciiA < toUppercaseAsciiB) {
+            return -1;
+        } else if (toUppercaseAsciiA > toUppercaseAsciiB) {
+            return 1;
+        }
+    }
+    if (a.size() == b.size()) {
+        return 0;
+    }
+    return a.size() < b.size() ? -1 : 1;
+}
+
 std::vector<std::string> Carrot::splitString(const std::string& toSplit, const std::string& delimiter) {
     std::vector<std::string> parts{};
 
