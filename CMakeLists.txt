@@ -72,7 +72,7 @@ endif()
 
 add_subdirectory(thirdparty/graphviz)
 file(COPY "${ProjectRoot}thirdparty/mono-install/${Platform}/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/")
-file(COPY "${ProjectRoot}thirdparty/graphviz-build/${Platform}/" DESTINATION "${CMAKE_BINARY_DIR}/graphviz/")
+file(COPY "${ProjectRoot}thirdparty/graphviz-build/${Arch}/${Platform}" DESTINATION "${CMAKE_BINARY_DIR}/graphviz/")
 if(NOT WIN32)
     file(COPY "${ProjectRoot}thirdparty/mono/bin/${Arch}/Linux/Debug/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/lib")
 endif ()
