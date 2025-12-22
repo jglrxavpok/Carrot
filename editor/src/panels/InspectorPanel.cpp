@@ -234,7 +234,18 @@ namespace Peeler {
     }
 
     void InspectorPanel::drawSystem(const Carrot::Render::Context& renderContext) {
-        TODO;
+        if(app.selectedSystems.empty()) {
+            return;
+        } else if(app.selectedSystems.size() > 1) {
+            for(const auto& pSystem : app.selectedSystems) {
+                ImGui::BulletText("%s", pSystem->getName());
+            }
+        } else {
+            const Carrot::ECS::System* pSystem = app.selectedSystems[0];
+            ImGui::TextUnformatted(pSystem->getName());
+
+            // TODO
+        }
     }
 
     void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {

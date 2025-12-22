@@ -242,7 +242,7 @@ namespace Peeler {
 
         std::unordered_set<Carrot::ECS::EntityID> selectedEntityIDs;
         Carrot::Vector<Carrot::IO::VFS::Path> selectedAssetPaths;
-        // TODO: Carrot::Vector<Carrot::ECS::System*> selectedSystems;
+        Carrot::Vector<Carrot::ECS::System*> selectedSystems;
 
         UndoStack undoStack;
 

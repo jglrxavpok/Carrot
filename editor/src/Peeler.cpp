@@ -488,7 +488,19 @@ namespace Peeler {
                     if(!system->shouldBeSerialized()) {
                         id += " (Editor)";
                     }
-                    ImGui::TreeNodeEx(system, nodeFlags, "%s", id.c_str());
+
+                    ImGuiTreeNodeFlags systemNodeFlags = nodeFlags;
+                    if (selectedSystems.find(system) != selectedSystems.end()) {
+                        systemNodeFlags |= ImGuiTreeNodeFlags_Selected;
+                    }
+                    ImGui::TreeNodeEx(system, systemNodeFlags, "%s", id.c_str());
+
+                    if (ImGui::IsItemClicked()) {
+                        inspectorType = Application::InspectorType::System;
+                        selectedSystems.clear();
+                        selectedSystems.pushBack(system);
+                    }
+
                     if(ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
                         for(const auto& e : system->getEntities()) {
@@ -821,7 +833,6 @@ namespace Peeler {
 
             auto dragAndDrop = [&]() {
                 bool dragging = false;
-                // TODO: makes drag and drop into editor complicated
                 dragging = ImGui::BeginDragDropSource();
                 if(dragging) {
                     Carrot::Vector<Carrot::ECS::EntityID> draggedEntities;
