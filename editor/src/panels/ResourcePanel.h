@@ -11,7 +11,7 @@ namespace Peeler {
     struct ThumbnailLoader {
         void startLoading(const Carrot::IO::VFS::Path& filepath);
 
-        std::atomic_flag isReady = false;
+        std::atomic_flag isReady;
         Carrot::Render::Texture::Ref loadedTexture;
     };
 

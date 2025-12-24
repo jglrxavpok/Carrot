@@ -69,27 +69,27 @@ namespace Carrot::Render {
         }
 
         T* begin() {
-            return storage.begin();
+            return storage.data();
         }
 
         T* end() {
-            return storage.end();
+            return storage.data() + storage.size();
         }
 
         const T* begin() const {
-            return storage.begin();
+            return storage.data();
         }
 
         const T* end() const {
-            return storage.end();
+            return storage.data() + storage.size();
         }
 
         const T* cbegin() const {
-            return storage.cbegin();
+            return storage.data();
         }
 
         const T* cend() const {
-            return storage.cend();
+            return storage.data() + storage.size();
         }
 
     private:
