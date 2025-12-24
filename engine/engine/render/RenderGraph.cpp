@@ -411,11 +411,16 @@ namespace Carrot::Render {
         gvAddLibrary(context, &gvplugin_dot_layout_LTX_library);
         gvAddLibrary(context, &gvplugin_core_LTX_library);
 
-        Agraph_t* g = agopen("g", Agdirected, nullptr);
-        agsafeset(g, "concentrate", "true", "true");
-        agsafeset(g, "mincross", "true", "true");
-        agsafeset(g, "constraint", "false", "false");
-        agsafeset(g, "fixedsize", "shape", "shape");
+        char gStr[] = "g;";
+        char concentrateStr[] = "concentrate";
+        char mincrossStr[] = "mincross";
+        char constraintStr[] = "constraint";
+        char fixedsizeStr[] = "fixedsize";
+        Agraph_t* g = agopen(gStr, Agdirected, nullptr);
+        agsafeset(g, concentrateStr, "true", "true");
+        agsafeset(g, mincrossStr, "true", "true");
+        agsafeset(g, constraintStr, "false", "false");
+        agsafeset(g, fixedsizeStr, "shape", "shape");
 
         std::unordered_map<CompiledPass*, Agnode_t*> nodeStorage;
         std::unordered_map<CompiledPass*, std::string> nodeNameStorage;
@@ -438,8 +443,10 @@ namespace Carrot::Render {
             }
             const float lineHeight = 1.0f;
             // invert width and height because we rotate the generated layout at the end
-            agsafeset(node, "height", Carrot::sprintf("%.5f", lineHeight*8).data(), "1");
-            agsafeset(node, "width", Carrot::sprintf("%.5f", ((maxHeight+1) * lineHeight)).data(), "1");
+            char widthStr[] = "width";
+            char heightStr[] = "height";
+            agsafeset(node, heightStr, Carrot::sprintf("%.5f", lineHeight*8).data(), "1");
+            agsafeset(node, widthStr, Carrot::sprintf("%.5f", ((maxHeight+1) * lineHeight)).data(), "1");
         }
 
         std::unordered_set<Carrot::Pair<Agnode_t*, Agnode_t*>> existingLinks;
@@ -450,7 +457,8 @@ namespace Carrot::Render {
                         Agnode_t* nodeA = resourceToNode.at(i.parentID);
                         Agnode_t* nodeB = resourceToNode.at(i.id);
                         if (existingLinks.insert(Carrot::Pair{nodeA, nodeB}).second) { // avoid duplicates
-                            agedge(g, nodeA, nodeB, "", 1);
+                            char edgeName[] = "";
+                            agedge(g, nodeA, nodeB, edgeName, 1);
                         }
                     }
                 }

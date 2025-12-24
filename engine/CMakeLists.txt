@@ -347,16 +347,19 @@ if(WIN32)
 endif()
 
 # Post build copies
-add_custom_command(TARGET Engine-Base POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy
-        "$<TARGET_SONAME_FILE:OpenXR::openxr_loader>"
-        "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenXR::openxr_loader>"
-)
-add_custom_command(TARGET Engine-Base POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy
-        "$<TARGET_SONAME_FILE:OpenAL::OpenAL>"
-        "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenAL::OpenAL>"
-)
+if(WIN32)
+    add_custom_command(TARGET Engine-Base POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            "${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/OpenAL32${CMAKE_SHARED_LIBRARY_SUFFIX}"
+            "${PROJECT_BINARY_DIR}/lib/OpenAL32${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    )
+else ()
+    add_custom_command(TARGET Engine-Base POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            "$<TARGET_SONAME_FILE:OpenAL::OpenAL>"
+            "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenAL::OpenAL>"
+    )
+endif ()
 
 # TODO: move to post-build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

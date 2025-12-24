@@ -1143,7 +1143,7 @@ namespace Peeler {
             nfdchar_t* outPath;
 
             // show the dialog
-            nfdresult_t result = NFD_PickFolder(&outPath, GetVFS().resolve("game://").c_str());
+            nfdresult_t result = NFD_PickFolder(&outPath, Carrot::toString(GetVFS().resolve("game://").u8string()).c_str());
             if (result == NFD_OKAY) {
                 auto resolved = GetVFS().represent(outPath);
                 if (resolved.has_value()) {
@@ -1182,7 +1182,7 @@ namespace Peeler {
             nfdchar_t* outPath;
 
             // show the dialog
-            nfdresult_t result = NFD_PickFolder(&outPath, GetVFS().resolve("game://").c_str());
+            nfdresult_t result = NFD_PickFolder(&outPath, Carrot::toString(GetVFS().resolve("game://").u8string()).c_str());
             if (result == NFD_OKAY) {
                 auto resolved = GetVFS().represent(outPath);
                 if (resolved.has_value()) {
