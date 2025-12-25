@@ -151,10 +151,8 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # for glslang and KTX Software
 add_subdirectory(thirdparty/glslang)
 add_subdirectory(thirdparty/KTX-Software)
 
-FetchContent_Declare(openal-soft
-        GIT_REPOSITORY      https://github.com/kcat/openal-soft.git
-        GIT_TAG             1.24.3)
-FetchContent_MakeAvailable(openal-soft)
+set(LIBTYPE "STATIC") # build OpenAL as static lib
+add_subdirectory(thirdparty/openal-soft)
 
 add_subdirectory(thirdparty/cider)
 add_subdirectory(thirdparty/meshoptimizer)
@@ -180,14 +178,14 @@ add_subdirectory(thirdparty/tomlplusplus)
 # Without this, on Linux, libslang.so conflicts with another dynamic library of the same name, but used for networking
 #  this makes slangc crash on init with this error:
 # symbol lookup error: /usr/local/bin/slangc: undefined symbol: _Z29slang_createGlobalSessionImplPK22SlangGlobalSessionDescPKN5Slang25GlobalSessionInternalDescEPPN5slang14IGlobalSessionE
-set(SLANG_LIB_TYPE STATIC)
-set(SLANG_ENABLE_SLANG_GLSLANG FALSE)
-set(SLANG_ENABLE_EXAMPLES FALSE)
-set(SLANG_ENABLE_REPLAYER FALSE)
-set(SLANG_ENABLE_TESTS FALSE)
-set(SLANG_ENABLE_SLANGC TRUE)
-set(SLANG_ENABLE_SLANGI FALSE)
-set(SLANG_ENABLE_GFX FALSE)
+set(SLANG_LIB_TYPE STATIC CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANG_GLSLANG FALSE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_EXAMPLES FALSE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_REPLAYER FALSE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_TESTS FALSE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANGC TRUE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_SLANGI FALSE CACHE BOOL "" FORCE)
+set(SLANG_ENABLE_GFX FALSE CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/slang)
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)

@@ -1,7 +1,7 @@
 # Building the engine
 
 ## Requirements
-1. You need to install the Vulkan SDK. I currently use the 1.3.268.0 LunarG SDK.
+1. You need to install the Vulkan SDK. I currently use the 1.4.335.0 LunarG SDK.
 2. (Linux) You may need to install `xorg-dev` for GLFW (as per its documentation).
 3. (Linux) You may need to install `libgtk-3-dev` for nativefiledialog.
 4. (Linux) You may need to install `libxcb-glx0-dev` for OpenXR.

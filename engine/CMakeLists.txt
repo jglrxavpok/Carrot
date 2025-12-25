@@ -346,21 +346,6 @@ if(WIN32)
     add_dependencies(Engine-Base CopyRuntimeLibs)
 endif()
 
-# Post build copies
-if(WIN32)
-    add_custom_command(TARGET Engine-Base POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy
-            "${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/OpenAL32${CMAKE_SHARED_LIBRARY_SUFFIX}"
-            "${PROJECT_BINARY_DIR}/lib/OpenAL32${CMAKE_SHARED_LIBRARY_SUFFIX}"
-    )
-else ()
-    add_custom_command(TARGET Engine-Base POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy
-            "$<TARGET_SONAME_FILE:OpenAL::OpenAL>"
-            "${PROJECT_BINARY_DIR}/lib/$<TARGET_SONAME_FILE_NAME:OpenAL::OpenAL>"
-    )
-endif ()
-
 # TODO: move to post-build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")

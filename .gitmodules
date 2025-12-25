@@ -109,3 +109,6 @@
 [submodule "thirdparty/SPIRV-Reflect"]
 	path = thirdparty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "thirdparty/openal-soft"]
+	path = thirdparty/openal-soft
+	url = https://github.com/kcat/openal-soft
