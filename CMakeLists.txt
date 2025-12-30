@@ -70,6 +70,7 @@ if(NsightAftermath_FOUND)
     file(COPY ${DLL_PATH} DESTINATION "${CMAKE_BINARY_DIR}")
 endif()
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WITH_ZLIB OFF CACHE BOOL "" FORCE) # avoid linking issue on Windows due to Zlib, and Carrot only uses the layout engine anyway
 set(WITH_EXPAT OFF CACHE BOOL "" FORCE) # avoid DLL dependency of Graphviz
 add_subdirectory(thirdparty/graphviz)
@@ -131,7 +132,6 @@ set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
 set(SLANG_ENABLE_SLANGRT OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(thirdparty/glfw/)
-add_subdirectory(thirdparty/glm/)
 
 add_subdirectory(thirdparty/assimp)
 
@@ -189,6 +189,9 @@ set(SLANG_ENABLE_SLANGC TRUE CACHE BOOL "" FORCE)
 set(SLANG_ENABLE_SLANGI FALSE CACHE BOOL "" FORCE)
 set(SLANG_ENABLE_GFX FALSE CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/slang)
+
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+add_subdirectory(thirdparty/glm/)
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
