@@ -73,6 +73,7 @@ endif()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WITH_ZLIB OFF CACHE BOOL "" FORCE) # avoid linking issue on Windows due to Zlib, and Carrot only uses the layout engine anyway
 set(WITH_EXPAT OFF CACHE BOOL "" FORCE) # avoid DLL dependency of Graphviz
+set(GRAPHVIZ_CLI OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/graphviz)
 file(COPY "${ProjectRoot}thirdparty/mono-install/${Platform}/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/")
 file(COPY "${ProjectRoot}thirdparty/graphviz-build/${Arch}/${Platform}" DESTINATION "${CMAKE_BINARY_DIR}/graphviz/")
@@ -177,18 +178,7 @@ add_subdirectory(thirdparty/mimalloc)
 #add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
 
-# Without this, on Linux, libslang.so conflicts with another dynamic library of the same name, but used for networking
-#  this makes slangc crash on init with this error:
-# symbol lookup error: /usr/local/bin/slangc: undefined symbol: _Z29slang_createGlobalSessionImplPK22SlangGlobalSessionDescPKN5Slang25GlobalSessionInternalDescEPPN5slang14IGlobalSessionE
-set(SLANG_LIB_TYPE STATIC CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_SLANG_GLSLANG FALSE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_EXAMPLES FALSE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_REPLAYER FALSE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_TESTS FALSE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_SLANGC TRUE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_SLANGI FALSE CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_GFX FALSE CACHE BOOL "" FORCE)
-add_subdirectory(thirdparty/slang)
+find_package(slang REQUIRED)
 
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/glm/)
