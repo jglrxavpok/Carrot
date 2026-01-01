@@ -127,11 +127,6 @@ set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_STATIC_LIBRARY OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 
-set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
-set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
-set(SLANG_ENABLE_SLANGRT OFF CACHE BOOL "" FORCE)
-
 add_subdirectory(thirdparty/glfw/)
 
 add_subdirectory(thirdparty/assimp)
@@ -178,7 +173,7 @@ add_subdirectory(thirdparty/mimalloc)
 #add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
 
-find_package(slang REQUIRED)
+find_package(ShaderSlang REQUIRED)
 
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/glm/)
