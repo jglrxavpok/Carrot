@@ -170,7 +170,6 @@ add_subdirectory(thirdparty/OpenXR-Hpp)
 set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/mimalloc)
-#add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
 
 find_package(ShaderSlang REQUIRED)
