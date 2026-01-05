@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # required for JetLive
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+install(CODE "set(CMAKE_INSTALL_LOCAL_ONLY TRUE)")
+
 set(RPATH "./lib")
 set(CMAKE_BUILD_RPATH ${RPATH})
 
@@ -355,3 +358,10 @@ add_subdirectory(runtime)
 add_subdirectory(tests)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/.gdbinit" DESTINATION "${CMAKE_BINARY_DIR}/.gdbinit")
+
+install(TARGETS Peeler DESTINATION bin)
+install(TARGETS Runtime DESTINATION bin)
+install(DIRECTORY "${CMAKE_BINARY_DIR}/resources" DESTINATION share)
+install(DIRECTORY "${CMAKE_BINARY_DIR}/mono-install" DESTINATION share)
+install(DIRECTORY "${CMAKE_BINARY_DIR}/scripting" DESTINATION share)
+install(FILES "${CMAKE_BINARY_DIR}/default-imgui.ini" DESTINATION share)
