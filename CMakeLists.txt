@@ -355,6 +355,8 @@ add_subdirectory(engine)
 add_subdirectory(samples)
 add_subdirectory(editor)
 add_subdirectory(runtime)
+
+set(ENABLE_CTEST ON CACHE BOOL "" FORCE)
 add_subdirectory(tests)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/.gdbinit" DESTINATION "${CMAKE_BINARY_DIR}/.gdbinit")

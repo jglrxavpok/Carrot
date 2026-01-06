@@ -26,6 +26,7 @@ make_test(engine/old/Network-Server)
 make_test(engine/old/Lua)
 make_test(engine/old/GeneralMaterials)
 
+include(GoogleTest)
 enable_testing()
 
 add_executable(
@@ -66,7 +67,7 @@ target_link_libraries(
         gtest_main
 )
 
-include(GoogleTest)
-gtest_discover_tests(Engine-Tests)
+gtest_discover_tests(Core-Tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+gtest_discover_tests(Engine-Tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 copy_all_resources()
