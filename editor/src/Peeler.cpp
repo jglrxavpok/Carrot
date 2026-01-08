@@ -518,7 +518,9 @@ namespace Peeler {
 
                 if(ImGui::BeginMenu(Carrot::sprintf("Add##add system to %s", title).c_str())) {
                     auto& systemLib = Carrot::ECS::getSystemLibrary();
-                    for(const auto& systemName : systemLib.getAllIDs()) {
+                    std::vector<std::string> ids = systemLib.getAllIDs();
+                    std::ranges::sort(ids);
+                    for(const auto& systemName : ids) {
                         if(ImGui::MenuItem(systemName.c_str())) {
                             add(systemName);
                         }

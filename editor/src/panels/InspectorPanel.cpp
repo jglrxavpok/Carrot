@@ -190,7 +190,9 @@ namespace Peeler {
 
         if(ImGui::BeginPopup("Add component##Add component popup")) {
             const auto& lib = Carrot::ECS::getComponentLibrary();
-            for(const auto& compID : lib.getAllIDs()) {
+            std::vector<std::string> ids = lib.getAllIDs();
+            std::ranges::sort(ids);
+            for(const auto& compID : ids) {
                 std::string id = compID;
 
                 if(componentsInCommonNames.contains(compID)) {
