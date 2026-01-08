@@ -268,7 +268,7 @@ namespace Peeler {
         Carrot::UniquePtr<Peeler::ParticleEditor> pParticleEditor;
 
     private: // Scene manipulation
-        bool movingGameViewCamera = false;
+        bool grabbingGameViewport = false;
 
         bool hasUnsavedChanges = false;
 
@@ -285,11 +285,17 @@ namespace Peeler {
         Carrot::Scene savedScene;
 
     private: // inputs
-        Carrot::IO::ActionSet editorActions { "editor_actions" };
-        Carrot::IO::Vec2InputAction moveCamera { "strafe_forward_camera" };
-        Carrot::IO::FloatInputAction moveCameraUp { "move_camera_up" };
-        Carrot::IO::FloatInputAction moveCameraDown { "move_camera_down" };
-        Carrot::IO::Vec2InputAction turnCamera { "turn_camera" };
+        Carrot::IO::ActionSet editorKBMActions { "editor_keyboard_mouse_actions" };
+        Carrot::IO::Vec2InputAction moveCameraKBM { "strafe_forward_camera" };
+        Carrot::IO::FloatInputAction moveCameraUpKBM { "move_camera_up" };
+        Carrot::IO::FloatInputAction moveCameraDownKBM { "move_camera_down" };
+        Carrot::IO::Vec2InputAction turnCameraKBM { "turn_camera" };
+
+        Carrot::IO::ActionSet editorGamepadActions { "editor_gamepad_actions" };
+        Carrot::IO::Vec2InputAction moveCameraGamepad { "strafe_forward_camera" };
+        Carrot::IO::FloatInputAction moveCameraUpGamepad { "move_camera_up" };
+        Carrot::IO::FloatInputAction moveCameraDownGamepad { "move_camera_down" };
+        Carrot::IO::Vec2InputAction turnCameraGamepad { "turn_camera" };
 
         Carrot::Edition::FreeCameraController cameraController;
 

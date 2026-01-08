@@ -4,6 +4,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}Window.cpp
 
         ${EngineRoot}io/actions/Action.cpp
+        ${EngineRoot}io/actions/ActionDebug.cpp
         ${EngineRoot}io/actions/ActionSet.cpp
         ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 

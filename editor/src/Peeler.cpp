@@ -1081,7 +1081,7 @@ namespace Peeler {
 
         ImGui::Image(gameTextureRef->getImguiID(), entireRegion);
 
-        movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+        grabbingGameViewport = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
         bool canPickEntity = true;
         for (int j = sceneViewLayersStack.size()-1; j >= 0; j--) {
@@ -1089,7 +1089,7 @@ namespace Peeler {
             pLayer->draw(renderContext, startX, startY);
 
             canPickEntity &= pLayer->allowSceneEntityPicking();
-            movingGameViewCamera &= pLayer->allowCameraMovement();
+            grabbingGameViewport &= pLayer->allowCameraMovement();
 
             if(!pLayer->showLayersBelow()) {
                 break;
@@ -1098,14 +1098,24 @@ namespace Peeler {
         flushLayers();
 
         if(!isPlaying) {
-            if(movingGameViewCamera) {
+            if(grabbingGameViewport) {
                 if(!engine.isGrabbingCursor()) {
                     engine.grabCursor();
                 }
             } else if(!ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
                 engine.ungrabCursor();
             } else if(engine.isGrabbingCursor()) {
-                movingGameViewCamera = true;
+                grabbingGameViewport = true;
+            }
+        }
+
+        if (grabbingGameViewport) {
+            if (!editorKBMActions.isActive()) {
+                editorKBMActions.activate();
+            }
+        } else {
+            if (editorKBMActions.isActive()) {
+                editorKBMActions.deactivate();
             }
         }
 
@@ -1612,24 +1622,28 @@ namespace Peeler {
         pushLayer<GizmosLayer>();
 
         {
-            moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
-            moveCamera.suggestBinding(Carrot::IO::GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType::WASD));
+            moveCameraGamepad.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
+            moveCameraKBM.suggestBinding(Carrot::IO::GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType::WASD));
 
-            turnCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::RightStick));
-            turnCamera.suggestBinding(Carrot::IO::GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType::ArrowKeys));
-            turnCamera.suggestBinding(Carrot::IO::GLFWGrabbedMouseDeltaBinding());
+            turnCameraGamepad.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::RightStick));
+            turnCameraKBM.suggestBinding(Carrot::IO::GLFWGrabbedMouseDeltaBinding());
 
-            moveCameraUp.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER));
-            moveCameraUp.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_SPACE));
+            moveCameraUpGamepad.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER));
+            moveCameraUpKBM.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_SPACE));
 
-            moveCameraDown.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER));
-            moveCameraDown.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_SHIFT));
+            moveCameraDownGamepad.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER));
+            moveCameraDownKBM.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_SHIFT));
 
-            editorActions.add(moveCamera);
-            editorActions.add(moveCameraDown);
-            editorActions.add(moveCameraUp);
-            editorActions.add(turnCamera);
-            editorActions.activate();
+            editorKBMActions.add(moveCameraKBM);
+            editorKBMActions.add(moveCameraDownKBM);
+            editorKBMActions.add(moveCameraUpKBM);
+            editorKBMActions.add(turnCameraKBM);
+            editorGamepadActions.add(moveCameraGamepad);
+            editorGamepadActions.add(moveCameraDownGamepad);
+            editorGamepadActions.add(moveCameraUpGamepad);
+            editorGamepadActions.add(turnCameraGamepad);
+            // Keyboard & mouse actions enabled depending on whether game viewport is grabbed
+            editorGamepadActions.activate();
         }
 
         addDefaultSystems(currentScene);
@@ -1746,9 +1760,13 @@ namespace Peeler {
             pParticleEditor->tick(frameTime);
         }
 
-        if(movingGameViewCamera && !isPlaying) {
-            cameraController.move(moveCamera.getValue().x * cameraSpeedMultiplier, moveCamera.getValue().y * cameraSpeedMultiplier, (moveCameraUp.getValue() - moveCameraDown.getValue()) * cameraSpeedMultiplier,
-                turnCamera.getValue().x, turnCamera.getValue().y,
+        if(!isPlaying) {
+            glm::vec2 moveCamera = moveCameraGamepad.getValue() + moveCameraKBM.getValue();
+            glm::vec2 turnCamera = turnCameraGamepad.getValue() + turnCameraKBM.getValue();
+            float moveCameraUp = moveCameraUpGamepad.getValue() + moveCameraUpKBM.getValue();
+            float moveCameraDown = moveCameraDownGamepad.getValue() + moveCameraDownKBM.getValue();
+            cameraController.move(moveCamera.x * cameraSpeedMultiplier, moveCamera.y * cameraSpeedMultiplier, (moveCameraUp - moveCameraDown) * cameraSpeedMultiplier,
+                turnCamera.x, turnCamera.y,
                 frameTime*5);
         }
     }
