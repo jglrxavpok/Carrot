@@ -180,6 +180,7 @@ namespace Carrot::Render {
         // resize buffers for frame-by-frame storage
         resizeStorage(MAX_FRAMES_IN_FLIGHT);
 
+        // TODO: missing GLFW init for external windows?
         ImGui_ImplGlfw_InitForVulkan(renderer.getEngine().getMainWindow().getGLFWPointer(), true);
 
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();

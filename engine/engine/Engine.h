@@ -123,7 +123,9 @@ namespace Carrot {
 
         void onMouseMove(Window& which, double xpos, double ypos, bool updateOnlyDelta);
 
-        void onKeyEvent(Window& which, int key, int scancode, int action, int mods);
+        /// return true if event is consumed
+        bool onKeyEvent(Window& which, int key, int scancode, int action, int mods);
+        bool onCharEvent(Window& which, unsigned int codepoint);
 
         void onMouseButton(Window& which, int button, int action, int mods);
 
@@ -497,7 +499,10 @@ namespace Carrot {
         void init();
 
         /// Init window
-        void initWindow();
+        void initMainWindow();
+    public: // public for external imgui windows
+        void installCallbacksOnWindow(Window& window);
+    private:
 
         /// Init Vulkan for rendering
         void initVulkan();

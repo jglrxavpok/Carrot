@@ -194,7 +194,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
 }
 
 void Carrot::Engine::init() {
-    initWindow();
+    initMainWindow();
 
     allocateGraphicsCommandBuffers();
     createTracyContexts();
@@ -580,10 +580,23 @@ static void mouseButton(GLFWwindow* window, int button, int action, int mods) {
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
-    GetEngine().onKeyEvent(*pWindow, key, scancode, action, mods);
+    if (GetEngine().onKeyEvent(*pWindow, key, scancode, action, mods)) {
+        return;
+    }
 
     if(!GetEngine().isGrabbingCursor()) {
         ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+    }
+}
+
+static void charCallback(GLFWwindow* window, unsigned int c) {
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    if (GetEngine().onCharEvent(*pWindow, c)) {
+        return;
+    }
+
+    if(!GetEngine().isGrabbingCursor()) {
+        ImGui_ImplGlfw_CharCallback(window, c);
     }
 }
 
@@ -604,16 +617,21 @@ static void scrollCallback(GLFWwindow* window, double xScroll, double yScroll) {
     }
 }
 
-void Carrot::Engine::initWindow() {
-    glfwSetJoystickCallback(joystickCallback);
-
-    auto& window = mainWindow; // TODO: reuse for different windows
+void Carrot::Engine::installCallbacksOnWindow(Window& window) {
     glfwSetFramebufferSizeCallback(window.getGLFWPointer(), windowResize);
 
     glfwSetCursorPosCallback(window.getGLFWPointer(), mouseMove);
     glfwSetMouseButtonCallback(window.getGLFWPointer(), mouseButton);
     glfwSetKeyCallback(window.getGLFWPointer(), keyCallback);
+    glfwSetCharCallback(window.getGLFWPointer(), charCallback);
     glfwSetScrollCallback(window.getGLFWPointer(), scrollCallback);
+}
+
+void Carrot::Engine::initMainWindow() {
+    glfwSetJoystickCallback(joystickCallback);
+
+    auto& window = mainWindow; // TODO: reuse for different windows
+    installCallbacksOnWindow(window);
 }
 
 void Carrot::Engine::initVulkan() {
@@ -1380,9 +1398,19 @@ void Carrot::Engine::onMouseButton(Window& which, int button, int action, int mo
     }
 }
 
-void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action, int mods) {
-    if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
-        Console::instance().toggleVisibility();
+bool Carrot::Engine::onCharEvent(Window& which, unsigned int c) {
+    if (c == U'²') {
+        return true;
+    }
+    return false;
+}
+
+bool Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action, int mods) {
+    if(key == GLFW_KEY_GRAVE_ACCENT) { // '²' on azerty keyboard
+        if (action == GLFW_RELEASE) {
+            Console::instance().toggleVisibility();
+        }
+        return true;
     }
 
 #ifdef USE_JETLIVE
@@ -1393,7 +1421,7 @@ void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action
 #endif
 
     if(which != mainWindow) {
-        return;
+        return false;
     }
 
     for(auto& [id, callback] : keyCallbacks) {
@@ -1401,7 +1429,7 @@ void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action
     }
 
     if(action == GLFW_REPEAT)
-        return;
+        return false;
     bool pressed = action == GLFW_PRESS;
     for(auto vec2TypeIndex = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2TypeIndex < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2TypeIndex++) {
         auto& input = Carrot::IO::InputVectors[vec2TypeIndex];
@@ -1418,6 +1446,7 @@ void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action
                 state.down = pressed;
         }
     }
+    return false;
 }
 
 void Carrot::Engine::onScroll(Window& which, double xScroll, double yScroll) {

@@ -220,6 +220,10 @@ void Carrot::VulkanRenderer::initImGui() {
         std::filesystem::copy_file("default-imgui.ini", "imgui.ini");
     }
     imGuiBackend.initResources();
+
+    // restore key callback, to allow engine to consume events before forwarding to ImGui
+    // TODO: don't install callbacks and forward all callbacks manually
+    getEngine().installCallbacksOnWindow(getEngine().getMainWindow());
 }
 
 void Carrot::VulkanRenderer::shutdownImGui() {
