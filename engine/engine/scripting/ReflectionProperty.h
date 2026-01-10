@@ -35,9 +35,9 @@ namespace Carrot::Scripting {
     };
 
     /**
-     * Property of a component visible to editor
+     * Property of a component or system, visible to editor
      */
-    struct ComponentProperty {
+    struct ReflectionProperty {
         CSField* field = nullptr;
 
         std::string fieldName;

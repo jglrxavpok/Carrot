@@ -2,10 +2,10 @@
 // Created by jglrxavpok on 30/03/2023.
 //
 
-#include <engine/scripting/ComponentProperty.h>
+#include <engine/scripting/ReflectionProperty.h>
 
 namespace Carrot::Scripting {
-    void ComponentProperty::validate() {
+    void ReflectionProperty::validate() {
         if(displayName.empty()) {
             displayName = fieldName;
         }

@@ -55,4 +55,49 @@ namespace Peeler {
             }
         }
     };
+
+    /**
+     * Command which updates the value of a system property.
+     * Name has to be explicitely specified
+     */
+    template<typename TSystem, typename TValue>
+    struct UpdateSystemValue: Peeler::ICommand {
+        std::string systemName;
+        bool isRenderSystem = false;
+        TValue newValue;
+        TValue oldValue;
+        std::function<TValue(TSystem& comp)> getter;
+        std::function<void(TSystem& comp, const TValue& value)> setter;
+
+        UpdateSystemValue(Application &app, const std::string& desc, const std::string& _systemName, bool isRenderSystem, const TValue& _newValue,
+            std::function<TValue(TSystem& comp)> _getter, std::function<void(TSystem& comp, const TValue& value)> _setter)
+            : ICommand(app, desc)
+            , isRenderSystem(isRenderSystem)
+            , systemName(_systemName)
+            , newValue(_newValue)
+            , getter(_getter)
+            , setter(_setter)
+        {
+            oldValue = getter(reinterpret_cast<TSystem&>(*getSystem()));
+        }
+
+        Carrot::ECS::System* getSystem() {
+            Carrot::ECS::System* pSystem = nullptr;
+            if (isRenderSystem) {
+                pSystem = editor.currentScene.world.getRenderSystem(systemName);
+            } else {
+                pSystem = editor.currentScene.world.getLogicSystem(systemName);
+            }
+            verify(pSystem, Carrot::sprintf("No system matching with name %s in current scene", systemName.c_str()));
+            return pSystem;
+        }
+
+        void undo() override {
+            setter(reinterpret_cast<TSystem&>(*getSystem()), oldValue);
+        }
+
+        void redo() override {
+            setter(reinterpret_cast<TSystem&>(*getSystem()), newValue);
+        }
+    };
 }

@@ -22,10 +22,10 @@ namespace Carrot::ECS {
 
     CSharpLogicSystem::CSharpLogicSystem(const Carrot::DocumentElement& doc, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className):
         Carrot::ECS::System(doc, world), namespaceName(namespaceName), className(className) {
+        serializedVersion = doc;
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
-        // TODO: load from JSON
         init(false);
     }
 
@@ -35,6 +35,7 @@ namespace Carrot::ECS {
     }
 
     void CSharpLogicSystem::init(bool needToReloadEntities) {
+        csProperties.clear();
         systemName = namespaceName;
         systemName += '.';
         systemName += className;
@@ -45,6 +46,7 @@ namespace Carrot::ECS {
             foundInAssemblies = false;
             return;
         }
+        csProperties = GetCSharpBindings().findAllReflectionProperties(namespaceName, className);
         foundInAssemblies = true;
         for (Scripting::CSClass* c = clazz; c != nullptr; c = GetCSharpScripting().getParentClass(*c)) {
             if (csTickMethod == nullptr) {
@@ -103,6 +105,8 @@ namespace Carrot::ECS {
             world.reloadSystemEntities(this);
             recreateEntityList();
         }
+
+        CSharpComponent::applySavedValues(serializedVersion, *csSystem, csProperties, getWorld(), Carrot::sprintf("%s.%s", namespaceName.c_str(), className.c_str()));
     }
 
     void CSharpLogicSystem::firstTick() {
@@ -242,12 +246,27 @@ namespace Carrot::ECS {
     }
 
     Carrot::DocumentElement CSharpLogicSystem::serialise() const {
-        // TODO
-        return System::serialise();
+        if(!foundInAssemblies) { // copy last known state
+            return serializedVersion;
+        }
+
+        return CSharpComponent::serializeProperties(*csSystem, csProperties, Carrot::sprintf("%s.%s", namespaceName.c_str(), className.c_str()));
+    }
+
+    bool CSharpLogicSystem::isLoaded() const {
+        return foundInAssemblies;
     }
 
     Scripting::CSArray* CSharpLogicSystem::getEntityList() {
         return csEntities.get();
+    }
+
+    std::span<Scripting::ReflectionProperty> CSharpLogicSystem::getProperties() {
+        return csProperties;
+    }
+
+    Scripting::CSObject& CSharpLogicSystem::getCSObject() {
+        return *csSystem;
     }
 
     void CSharpLogicSystem::onAssemblyLoad() {

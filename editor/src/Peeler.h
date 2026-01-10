@@ -242,7 +242,18 @@ namespace Peeler {
 
         std::unordered_set<Carrot::ECS::EntityID> selectedEntityIDs;
         Carrot::Vector<Carrot::IO::VFS::Path> selectedAssetPaths;
-        Carrot::Vector<Carrot::ECS::System*> selectedSystems;
+
+        /**
+         * Represents a selected system. Cannot be raw pointer because launching/stopping game is not stable for system pointers
+         */
+        struct SystemSelection {
+            std::string name;
+            bool isRenderSystem = false;
+
+            Carrot::ECS::System* get(Carrot::ECS::World& world);
+            const Carrot::ECS::System* get(Carrot::ECS::World& world) const;
+        };
+        Carrot::Vector<SystemSelection> selectedSystems;
 
         UndoStack undoStack;
 

@@ -18,6 +18,7 @@
 #include <engine/ecs/World.h>
 #include <engine/scripting/CSharpBindings.h>
 #include <engine/Engine.h>
+#include <engine/ecs/systems/CSharpLogicSystem.h>
 #include <panels/inspector/EditorFunctions.h>
 
 namespace Peeler {
@@ -240,13 +241,20 @@ namespace Peeler {
             return;
         } else if(app.selectedSystems.size() > 1) {
             for(const auto& pSystem : app.selectedSystems) {
-                ImGui::BulletText("%s", pSystem->getName());
+                ImGui::BulletText("%s", pSystem.get(app.currentScene.world)->getName());
             }
         } else {
-            const Carrot::ECS::System* pSystem = app.selectedSystems[0];
+            Carrot::ECS::System* pSystem = app.selectedSystems[0].get(app.currentScene.world);
             ImGui::TextUnformatted(pSystem->getName());
 
-            // TODO
+            if (auto* pCsharp = dynamic_cast<Carrot::ECS::CSharpLogicSystem*>(pSystem)) {
+                EditContext editContext {
+                    .editor = app,
+                    .inspector = *this,
+                    .renderContext = renderContext
+                };
+                editCSharpSystem(editContext, *pCsharp);
+            }
         }
     }
 
@@ -278,4 +286,6 @@ namespace Peeler {
             editContext.shouldBeRemoved = true;
         }
     }
+
+
 } // Peeler

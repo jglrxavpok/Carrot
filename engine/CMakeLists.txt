@@ -156,9 +156,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}scene/Scene.cpp
         ${EngineRoot}scene/SceneManager.cpp
 
-        ${EngineRoot}scripting/ComponentProperty.cpp
         ${EngineRoot}scripting/CSharpBindings.cpp
         ${EngineRoot}scripting/CSharpReflectionHelper.cpp
+        ${EngineRoot}scripting/ReflectionProperty.cpp
 
         ${EngineRoot}scripting/bindings/ModelBindings.cpp
         ${EngineRoot}scripting/bindings/PrefabBindings.cpp

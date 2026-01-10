@@ -38,56 +38,60 @@ namespace Carrot::ECS {
         return result;
     }
 
-    Carrot::DocumentElement CSharpComponent::serialise() const {
-        if(!foundInAssemblies) { // copy last known state
-            return serializedVersion;
-        }
-
+    Carrot::DocumentElement CSharpComponent::serializeProperties(Scripting::CSObject& instance, std::span<const Carrot::Scripting::ReflectionProperty> properties, const std::string& debugName) {
         Carrot::DocumentElement r;
 
-        for(auto& property : componentProperties) {
+        for(auto& property : properties) {
             const std::string& key = property.serializationName;
             switch(property.type) {
                 case Scripting::ComponentType::Int: {
-                    auto v = property.field->get(*csComponent).unbox<std::int32_t>();
+                    auto v = property.field->get(instance).unbox<std::int32_t>();
                     r[key] = i64{v};
                 } break;
 
                 case Scripting::ComponentType::Float: {
-                    auto v = property.field->get(*csComponent).unbox<float>();
+                    auto v = property.field->get(instance).unbox<float>();
                     r[key] = v;
                 } break;
 
                 case Scripting::ComponentType::Boolean: {
-                    auto v = property.field->get(*csComponent).unbox<bool>();
+                    auto v = property.field->get(instance).unbox<bool>();
                     r[key] = v;
                 } break;
 
                 case Scripting::ComponentType::Entity: {
-                    MonoObject* entityObj = property.field->get(*csComponent);
+                    MonoObject* entityObj = property.field->get(instance);
                     ECS::Entity entity = GetCSharpBindings().convertToEntity(entityObj);
                     r[key] = entity.getID().toString();
                 } break;
 
                 case Scripting::ComponentType::String: {
-                    MonoString* text = reinterpret_cast<MonoString *>(property.field->get(*csComponent).toMono());
+                    MonoString* text = reinterpret_cast<MonoString *>(property.field->get(instance).toMono());
                     char* textReadable = mono_string_to_utf8(text);
                     CLEANUP(mono_free(textReadable));
                     r[key] = textReadable;
                 } break;
 
                 case Scripting::ComponentType::UserEnum: {
-                    const std::string enumValueAsString = GetCSharpBindings().enumValueToString(property.field->get(*csComponent));
+                    const std::string enumValueAsString = GetCSharpBindings().enumValueToString(property.field->get(instance));
                     r[key] = enumValueAsString;
                 } break;
 
                 case Scripting::ComponentType::UserDefined:
                 default:
-                    Carrot::Log::warn("Property inside %s.%s has type %s which is not supported for serialization", namespaceName.c_str(), className.c_str(), property.typeStr.c_str());
+                    Carrot::Log::warn("Property inside %s has type %s which is not supported for serialization", debugName.c_str(), property.typeStr.c_str());
                     break;
             }
         }
         return r;
+    }
+
+    Carrot::DocumentElement CSharpComponent::serialise() const {
+        if(!foundInAssemblies) { // copy last known state
+            return serializedVersion;
+        }
+
+        return serializeProperties(*csComponent, componentProperties, Carrot::sprintf("%s.%s", namespaceName.c_str(), className.c_str()));
     }
 
     const char *const CSharpComponent::getName() const {
@@ -110,7 +114,7 @@ namespace Carrot::ECS {
         }
     }
 
-    Scripting::CSObject& CSharpComponent::getCSComponentObject() {
+    Scripting::CSObject& CSharpComponent::getCSObject() {
         verify(csComponent, "No component loaded at this point");
         return *csComponent;
     }
@@ -119,7 +123,7 @@ namespace Carrot::ECS {
         return csComponent != nullptr;
     }
 
-    std::span<Scripting::ComponentProperty> CSharpComponent::getProperties() {
+    std::span<Scripting::ReflectionProperty> CSharpComponent::getProperties() {
         return componentProperties;
     }
 
@@ -130,6 +134,49 @@ namespace Carrot::ECS {
         fullName += " (C#)";
 
         componentID = GetCSharpBindings().requestComponentID(namespaceName, className);
+    }
+
+    /*static*/ void CSharpComponent::applySavedValues(const Carrot::DocumentElement& savedValues, Scripting::CSObject& instance, std::span<Carrot::Scripting::ReflectionProperty> properties, const Carrot::ECS::World& world, const std::string& debugName) {
+        for(auto& property : properties) {
+            if(savedValues.contains(property.serializationName)) {
+                switch(property.type) {
+                    case Scripting::ComponentType::Int: {
+                        i32 v = static_cast<i32>(savedValues[property.serializationName].getAsInt64());
+                        property.field->set(instance, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Float: {
+                        float v = static_cast<float>(savedValues[property.serializationName].getAsDouble());
+                        property.field->set(instance, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Boolean: {
+                        bool v = savedValues[property.serializationName].getAsBool();
+                        property.field->set(instance, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Entity: {
+                        Carrot::UUID uuid = Carrot::UUID::fromString(savedValues[property.serializationName].getAsString());
+                        Entity e = world.wrap(uuid);
+                        property.field->set(instance, *GetCSharpBindings().entityToCSObject(e));
+                    } break;
+
+                    case Scripting::ComponentType::UserEnum: {
+                        Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, std::string { savedValues[property.serializationName].getAsString() });
+                        property.field->set(instance, enumValue);
+                    } break;
+
+                    case Scripting::ComponentType::String: {
+                        property.field->set(instance, Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(std::string{savedValues[property.serializationName].getAsString()}.c_str()))));
+                    } break;
+
+                    case Scripting::ComponentType::UserDefined:
+                    default:
+                        Carrot::Log::warn("Property inside %s has type %s which is not supported for serialization", debugName.c_str(), property.typeStr.c_str());
+                        break;
+                }
+            }
+        }
     }
 
     void CSharpComponent::refresh() {
@@ -145,48 +192,9 @@ namespace Carrot::ECS {
         void* args[1] { (MonoObject*)(*pEntity) };
         csComponent = clazz->newObject(args);
 
-        componentProperties = GetCSharpBindings().findAllComponentProperties(namespaceName, className);
+        componentProperties = GetCSharpBindings().findAllReflectionProperties(namespaceName, className);
 
-        for(auto& property : componentProperties) {
-            if(serializedVersion.contains(property.serializationName)) {
-                switch(property.type) {
-                    case Scripting::ComponentType::Int: {
-                        i32 v = static_cast<i32>(serializedVersion[property.serializationName].getAsInt64());
-                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
-                    } break;
-
-                    case Scripting::ComponentType::Float: {
-                        float v = static_cast<float>(serializedVersion[property.serializationName].getAsDouble());
-                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
-                    } break;
-
-                    case Scripting::ComponentType::Boolean: {
-                        bool v = serializedVersion[property.serializationName].getAsBool();
-                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
-                    } break;
-
-                    case Scripting::ComponentType::Entity: {
-                        Carrot::UUID uuid = Carrot::UUID::fromString(serializedVersion[property.serializationName].getAsString());
-                        Entity e = getEntity().getWorld().wrap(uuid);
-                        property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(e));
-                    } break;
-
-                    case Scripting::ComponentType::UserEnum: {
-                        Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, std::string { serializedVersion[property.serializationName].getAsString() });
-                        property.field->set(*csComponent, enumValue);
-                    } break;
-
-                    case Scripting::ComponentType::String: {
-                        property.field->set(*csComponent, Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(std::string{serializedVersion[property.serializationName].getAsString()}.c_str()))));
-                    } break;
-
-                    case Scripting::ComponentType::UserDefined:
-                    default:
-                        Carrot::Log::warn("Property inside %s.%s has type %s which is not supported for serialization", namespaceName.c_str(), className.c_str(), property.typeStr.c_str());
-                        break;
-                }
-            }
-        }
+        applySavedValues(serializedVersion, *csComponent, componentProperties, getEntity().getWorld(), Carrot::sprintf("%s.%s", namespaceName.c_str(), className.c_str()));
     }
 
     void CSharpComponent::onAssemblyLoad() {

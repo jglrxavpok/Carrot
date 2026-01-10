@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <core/scripting/csharp/forward.h>
-#include <engine/scripting/ComponentProperty.h>
+#include <engine/scripting/ReflectionProperty.h>
 
 #define LOAD_CLASS_NS(NAMESPACE_NAME, CLASS_NAME) \
     CLASS_NAME##Class = GetCSharpScripting().findClass(NAMESPACE_NAME, #CLASS_NAME); \
@@ -38,7 +38,7 @@ namespace Carrot::Scripting {
         /**
          * Finds all component properties visible in editor from the given type
          */
-        std::vector<ComponentProperty> findAllComponentProperties(const std::string& namespaceName, const std::string& className);
+        std::vector<ReflectionProperty> findAllReflectionProperties(const std::string& namespaceName, const std::string& className);
 
         /**
          * Returns true iif the given class has the [InternalComponent] attribute
@@ -62,7 +62,7 @@ namespace Carrot::Scripting {
         std::string enumValueToString(const CSObject& enumValue) const;
 
     private:
-        void parseUserType(ComponentProperty& outProperty);
+        void parseUserType(ReflectionProperty& outProperty);
 
         CSClass* ComponentPropertyClass = nullptr;
         CSField* ComponentPropertyFieldNameField = nullptr;

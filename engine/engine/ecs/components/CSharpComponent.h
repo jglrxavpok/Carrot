@@ -20,6 +20,7 @@ namespace Carrot::ECS {
         const char *const getName() const override;
 
         std::unique_ptr <Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
+        static Carrot::DocumentElement serializeProperties(Scripting::CSObject& instance, std::span<const Carrot::Scripting::ReflectionProperty> properties, const std::string& debugName);
 
         ComponentID getComponentTypeID() const override;
 
@@ -27,9 +28,9 @@ namespace Carrot::ECS {
 
     public:
         /**
-         * Returns the C# sharp of this component
+         * Returns the C# version of this component
          */
-        Scripting::CSObject& getCSComponentObject();
+        Scripting::CSObject& getCSObject();
 
         /**
          * Returns true iif the corresponding C# component object was properly loaded.
@@ -41,7 +42,9 @@ namespace Carrot::ECS {
         /**
          * Properties loaded for this component. Can be modified, but no property can be added/removed here.
          */
-        std::span<Scripting::ComponentProperty> getProperties();
+        std::span<Scripting::ReflectionProperty> getProperties();
+
+        static void applySavedValues(const Carrot::DocumentElement& savedValues, Scripting::CSObject& instance, std::span<Carrot::Scripting::ReflectionProperty> properties, const Carrot::ECS::World& world, const std::string& debugName);
 
     private:
         void init();
@@ -58,7 +61,7 @@ namespace Carrot::ECS {
 
         Carrot::ComponentID componentID = -1;
         std::shared_ptr<Scripting::CSObject> csComponent;
-        std::vector<Scripting::ComponentProperty> componentProperties;
+        std::vector<Scripting::ReflectionProperty> componentProperties;
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
 

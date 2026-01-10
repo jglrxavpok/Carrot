@@ -15,7 +15,7 @@
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/components/Component.h>
 #include <eventpp/callbacklist.h>
-#include <engine/scripting/ComponentProperty.h>
+#include <engine/scripting/ReflectionProperty.h>
 #include <engine/scripting/CSharpReflectionHelper.h>
 #include <engine/scripting/CarrotCSObject.h>
 
@@ -117,7 +117,7 @@ namespace Carrot::Scripting {
         void unregisterEngineAssemblyUnloadCallback(const Callbacks::Handle& handle);
 
     public: // reflection stuff
-        std::vector<ComponentProperty> findAllComponentProperties(const std::string& namespaceName, const std::string& className);
+        std::vector<ReflectionProperty> findAllReflectionProperties(const std::string& namespaceName, const std::string& className);
         MonoDomain* getAppDomain();
 
     public:

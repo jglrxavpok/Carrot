@@ -51,7 +51,7 @@ namespace Carrot::Scripting {
         }
     }
 
-    std::vector<ComponentProperty> CSharpReflectionHelper::findAllComponentProperties(const std::string& namespaceName, const std::string& className) {
+    std::vector<ReflectionProperty> CSharpReflectionHelper::findAllReflectionProperties(const std::string& namespaceName, const std::string& className) {
         MonoString* namespaceStr = mono_string_new_wrapper(namespaceName.c_str());
         MonoString* classStr = mono_string_new_wrapper(className.c_str());
         CSClass* klass = GetCSharpScripting().findClass(namespaceName, className);
@@ -67,7 +67,7 @@ namespace Carrot::Scripting {
         MonoArray* asArray = (MonoArray*)(MonoObject*)result;
         std::size_t propertyCount = mono_array_length(asArray);
 
-        std::vector<ComponentProperty> properties;
+        std::vector<ReflectionProperty> properties;
         properties.reserve(propertyCount);
         for (std::size_t j = 0; j < propertyCount; ++j) {
             MonoObject* componentProperty = mono_array_get(asArray, MonoObject*, j);
@@ -180,7 +180,7 @@ namespace Carrot::Scripting {
         return EnumToStringMethod->invoke(enumValue, {}).toString();
     }
 
-    void CSharpReflectionHelper::parseUserType(ComponentProperty& outProperty) {
+    void CSharpReflectionHelper::parseUserType(ReflectionProperty& outProperty) {
         const std::string& typeName = outProperty.typeStr;
         std::size_t lastDotPosition = typeName.find_last_of('.');
         std::string typeNamespace = lastDotPosition == std::string::npos ? "" : typeName.substr(0, lastDotPosition);

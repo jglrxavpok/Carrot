@@ -474,10 +474,11 @@ namespace Peeler {
 
         auto drawSystems = [&](
                 const char* title,
-                const std::vector<Carrot::ECS::System*>& systems,
+                bool isRenderSystems,
                 std::function<void(const std::string&)> add,
                 std::function<void(Carrot::ECS::System*)> remove
             ) {
+            const auto& systems = isRenderSystems ? currentScene.world.getRenderSystems() : currentScene.world.getLogicSystems();
             Carrot::ECS::System* toRemove = nullptr;
 
             ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -490,15 +491,23 @@ namespace Peeler {
                     }
 
                     ImGuiTreeNodeFlags systemNodeFlags = nodeFlags;
-                    if (selectedSystems.find(system) != selectedSystems.end()) {
-                        systemNodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+                    // check if selected
+                    for (const SystemSelection& selection : selectedSystems) {
+                        if (selection.get(currentScene.world) == system) {
+                            systemNodeFlags |= ImGuiTreeNodeFlags_Selected;
+                            break;
+                        }
                     }
                     ImGui::TreeNodeEx(system, systemNodeFlags, "%s", id.c_str());
 
                     if (ImGui::IsItemClicked()) {
                         inspectorType = Application::InspectorType::System;
                         selectedSystems.clear();
-                        selectedSystems.pushBack(system);
+                        selectedSystems.pushBack(SystemSelection {
+                            .name = system->getName(),
+                            .isRenderSystem = isRenderSystems,
+                        });
                     }
 
                     if(ImGui::IsItemHovered()) {
@@ -535,7 +544,7 @@ namespace Peeler {
                 remove(toRemove);
             }
         };
-        drawSystems("Render Systems", currentScene.world.getRenderSystems(),
+        drawSystems("Render Systems", true,
             [&](const std::string& name) {
                 if (!currentScene.world.getRenderSystem(name)) {
                     undoStack.push<AddSystemsCommand>(Carrot::Vector{name}, true);
@@ -544,7 +553,7 @@ namespace Peeler {
             [&](Carrot::ECS::System* ptr) {
                 undoStack.push<RemoveSystemCommand>(ptr->getName(), true);
             });
-        drawSystems("Logic Systems", currentScene.world.getLogicSystems(),
+        drawSystems("Logic Systems", false,
             [&](const std::string& name) {
                 if (!currentScene.world.getLogicSystem(name)) {
                     undoStack.push<AddSystemsCommand>(Carrot::Vector{name}, false);
@@ -2420,5 +2429,20 @@ namespace Peeler {
     void Application::onRedoShortcut(const Carrot::Render::Context& frame) {
         shortcuts.redoRequested = true;
     }
+
+    Carrot::ECS::System* Application::SystemSelection::get(Carrot::ECS::World& world) {
+        if (isRenderSystem) {
+            return world.getRenderSystem(name);
+        }
+        return world.getLogicSystem(name);
+    }
+
+    const Carrot::ECS::System* Application::SystemSelection::get(Carrot::ECS::World& world) const {
+        if (isRenderSystem) {
+            return world.getRenderSystem(name);
+        }
+        return world.getLogicSystem(name);
+    }
+
 
 }

@@ -380,8 +380,8 @@ namespace Carrot::Scripting {
         unloadEngineCallbacks.remove(handle);
     }
 
-    std::vector<ComponentProperty> CSharpBindings::findAllComponentProperties(const std::string& namespaceName, const std::string& className) {
-        return reflectionHelper.findAllComponentProperties(namespaceName, className);
+    std::vector<ReflectionProperty> CSharpBindings::findAllReflectionProperties(const std::string& namespaceName, const std::string& className) {
+        return reflectionHelper.findAllReflectionProperties(namespaceName, className);
     }
 
     MonoDomain* CSharpBindings::getAppDomain() {
@@ -428,7 +428,7 @@ namespace Carrot::Scripting {
             for(std::size_t componentIndex = 0; componentIndex < e.components.size(); componentIndex++) {
                 ECS::Component* pComponent = e.components[componentIndex];
                 if(auto* csharpComponent = dynamic_cast<ECS::CSharpComponent*>(pComponent)) {
-                    componentsArray->set(componentIndex, csharpComponent->getCSComponentObject());
+                    componentsArray->set(componentIndex, csharpComponent->getCSObject());
                 } else {
                     Scripting::CSClass* hardcodedComponentClass = GetCSharpBindings().getHardcodedComponentClass(pComponent->getComponentTypeID());
                     if(hardcodedComponentClass == nullptr) {
@@ -804,7 +804,7 @@ namespace Carrot::Scripting {
             if(compRef.hasValue()) {
                 auto csharpComp = dynamic_cast<ECS::CSharpComponent*>(compRef.asPtr());
                 verify(csharpComp, "component isCSharp is true but not a CSharpComponent??");
-                return csharpComp->getCSComponentObject();
+                return csharpComp->getCSObject();
             } else {
                 return nullptr;
             }

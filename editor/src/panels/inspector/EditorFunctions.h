@@ -14,6 +14,10 @@
 #include <engine/Engine.h>
 
 namespace Carrot::ECS {
+    class CSharpLogicSystem;
+}
+
+namespace Carrot::ECS {
     class CSharpComponent;
 }
 
@@ -569,9 +573,16 @@ namespace Peeler {
         bool modified = editMultiple<TPropertyType>(id, values, limits);
 
         if(modified) {
-            verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
-            if(edition.editor.inspectorType == Application::InspectorType::Entities) {
-                edition.editor.undoStack.push<UpdateComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
+            if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
+                verify(values.size() == 1, "Only one system can be edited at a time");
+                if(edition.editor.inspectorType == Application::InspectorType::System) {
+                    edition.editor.undoStack.push<UpdateSystemValue<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name,  edition.editor.selectedSystems[0].isRenderSystem, values[0], getterFunc, setterFunc);
+                }
+            } else {
+                verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
+                if(edition.editor.inspectorType == Application::InspectorType::Entities) {
+                    edition.editor.undoStack.push<UpdateComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
+                }
             }
             edition.hasModifications = true;
         }
@@ -649,9 +660,16 @@ namespace Peeler {
         }
 
         if(modified) {
-            verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
-            if(edition.editor.inspectorType == Application::InspectorType::Entities) {
-                edition.editor.undoStack.push<UpdateComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
+            if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
+                verify(values.size() == 1, "Only one system can be edited at a time");
+                if(edition.editor.inspectorType == Application::InspectorType::System) {
+                    edition.editor.undoStack.push<UpdateSystemValue<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name, edition.editor.selectedSystems[0].isRenderSystem, values[0], getter, setter);
+                }
+            } else {
+                verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
+                if(edition.editor.inspectorType == Application::InspectorType::Entities) {
+                    edition.editor.undoStack.push<UpdateComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
+                }
             }
         }
     }
@@ -673,6 +691,7 @@ namespace Peeler {
     void registerDisplayNames(InspectorPanel& inspector);
 
     void editCSharpComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components);
+    void editCSharpSystem(EditContext& edition, Carrot::ECS::CSharpLogicSystem& system);
 
     namespace Helpers {
         /**

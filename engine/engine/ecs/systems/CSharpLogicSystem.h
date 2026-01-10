@@ -37,7 +37,13 @@ namespace Carrot::ECS {
         Carrot::DocumentElement serialise() const override;
 
     public:
+        bool isLoaded() const;
+
+        Scripting::CSObject& getCSObject();
+
         Scripting::CSArray* getEntityList();
+
+        std::span<Scripting::ReflectionProperty> getProperties();
 
     private:
         /**
@@ -60,6 +66,7 @@ namespace Carrot::ECS {
         Scripting::CSMethod* csPrePhysicsTickMethod = nullptr;
         Scripting::CSMethod* csPostPhysicsTickMethod = nullptr;
         std::shared_ptr<Scripting::CSArray> csEntities = nullptr; // array of Carrot::System.EntityWithComponents
+        Vector<Scripting::ReflectionProperty> csProperties;
 
         std::string namespaceName;
         std::string className;
@@ -68,6 +75,8 @@ namespace Carrot::ECS {
 
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
+
+        mutable Carrot::DocumentElement serializedVersion; // always keep the serialized version in case we can't load the system from C#
     };
 
 } // Carrot::ECS
