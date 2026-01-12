@@ -101,7 +101,7 @@ namespace Carrot::IO {
             input->state.f.previousValue = input->state.f.value;
         }
         for(auto& input : vec2Inputs) {
-            input->state.v2.previousValue = input->state.v2.value;
+            input->state.v2.previousValue = input->getValue();
         }
     }
 

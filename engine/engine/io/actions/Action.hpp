@@ -138,11 +138,18 @@ namespace Carrot::IO {
         }
 
         glm::vec2 getValue() const requires IsVec2Input<type> {
+            if (glm::length2(state.v2.value) < deadzone*deadzone) {
+                return glm::vec2 { 0.0f, 0.0f };
+            }
             return state.v2.value;
         }
 
         glm::vec2 getDelta() const requires IsVec2Input<type> {
-            return state.v2.value - state.v2.previousValue;
+            return getValue() - state.v2.previousValue;
+        }
+
+        void setDeadzone(float deadzone) requires IsVec2Input<type> {
+            this->deadzone = deadzone;
         }
 
         const ActionPose& getValue() const requires IsPoseInput<type> {
@@ -185,6 +192,7 @@ namespace Carrot::IO {
         std::string name;
         std::vector<ActionBinding> suggestedBindings;
         InputState state{};
+        float deadzone = 0.0f;
 
         // non-trivial constructor so keeping it inside the union is not great
         struct {

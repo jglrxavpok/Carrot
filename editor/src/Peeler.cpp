@@ -1645,6 +1645,9 @@ namespace Peeler {
             moveCameraDownGamepad.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(0, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER));
             moveCameraDownKBM.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_SHIFT));
 
+            moveCameraGamepad.setDeadzone(0.2f);
+            turnCameraGamepad.setDeadzone(0.2f);
+
             editorKBMActions.add(moveCameraKBM);
             editorKBMActions.add(moveCameraDownKBM);
             editorKBMActions.add(moveCameraUpKBM);
