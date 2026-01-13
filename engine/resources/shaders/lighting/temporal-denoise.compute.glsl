@@ -63,9 +63,6 @@ void main() {
     vec4 viewSpacePos = vec4(viewSpacePosH.rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
-    vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
-    prevNDC.xyz /= prevNDC.w;
-
     vec2 reprojectedUV = uv + gbuffer.motionVector.xy;
     vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, gNearestSampler), reprojectedUV).xyz, 1);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
@@ -86,7 +83,7 @@ void main() {
 
     vec4 outColor = vec4(0);
 
-    const int clampRadius = push.isAO ? 5 : 5;
+    const int clampRadius = push.isAO ? 5 : 1;
 
     vec3 minColor = vec3(100000);
     vec3 maxColor = vec3(-100000);

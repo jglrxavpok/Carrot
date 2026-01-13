@@ -170,6 +170,7 @@ namespace Carrot::Render {
 
         struct Denoising {
             std::uint8_t iterationCount = 0;
+            bool useFinalDenoisedForTemporal = false;
             FrameResource noisy; // noisy output
             FrameResource samples; // temporal supersampling
             FrameResource historyLength; // temporal supersampling

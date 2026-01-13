@@ -26,7 +26,7 @@ namespace Carrot {
         const glm::vec2 translationAmount =
                 /*(glm::vec2((frameCount % 2) - 0.5, ((frameCount / 2) % 2) - 0.5) / renderContext.pViewport->getSizef())
                 * 0.25f;*/
-                    r2Sequence(frameCount) / renderContext.pViewport->getSizef() * 0.5f;
+                    (r2Sequence(frameCount) - 0.5f) / renderContext.pViewport->getSizef() * 2.0f;
         jitteredProjection = nonJitteredProjection;
         jitteredProjection[3][0] += translationAmount.x;
         jitteredProjection[3][1] += translationAmount.y;
