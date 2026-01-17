@@ -25,7 +25,7 @@ namespace HashGrid {
         return uint(floor(log2(cellSizeStep / minCellSize )));
     }
 
-    float giGetCellSize(float3 hitPosition, float3 cameraPosition) {
+    public float giGetCellSize(float3 hitPosition, float3 cameraPosition) {
         return minCellSize * exp2(giGetCellSizeStep(hitPosition, cameraPosition));
     }
 
@@ -206,7 +206,7 @@ namespace HashGrid {
                 writeRadiance(cellIndex, newRadiance, newSampleCount);
             } else {
                 // Temporal accumulation, based on GI 1.0 implementation
-                constexpr uint maxSampleCount = 16;
+                constexpr uint maxSampleCount = 64;
                 uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
                 const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
                 writeRadiance(cellIndex, finalRadiance * totalSampleCount, totalSampleCount);
@@ -281,6 +281,7 @@ public struct RayData {
     public uint32_t probeIndex;
     public float3 radiance;
     public float3 direction;
+    public float3 from;
 }
 
 struct SHRadiance {
@@ -362,6 +363,14 @@ public struct ScreenProbe {
     public float3 readRadianceFromCameraPos(float3 cameraPos) {
         const float3 direction = normalize(cameraPos - worldPos);
         return radiance.evalutateCosineLobe(direction) / sampleCount;
+    }
+
+    public float3 evaluateCosineLobe(float3 dir) {
+        return radiance.evalutateCosineLobe(dir) / sampleCount;
+    }
+
+    public uint getSampleCount() {
+        return sampleCount;
     }
 
     [mutating]

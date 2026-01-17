@@ -7,6 +7,7 @@ import modules.camera;
 import modules.raytracing;
 import modules.rng;
 import modules.compute_fullscreen;
+import modules.hash;
 
 public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
 public static const float ProbeCellSize = 1.0f;
@@ -111,8 +112,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
         const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
         const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
-        // TODO: is it correct to use a constant cell size here?
-        if(planeDist < ProbeCellSize && normalCheck > 0.95) {
+        if(planeDist < 2*HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos) && normalCheck > 0.95) {
             const float dist = length(dPos);
             const uint probeScore = (packHalf(dist) << 16) | localIndex;
             InterlockedMin(reprojectionScore, probeScore);
@@ -176,17 +176,53 @@ void reorderSpawnedRays(uint3 coords : SV_DispatchThreadID) {
 
     // pick a reprojected probe to steal from
     const uint probeIndex = probeData.emptyProbes[emptyProbeIndex].load(MemoryOrder::SeqCst);
-    const uint indexToSteal = emptyProbeIndex % probeData.counts[0].reprojectedProbes;
+    const uint indexToSteal = pcg_hash(emptyProbeIndex) % probeData.counts[0].reprojectedProbes;
 
     // change which probe index the reprojected probe points to, and make it point to our empty probe
-    uint stolenProbeIndex = probeData.reprojectedProbes[indexToSteal].load(MemoryOrder::SeqCst);
+    uint stolenSpawnedIndex = probeData.reprojectedProbes[indexToSteal].load(MemoryOrder::SeqCst);
 
-    probeData.spawnedProbes[stolenProbeIndex].exchange(probeIndex, MemoryOrder::SeqCst);
+    probeData.spawnedProbes[stolenSpawnedIndex].exchange(probeIndex, MemoryOrder::SeqCst);
+}
+
+// theta in [0;2pi] and phi in [0;pi/2]
+float3 getHemisphereDirection(float theta, float phi) {
+    const float x = sin(theta) * cos(phi);
+    const float y = sin(theta) * sin(phi);
+    const float z = cos(theta);
+    return (float3(x, y, z));
+}
+
+static const int GuidingDirectionsAlongLatitude = 8;
+static const int GuidingDirectionsAlongLongitude = 4;
+static const int GuidingDirectionCount = GuidingDirectionsAlongLatitude*GuidingDirectionsAlongLongitude;
+
+// Based on an index in [0;GuidingDirectionCount), gives a "guiding" direction
+//  This is a direction that will be used to send more rays in, because we previously noticed that it was interesting (ie had a lot of radiance)
+float3 getGuidingDirection(int index) {
+    const int latitudeIndex = index % GuidingDirectionsAlongLatitude;
+    const int longitudeIndex = index / GuidingDirectionsAlongLatitude;
+    const float theta = (longitudeIndex+0.5f) * M_PIf * 2 / GuidingDirectionsAlongLongitude;
+    const float phi = (latitudeIndex+0.5f) * M_PIf /2 / GuidingDirectionsAlongLatitude;
+    return getHemisphereDirection(theta, phi);
+}
+
+// u and v are random variables in [0;1]
+float3 sampleInDirection(int index, float u, float v) {
+    const int latitudeIndex = index % GuidingDirectionsAlongLatitude;
+    const int longitudeIndex = index / GuidingDirectionsAlongLatitude;
+    const float theta = (longitudeIndex+u) * M_PIf * 2 / GuidingDirectionsAlongLongitude;
+    const float phi = (latitudeIndex+v) * M_PIf/2 / GuidingDirectionsAlongLatitude;
+    return getHemisphereDirection(theta, phi);
+}
+
+float luminance(float3 rgb)
+{
+    return dot(rgb, float3(0.2126F, 0.7152F, 0.0722F));
 }
 
 [shader("compute")]
 [numthreads(32, 1, 1)]
-void spawnRays(uint3 coords : SV_DispatchThreadID) {
+void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms push) {
     const uint spawnedProbeIndex = coords.x;
 
     if(spawnedProbeIndex >= probeData.spawnedProbes.getCount()) {
@@ -197,11 +233,61 @@ void spawnRays(uint3 coords : SV_DispatchThreadID) {
     InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
     const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex].load(MemoryOrder::AcquireRelease);
     probeData.rayDataStart[probeIndex] = startRayIndex;
+
+    const int2 pixel = probeData.probes[probeIndex].bestPixel;
+    const uint2 size = uint2(push.frameWidth, push.frameHeight);
+
+    if(pixel.x >= size.x || pixel.y >= size.y) {
+        return;
+    }
+
+    const float2 uv = float2(pixel) / size;
+    const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+    RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, pcg_hash(spawnedProbeIndex + push.frameCount));
+
+    float3 radiance = lightData.lightArray.ambientColor;
+    float3 from = pixelInfo.worldPosition;
+
+    const float3x3 cboNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().view)));
+    const float3x3 inverseNormalView = inverse(cboNormalView);
+    const float3 cameraPosition = pixelInfo.cameraPos;
+
+    float cdf[GuidingDirectionCount] = {0};
+    float sum = 0.0f;
+    for(int guidingDirectionIndex = 0; guidingDirectionIndex < GuidingDirectionCount; guidingDirectionIndex++) {
+        const float3 guidingDirection = inverseNormalView * pixelInfo.gBuffer.viewTBN * getGuidingDirection(guidingDirectionIndex);
+
+        const float3 radiance = probeData.probes[probeIndex].evaluateCosineLobe(guidingDirection);
+        const float contribution = luminance(radiance);
+        cdf[guidingDirectionIndex] = sum;
+        sum += contribution;
+    }
+
     for(int i = 0; i < MaxRaysPerProbe; i++) {
-        // TODO: decide direction of ray at this point
+        const float r = rng.next(materialSystem);
+        const bool goInRandomDirection = rng.next(materialSystem) < 0.05f;
+
+        float3 direction;
+        if(!goInRandomDirection && probeData.probes[probeIndex].getSampleCount() > 0 && sum > 0.01f) {
+            const float u = rng.next(materialSystem);
+            const float v = rng.next(materialSystem);
+
+            int selectedIndex = 0;
+            for(int guidingDirectionIndex = 0; guidingDirectionIndex < GuidingDirectionCount; guidingDirectionIndex++) {
+                if(cdf[guidingDirectionIndex] / sum > r) {
+                    break;
+                }
+                selectedIndex++;
+            }
+            direction = inverseNormalView * pixelInfo.gBuffer.viewTBN * sampleInDirection(selectedIndex, u, v);
+        } else {
+            direction = inverseNormalView * pixelInfo.gBuffer.viewTBN * rng.nextCosineHemisphere(materialSystem);
+        }
+        
         probeData.rayData[i + startRayIndex].probeIndex = probeIndex;
         probeData.rayData[i + startRayIndex].radiance = float3(0);
-        probeData.rayData[i + startRayIndex].direction = float3(0);
+        probeData.rayData[i + startRayIndex].direction = direction;
+        probeData.rayData[i + startRayIndex].from = from + direction * 0.01f; // avoid self shadowing
     }
 }
 
@@ -232,16 +318,9 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
     const float3 brdf = M_INV_PIf;
     float3 radiance = lightData.lightArray.ambientColor;
-    float3 from = pixelInfo.worldPosition;
 
-    const float3x3 cboNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().view)));
-    const float3x3 inverseNormalView = inverse(cboNormalView);
-    const float3 direction = inverseNormalView * pixelInfo.gBuffer.viewTBN * rng.nextCosineHemisphere(materialSystem);
-
-    // avoid self shadowing
-    from += direction * 0.01f;
-
-    rayData->direction = direction;
+    const float3 direction = rayData->direction;
+    const float3 from = rayData->from;
     
     if(let intersection = capability.raytrace(materialSystem, uv, from, direction, tMax)) {
         PbrInputs pbr;
@@ -274,7 +353,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         key.cameraPosition = giInputs.cameraPosition;
         key.rayLength = length(key.hitPosition - from);
         // TODO: reservoirs
-        /*if(dot(radiance, radiance) > 0.001f)*/ { // don't accumulate poor samples
+        if(luminance(radiance) > 0.001f) { // don't accumulate poor samples
             if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
                 if(wasNew) {
                     hashGridData.grids.currentFrame.writeToCell(cellIndex, key, 0, 0);

@@ -424,6 +424,7 @@ namespace Carrot::Render {
             std::uint32_t probeIndex;
             glm::vec3 radiance;
             glm::vec3 direction;
+            glm::vec3 from;
         };
 
         auto bindBaseGIUpdateInputs = [preparePushConstant](PushConstantRT& block, bool needRaytracing, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& frame, Carrot::Pipeline& pipeline, vk::CommandBuffer& cmds) {
