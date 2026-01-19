@@ -9,7 +9,6 @@ import modules.rng;
 import modules.compute_fullscreen;
 import modules.hash;
 
-public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
 public static const float ProbeCellSize = 1.0f;
 
 public struct RayArray {
@@ -28,10 +27,10 @@ struct Probes {
     RWStructuredBuffer<ScreenProbe, ScalarDataLayout> probes;
     StructuredBuffer<ScreenProbe, ScalarDataLayout> previousFrameProbes;
     RWStructuredBuffer<Counts> counts;
-    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> spawnedProbes;
-    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> emptyProbes;
-    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> reprojectedProbes;
-    RWStructuredBuffer<Atomic<uint>, ScalarDataLayout> rayDataStart; // start into rayData, per probe
+    RWStructuredBuffer<uint, ScalarDataLayout> spawnedProbes;
+    RWStructuredBuffer<uint, ScalarDataLayout> emptyProbes;
+    RWStructuredBuffer<uint, ScalarDataLayout> reprojectedProbes;
+    RWStructuredBuffer<uint, ScalarDataLayout> rayDataStart; // start into rayData, per probe
     RWStructuredBuffer<RayData, ScalarDataLayout> rayData;
 }
 
@@ -165,23 +164,27 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
 [shader("compute")]
 [numthreads(32, 1, 1)]
 void reorderSpawnedRays(uint3 coords : SV_DispatchThreadID) {
+    const uint emptyProbeIndex = coords.x;
+
     if(probeData.counts[0].reprojectedProbes == 0) {
         return;
     }
 
-    const uint emptyProbeIndex = coords.x;
     if(emptyProbeIndex >= probeData.counts[0].emptyProbes) {
         return;
     }
-
+    
     // pick a reprojected probe to steal from
-    const uint probeIndex = probeData.emptyProbes[emptyProbeIndex].load(MemoryOrder::SeqCst);
-    const uint indexToSteal = pcg_hash(emptyProbeIndex) % probeData.counts[0].reprojectedProbes;
+    const uint probeIndex = probeData.emptyProbes[emptyProbeIndex];
+    const int M = 1;
+    for(int i = 0; i < M; i++) {
+        const uint indexToSteal = pcg_hash(emptyProbeIndex*M+i) % probeData.counts[0].reprojectedProbes;
 
-    // change which probe index the reprojected probe points to, and make it point to our empty probe
-    uint stolenSpawnedIndex = probeData.reprojectedProbes[indexToSteal].load(MemoryOrder::SeqCst);
+        // change which probe index the reprojected probe points to, and make it point to our empty probe
+        uint stolenSpawnedIndex = probeData.reprojectedProbes[indexToSteal];
 
-    probeData.spawnedProbes[stolenSpawnedIndex].exchange(probeIndex, MemoryOrder::SeqCst);
+        probeData.spawnedProbes[stolenSpawnedIndex] = probeIndex;
+    }
 }
 
 // theta in [0;2pi] and phi in [0;pi/2]
@@ -231,8 +234,8 @@ void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
     uint startRayIndex = 0;
     InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
-    const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex].load(MemoryOrder::AcquireRelease);
-    probeData.rayDataStart[probeIndex] = startRayIndex;
+    const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex];
+    probeData.rayDataStart[probeIndex] = startRayIndex; // TODO: remove
 
     const int2 pixel = probeData.probes[probeIndex].bestPixel;
     const uint2 size = uint2(push.frameWidth, push.frameHeight);
@@ -395,14 +398,20 @@ void accumulateRadiance(uint cellIndex : SV_DispatchThreadID) {
 
 [shader("compute")]
 [numthreads(32, 1, 1)]
-void accumulateProbes(uint probeIndex : SV_DispatchThreadID) {
-    if(probeIndex >= probeData.probes.getCount()) {
+void accumulateProbesPart1(uint rayIndex : SV_DispatchThreadID) {
+    if(rayIndex >= probeData.counts[0].spawnedRays) {
         return;
     }
 
-    const uint rayStart = probeData.rayDataStart[probeIndex].load();
-    for(uint rayIndex = rayStart; rayIndex < rayStart + MaxRaysPerProbe; rayIndex++) {
-        probeData.probes[probeIndex].accumulateSample(probeData.rayData[rayIndex]);
+    RayData rayData = probeData.rayData[rayIndex];
+    probeData.probes[rayData.probeIndex].accumulateSample(rayData);    
+}
+
+[shader("compute")]
+[numthreads(32, 1, 1)]
+void accumulateProbesPart2(uint probeIndex : SV_DispatchThreadID) {
+    if(probeIndex >= probeData.probes.getCount()) {
+        return;
     }
 
     probeData.probes[probeIndex].finishAccumulateSamples();

@@ -406,6 +406,8 @@ namespace Carrot::Render {
         };
 
         static constexpr i32 ProbeScreenSize = 8; // how many pixels a screen probe covers in one direction
+        static constexpr i32 MaxRaysPerProbe = ProbeScreenSize*ProbeScreenSize;
+        static constexpr i32 ScreenProbeAccumulationMaxElements = 2 * MaxRaysPerProbe;
         struct ScreenProbe {
             float radianceR[9];
             float radianceG[9];
@@ -415,10 +417,12 @@ namespace Carrot::Render {
             glm::ivec2 bestPixel;
             u32 sampleCount;
 
-            float accumulatedRadianceR[9];
-            float accumulatedRadianceG[9];
-            float accumulatedRadianceB[9];
-            u32 accumulatedSamples;
+            // TODO: SoA
+            // SampleAccumulation
+            glm::vec3 accumulationSamples[ScreenProbeAccumulationMaxElements];
+            glm::vec3 accumulationDirections[ScreenProbeAccumulationMaxElements];
+            std::uint32_t accumulationCurrentIndex;
+            /*Atomic*/std::uint32_t accumulationSampleCount;
         };
         struct RayData {
             std::uint32_t probeIndex;
@@ -468,8 +472,6 @@ namespace Carrot::Render {
             HashGrid::bind(data.gi.hashGrid, graph, frame, pipeline, 0);
             data.gbuffer.bindInputs(pipeline, frame, graph, 4, vk::ImageLayout::eGeneral);
         };
-
-        static constexpr i32 MaxRaysPerProbe = ProbeScreenSize*ProbeScreenSize;
 
         auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
             pipeline.setStorageBuffer(context, "probeData.probes", graph.getBuffer(data.screenProbes, context.frameNumber).view);
@@ -580,8 +582,9 @@ namespace Carrot::Render {
         auto spawnGIRays = addProbeDispatchPass(reorderSpawnedRays, false, "spawn-rays", 1);
         auto traceRays = addProbeDispatchPass(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
         auto accumulateRadiance = addCellDispatchPass(traceRays, "accumulate-radiance");
-        auto accumulateProbes = addCellDispatchPass(accumulateRadiance, "accumulate-probes");
-        auto& lastGIPass = accumulateProbes;
+        auto accumulateProbesPart1 = addProbeDispatchPass(accumulateRadiance, false, "accumulate-probes-per-ray", MaxRaysPerProbe);
+        auto accumulateProbesPart2 = addProbeDispatchPass(accumulateProbesPart1, false, "accumulate-probes-per-probe", 1);
+        auto& lastGIPass = accumulateProbesPart2;
 
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)

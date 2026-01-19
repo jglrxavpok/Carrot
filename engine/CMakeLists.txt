@@ -211,7 +211,8 @@ set(PIPELINES
         compute/debug-texture-viewer
 
         lighting/gi/accumulate-radiance
-        lighting/gi/accumulate-probes
+        lighting/gi/accumulate-probes-per-ray
+        lighting/gi/accumulate-probes-per-probe
         lighting/gi/apply-gi
         lighting/gi/debug-gi
         lighting/gi/decay-cells

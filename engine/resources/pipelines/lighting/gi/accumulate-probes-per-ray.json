@@ -2,6 +2,6 @@
   "_import": "gi-template.json",
   "computeShader": {
     "file": "resources/shaders/lighting/gi/update-cells.slang",
-    "entry_point": "accumulateProbes"
+    "entry_point": "accumulateProbesPart1"
   }
 }

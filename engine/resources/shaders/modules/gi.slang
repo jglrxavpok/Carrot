@@ -6,7 +6,6 @@ import modules.rng;
 import modules.sh;
 import modules.materials;
 
-
 /**
 * Grid containing the radiance value for a given location & direction
 */
@@ -199,18 +198,19 @@ namespace HashGrid {
             if(newSampleCount == 0) {
                 return; // nothing to do
             }
-            float3 oldRadiance = readRadiance(cellIndex);
             float3 newRadiance = unpackRadiance(radianceAccumulation[cellIndex]) / newSampleCount;
 
+            // Temporal accumulation, based on GI 1.0 implementation
+            constexpr uint maxSampleCount = 64;
+            uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
+            float3 finalRadiance;
             if(oldSampleCount == 0) {
-                writeRadiance(cellIndex, newRadiance, newSampleCount);
+                finalRadiance = newRadiance;
             } else {
-                // Temporal accumulation, based on GI 1.0 implementation
-                constexpr uint maxSampleCount = 64;
-                uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
-                const float3 finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
-                writeRadiance(cellIndex, finalRadiance * totalSampleCount, totalSampleCount);
+                float3 oldRadiance = readRadiance(cellIndex);
+                finalRadiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
             }
+            writeRadiance(cellIndex, finalRadiance * totalSampleCount, totalSampleCount);
 
             // clear accumulation buffer
             radianceAccumulation[cellIndex] = 0;
@@ -276,6 +276,7 @@ namespace HashGrid {
 }
 
 public static const uint ScreenProbeSize = 8;
+public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
 
 public struct RayData {
     public uint32_t probeIndex;
@@ -350,6 +351,54 @@ SHRadiance lerp(const in SHRadiance a, const in SHRadiance b, float t) {
     return result;
 }
 
+/// Accumulates samples for a given probe, with a maximum number of rays per probe.
+///  Any additional ray will be dropped
+struct SampleAccumulation {
+    static const uint MaxElements = 2*MaxRaysPerProbe; // keep in sync with LightingPasses.cpp
+
+    float3 samples[MaxElements];
+    float3 directions[MaxElements];
+    uint currentIndex = 0;
+    uint sampleCount = 0; // separate from currentIndex because two threads could increment currentIndex at once before checking bounds
+
+    [mutating]
+    void reset() {
+        currentIndex = 0;
+        sampleCount = 0;
+    }
+
+    [mutating]
+    void accumulate(float3 sample, float3 direction) {
+        if(currentIndex >= MaxElements) {
+            return;
+        }
+        uint usedIndex;
+        InterlockedAdd(currentIndex, 1, usedIndex);
+
+        if(usedIndex >= MaxElements) {
+            return;
+        }
+
+        samples[usedIndex] = sample;
+        directions[usedIndex] = direction;
+        InterlockedAdd(sampleCount, 1);
+    }
+
+    uint getSampleCount() {
+        return sampleCount;
+    }
+
+    /// Uses the accumulated samples to compute a SH representing these samples
+    SHRadiance computeFinalResult() {
+        SHRadiance r;
+        r.reset();
+        for(int index = 0; index < sampleCount; index++) {
+            r.integrate(samples[index], directions[index]);
+        }
+        return r;
+    }
+}
+
 public struct ScreenProbe {
     SHRadiance radiance;
     public float3 worldPos;
@@ -357,8 +406,8 @@ public struct ScreenProbe {
     public int2 bestPixel;
     uint sampleCount;
 
-    SHRadiance accumulatedRadiance;
-    uint accumulatedSamples;
+    SampleAccumulation accumulatedRadiance;
+
 
     public float3 readRadianceFromCameraPos(float3 cameraPos) {
         const float3 direction = normalize(cameraPos - worldPos);
@@ -382,7 +431,6 @@ public struct ScreenProbe {
         this.bestPixel = bestPixel;
 
         this.accumulatedRadiance.reset();
-        this.accumulatedSamples = 0;
     }
 
     [mutating]
@@ -390,42 +438,39 @@ public struct ScreenProbe {
         this.radiance = other.radiance;
         this.sampleCount = other.sampleCount;
         this.accumulatedRadiance.reset();
-        this.accumulatedSamples = 0;
     }
 
     [mutating]
     public void accumulateSample(const in RayData ray) {
         if(dot(ray.radiance, ray.radiance) > 0.01f) {
-            accumulatedRadiance.integrate(ray.radiance, ray.direction);
-            accumulatedSamples++;
+            accumulatedRadiance.accumulate(ray.radiance, ray.direction);
         }
     }
 
     [mutating]
     public void finishAccumulateSamples() {
         const uint oldSampleCount = sampleCount;
-        const uint newSampleCount = accumulatedSamples;
+        const uint newSampleCount = accumulatedRadiance.getSampleCount();
         if(newSampleCount == 0) {
             return; // nothing to do
         }
-        SHRadiance oldRadiance = radiance / oldSampleCount;
-        SHRadiance newRadiance = accumulatedRadiance / newSampleCount;
+        SHRadiance newRadiance = accumulatedRadiance.computeFinalResult() / newSampleCount;
 
+        // Temporal accumulation, based on GI 1.0 implementation
+        constexpr uint maxSampleCount = 64;
+        uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
         if(oldSampleCount == 0) {
             radiance = newRadiance;
-            sampleCount = newSampleCount;
         } else {
-            // Temporal accumulation, based on GI 1.0 implementation
-            constexpr uint maxSampleCount = 128;
-            uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
+            SHRadiance oldRadiance = radiance / oldSampleCount;
             radiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
-            radiance = radiance.scale(totalSampleCount);
-            sampleCount = totalSampleCount;
         }
+        radiance = radiance.scale(totalSampleCount);
+
+        sampleCount = totalSampleCount;
 
         // clear accumulation buffer
         accumulatedRadiance.reset();
-        accumulatedSamples = 0;
     }
 }
 
