@@ -527,63 +527,61 @@ namespace Carrot::Render {
                 cmds.dispatch(groupX, groupY, 1);
             });
 
-        auto addProbeDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, bool needRaytracing, const std::string& pipelineName, i64 countMultiplier) {
-            return graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelineName.c_str()),
-            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
-                pass.rasterized = false;
-                data.writeProbeData(graph, previous.getData());
-                data.gbuffer.readFrom(graph, previous.getData().gbuffer, vk::ImageLayout::eGeneral);
-                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);
-            },
-            [countMultiplier, needRaytracing, bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant, pipelineFullName = Carrot::sprintf("lighting/gi/%s", pipelineName.c_str())]
-            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
-                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "GI pass");
-
-                auto pipeline = frame.renderer.getOrCreatePipeline(pipelineFullName, (std::uint64_t)&pass);
-
-                PushConstantRT block;
-                bindBaseGIUpdateInputs(block, needRaytracing, data, pass.getGraph(), frame, *pipeline, cmds);
-                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
-                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
-
-                const i64 probesCountX = (block.frameWidth+ProbeScreenSize-1) / ProbeScreenSize;
-                const i64 probesCountY = (block.frameHeight+ProbeScreenSize-1) / ProbeScreenSize;
-                const i64 spawnedRayCount = countMultiplier * probesCountX * probesCountY;
-                const i64 groups = (spawnedRayCount + 31) / 32;
-                cmds.dispatch(groups, 1, 1);
+#define ADD_PROBE_DISPATCH_PASS(previous, needRaytracing, pipelinename, countMultiplier)                                             \
+            graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelinename),                                                      \
+            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {                                                 \
+                pass.rasterized = false;                                                                                             \
+                data.writeProbeData(graph, previous.getData());                                                                      \
+                data.gbuffer.readFrom(graph, previous.getData().gbuffer, vk::ImageLayout::eGeneral);                                 \
+                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);                                           \
+            },                                                                                                                       \
+            [bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant]                                         \
+            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {    \
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, pipelinename);                                                 \
+                                                                                                                                     \
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/" pipelinename, (std::uint64_t)&pass);               \
+                                                                                                                                     \
+                PushConstantRT block;                                                                                                \
+                bindBaseGIUpdateInputs(block, needRaytracing, data, pass.getGraph(), frame, *pipeline, cmds);                        \
+                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);                                                           \
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);                         \
+                                                                                                                                     \
+                const i64 probesCountX = (block.frameWidth+ProbeScreenSize-1) / ProbeScreenSize;                                     \
+                const i64 probesCountY = (block.frameHeight+ProbeScreenSize-1) / ProbeScreenSize;                                    \
+                const i64 spawnedRayCount = countMultiplier * probesCountX * probesCountY;                                           \
+                const i64 groups = (spawnedRayCount + 31) / 32;                                                                      \
+                cmds.dispatch(groups, 1, 1);                                                                                         \
             });
-        };
 
-        auto addCellDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, const std::string& pipelineName) {
-            return graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelineName.c_str()),
-            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
-                pass.rasterized = false;
-                data.writeProbeData(graph, previous.getData());
-                data.gbuffer.readFrom(graph, previous.getData().gbuffer, vk::ImageLayout::eGeneral);
-                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);
-            },
-            [bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant, pipelineFullName = Carrot::sprintf("lighting/gi/%s", pipelineName.c_str())]
-            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
-                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "GI pass");
-
-                auto pipeline = frame.renderer.getOrCreatePipeline(pipelineFullName, (std::uint64_t)&pass);
-
-                PushConstantRT block;
-                bindBaseGIUpdateInputs(block, false, data, pass.getGraph(), frame, *pipeline, cmds);
-                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
-                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
-
-                const i64 groups = (HashGridTotalCellCount + 31) / 32;
-                cmds.dispatch(groups, 1, 1);
+#define ADD_CELL_DISPATCH_PASS(previous, pipelineName)                                                                               \
+            graph.addPass<GIUpdateData>("gi-" pipelineName,                                                                          \
+            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {                                                 \
+                pass.rasterized = false;                                                                                             \
+                data.writeProbeData(graph, previous.getData());                                                                      \
+                data.gbuffer.readFrom(graph, previous.getData().gbuffer, vk::ImageLayout::eGeneral);                                 \
+                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);                                           \
+            },                                                                                                                       \
+            [bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant]                                         \
+            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {    \
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, pipelineName);                                                 \
+                                                                                                                                     \
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/" pipelineName, (std::uint64_t)&pass);               \
+                                                                                                                                     \
+                PushConstantRT block;                                                                                                \
+                bindBaseGIUpdateInputs(block, false, data, pass.getGraph(), frame, *pipeline, cmds);                                 \
+                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);                                                           \
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);                         \
+                                                                                                                                     \
+                const i64 groups = (HashGridTotalCellCount + 31) / 32;                                                               \
+                cmds.dispatch(groups, 1, 1);                                                                                         \
             });
-        };
 
-        auto reorderSpawnedRays = addProbeDispatchPass(spawnScreenProbes, false, "reorder-rays", 1);
-        auto spawnGIRays = addProbeDispatchPass(reorderSpawnedRays, false, "spawn-rays", 1);
-        auto traceRays = addProbeDispatchPass(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
-        auto accumulateRadiance = addCellDispatchPass(traceRays, "accumulate-radiance");
-        auto accumulateProbesPart1 = addProbeDispatchPass(accumulateRadiance, false, "accumulate-probes-per-ray", MaxRaysPerProbe);
-        auto accumulateProbesPart2 = addProbeDispatchPass(accumulateProbesPart1, false, "accumulate-probes-per-probe", 1);
+        auto reorderSpawnedRays = ADD_PROBE_DISPATCH_PASS(spawnScreenProbes, false, "reorder-rays", 1);
+        auto spawnGIRays = ADD_PROBE_DISPATCH_PASS(reorderSpawnedRays, false, "spawn-rays", 1);
+        auto traceRays = ADD_PROBE_DISPATCH_PASS(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
+        auto accumulateRadiance = ADD_CELL_DISPATCH_PASS(traceRays, "accumulate-radiance");
+        auto accumulateProbesPart1 = ADD_PROBE_DISPATCH_PASS(accumulateRadiance, false, "accumulate-probes-per-ray", MaxRaysPerProbe);
+        auto accumulateProbesPart2 = ADD_PROBE_DISPATCH_PASS(accumulateProbesPart1, false, "accumulate-probes-per-probe", 1);
         auto& lastGIPass = accumulateProbesPart2;
 
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",

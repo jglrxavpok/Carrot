@@ -389,6 +389,7 @@ struct SampleAccumulation {
     }
 
     /// Uses the accumulated samples to compute a SH representing these samples
+    [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
     SHRadiance computeFinalResult() {
         SHRadiance r;
         r.reset();
