@@ -29,6 +29,7 @@ VSOutput vertex(uniform Billboard billboard, float2 inPosition) {
     o.pos = cameras.CurrentFrame().jitteredProjection * viewPos;
     o.viewPos = viewPos.xyz;
     o.uv = (inPosition + 1) / 2;
+    o.uv.y = 1 - o.uv.y;
     o.uuid = billboard.uuid;
     return o;
 }
