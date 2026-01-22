@@ -25,7 +25,7 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/post-process/temporal-denoise.fragment.glsl",
+    "file": "resources/shaders/post-process/taa.fragment.glsl",
     "entry_point": "main"
   }
 }

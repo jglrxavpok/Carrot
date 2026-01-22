@@ -244,7 +244,7 @@ set(PIPELINES
 
         post-process/_post-process
         post-process/merge-lighting
-        post-process/temporal-denoise
+        post-process/taa
         post-process/tone-mapping
 
         billboards

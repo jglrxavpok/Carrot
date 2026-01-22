@@ -102,11 +102,13 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     );
                     GetEngine().getResourceRepository().getTextureUsages(data.momentsHistoryHistoryLength.rootID) |= vk::ImageUsageFlagBits::eSampled;
                     GetEngine().getResourceRepository().getTextureUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
+
+                    builder.reuseResourceAcrossFrames(data.momentsHistoryHistoryLength, 1); // used in temporal algorithms
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
-                    ZoneScopedN("CPU RenderGraph temporal-denoise");
-                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "temporal-denoise");
-                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass);
+                    ZoneScopedN("CPU RenderGraph TAA");
+                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "TAA");
+                    auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/taa", pass);
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.frameNumber), 0, 0, nullptr);
 
                     auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) {

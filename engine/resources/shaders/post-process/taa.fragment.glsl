@@ -9,7 +9,7 @@ layout(set = 0, binding = 1) uniform texture2D previousFrame;
 layout(set = 0, binding = 2) uniform texture2D currentViewPos;
 layout(set = 0, binding = 3) uniform texture2D previousViewPos;
 
-layout(set = 0, binding = 4) uniform texture2D motionVectors;
+layout(set = 0, binding = 4) uniform texture2D motionVectors_unused;
 layout(set = 0, binding = 5) uniform texture2D lastFrameMomentHistoryHistoryLength;
 
 layout(set = 0, binding = 6) uniform sampler nearestSampler;
@@ -37,9 +37,9 @@ vec4 AdjustHDRColor(vec4 color)
 
 void main() {
     GBuffer gbuffer = unpackGBuffer(uv);
-    vec4 currentFrameColor = AdjustHDRColor(texture(sampler2D(currentFrame, linearSampler), uv));
+    vec4 currentFrameColor = AdjustHDRColor(texture(sampler2D(currentFrame, nearestSampler), uv));
 
-    vec4 viewSpacePosH = texture(sampler2D(currentViewPos, linearSampler), uv);
+    vec4 viewSpacePosH = texture(sampler2D(currentViewPos, nearestSampler), uv);
     bool isSkybox = viewSpacePosH.w <= 0.01f;
 
     if(isSkybox) {
@@ -63,7 +63,7 @@ void main() {
     vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, nearestSampler), reprojectedUV).xyz, 1);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) / 0.01);
+    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) / 0.1);
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, nearestSampler), reprojectedUV);
 
     vec3 minColor = vec3(100000);
@@ -81,7 +81,7 @@ void main() {
     vec4 previousFrameColor = AdjustHDRColor(texture(sampler2D(previousFrame, linearSampler), reprojectedUV));
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
 
-    float historyLength = momentHistoryHistoryLength.b * reprojected + 1.0;
+    float historyLength = min(1000, momentHistoryHistoryLength.b * reprojected + 1.0);
     float alpha = 1.0f - 1.0f / historyLength;
     const float currentWeight = (1-alpha) * currentFrameColor.a;
     const float previousWeight = alpha * previousFrameColor.a;
