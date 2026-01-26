@@ -29,11 +29,9 @@ void computeDirectLighting(IRaytracingCapabilities config, uint2 coords, Lightin
     const float2 uv = float2(coords.xy) / float2(w, h);
 
     PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
-    float distanceToCamera; // used for fog
     float3 finalColor;
     if(!pixelInfo.isSky) { // check if not hitting the sky
         float3 lightContribution = float3(0);
-        distanceToCamera = length(pixelInfo.gBuffer.viewPosition);
 
         const int sampleCount = config.getLightSampleCount();
         PbrInputs pbr;
@@ -57,25 +55,8 @@ void computeDirectLighting(IRaytracingCapabilities config, uint2 coords, Lightin
 
         finalColor = lightContribution;
     } else {
-        const float4 viewSpaceDir = cameras.CurrentFrame().inverseNonJitteredProjection * float4(uv*2-1, 0, 1);
-        const float3 worldViewDir = float3x3(cameras.CurrentFrame().inverseView) * viewSpaceDir.xyz;
-
-        // correct orientation for skybox cubemap
-        constexpr float3x3 rot = float3x3(
-            float3(1.0, 0.0, 0.0),
-            float3(0.0, 0.0, -1.0),
-            float3(0.0, 1.0, 0.0)
-        );
-
-        const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * worldViewDir, float3(0), float3(0)).rgb;
-        
-        distanceToCamera = 1.0f / 0.0f; // set distance to infinite to allow fog to apply
-        finalColor = skyboxRGB;
+        finalColor = vec3(0.0);
     }
-
-    // TODO: move out of lighting, albedo is multiplied with the fog color
-    const float fogFactor = clamp(distanceToCamera - lighting.lightArray.fogDistance / lighting.lightArray.fogDepth, 0, 1);
-    finalColor = lerp(finalColor, lighting.lightArray.fogColor, fogFactor);
 
     io.outDirectLightingImage.Store(coords, float4(finalColor, 1));
 }

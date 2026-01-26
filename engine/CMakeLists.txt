@@ -243,6 +243,7 @@ set(PIPELINES
         post-process/visibility-buffer-debug/triangles
 
         post-process/_post-process
+        post-process/premerge-lighting
         post-process/merge-lighting
         post-process/taa
         post-process/tone-mapping

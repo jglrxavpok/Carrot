@@ -24,6 +24,10 @@
     {
       "type": "materials",
       "setID": 4
+    },
+    {
+      "type": "lights",
+      "setID": 5
     }
   ],
   "depthWrite": false,

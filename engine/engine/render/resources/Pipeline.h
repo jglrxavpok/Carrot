@@ -15,6 +15,10 @@
 
 #include "engine/vulkan/DebugNameable.h"
 
+namespace Carrot::Render {
+    class Texture;
+}
+
 namespace Carrot {
     class BufferView;
 }
@@ -144,6 +148,8 @@ namespace Carrot {
 
     public: // pass data to pipeline
         void setStorageBuffer(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::BufferView& buffer);
+        void setStorageImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0, vk::ImageLayout textureLayout = vk::ImageLayout::eShaderReadOnlyOptimal);
+        void setStorageImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageLayout textureLayout);
 
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;

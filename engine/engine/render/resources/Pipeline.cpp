@@ -455,6 +455,18 @@ void Carrot::Pipeline::setStorageBuffer(const Carrot::Render::Context& renderCon
     }
 }
 
+void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex, vk::ImageLayout textureLayout) {
+    auto iter = description.descriptorReflection.find(slotName);
+    if (iter != description.descriptorReflection.end()) {
+        const ShaderCompiler::BindingSlot& slot = iter->second;
+        renderContext.renderer.bindStorageImage(*this, renderContext, texture, slot.setID, slot.bindingID, aspect, viewType, arrayIndex, textureLayout);
+    }
+}
+
+void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageLayout textureLayout) {
+    setStorageImage(renderContext, slotName, texture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, textureLayout);
+}
+
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const {
     auto it = vkPipelines.find(createInfo);
     if(it == vkPipelines.end()) {

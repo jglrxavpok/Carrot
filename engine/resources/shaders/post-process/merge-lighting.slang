@@ -9,23 +9,19 @@ import modules.compute_fullscreen;
 ParameterBlock<GBufferInputs> gBufferInputs;
 
 struct LightingInputs {
-    Texture2D directLighting;
+    Texture2D lighting;
     Texture2D ao;
-    Texture2D reflections;
-    Texture2D gi;
     Texture2D visibilityBufferDebugs[MergeLightingOutput::VisibilityBufferLast - MergeLightingOutput::VisibilityBufferFirst + 1];
 }
 ParameterBlock<LightingInputs> lightingInputs;
 ParameterBlock<DebugParams> debug;
 ParameterBlock<Camera> cameras;
 ParameterBlock<MaterialSystem> materialSystem;
+ParameterBlock<Lighting> lightingData;
 
 float3 computeLighting(float2 uv) {
-    float3 directLighting = lightingInputs.directLighting.Sample(gBufferInputs.linearSampler, uv).rgb;
     const float ao = lightingInputs.ao.Sample(gBufferInputs.linearSampler, uv).r;
-    const float3 gi = lightingInputs.gi.Sample(gBufferInputs.linearSampler, uv).rgb;
-    directLighting += gi;
-    return directLighting * ao * ao;
+    return lightingInputs.lighting.Sample(gBufferInputs.linearSampler, uv).rgb * ao * ao;
 }
 
 [shader("pixel")]
@@ -38,16 +34,33 @@ float4 pixel(uniform LightingPassUniforms push, in float2 uv) {
     }
 
     float3 color;
+    float distanceToCamera;
     if(pixelInfo.isSky) {
-        float3 directLighting = lightingInputs.directLighting.Sample(gBufferInputs.linearSampler, uv).rgb;
-        // direct lighting contains skybox too
-        color = directLighting;
+        const float4 viewSpaceDir = cameras.CurrentFrame().inverseNonJitteredProjection * float4(uv*2-1, 0, 1);
+        const float3 worldViewDir = float3x3(cameras.CurrentFrame().inverseView) * viewSpaceDir.xyz;
+
+        // correct orientation for skybox cubemap
+        constexpr float3x3 rot = float3x3(
+            float3(1.0, 0.0, 0.0),
+            float3(0.0, 0.0, -1.0),
+            float3(0.0, 1.0, 0.0)
+        );
+
+        const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * worldViewDir, float3(0), float3(0)).rgb;
+        color = skyboxRGB;
+        distanceToCamera = 1.0f / 0.0f; // set distance to infinite to allow fog to apply
     } else {
         const float3 lighting = computeLighting(uv);
-        const float3 reflections = lightingInputs.reflections.Sample(gBufferInputs.linearSampler, uv).rgb;
-        color = gBuffer.albedo.rgb * lerp(lighting, reflections, gBuffer.metallicness);
+        color = gBuffer.albedo.rgb * lighting;
         color += gBuffer.emissiveColor;
+
+        distanceToCamera = length(pixelInfo.worldPosition - pixelInfo.cameraPos);
     }
+
+    // fog computation
+    const float fogFactor = clamp((distanceToCamera - lightingData.lightArray.fogDistance) / lightingData.lightArray.fogDepth, 0, 1);
+    color = lerp(color, lightingData.lightArray.fogColor, fogFactor);
+
     return float4(color, 1);
 }
 
