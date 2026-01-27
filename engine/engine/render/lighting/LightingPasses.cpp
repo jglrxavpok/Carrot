@@ -168,7 +168,7 @@ namespace Carrot::Render {
             HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
         });
 
-        auto addDenoisingResources = [&](Render::GraphBuilder& graph, const char* name, vk::Format format, PassData::Denoising& data, bool useFinalDenoisedForTemporal) {
+        auto addTemporalDenoisingResources = [&](Render::GraphBuilder& graph, const char* name, vk::Format format, PassData::TemporalDenoising& data) {
              data.noisy = graph.createStorageTarget(Carrot::sprintf("%s (noisy)", name),
                                                              format,
                                                              framebufferSize,
@@ -182,6 +182,12 @@ namespace Carrot::Render {
                                                              framebufferSize,
                                                              vk::ImageLayout::eGeneral);
              graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.historyLength.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+
+            // used in temporal algorithms
+             graph.reuseResourceAcrossFrames(data.historyLength, 1);
+             graph.reuseResourceAcrossFrames(data.samples, 1);
+         };
+        auto addSpatialDenoisingResources = [&](Render::GraphBuilder& graph, const char* name, vk::Format format, PassData::SpatialDenoising& data) {
              data.pingPong[0] = graph.createStorageTarget(Carrot::sprintf("%s (0)", name),
                                                              format,
                                                              framebufferSize,
@@ -194,8 +200,6 @@ namespace Carrot::Render {
             // used in temporal algorithms
              graph.reuseResourceAcrossFrames(data.pingPong[0], 1);
              graph.reuseResourceAcrossFrames(data.pingPong[1], 1);
-             graph.reuseResourceAcrossFrames(data.historyLength, 1);
-             graph.reuseResourceAcrossFrames(data.samples, 1);
              data.iterationCount = 3;
          };
         auto applyTemporalDenoising = [framebufferSize](const CompiledPass& pass,
@@ -206,7 +210,7 @@ namespace Carrot::Render {
             const FrameResource& positionsTex,
             const FrameResource& normalsTangentsTex,
 
-            const PassData::Denoising& data,
+            const PassData::TemporalDenoising& data,
             std::uint8_t index,
 
             bool isAO, // has different neighbor clamping
@@ -299,7 +303,7 @@ namespace Carrot::Render {
             const FrameResource& positionsTex,
             const FrameResource& normalsTangentsTex,
 
-            const PassData::Denoising& data,
+            const PassData::SpatialDenoising& data,
             std::uint8_t index,
 
             vk::CommandBuffer& cmds) {
@@ -344,7 +348,7 @@ namespace Carrot::Render {
                     renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameNumber), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
                 }
 
-               renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, pass.getGraph().getTexture(data.samples, frame.frameNumber), 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, pass.getGraph().getTexture(data.noisy, frame.frameNumber), 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*spatialDenoisePipelines[0], frame, *pImages[0], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[0], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
@@ -652,9 +656,12 @@ namespace Carrot::Render {
                     pass.rasterized = false;
                     resolveData.gBuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                    addDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion, false);
-                    addDenoisingResources(graph, "Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting, false);
-                    addDenoisingResources(graph, "Reflections", vk::Format::eR32G32B32A32Sfloat, resolveData.reflections, false);
+                    addTemporalDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionTemporal);
+                    addSpatialDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionSpatial);
+                    resolveData.ambientOcclusionSpatial.noisy = resolveData.ambientOcclusionTemporal.samples;
+
+                    addTemporalDenoisingResources(graph, "Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
+                    addTemporalDenoisingResources(graph, "Reflections", vk::Format::eR32G32B32A32Sfloat, resolveData.reflections);
                     resolveData.reflectionsFirstBounceViewPositions = graph.createStorageTarget(
                         "Reflections first bounce positions",
                         vk::Format::eR32G32B32A32Sfloat,
@@ -753,7 +760,7 @@ namespace Carrot::Render {
                        directLightingPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
-                       setupPipeline(data.ambientOcclusion.noisy, *aoPipeline, false, -1, "entryPointParams");
+                       setupPipeline(data.ambientOcclusionTemporal.noisy, *aoPipeline, false, -1, "entryPointParams");
                        aoPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
@@ -784,19 +791,17 @@ namespace Carrot::Render {
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
 
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusion, 0, true, cmds);
-                   applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusion, 0, cmds);
+                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionTemporal, 0, true, cmds);
+                   applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionSpatial, 0, cmds);
                    applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, false, cmds);
-                   applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, cmds);
                    applyTemporalDenoising(pass, frame, data.gBuffer, data.reflectionsFirstBounceViewPositions, data.reflectionsFirstBounceViewNormalsTangents, data.reflections, 2, false, cmds);
-                   applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.reflectionsFirstBounceViewPositions, data.reflectionsFirstBounceViewNormalsTangents, data.reflections, 2, cmds);
                }
         );
 
         lightingPass.setSwapchainRecreation([&](const CompiledPass& pass, const PassData::LightingResources& data) {
             GetVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                    auto clear = [&](const PassData::Denoising& data) {
+                    auto clear = [&](const PassData::TemporalDenoising& data) {
                         auto& texture = pass.getGraph().getTexture(data.historyLength, i);
                         texture.assumeLayout(vk::ImageLayout::eUndefined);
                         texture.transitionInline(cmds, vk::ImageLayout::eGeneral);
@@ -809,7 +814,7 @@ namespace Carrot::Render {
                                 .layerCount = 1,
                             });
                     };
-                    clear(data.ambientOcclusion);
+                    clear(data.ambientOcclusionTemporal);
                     clear(data.directLighting);
                 }
             });
@@ -861,17 +866,16 @@ namespace Carrot::Render {
         struct GIFinal {
             PassData::GBuffer gbuffer;
             FrameResource screenProbesInput;
-            PassData::Denoising output;
+            PassData::TemporalDenoising output;
         };
         auto& getGIResults = graph.addPass<GIFinal>("gi",
             [&](GraphBuilder& graph, Pass<GIFinal>& pass, GIFinal& data) {
                 pass.rasterized = false;
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.screenProbesInput = graph.read(lastGIPass.getData().screenProbes, {});
-                addDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output, true);
-                data.output.iterationCount = 6;
+                addTemporalDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output);
             },
-            [preparePushConstant, applyTemporalDenoising, applySpatialDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
+            [preparePushConstant, applyTemporalDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
                 {
                     GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Final GI");
 
@@ -895,7 +899,6 @@ namespace Carrot::Render {
                 {
                     GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Denoise GI");
                     applyTemporalDenoising(pass, frame, data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, false, cmds);
-                    applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, cmds);
                 }
             });
 
@@ -910,10 +913,9 @@ namespace Carrot::Render {
             [&getGIResults, &lightingPass](GraphBuilder& graph, Pass<PremergeData>& pass, PremergeData& data) {
                 pass.rasterized = false;
 
-                // TODO: use supersampled version and denoise later
-                data.directLighting = graph.read(lightingPass.getData().directLighting.pingPong[(lightingPass.getData().directLighting.iterationCount+1) % 2], vk::ImageLayout::eGeneral);
-                data.reflections = graph.read(lightingPass.getData().reflections.pingPong[(lightingPass.getData().reflections.iterationCount+1) % 2], vk::ImageLayout::eGeneral);
-                data.gi = graph.read(getGIResults.getData().output.pingPong[(getGIResults.getData().output.iterationCount+1) % 2], vk::ImageLayout::eGeneral);
+                data.directLighting = graph.read(lightingPass.getData().directLighting.samples, vk::ImageLayout::eGeneral);
+                data.reflections = graph.read(lightingPass.getData().reflections.samples, vk::ImageLayout::eGeneral);
+                data.gi = graph.read(getGIResults.getData().output.samples, vk::ImageLayout::eGeneral);
                 data.premergedLighting = graph.createStorageTarget("Premerged lighting", vk::Format::eR32G32B32A32Sfloat, {}, vk::ImageLayout::eGeneral);
 
                 data.gBuffer.readFrom(graph, getGIResults.getData().gbuffer, vk::ImageLayout::eGeneral);
@@ -943,9 +945,24 @@ namespace Carrot::Render {
                 cmds.dispatch(blockCountX, blockCountY, 1);
             });
 
+        struct FinalDenoise {
+            PassData::SpatialDenoising denoisedCombinedLighting;
+            PassData::GBuffer gBuffer;
+        };
+
+        auto& finalDenoise = graph.addPass<FinalDenoise>("lighting-denoise",
+            [&](GraphBuilder& graph, Pass<FinalDenoise>& pass, FinalDenoise& data) {
+                addSpatialDenoisingResources(graph, "denoised combined lighting", vk::Format::eR32G32B32A32Sfloat, data.denoisedCombinedLighting);
+                data.denoisedCombinedLighting.iterationCount = 5;
+                data.denoisedCombinedLighting.noisy = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
+                data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
+            }, [applySpatialDenoising](const CompiledPass& pass, const Context& frame, const FinalDenoise& data, vk::CommandBuffer& cmds) {
+                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 0, cmds);
+            });
+
         PassData::Lighting data {
-            .ambientOcclusion = lightingPass.getData().ambientOcclusion.pingPong[(lightingPass.getData().ambientOcclusion.iterationCount+1) % 2],
-            .combinedLighting = premergeLighting.getData().premergedLighting,
+            .ambientOcclusion = lightingPass.getData().ambientOcclusionSpatial.pingPong[(lightingPass.getData().ambientOcclusionSpatial.iterationCount+1) % 2],
+            .combinedLighting = finalDenoise.getData().denoisedCombinedLighting.pingPong[(finalDenoise.getData().denoisedCombinedLighting.iterationCount+1) % 2],
             .gBuffer = lightingPass.getData().gBuffer,
         };
         return data;
