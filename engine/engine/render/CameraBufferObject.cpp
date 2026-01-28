@@ -6,9 +6,12 @@
 #include <engine/render/RenderContext.h>
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
+#include <engine/console/RuntimeOption.hpp>
 #include <engine/render/VulkanRenderer.h>
 
 namespace Carrot {
+
+    static RuntimeOption AllowJittering{"Renderer/Use jittering", true};
 
     glm::vec2 r2Sequence(std::size_t n) {
         const float g = 1.32471795724474602596f;
@@ -26,10 +29,12 @@ namespace Carrot {
         const glm::vec2 translationAmount =
                 /*(glm::vec2((frameCount % 2) - 0.5, ((frameCount / 2) % 2) - 0.5) / renderContext.pViewport->getSizef())
                 * 0.25f;*/
-                    (r2Sequence(frameCount) - 0.5f) / renderContext.pViewport->getSizef() * 2.0f;
+                    (r2Sequence(frameCount) - 0.5f) / renderContext.pViewport->getSizef();
         jitteredProjection = nonJitteredProjection;
-        jitteredProjection[3][0] += translationAmount.x;
-        jitteredProjection[3][1] += translationAmount.y;
+        if (AllowJittering) {
+            jitteredProjection[3][0] += translationAmount.x;
+            jitteredProjection[3][1] += translationAmount.y;
+        }
 
         inverseJitteredProjection = glm::inverse(jitteredProjection);
         inverseNonJitteredProjection = glm::inverse(nonJitteredProjection);

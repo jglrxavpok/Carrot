@@ -471,8 +471,8 @@ namespace Carrot::Render {
             }
         };
 
-        static constexpr i32 ProbeScreenSize = 8; // how many pixels a screen probe covers in one direction
-        static constexpr i32 MaxRaysPerProbe = ProbeScreenSize*ProbeScreenSize;
+        static constexpr i32 ScreenProbeSize = 8; // how many pixels a screen probe covers in one direction
+        static constexpr i32 MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
         static constexpr i32 ScreenProbeAccumulationMaxElements = 2 * MaxRaysPerProbe;
         struct ScreenProbe {
             float radianceR[9];
@@ -503,13 +503,13 @@ namespace Carrot::Render {
 
             bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
             Carrot::AccelerationStructure* pTLAS = nullptr;
-            if (pipeline.getPushConstant("push").offset != (u32)-1) {
+            if (pipeline.getPushConstant("entryPointParams").offset != (u32)-1) {
                 if(useRaytracingVersion) {
                     pTLAS = frame.renderer.getRaytracingScene().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;
-                    renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                    renderer.pushConstantBlock<PushConstantRT>("entryPointParams", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                 } else {
-                    renderer.pushConstantBlock<PushConstantNoRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                    renderer.pushConstantBlock<PushConstantNoRT>("entryPointParams", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
                 }
             }
             bool needSceneInfo = true;
@@ -555,8 +555,8 @@ namespace Carrot::Render {
                 pass.rasterized = false;
 
                 auto getProbeCount = [](const glm::ivec2& viewportSize) {
-                    const i32 probesCountX = (viewportSize.x+ProbeScreenSize-1) / ProbeScreenSize;
-                    const i32 probesCountY = (viewportSize.y+ProbeScreenSize-1) / ProbeScreenSize;
+                    const i32 probesCountX = (viewportSize.x+ScreenProbeSize-1) / ScreenProbeSize;
+                    const i32 probesCountY = (viewportSize.y+ScreenProbeSize-1) / ScreenProbeSize;
                     const i32 probeCount = probesCountX * probesCountY;
                     return probeCount;
                 };
@@ -588,8 +588,8 @@ namespace Carrot::Render {
                 bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                const std::size_t groupX = (block.frameWidth+ProbeScreenSize-1)/ProbeScreenSize;
-                const std::size_t groupY = (block.frameHeight+ProbeScreenSize-1)/ProbeScreenSize;
+                const std::size_t groupX = (block.frameWidth+ScreenProbeSize-1)/ScreenProbeSize;
+                const std::size_t groupY = (block.frameHeight+ScreenProbeSize-1)/ScreenProbeSize;
                 cmds.dispatch(groupX, groupY, 1);
             });
 
@@ -612,8 +612,8 @@ namespace Carrot::Render {
                 bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);                                                           \
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);                         \
                                                                                                                                      \
-                const i64 probesCountX = (block.frameWidth+ProbeScreenSize-1) / ProbeScreenSize;                                     \
-                const i64 probesCountY = (block.frameHeight+ProbeScreenSize-1) / ProbeScreenSize;                                    \
+                const i64 probesCountX = (block.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;                                     \
+                const i64 probesCountY = (block.frameHeight+ScreenProbeSize-1) / ScreenProbeSize;                                    \
                 const i64 spawnedRayCount = countMultiplier * probesCountX * probesCountY;                                           \
                 const i64 groups = (spawnedRayCount + 31) / 32;                                                                      \
                 cmds.dispatch(groups, 1, 1);                                                                                         \

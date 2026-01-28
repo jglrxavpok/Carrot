@@ -84,7 +84,7 @@ void decayCells(uint3 coords: SV_DispatchThreadID, uniform DecayPushConstant pus
 }
 
 [shader("compute")]
-[numthreads(8, 8, 1)]
+[numthreads(ScreenProbeSize, ScreenProbeSize, 1)]
 void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_GroupIndex, uint3 groupID : SV_GroupID, uniform LightingPassUniforms push) {
     // this will store the best matching pixel for this workgroup
     reprojectionScore = packHalf(65504.0f) << 16/*score*/ | 0xFFFFu /*lane*/;
@@ -267,11 +267,11 @@ void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
     }
 
     for(int i = 0; i < MaxRaysPerProbe; i++) {
-        const float r = rng.next(materialSystem);
-        const bool goInRandomDirection = rng.next(materialSystem) < 0.05f;
+        const bool goInRandomDirection = true;//rng.next(materialSystem) < 0.05f;
 
         float3 direction;
-        if(!goInRandomDirection && probeData.probes[probeIndex].getSampleCount() > 0 && sum > 0.01f) {
+        if(!goInRandomDirection && probeData.probes[probeIndex].getSampleCount() > 10 && sum > 0.01f) {
+            const float r = rng.next(materialSystem);
             const float u = rng.next(materialSystem);
             const float v = rng.next(materialSystem);
 
@@ -305,7 +305,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
     }
 
     RayData* rayData = &probeData.rayData[rayIndex];
-    const uint probeIndex = rayData.probeIndex;
+    const uint probeIndex = rayData->probeIndex;
     const int2 pixel = probeData.probes[probeIndex].bestPixel;
     const uint2 size = uint2(push.frameWidth, push.frameHeight);
 
