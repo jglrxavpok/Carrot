@@ -109,7 +109,9 @@ namespace SlangCompiler {
             .name = CompilerOptionName::PreserveParameters,
             .value = CompilerOptionValue {
                 .kind = CompilerOptionValueKind::Int,
-                .intValue0 = 1
+                .intValue0 = 0
+                // 1 caused issues with validation layers on RADV (Mesa) https://github.com/shader-slang/slang/issues/9616, and Carrot is now rather resilient if params are missing
+                // a future validation layer update will fix the issue: https://github.com/KhronosGroup/Vulkan-ValidationLayers/pull/11583
             }
         });
 
