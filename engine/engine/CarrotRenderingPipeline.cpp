@@ -226,7 +226,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             [this, drawUnlit, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
                 data.postLighting = builder.read(drawUnlit.getData().inout, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget("Tone mapped",
-                                                                vk::Format::eR8G8B8A8Snorm,
+                                                                vk::Format::eR8G8B8A8Unorm,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),

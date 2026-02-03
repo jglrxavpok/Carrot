@@ -94,7 +94,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
     if(probeIndex >= probeData.probes.getCount()) {
         return;
     }
-    const int2 pixel = coords.xy;
+    int2 pixel = coords.xy;
     const float2 size = float2(push.frameDimensions);
     const float2 uv = (pixel + float2(0.5f, 0.5f)) / size;
 
@@ -111,8 +111,9 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
         const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
         const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
-        if(planeDist < 2*HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos) && normalCheck > 0.95) {
-            const float dist = length(dPos);
+        const float cellSize = HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos);
+        if(planeDist < cellSize && normalCheck > 0.95) {
+            const float dist = length(dPos) / cellSize;
             const uint probeScore = (packHalf(dist) << 16) | localIndex;
             InterlockedMin(reprojectionScore, probeScore);
         }
@@ -131,6 +132,8 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
 
     if(reusedPixel == 0xFFFFu) {
         // no reuse
+        pixel.x += push.frameCount % ScreenProbeSize;
+        pixel.y += (push.frameCount / ScreenProbeSize) % ScreenProbeSize;
         probeData.probes[probeIndex].reset(pixelInfo.worldPosition, pixelInfo.worldNormal, pixel);
 
         uint emptyIndex; 

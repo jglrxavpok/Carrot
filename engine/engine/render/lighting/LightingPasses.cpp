@@ -69,6 +69,7 @@ namespace Carrot::Render {
 
             graph.reuseResourceAcrossFrames(r.hashGrid, 1);
             graph.reuseResourceAcrossFrames(r.gridPointers, 1);
+            graph.reuseResourceAcrossFrames(r.constants, 1);
             return r;
         }
 
@@ -141,7 +142,7 @@ namespace Carrot::Render {
 
                 // copy last frame's data
                 auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber);
-                auto& lastFrameBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber-1);
+                auto& lastFrameBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.getPreviousFrameNumber());
                 vk::BufferCopy region {
                     .srcOffset = lastFrameBuffer.view.getStart() + HashGrid::DataOffset,
                     .dstOffset = buffer.view.getStart() + HashGrid::DataOffset,
@@ -339,11 +340,8 @@ namespace Carrot::Render {
                    &pass.getGraph().getTexture(data.pingPong[1], frame.frameNumber)
                };
 
-               gBuffer.bindInputs(*spatialDenoisePipelines[0], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-               gBuffer.bindInputs(*spatialDenoisePipelines[1], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-               gBuffer.bindInputs(*spatialDenoisePipelines[2], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-
                 for (auto& pSpatialDenoisePipeline : spatialDenoisePipelines) {
+                    gBuffer.bindInputs(*pSpatialDenoisePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
                     renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(positionsTex, frame.frameNumber), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
                     renderer.bindTexture(*pSpatialDenoisePipeline, frame, pass.getGraph().getTexture(normalsTangentsTex, frame.frameNumber), 0, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, normalsTangentsTex.layout);
                 }
@@ -948,6 +946,8 @@ namespace Carrot::Render {
         struct FinalDenoise {
             PassData::SpatialDenoising denoisedCombinedLighting;
             PassData::GBuffer gBuffer;
+            FrameResource reflectionsFirstBounceViewPositions;
+            FrameResource reflectionsFirstBounceViewNormalsTangents;
         };
 
         auto& finalDenoise = graph.addPass<FinalDenoise>("lighting-denoise",
@@ -956,8 +956,11 @@ namespace Carrot::Render {
                 data.denoisedCombinedLighting.iterationCount = 5;
                 data.denoisedCombinedLighting.noisy = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
                 data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.reflectionsFirstBounceViewPositions = graph.read(lightingPass.getData().reflectionsFirstBounceViewPositions, vk::ImageLayout::eGeneral);
+                data.reflectionsFirstBounceViewNormalsTangents = graph.read(lightingPass.getData().reflectionsFirstBounceViewNormalsTangents, vk::ImageLayout::eGeneral);
             }, [applySpatialDenoising](const CompiledPass& pass, const Context& frame, const FinalDenoise& data, vk::CommandBuffer& cmds) {
-                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 0, cmds);
+                // TODO: use reflectionsFirstBounceViewPositions
+                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 1, cmds);
             });
 
         PassData::Lighting data {

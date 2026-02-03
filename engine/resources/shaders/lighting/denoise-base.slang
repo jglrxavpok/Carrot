@@ -61,11 +61,8 @@ ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
 
 groupshared ExtractedGBuffer sharedGBufferReads[LOCAL_SIZE_X][LOCAL_SIZE_Y];
 
-static uint outputWidth;
-static uint outputHeight;
-
-ExtractedGBuffer readGBuffer(uint2 globalCoords, uint2 localCoords, int2 coordsOffset/* offset from current pixel */) {
-    int2 localCoords = localCoords + coordsOffset;
+ExtractedGBuffer readGBuffer(uint2 globalCoords, uint2 localCoordsCenter, int2 coordsOffset/* offset from current pixel */, uint outputWidth, uint outputHeight) {
+    int2 localCoords = localCoordsCenter + coordsOffset;
     if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE_X
     && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE_Y) {
         return sharedGBufferReads[localCoords.x][localCoords.y];
@@ -104,9 +101,11 @@ void denoise(
     uint3 localCoords
 ) {
     Configuration config;
-    const float sigmaPositions = 32.0f;
+    const float sigmaPositions = 320.0f;
     const float sigmaLuminance = 2.0f;
 
+    uint outputWidth;
+    uint outputHeight;
     io.output.GetDimensions(outputWidth, outputHeight);
 
     if(coords.x >= outputWidth
@@ -151,7 +150,7 @@ void denoise(
                 firstIter = false;
                 GroupMemoryBarrierWithGroupSync(); // barrier put right before actually needing the data
             }
-            const ExtractedGBuffer filterGBuffer = readGBuffer(coords.xy, localCoords.xy, dCoord);
+            const ExtractedGBuffer filterGBuffer = readGBuffer(coords.xy, localCoords.xy, dCoord, outputWidth, outputHeight);
             // TODO: use index for mesh on top of entity (for instance curtains of Sponza)
             // TODO: use groupshared for sampling input
             float4 filterPixel = config.swizzle(io.input.Load(filterCoord));
@@ -162,7 +161,7 @@ void denoise(
             const float normalWeight = powNormals(max(0, dot(filterGBuffer.normal, currentGBuffer.normal)));
 
             const float3 filterPosition = filterGBuffer.viewPosition;
-            const float3 dPosition = filterPosition - currentPosition;
+            const float dPosition = filterPosition.z - currentPosition.z;
             const float distanceSquared = dot(dPosition, dPosition);
             const float positionWeight = min(1, exp(-distanceSquared * sigmaPositions));
 
