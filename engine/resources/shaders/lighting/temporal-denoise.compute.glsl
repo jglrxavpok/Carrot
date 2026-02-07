@@ -43,7 +43,7 @@ void main() {
         return;
     }
 
-    const vec2 uv = coords/vec2(size);
+    const vec2 uv = (vec2(coords)+0.5f)/vec2(size);
 
     GBuffer gbuffer = unpackGBuffer(uv);
     vec4 currentFrameColor = imageLoad(noisyInputImage, coords);
@@ -97,6 +97,7 @@ void main() {
     }
     vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions)));
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
+    //vec3 previousFrameColorClamped = previousFrameColor.rgb;
     // TODO: downsample and/or variance?
 
     float historyLength = momentHistoryHistoryLength.b * (reprojected ? 1 : 0) + 1.0;

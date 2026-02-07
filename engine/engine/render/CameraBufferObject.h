@@ -35,6 +35,8 @@ namespace Carrot {
         /// Frustum planes of camera (in world space)
         alignas(16) std::array<Carrot::Math::Plane, 6> frustum;
 
+        alignas(16) glm::vec2 jitter{0.0f};
+
         void update(Camera& camera, const Render::Context& renderContext);
     };
 }

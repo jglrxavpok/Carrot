@@ -6,6 +6,12 @@ public struct Viewport {
     public uint frameWidth;
     public uint frameHeight;
 
+    public property uint2 frameDimensions {
+        get {
+            return uint2(frameWidth, frameHeight);
+        } 
+    }
+
     bool hasTLAS;
 
     public ivec2 ScreenSpaceToPixels(float2 uv) {

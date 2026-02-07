@@ -14,6 +14,8 @@ public struct VSGBufferOutput {
     public nointerpolation float bitangentSign;
     public nointerpolation mat4 inModelview;
     public nointerpolation int inDrawID;
+
+    public vec4 svPos: SV_Position;
 }
 
 // Intended to be used in a ParameterBlock<>

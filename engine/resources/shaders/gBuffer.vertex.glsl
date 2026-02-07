@@ -38,7 +38,8 @@ void main() {
 
     vColor = vec4(inColor, 1) * inInstanceColor;
     outViewPos = viewPosition.xyz / viewPosition.w;
-    outPreviousFrameViewPos = previousFrameViewPosition.xyz / previousFrameViewPosition.w;
+
+    outPreviousFrameViewPos = (previousFrameCBO.jitteredProjection * vec4(previousFrameViewPosition.xyz / previousFrameViewPosition.w, 1)).xyw;
 
     vec3 t = normalize(inTangent.xyz);
     vec3 n = normalize(inNormal);

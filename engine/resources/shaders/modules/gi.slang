@@ -457,6 +457,9 @@ public struct ScreenProbe {
         }
         SHRadiance newRadiance = accumulatedRadiance.computeFinalResult() / newSampleCount;
 
+        // TODO: biased temporal hysteresis
+        // TODO: LRU cache?
+
         // Temporal accumulation, based on GI 1.0 implementation
         constexpr uint maxSampleCount = 64;
         uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);

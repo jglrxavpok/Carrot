@@ -52,16 +52,14 @@ EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
     result.viewPosition = input.viewPosition;
     result.intProperty = IntProperties::RayTracedLighting;
 
-    vec4 clipPos = camera.CurrentFrame().nonJitteredProjection * vec4(input.viewPosition, 1.0);
-    vec4 previousClipPos = camera.PreviousFrame().nonJitteredProjection * vec4(input.previousFrameViewPosition, 1.0);
-    previousClipPos.xyz /= previousClipPos.w;
-    clipPos.xyz /= clipPos.w;
+    vec3 previousClipPos = input.previousFrameViewPosition;
+    previousClipPos.xy /= previousClipPos.z;
 
-    previousClipPos.xy = (previousClipPos.xy+1) / 2.0f;
-    clipPos.xy = (clipPos.xy+1) / 2.0f;
-    
-
-    result.motionVector = float3(previousClipPos.xy - clipPos.xy, 0);
+    previousClipPos.xy = previousClipPos.xy * float2(0.5f, 0.5f) + 0.5f;
+    previousClipPos.xy *= float2(viewport.frameDimensions);
+    result.motionVector.xy = previousClipPos.xy - input.svPos.xy;
+    result.motionVector.xy /= float2(viewport.frameDimensions);
+    result.motionVector.xy += (camera.CurrentFrame().jitter - camera.PreviousFrame().jitter) * 0.5f;
 
     return EncodedGBuffer(result);
 }

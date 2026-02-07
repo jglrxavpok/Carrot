@@ -86,14 +86,14 @@ namespace Carrot::Render {
 
     vk::DescriptorSet Viewport::getCameraDescriptorSet(const Carrot::Render::Context& context) const {
         if(context.renderer.getConfiguration().runInVR) {
-            return cameraDescriptorSets[context.frameIndex * 2 + (context.eye == Eye::RightEye ? 1 : 0)];
+            return cameraDescriptorSets[(context.frameNumber * 2 + (context.eye == Eye::RightEye ? 1 : 0)) % cameraUniformBuffers.size()];
         } else {
-            return cameraDescriptorSets[context.frameIndex];
+            return cameraDescriptorSets[(context.frameNumber % cameraUniformBuffers.size())];
         }
     }
 
     vk::DescriptorSet Viewport::getViewportDescriptorSet(const Carrot::Render::Context& context) const {
-        return viewportDescriptorSets[context.frameIndex];
+        return viewportDescriptorSets[(context.frameNumber % viewportUniformBuffers.size())];
     }
 
     void Viewport::onFrame(const Context& context) {
@@ -114,13 +114,13 @@ namespace Carrot::Render {
             objLeftEye.update(leftEyeCamera, context);
             objRightEye.update(rightEyeCamera, context);
 
-            auto& leftBuffer = cameraUniformBuffers[context.frameIndex * 2];
-            auto& rightBuffer = cameraUniformBuffers[context.frameIndex * 2 + 1];
+            auto& leftBuffer = cameraUniformBuffers[(context.frameNumber * 2) % cameraUniformBuffers.size()];
+            auto& rightBuffer = cameraUniformBuffers[(context.frameNumber * 2 + 1) % cameraUniformBuffers.size()];
             leftBuffer.uploadForFrame(&objLeftEye, sizeof(objLeftEye));
             rightBuffer.uploadForFrame(&objRightEye, sizeof(objRightEye));
         } else {
             CameraBufferObject obj{};
-            auto& buffer = cameraUniformBuffers[context.frameIndex];
+            auto& buffer = cameraUniformBuffers[context.frameNumber % cameraUniformBuffers.size()];
 
             obj.update(getCamera(), context);
 
@@ -129,7 +129,7 @@ namespace Carrot::Render {
 
         ViewportBufferObject viewportBufferObject{};
         viewportBufferObject.update(context);
-        auto& buffer = viewportUniformBuffers[context.frameIndex];
+        auto& buffer = viewportUniformBuffers[context.frameNumber % viewportUniformBuffers.size()];
         buffer.uploadForFrame(&viewportBufferObject, sizeof(viewportBufferObject));
 
         for(auto& pScene : scenes) {
@@ -142,13 +142,13 @@ namespace Carrot::Render {
 
     const Carrot::BufferView& Viewport::getCameraUniformBuffer(const Render::Context& context) const {
         if(context.renderer.getConfiguration().runInVR && vrCompatible) {
-            return cameraUniformBuffers[context.frameIndex * 2 + (context.eye == Eye::RightEye ? 1 : 0)];
+            return cameraUniformBuffers[(context.frameNumber * 2 + (context.eye == Eye::RightEye ? 1 : 0)) % cameraUniformBuffers.size()];
         }
-        return cameraUniformBuffers[context.frameIndex];
+        return cameraUniformBuffers[context.frameNumber % cameraUniformBuffers.size()];
     }
 
     const Carrot::BufferView& Viewport::getViewportUniformBuffer(const Render::Context& context) const {
-        return viewportUniformBuffers[context.frameIndex];
+        return viewportUniformBuffers[context.frameNumber % viewportUniformBuffers.size()];
     }
 
     void Viewport::render(const Carrot::Render::Context& context, vk::CommandBuffer& cmds) {

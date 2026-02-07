@@ -32,8 +32,13 @@ namespace Carrot {
                     (r2Sequence(frameCount) - 0.5f) / renderContext.pViewport->getSizef();
         jitteredProjection = nonJitteredProjection;
         if (AllowJittering) {
-            jitteredProjection[3][0] += translationAmount.x;
-            jitteredProjection[3][1] += translationAmount.y;
+            glm::mat4 jitterMatrix {1.0f};
+            jitterMatrix[0][3] = translationAmount.x;
+            jitterMatrix[1][3] = translationAmount.y;
+            jitteredProjection = jitteredProjection * jitterMatrix;
+            jitter = translationAmount;
+        } else {
+            jitter = {};
         }
 
         inverseJitteredProjection = glm::inverse(jitteredProjection);

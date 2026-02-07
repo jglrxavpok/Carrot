@@ -57,7 +57,8 @@ Optional<uint> getReprojectedProbeIndex(uint2 frameDimensions, vec2 uv, vec2 mot
     if(reprojectionInBounds) {
         const float2 size = float2(frameDimensions.x, frameDimensions.y);
         const int2 reprojectedPixel = int2(reprojectedUV * size);
-        const uint reprojectedProbeIndex = reprojectedPixel.x / ScreenProbeSize + reprojectedPixel.y / ScreenProbeSize * probesPerWidth;
+        const int2 probeLocation = reprojectedPixel / ScreenProbeSize;
+        const uint reprojectedProbeIndex = probeLocation.x + probeLocation.y * probesPerWidth;
         return reprojectedProbeIndex;
     }
 
@@ -96,29 +97,26 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
     }
     int2 pixel = coords.xy;
     const float2 size = float2(push.frameDimensions);
-    const float2 uv = (pixel + float2(0.5f, 0.5f)) / size;
+    const float2 uv = (pixel + 0.5f) / size;
 
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
 
     GroupMemoryBarrier();
-    if(pixelInfo.isSky) {
-        return;
-    }
-
-    // check if we can reuse a probe from the previous frame
-    if(let reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, uv, pixelInfo.gBuffer.motionVector.xy)) {
-        const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
-        const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
-        const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
-        const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
-        const float cellSize = HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos);
-        if(planeDist < cellSize && normalCheck > 0.95) {
-            const float dist = length(dPos) / cellSize;
-            const uint probeScore = (packHalf(dist) << 16) | localIndex;
-            InterlockedMin(reprojectionScore, probeScore);
+    if(!pixelInfo.isSky) {
+        // check if we can reuse a probe from the previous frame
+        if(let reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, uv, pixelInfo.gBuffer.motionVector.xy)) {
+            const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
+            const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
+            const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
+            const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
+            const float cellSize = HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos);
+            if(planeDist < cellSize && normalCheck > 0.95) {
+                const float dist = length(dPos) / cellSize;
+                const uint probeScore = (packHalf(dist) << 16) | localIndex;
+                InterlockedMin(reprojectionScore, probeScore);
+            }
         }
     }
-
     GroupMemoryBarrier();
     if(localIndex != 0) {
         return;
@@ -144,6 +142,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const int2 screenTileStart = int2(groupID.xy * uint2(ScreenProbeSize));
         const uint localPixel = reprojectionScore & 0xFFFFu;
         const int2 posInTile = int2(localPixel % ScreenProbeSize, localPixel / ScreenProbeSize);
+        pixel += posInTile;
         const int2 reprojectedPixelPos = screenTileStart + posInTile;
         const float2 reprojectedUV = (float2(reprojectedPixelPos) + float2(0.5)) / size;
         const GBuffer reprojectedGBuffer = gBufferInputs.read(reprojectedUV);
@@ -152,16 +151,18 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
 
         probeData.probes[probeIndex].reprojectRadiance(reprojectedProbe);
-        probeData.probes[probeIndex].worldPos = (cameras.CurrentFrame().inverseView * vec4(reprojectedGBuffer.viewPosition, 1)).xyz;
-
-        const float3x3 inverseNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().inverseView)));
-        probeData.probes[probeIndex].normal = inverseNormalView * reprojectedGBuffer.viewTBN[2];
-        probeData.probes[probeIndex].bestPixel = reprojectedPixelPos;
+        probeData.probes[probeIndex].worldPos = reprojectedProbe.worldPos;
+        probeData.probes[probeIndex].normal = reprojectedProbe.normal;
+        
 
         uint reprojectedIndex;
         InterlockedAdd(probeData.counts[0].reprojectedProbes, 1, reprojectedIndex);
         probeData.reprojectedProbes[reprojectedIndex] = spawnedIndex;
     }
+    // jitter inside tile
+    pixel.x += push.frameCount % ScreenProbeSize;
+    pixel.y += (push.frameCount / ScreenProbeSize) % ScreenProbeSize;
+    probeData.probes[probeIndex].bestPixel = pixel;
 }
 
 [shader("compute")]
@@ -247,7 +248,7 @@ void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         return;
     }
 
-    const float2 uv = float2(pixel) / size;
+    const float2 uv = float2(pixel + 0.5) / size;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, pcg_hash(spawnedProbeIndex + push.frameCount));
 
@@ -316,7 +317,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         return;
     }
 
-    const float2 uv = float2(pixel) / size;
+    const float2 uv = float2(pixel + 0.5f) / size;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, rayIndex + push.frameCount);
     Raytracing::HardwareCapability capability = Raytracing::HardwareCapability(rtData);

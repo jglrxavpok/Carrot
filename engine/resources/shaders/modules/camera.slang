@@ -12,6 +12,7 @@ public struct CameraBufferObject {
     public mat4 inverseNonJitteredProjection;
 
     public vec4 frustumPlanes[6]; /* xyz = normal, w = distance from origin*/
+    public float2 jitter;
 }
 
 public struct Camera {
