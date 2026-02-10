@@ -39,6 +39,7 @@ ParameterBlock<Probes> probeData;
 ParameterBlock<MaterialSystem> materialSystem;
 ParameterBlock<Lighting> lightData;
 ParameterBlock<GBufferInputs> gBufferInputs;
+ParameterBlock<GBufferInputs> previousFrameGBufferInputs;
 ParameterBlock<Camera> cameras;
 ParameterBlock<Raytracing::Data> rtData;
 
@@ -130,35 +131,36 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
 
     if(reusedPixel == 0xFFFFu) {
         // no reuse
-        pixel.x += push.frameCount % ScreenProbeSize;
-        pixel.y += (push.frameCount / ScreenProbeSize) % ScreenProbeSize;
         probeData.probes[probeIndex].reset(pixelInfo.worldPosition, pixelInfo.worldNormal, pixel);
 
         uint emptyIndex; 
         InterlockedAdd(probeData.counts[0].emptyProbes, 1, emptyIndex);
-        //emptyProbes.indices[emptyIndex] = spawnedIndex;
         probeData.emptyProbes[emptyIndex] = probeIndex;
     } else {
         const int2 screenTileStart = int2(groupID.xy * uint2(ScreenProbeSize));
         const uint localPixel = reprojectionScore & 0xFFFFu;
         const int2 posInTile = int2(localPixel % ScreenProbeSize, localPixel / ScreenProbeSize);
-        pixel += posInTile;
         const int2 reprojectedPixelPos = screenTileStart + posInTile;
         const float2 reprojectedUV = (float2(reprojectedPixelPos) + float2(0.5)) / size;
-        const GBuffer reprojectedGBuffer = gBufferInputs.read(reprojectedUV);
+        const GBuffer currentGBuffer = gBufferInputs.read(reprojectedUV);
+        const GBuffer reprojectedGBuffer = previousFrameGBufferInputs.read(reprojectedUV + currentGBuffer.motionVector.xy);
 
-        const uint reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, reprojectedUV, reprojectedGBuffer.motionVector.xy).value;
+        const uint reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, reprojectedUV, currentGBuffer.motionVector.xy).value;
         const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
 
         probeData.probes[probeIndex].reprojectRadiance(reprojectedProbe);
-        probeData.probes[probeIndex].worldPos = reprojectedProbe.worldPos;
-        probeData.probes[probeIndex].normal = reprojectedProbe.normal;
+
+        const float3 worldPos = (cameras.CurrentFrame().inverseView * float4(currentGBuffer.viewPosition, 1)).xyz;
+        const float3 worldNormal = transpose(inverse(float3x3(cameras.CurrentFrame().inverseView))) * currentGBuffer.viewTBN[2];
+        probeData.probes[probeIndex].worldPos = worldPos;
+        probeData.probes[probeIndex].normal = worldNormal;
         
 
         uint reprojectedIndex;
         InterlockedAdd(probeData.counts[0].reprojectedProbes, 1, reprojectedIndex);
         probeData.reprojectedProbes[reprojectedIndex] = spawnedIndex;
     }
+    // TODO: better jitter pattern
     // jitter inside tile
     pixel.x += push.frameCount % ScreenProbeSize;
     pixel.y += (push.frameCount / ScreenProbeSize) % ScreenProbeSize;
@@ -236,11 +238,7 @@ void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         return;
     }
 
-    uint startRayIndex = 0;
-    InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
     const uint probeIndex = probeData.spawnedProbes[spawnedProbeIndex];
-    probeData.rayDataStart[probeIndex] = startRayIndex; // TODO: remove
-
     const int2 pixel = probeData.probes[probeIndex].bestPixel;
     const uint2 size = uint2(push.frameWidth, push.frameHeight);
 
@@ -250,6 +248,14 @@ void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
     const float2 uv = float2(pixel + 0.5) / size;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+
+    if(pixelInfo.isSky) {
+        return;
+    }
+
+    uint startRayIndex = 0;
+    InterlockedAdd(probeData.counts[0].spawnedRays, MaxRaysPerProbe, /*out*/startRayIndex);
+
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, pcg_hash(spawnedProbeIndex + push.frameCount));
 
     float3 radiance = lightData.lightArray.ambientColor;
@@ -319,6 +325,11 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
     const float2 uv = float2(pixel + 0.5f) / size;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+
+    if(pixelInfo.isSky) {
+        return;
+    }
+
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, rayIndex + push.frameCount);
     Raytracing::HardwareCapability capability = Raytracing::HardwareCapability(rtData);
     const float tMax = 50000.0f;
@@ -347,6 +358,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         giInputs.surfaceNormal = intersection.worldNormal;
         giInputs.startOfRay = from;
 
+        // TODO: isn't this missing some information about distance/angle to light and intersection?
         hashGridData.grids.currentFrame->jitter(rng, materialSystem, giInputs);
         float3 gi = hashGridData.grids.currentFrame->read(rng, giInputs);
         float3 directLighting = lightData.sampleLights(/*out*/ lightPDF, capability, pbr, 
@@ -360,6 +372,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         key.cameraPosition = giInputs.cameraPosition;
         key.rayLength = length(key.hitPosition - from);
         // TODO: reservoirs
+        // TODO: remove?
         if(luminance(radiance) > 0.001f) { // don't accumulate poor samples
             if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
                 if(wasNew) {
@@ -381,7 +394,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         );
 
         const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * direction, float3(0), float3(0)).rgb;
-        
+
         radiance += brdf * skyboxRGB;
     }
 

@@ -196,6 +196,7 @@ namespace HashGrid {
             const uint oldSampleCount = sampleCounts[cellIndex];
             const uint newSampleCount = sampleCountAccumulation[cellIndex];
             if(newSampleCount == 0) {
+                // TODO: don't return, no samples mean no light, not that we did not try
                 return; // nothing to do
             }
             float3 newRadiance = unpackRadiance(radianceAccumulation[cellIndex]) / newSampleCount;
@@ -369,9 +370,6 @@ struct SampleAccumulation {
 
     [mutating]
     void accumulate(float3 sample, float3 direction) {
-        if(currentIndex >= MaxElements) {
-            return;
-        }
         uint usedIndex;
         InterlockedAdd(currentIndex, 1, usedIndex);
 
@@ -411,12 +409,20 @@ public struct ScreenProbe {
 
 
     public float3 readRadianceFromCameraPos(float3 cameraPos) {
-        const float3 direction = normalize(cameraPos - worldPos);
-        return radiance.evalutateCosineLobe(direction) / sampleCount;
+        if(sampleCount > 0) {
+            const float3 direction = normalize(cameraPos - worldPos);
+            return radiance.evalutateCosineLobe(direction) / sampleCount;
+        } else {
+            return 0;
+        }
     }
 
     public float3 evaluateCosineLobe(float3 dir) {
-        return radiance.evalutateCosineLobe(dir) / sampleCount;
+        if(sampleCount > 0) {
+            return radiance.evalutateCosineLobe(dir) / sampleCount;
+        } else {
+            return 0;
+        }
     }
 
     public uint getSampleCount() {
@@ -443,6 +449,7 @@ public struct ScreenProbe {
 
     [mutating]
     public void accumulateSample(const in RayData ray) {
+        // TODO: remove check?
         if(dot(ray.radiance, ray.radiance) > 0.01f) {
             accumulatedRadiance.accumulate(ray.radiance, ray.direction);
         }
@@ -494,7 +501,15 @@ public struct ScreenProbes {
         uint2 probePosition = screenPos / ScreenProbeSize;
         const uint probesPerWidth = (frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
         uint probeIndex = probePosition.x + probePosition.y * probesPerWidth;
-        return probes[NonUniformResourceIndex(probeIndex)];
+        return getFromIndex(probeIndex);
+    }
+
+    public uint getCount() {
+        return probes.getCount();
+    }
+
+    public ScreenProbe getFromIndex(uint index) {
+        return probes[NonUniformResourceIndex(index)];
     }
 }
 

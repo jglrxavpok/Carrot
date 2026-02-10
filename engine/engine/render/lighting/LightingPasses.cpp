@@ -512,18 +512,18 @@ namespace Carrot::Render {
             }
             bool needSceneInfo = true;
             if(useRaytracingVersion && needRaytracing) {
-               renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.frameIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
+               renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.frameNumber % Render::BlueNoiseTextureCount]->texture, 7, 1, nullptr);
                if(pTLAS) {
-                   renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
+                   renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 7, 0);
                    if(needSceneInfo) {
-                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getGeometriesBuffer(frame), 6, 2);
-                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getInstancesBuffer(frame), 6, 3);
+                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getGeometriesBuffer(frame), 7, 2);
+                       renderer.bindBuffer(pipeline, frame, renderer.getRaytracingScene().getInstancesBuffer(frame), 7, 3);
                    }
                } else {
-                   renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);
+                   renderer.unbindAccelerationStructure(pipeline, frame, 7, 0);
                    if(needSceneInfo) {
-                       renderer.unbindBuffer(pipeline, frame, 6, 2);
-                       renderer.unbindBuffer(pipeline, frame, 6, 3);
+                       renderer.unbindBuffer(pipeline, frame, 7, 2);
+                       renderer.unbindBuffer(pipeline, frame, 7, 3);
                    }
                }
             }
@@ -535,6 +535,7 @@ namespace Carrot::Render {
 
             HashGrid::bind(data.gi.hashGrid, graph, frame, pipeline, 0);
             data.gbuffer.bindInputs(pipeline, frame, graph, 4, vk::ImageLayout::eGeneral);
+            data.gbuffer.bindLastFrameInputs(pipeline, frame, graph, 5, vk::ImageLayout::eGeneral);
         };
 
         auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
@@ -727,7 +728,7 @@ namespace Carrot::Render {
                        renderer.bindStorageImage(pipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                        if(useRaytracingVersion) {
-                           renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.frameIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
+                           renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.frameNumber % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
                            if(pTLAS) {
                                renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
                                if(needSceneInfo) {
@@ -847,17 +848,35 @@ namespace Carrot::Render {
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/debug-gi", (std::uint64_t)&pass);
                 auto& outputTexture = pass.getGraph().getTexture(data.output, frame.frameIndex);
 
+                // clear
+                {
+                    auto clearBufferPipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-rgba-image.pipeline", (std::uint64_t)&pass);
+                    clearBufferPipeline->setStorageImage(frame,"entryPointParams.image", outputTexture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    const auto& extent = outputTexture.getSize();
+                    const std::uint8_t localSize = 32;
+                    std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                    std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+
+                    clearBufferPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    cmds.dispatch(dispatchX, dispatchY, 1);
+                }
+
                 PushConstantRT block;
                 preparePushConstant(block, frame);
                 frame.renderer.pushConstantBlock<PushConstantNoRT>("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
 
-                frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameNumber).view, 0, 1);
+                pipeline->setStorageImage(frame, "data.destination", outputTexture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                pipeline->setStorageBuffer(frame, "data.probes.probes", pass.getGraph().getBuffer(data.screenProbes, frame.frameNumber).view);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 32;
-                const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
-                const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;
+                /*const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
+                const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;*/
+                const i64 probesCountX = (block.frameWidth + ScreenProbeSize - 1) / ScreenProbeSize;
+                const i64 probesCountY = (block.frameHeight + ScreenProbeSize - 1) / ScreenProbeSize;
+                const i64 spawnedRayCount = probesCountX * probesCountY;
+                const i64 groupX = (spawnedRayCount + 31) / 32;
+                const std::size_t groupY = 1;
                 cmds.dispatch(groupX, groupY, 1);
             });
 

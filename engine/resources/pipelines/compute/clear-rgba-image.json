@@ -1,0 +1,13 @@
+{
+  "type": "compute",
+  "descriptorSets": [
+    {
+      "type": "manual",
+      "setID": 0
+    }
+  ],
+  "computeShader": {
+    "file": "resources/shaders/compute/clear.slang",
+    "entry_point": "clearRGBAImage"
+  }
+}

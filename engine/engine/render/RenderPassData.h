@@ -160,6 +160,10 @@ namespace Carrot::Render {
             void readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout);
             void writeTo(Render::GraphBuilder& graph, const GBuffer& other);
             void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
+            void bindLastFrameInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
+
+        private:
+            void bindInputsFromGivenFrame(Carrot::Pipeline& pipeline, const Render::Context& context, u64 frameNumber, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
         };
 
         struct HashGridResources {

@@ -1598,7 +1598,7 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(const Render::Compiled
         auto* pTLAS = getRaytracingScene().getTopLevelAS(renderContext);
         if(pTLAS) {
             bindAccelerationStructure(*forwardPipeline, renderContext, *pTLAS, 5, 2);
-            bindTexture(*forwardPipeline, renderContext, *getMaterialSystem().getBlueNoiseTextures()[renderContext.frameIndex % Render::BlueNoiseTextureCount]->texture, 5, 3, nullptr);
+            bindTexture(*forwardPipeline, renderContext, *getMaterialSystem().getBlueNoiseTextures()[renderContext.frameNumber % Render::BlueNoiseTextureCount]->texture, 5, 3, nullptr);
             bindBuffer(*forwardPipeline, renderContext, getRaytracingScene().getGeometriesBuffer(renderContext), 5, 4);
             bindBuffer(*forwardPipeline, renderContext, getRaytracingScene().getInstancesBuffer(renderContext), 5, 5);
         }

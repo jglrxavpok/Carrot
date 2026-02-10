@@ -203,6 +203,7 @@ set(ENGINE-SOURCES
 
 set(PIPELINES
         compute/animation-skinning
+        compute/clear-rgba-image
         compute/clear-singleint
         compute/clear-visibility-buffer
         compute/compute-rt-clusters

@@ -20,15 +20,21 @@
     },
     {
       "type": "manual",
-      "setID": 4
-    },
-    {
-      "type": "camera",
-      "setID": 5
+      "setID": 4,
+      "__comment": "GBuffer"
     },
     {
       "type": "manual",
-      "setID": 6,
+      "setID": 5,
+      "__comment": "GBuffer from previous frame"
+    },
+    {
+      "type": "camera",
+      "setID": 6
+    },
+    {
+      "type": "manual",
+      "setID": 7,
       "_comment": "RT"
     }
   ]
