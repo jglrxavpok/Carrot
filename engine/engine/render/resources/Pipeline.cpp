@@ -467,6 +467,14 @@ void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderCont
     setStorageImage(renderContext, slotName, texture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, textureLayout);
 }
 
+void Carrot::Pipeline::setSampler(const Carrot::Render::Context& renderContext, const std::string& slotName, const vk::Sampler& sampler) {
+    auto iter = description.descriptorReflection.find(slotName);
+    if (iter != description.descriptorReflection.end()) {
+        const ShaderCompiler::BindingSlot& slot = iter->second;
+        renderContext.renderer.bindSampler(*this, renderContext, sampler, slot.setID, slot.bindingID);
+    }
+}
+
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingPipelineCreateInfo& createInfo) const {
     auto it = vkPipelines.find(createInfo);
     if(it == vkPipelines.end()) {
@@ -498,6 +506,7 @@ void Carrot::Pipeline::bind(const Render::CompiledPass& renderPass, const Carrot
 }
 
 void Carrot::Pipeline::bind(const RenderingPipelineCreateInfo& createInfo, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, const std::vector<std::uint32_t>& dynamicOffsets) const {
+    // TODO: find bindpoint automatically
     ZoneScopedN("Bind pipeline");
 #ifdef TRACY_ENABLE
     std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str());

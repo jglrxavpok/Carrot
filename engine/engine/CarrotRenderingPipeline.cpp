@@ -8,6 +8,8 @@
 
 #include "engine/Engine.h"
 #include <algorithm>
+#include <core/math/BasicFunctions.h>
+
 #include "engine/constants.h"
 #include "engine/render/resources/Image.h"
 #include "engine/render/resources/SingleMesh.h"
@@ -61,7 +63,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Render::PassData::GBuffer gBufferInput;
         Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
         Render::FrameResource denoisedResult;
-        Render::FrameResource firstSpatialDenoiseColor;
         Render::FrameResource viewPositions;
     };
 
@@ -71,67 +72,55 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         auto& temporalAccumulationPass = mainGraph.addPass<TemporalAccumulation>(
                 "temporal anti aliasing - " + std::string(name),
                 [this, toAntiAlias, framebufferSize, textureSize, gBuffer, viewPositions](Render::GraphBuilder& builder, Render::Pass<TemporalAccumulation>& pass, TemporalAccumulation& data) {
-                    data.gBufferInput.readFrom(builder, gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                    data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eShaderReadOnlyOptimal);
-                    data.denoisedResult = builder.createRenderTarget("Temporal accumulation",
+                    data.gBufferInput.readFrom(builder, gBuffer, vk::ImageLayout::eGeneral);
+                    data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eGeneral);
+                    data.denoisedResult = builder.createStorageTarget("Temporal accumulation",
                                                                      toAntiAlias.format,
                                                                      textureSize,
-                                                                     vk::AttachmentLoadOp::eClear,
-                                                                     vk::ClearColorValue(std::array{0,0,0,0}),
                                                                      vk::ImageLayout::eGeneral // TODO: color attachment?
                     );
 
                     builder.reuseResourceAcrossFrames(data.denoisedResult, 1); // used in temporal algorithms
 
-                    data.viewPositions = builder.read(viewPositions, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    data.viewPositions = builder.read(viewPositions, vk::ImageLayout::eGeneral);
 
-                    data.momentsHistoryHistoryLength = builder.createRenderTarget("Moments & history length",
+                    data.momentsHistoryHistoryLength = builder.createStorageTarget("Moments & history length",
                                                                                   vk::Format::eR32G32B32A32Sfloat,
                                                                                   data.denoisedResult.size,
-                                                                                  vk::AttachmentLoadOp::eClear,
-                                                                                  vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f}),
                                                                                   vk::ImageLayout::eGeneral // TODO: color attachment?
                     );
 
-                    data.firstSpatialDenoiseColor = builder.createRenderTarget("First spatial denoise",
-                                                                               vk::Format::eR32G32B32A32Sfloat,
-                                                                               data.denoisedResult.size,
-                                                                               vk::AttachmentLoadOp::eClear,
-                                                                               vk::ClearColorValue(std::array{0,0,0,0}),
-                                                                               vk::ImageLayout::eGeneral
-                    );
                     GetEngine().getResourceRepository().getTextureUsages(data.momentsHistoryHistoryLength.rootID) |= vk::ImageUsageFlagBits::eSampled;
-                    GetEngine().getResourceRepository().getTextureUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
                     builder.reuseResourceAcrossFrames(data.momentsHistoryHistoryLength, 1); // used in temporal algorithms
+
+                    pass.rasterized = false;
                 },
                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph TAA");
                     GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "TAA");
                     auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/taa", pass);
-                    renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.frameNumber), 0, 0, nullptr);
+                    auto& currentFrameColor = pass.getGraph().getTexture(data.beauty, frame.frameNumber);
+                    pipeline->setStorageImage(frame, "io.output", pass.getGraph().getTexture(data.denoisedResult, frame.frameNumber), vk::ImageLayout::eGeneral);
+                    pipeline->setStorageImage(frame, "io.currentFrameColor", currentFrameColor, vk::ImageLayout::eGeneral);
 
-                    auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) {
+                    auto bindLastFrameTexture = [&](const Render::FrameResource& resource, const std::string& bindingSlot) {
                         Render::Texture& lastFrameTexture = pass.getGraph().getTexture(resource, frame.getPreviousFrameNumber());
-                        renderer.bindTexture(*pipeline, frame, lastFrameTexture, 0, bindingIndex, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, layout);
+                        pipeline->setStorageImage(frame, bindingSlot, lastFrameTexture, vk::ImageLayout::eGeneral);
                     };
-                    bindLastFrameTexture(data.denoisedResult, 1, vk::ImageLayout::eGeneral);
+                    bindLastFrameTexture(data.denoisedResult, "io.accumulationBuffer");
 
-                    Render::Texture& viewPosTexture = pass.getGraph().getTexture(data.viewPositions, frame.frameNumber);
-                    renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
-                    bindLastFrameTexture(data.viewPositions, 3);
+                    bindLastFrameTexture(data.momentsHistoryHistoryLength, "io.momentsAndHistory");
 
-                    bindLastFrameTexture(data.momentsHistoryHistoryLength, 5, vk::ImageLayout::eGeneral);
+                    pipeline->setSampler(frame, "io.linearSampler", renderer.getVulkanDriver().getLinearSampler());
+                    pipeline->setSampler(frame, "io.nearestSampler", renderer.getVulkanDriver().getNearestSampler());
 
-                    renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
-                    renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 7);
+                    data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
 
-                    data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-                    pipeline->bind(pass, frame, buffer);
-                    auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
-                    screenQuadMesh.bind(buffer);
-                    screenQuadMesh.draw(buffer);
+                    pipeline->bind(pass, frame, buffer, vk::PipelineBindPoint::eCompute);
+                    const u32 groupX = Carrot::Math::alignUp(currentFrameColor.getSize().width, (u32)8);
+                    const u32 groupY = Carrot::Math::alignUp(currentFrameColor.getSize().height, (u32)8);
+                    buffer.dispatch(groupX, groupY, 1);
                 }
         );
         return temporalAccumulationPass;
@@ -226,7 +215,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             [this, drawUnlit, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
                 data.postLighting = builder.read(drawUnlit.getData().inout, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget("Tone mapped",
-                                                                vk::Format::eR8G8B8A8Unorm,
+                                                                vk::Format::eR32G32B32A32Sfloat, // TODO: not sure why RGBA8_UNORM made the temporal blend fail in TAA
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),

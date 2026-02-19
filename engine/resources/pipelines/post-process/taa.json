@@ -1,31 +1,21 @@
 {
-  "type": "denoising",
-  "subpassIndex": 0,
-  "vertexFormat": "ScreenSpace",
-  "cull": false,
-  "alphaBlending": true,
+  "type": "compute",
   "descriptorSets": [
     {
       "type": "manual",
       "setID": 0
     },
     {
-      "type": "camera",
+      "type": "manual",
       "setID": 1
     },
     {
-      "type": "manual",
+      "type": "viewport",
       "setID": 2
     }
   ],
-  "depthWrite": false,
-  "depthTest": false,
-  "vertexShader": {
-    "file": "resources/shaders/screenQuad.vertex.glsl",
-    "entry_point": "main"
-  },
-  "fragmentShader": {
-    "file": "resources/shaders/post-process/taa.fragment.glsl",
+  "computeShader": {
+    "file": "resources/shaders/post-process/taa.slang",
     "entry_point": "main"
   }
 }
