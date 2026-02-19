@@ -27,7 +27,7 @@ namespace Carrot {
      */
     template<typename TObjectType>
     concept CanBeUsedForHandles = requires(TObjectType obj, HandleDetails::Weak<TObjectType> h) {
-        { obj.getHandle() } -> std::convertible_to<HandleDetails::Weak<TObjectType>>;
+        { obj.getHandle() } -> std::convertible_to<Handle<TObjectType>>;
         { obj.setHandle(h) };
     };
 
@@ -113,7 +113,7 @@ namespace Carrot {
     template<typename TObjectType>
     class HandleStorage {
     public:
-        //static_assert(CanBeUsedForHandles<TObjectType>);
+        static_assert(CanBeUsedForHandles<TObjectType>);
         using Slot = HandleDetails::Slot<TObjectType>;
 
         /**
