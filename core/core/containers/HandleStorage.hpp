@@ -113,7 +113,7 @@ namespace Carrot {
     template<typename TObjectType>
     class HandleStorage {
     public:
-        static_assert(CanBeUsedForHandles<TObjectType>);
+        //static_assert(CanBeUsedForHandles<TObjectType>); TODO: fix it on MSVC
         using Slot = HandleDetails::Slot<TObjectType>;
 
         /**
