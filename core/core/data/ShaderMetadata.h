@@ -9,11 +9,24 @@
 #include <string>
 #include <core/io/Resource.h>
 #include <core/utils/JSON.h>
+#include <core/utils/Lookup.hpp>
+#include <vulkan/vulkan_core.h>
 
 namespace ShaderCompiler {
+    static Carrot::Lookup DescriptorTypeNames = std::array {
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_SAMPLER, "sampler"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, "combined_image_sampler"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, "sampled_image"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, "acceleration_structure"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, "uniform_buffer"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, "storage_buffer"),
+        Carrot::LookupEntry(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, "storage_image"),
+    };
+
     struct BindingSlot {
         u32 setID = 0;
         u32 bindingID = 0;
+        VkDescriptorType type{};
     };
 
     struct Metadata {

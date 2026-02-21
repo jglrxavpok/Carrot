@@ -73,7 +73,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 "temporal anti aliasing - " + std::string(name),
                 [this, toAntiAlias, framebufferSize, textureSize, gBuffer, viewPositions](Render::GraphBuilder& builder, Render::Pass<TemporalAccumulation>& pass, TemporalAccumulation& data) {
                     data.gBufferInput.readFrom(builder, gBuffer, vk::ImageLayout::eGeneral);
-                    data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eGeneral);
+                    data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eShaderReadOnlyOptimal);
                     data.denoisedResult = builder.createStorageTarget("Temporal accumulation",
                                                                      toAntiAlias.format,
                                                                      textureSize,
@@ -102,11 +102,11 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/taa", pass);
                     auto& currentFrameColor = pass.getGraph().getTexture(data.beauty, frame.frameNumber);
                     pipeline->setStorageImage(frame, "io.output", pass.getGraph().getTexture(data.denoisedResult, frame.frameNumber), vk::ImageLayout::eGeneral);
-                    pipeline->setStorageImage(frame, "io.currentFrameColor", currentFrameColor, vk::ImageLayout::eGeneral);
+                    pipeline->setSampledImage(frame, "io.currentFrameColor", currentFrameColor);
 
                     auto bindLastFrameTexture = [&](const Render::FrameResource& resource, const std::string& bindingSlot) {
                         Render::Texture& lastFrameTexture = pass.getGraph().getTexture(resource, frame.getPreviousFrameNumber());
-                        pipeline->setStorageImage(frame, bindingSlot, lastFrameTexture, vk::ImageLayout::eGeneral);
+                        pipeline->setSampledImage(frame, bindingSlot, lastFrameTexture);
                     };
                     bindLastFrameTexture(data.denoisedResult, "io.accumulationBuffer");
 

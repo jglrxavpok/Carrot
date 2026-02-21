@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
             rapidjson::Value slotAsArray{rapidjson::kArrayType};
             slotAsArray.PushBack(bindingSlot.setID, d.GetAllocator());
             slotAsArray.PushBack(bindingSlot.bindingID, d.GetAllocator());
+            slotAsArray.PushBack(rapidjson::Value{ShaderCompiler::DescriptorTypeNames.at(bindingSlot.type), d.GetAllocator()}, d.GetAllocator());
             bindingsObj.AddMember(rapidjson::Value{name, d.GetAllocator()}, slotAsArray, d.GetAllocator());
         }
         d.AddMember("bindings", bindingsObj, d.GetAllocator());

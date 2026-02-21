@@ -4,6 +4,9 @@
 
 #include <engine/constants.h>
 #include "Pipeline.h"
+
+#include <core/data/ShaderMetadata.h>
+
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
 #include <rapidjson/document.h>
@@ -447,10 +450,12 @@ bool Carrot::Pipeline::hasBinding(u32 setID, u32 bindingID) const {
     return false;
 }
 
+// TODO: setBuffer & setImage that automatically use the proper descriptor type
 void Carrot::Pipeline::setStorageBuffer(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::BufferView& buffer) {
     auto iter = description.descriptorReflection.find(slotName);
     if (iter != description.descriptorReflection.end()) {
         const ShaderCompiler::BindingSlot& slot = iter->second;
+        verify(slot.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
         renderContext.renderer.bindBuffer(*this, renderContext, buffer, slot.setID, slot.bindingID);
     }
 }
@@ -459,6 +464,7 @@ void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderCont
     auto iter = description.descriptorReflection.find(slotName);
     if (iter != description.descriptorReflection.end()) {
         const ShaderCompiler::BindingSlot& slot = iter->second;
+        verify(slot.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
         renderContext.renderer.bindStorageImage(*this, renderContext, texture, slot.setID, slot.bindingID, aspect, viewType, arrayIndex, textureLayout);
     }
 }
@@ -467,10 +473,20 @@ void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderCont
     setStorageImage(renderContext, slotName, texture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, textureLayout);
 }
 
+void Carrot::Pipeline::setSampledImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
+    auto iter = description.descriptorReflection.find(slotName);
+    if (iter != description.descriptorReflection.end()) {
+        const ShaderCompiler::BindingSlot& slot = iter->second;
+        verify(slot.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
+        renderContext.renderer.bindTexture(*this, renderContext, texture, slot.setID, slot.bindingID, aspect, viewType, arrayIndex);
+    }
+}
+
 void Carrot::Pipeline::setSampler(const Carrot::Render::Context& renderContext, const std::string& slotName, const vk::Sampler& sampler) {
     auto iter = description.descriptorReflection.find(slotName);
     if (iter != description.descriptorReflection.end()) {
         const ShaderCompiler::BindingSlot& slot = iter->second;
+        verify(slot.type == VK_DESCRIPTOR_TYPE_SAMPLER, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_SAMPLER, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
         renderContext.renderer.bindSampler(*this, renderContext, sampler, slot.setID, slot.bindingID);
     }
 }
@@ -879,7 +895,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
             auto asArray = iter->value.GetArray();
             const u32 setID = asArray[0].GetInt();
             const u32 bindingID = asArray[1].GetInt();
-            descriptorReflection[std::string{bindingName}] = ShaderCompiler::BindingSlot { setID, bindingID };
+            const std::string_view typeName { asArray[2].GetString(), asArray[2].GetStringLength() };
+            VkDescriptorType descriptorType = ShaderCompiler::DescriptorTypeNames[std::string(typeName)];
+            descriptorReflection[std::string{bindingName}] = ShaderCompiler::BindingSlot { setID, bindingID, descriptorType };
         }
     }
 

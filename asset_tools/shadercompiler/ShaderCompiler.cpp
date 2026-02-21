@@ -121,6 +121,7 @@ namespace ShaderCompiler {
                 ShaderCompiler::BindingSlot& slot = outBindings[bindings[index]->name];
                 slot.setID = bindings[index]->set;
                 slot.bindingID = bindings[index]->binding;
+                slot.type = static_cast<VkDescriptorType>(bindings[index]->descriptor_type);
             }
         }
 
