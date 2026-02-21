@@ -172,6 +172,18 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
                         break;
                 }
             }
+
+            bool filterCompilationUnit(const jet::CompilationUnit& cu) override {
+#if _USE_ASAN
+                constexpr bool allowASANTarget = true;
+#else
+                constexpr bool allowASANTarget = false;
+#endif
+                if (cu.objFilePath.find("-ASAN.dir") != std::string::npos) {
+                    return allowASANTarget;
+                }
+                return true;
+            }
         };
         std::unique_ptr<jet::ILiveListener> listener = std::make_unique<CarrotLiveListener>();
         optJetLive.emplace(std::move(listener));
