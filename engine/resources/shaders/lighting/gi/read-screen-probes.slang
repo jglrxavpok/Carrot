@@ -108,7 +108,10 @@ void main(
     constexpr int Radius = 1;
     for(int dy = -Radius; dy <= Radius; dy++) {
         for(int dx = -Radius; dx <= Radius; dx++) {
-            const uint2 probePosition = uint2(int2(probePositionCenter) + int2(dx, dy));
+            const int2 probePosition = int2(int2(probePositionCenter) + int2(dx, dy));
+            if(probePosition.x < 0 || probePosition.y < 0 || probePosition.x >= push.frameWidth || probePosition.y >= push.frameHeight) {
+                continue;
+            }
             float distanceWeight = 1.0/(1+distance(probePosition, coords.xy));
             float weight = KERNEL_WEIGHTS[dx+Radius] * KERNEL_WEIGHTS[dy+Radius] * distanceWeight;
             average += addProbeInfluence(pixelInfo, probePosition, push.frameWidth, cameraPosition, weight);

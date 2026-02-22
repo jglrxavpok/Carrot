@@ -416,7 +416,7 @@ namespace Carrot::Render {
                 BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
                 BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
                 frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameNumber, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
+                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameNumber);
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);

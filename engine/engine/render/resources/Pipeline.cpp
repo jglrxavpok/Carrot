@@ -478,7 +478,7 @@ void Carrot::Pipeline::setSampledImage(const Carrot::Render::Context& renderCont
     if (iter != description.descriptorReflection.end()) {
         const ShaderCompiler::BindingSlot& slot = iter->second;
         verify(slot.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
-        renderContext.renderer.bindTexture(*this, renderContext, texture, slot.setID, slot.bindingID, aspect, viewType, arrayIndex);
+        renderContext.renderer.bindTexture(*this, renderContext, texture, slot.setID, slot.bindingID, {}, aspect, viewType, arrayIndex);
     }
 }
 
@@ -796,10 +796,17 @@ void Carrot::Pipeline::onSwapchainSizeChange(Window& window, int newWidth, int n
 }
 
 void Carrot::Pipeline::setDebugNames(const std::string& name) {
+    debugName = name;
     for(auto& [_, pPipeline] : vkPipelines) {
         DebugNameable::nameSingle(name, *pPipeline);
     }
-    debugName = name;
+    for (u32 i = 0; i < descriptorSetLayouts.size(); i++) {
+        vk::DescriptorSetLayout setLayout = *descriptorSetLayouts[i];
+        if (setLayout) {
+            nameSingle(Carrot::sprintf("%s (Descriptor set layout index %i)", this->debugName.c_str(), i), setLayout);
+        }
+    }
+    DebugNameable::nameSingle(Carrot::sprintf("%s (Pipeline layout)", this->debugName.c_str()), *layout);
 }
 
 Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource jsonFile): originatingResource(jsonFile) {
