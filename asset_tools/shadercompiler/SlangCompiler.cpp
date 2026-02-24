@@ -102,7 +102,7 @@ namespace SlangCompiler {
             .name = CompilerOptionName::Optimization,
             .value = CompilerOptionValue {
                 .kind = CompilerOptionValueKind::Int,
-                .intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE
+                .intValue0 = SLANG_OPTIMIZATION_LEVEL_MAXIMAL
             }
         });
         compilerOptions.emplace_back(CompilerOptionEntry {
