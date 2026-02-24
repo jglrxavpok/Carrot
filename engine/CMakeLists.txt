@@ -287,10 +287,6 @@ set(ALL_BASE_LIBS
         OpenXR::headers
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
-        cgraph
-        gvc
-        gvplugin_dot_layout
-        gvplugin_core
         fertilizer-lib
         ${ADDITIONAL_LIBS})
 

@@ -73,13 +73,7 @@ if(NsightAftermath_FOUND)
     file(COPY ${DLL_PATH} DESTINATION "${CMAKE_BINARY_DIR}")
 endif()
 
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(WITH_ZLIB OFF CACHE BOOL "" FORCE) # avoid linking issue on Windows due to Zlib, and Carrot only uses the layout engine anyway
-set(WITH_EXPAT OFF CACHE BOOL "" FORCE) # avoid DLL dependency of Graphviz
-set(GRAPHVIZ_CLI OFF CACHE BOOL "" FORCE)
-add_subdirectory(thirdparty/graphviz)
 file(COPY "${ProjectRoot}thirdparty/mono-install/${Platform}/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/")
-file(COPY "${ProjectRoot}thirdparty/graphviz-build/${Arch}/${Platform}" DESTINATION "${CMAKE_BINARY_DIR}/graphviz/")
 if(NOT WIN32)
     file(COPY "${ProjectRoot}thirdparty/mono/bin/${Arch}/Linux/Debug/" DESTINATION "${CMAKE_BINARY_DIR}/mono-install/lib")
 endif ()

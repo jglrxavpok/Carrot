@@ -16,12 +16,6 @@
 #include <imgui_node_editor.h>
 #include <imgui_node_editor_internal.h>
 #include <engine/console/RuntimeOption.hpp>
-#include <gvc/gvc.h>
-#include <gvc/gvcint.h>
-#include <gvc/gvcproc.h>
-
-extern "C" gvplugin_library_t gvplugin_dot_layout_LTX_library;
-extern "C" gvplugin_library_t gvplugin_core_LTX_library;
 
 namespace ed = ax::NodeEditor;
 
@@ -406,82 +400,171 @@ namespace Carrot::Render {
     }
 
     void Graph::autoLayoutDebugView() {
-        GVC_t* context = gvContext();
+        // this layout works by generating columns of render passes
+        // it starts by finding the longest chain of render passes, and lays it out at the top of the layout
+        // then all the remaining passes are added, breadth first, starting from passes with no inputs
+        // The goal is to ensure the proper ordering of passes (ie an input pass is put to the left of its consumers)
+        Carrot::Vector<Carrot::Vector<const CompiledPass*>> columns;
 
-        gvAddLibrary(context, &gvplugin_dot_layout_LTX_library);
-        gvAddLibrary(context, &gvplugin_core_LTX_library);
+        // 1. generate adjacency list
+        std::unordered_map<const CompiledPass*, std::unordered_set<const CompiledPass*>> directLinks;
+        std::unordered_map<Carrot::UUID, const CompiledPass*> id2pass;
 
-        char gStr[] = "g;";
-        char concentrateStr[] = "concentrate";
-        char mincrossStr[] = "mincross";
-        char constraintStr[] = "constraint";
-        char fixedsizeStr[] = "fixedsize";
-        Agraph_t* g = agopen(gStr, Agdirected, nullptr);
-        agsafeset(g, concentrateStr, "true", "true");
-        agsafeset(g, mincrossStr, "true", "true");
-        agsafeset(g, constraintStr, "false", "false");
-        agsafeset(g, fixedsizeStr, "shape", "shape");
-
-        std::unordered_map<CompiledPass*, Agnode_t*> nodeStorage;
-        std::unordered_map<CompiledPass*, std::string> nodeNameStorage;
-        std::unordered_map<Carrot::UUID, Agnode_t*> resourceToNode;
-        for (auto* pass: sortedPasses) {
-            std::string& nodeName = nodeNameStorage[pass];
-            nodeName = pass->getName();
-            nodeName = Carrot::sprintf("%s (%llx)", nodeName.c_str(), pass);
-            Agnode_t* node = agnode(g, nodeName.data(), 1);
-
-
-            nodeStorage[pass] = node;
-
-            std::size_t maxHeight = 0;
-            for(const auto& inputSet : { pass->getInputs(), pass->getInputOutputs(), pass->getOutputs() }) {
-                maxHeight = std::max(maxHeight, inputSet.size());
-                for (const auto& i : inputSet) {
-                    resourceToNode[i.id] = node;
+        for (const CompiledPass* pass : sortedPasses) {
+            for (const auto& ioSet : { pass->getInputs(), pass->getInputOutputs(), pass->getOutputs() }) {
+                for (const auto& resource : ioSet) {
+                    id2pass[resource.id] = pass;
                 }
             }
-            const float lineHeight = 1.0f;
-            // invert width and height because we rotate the generated layout at the end
-            char widthStr[] = "width";
-            char heightStr[] = "height";
-            agsafeset(node, heightStr, Carrot::sprintf("%.5f", lineHeight*8).data(), "1");
-            agsafeset(node, widthStr, Carrot::sprintf("%.5f", ((maxHeight+1) * lineHeight)).data(), "1");
         }
-
-        std::unordered_set<Carrot::Pair<Agnode_t*, Agnode_t*>> existingLinks;
-        for (auto* pass: sortedPasses) {
-            for(const auto& inputSet : { pass->getInputs(), pass->getInputOutputs() }) {
-                for(const auto& i : inputSet) {
-                    if(i.id != i.parentID) {
-                        Agnode_t* nodeA = resourceToNode.at(i.parentID);
-                        Agnode_t* nodeB = resourceToNode.at(i.id);
-                        if (existingLinks.insert(Carrot::Pair{nodeA, nodeB}).second) { // avoid duplicates
-                            char edgeName[] = "";
-                            agedge(g, nodeA, nodeB, edgeName, 1);
-                        }
+        for (const CompiledPass* pass : sortedPasses) {
+            for (const auto& inputSet : { pass->getInputs(), pass->getInputOutputs() }) {
+                for (const auto& input : inputSet) {
+                    if (input.parentID != input.id) {
+                        directLinks[id2pass.at(input.parentID)].insert(id2pass.at(input.id));
                     }
                 }
             }
         }
 
-        gvLayout(context, g, "dot");
-
-        u32 passIndex = 0;
-        for (auto* pass: sortedPasses) {
-            Agnode_t* correspondingNode = nodeStorage[pass];
-            pointf pos = ND_coord(correspondingNode);
-            const double x = -pos.y;
-            const double y = pos.x;
-
-            ed::SetNodePosition(getNodeID(passIndex), ImVec2(static_cast<float>(x), static_cast<float>(y)));
-
-            passIndex++;
+        // 2. find passes with no inputs
+        Carrot::Vector<const CompiledPass*> firstColumn;
+        for (const CompiledPass* pass : sortedPasses) {
+            if (pass->getInputs().empty()) {
+                firstColumn.pushBack(pass);
+            }
         }
-        gvRenderFilename(context, g, "svg", "graph.svg");
-        gvFreeLayout(context, g);
-        gvFreeContext(context);
-        agclose(g);
+
+        // 3. find out longest chain
+        std::function<Carrot::Vector<const CompiledPass*>(const CompiledPass*, Carrot::Vector<const CompiledPass*>)> generateLongestChain = [&](const CompiledPass* pass, Carrot::Vector<const CompiledPass*> chainUpUntilNow) {
+            chainUpUntilNow.pushBack(pass);
+            auto descendantsIter = directLinks.find(pass);
+            if (descendantsIter == directLinks.end()) {
+                return chainUpUntilNow; // end of chain
+            }
+
+            i64 maxChainLength = 0;
+            Carrot::Vector<const CompiledPass*> longestChain{};
+            for (const CompiledPass* descendant : descendantsIter->second) {
+                Carrot::Vector<const CompiledPass*> subchain = generateLongestChain(descendant, chainUpUntilNow);
+                if (subchain.size() > maxChainLength) {
+                    maxChainLength = subchain.size();
+                    longestChain = std::move(subchain);
+                }
+            }
+
+            return longestChain;
+        };
+
+        i64 maxChainLength = 0;
+        Carrot::Vector<const CompiledPass*> longestChain{};
+        for (const CompiledPass* descendant : firstColumn) {
+            Carrot::Vector<const CompiledPass*> chain = generateLongestChain(descendant, {});
+            if (chain.size() > maxChainLength) {
+                maxChainLength = chain.size();
+                longestChain = std::move(chain);
+            }
+        }
+
+        Carrot::Log::debug("=== Longest chain ===");
+        for (const CompiledPass* pass : longestChain) {
+            Carrot::Log::debug("%.*s", pass->getName().size(), pass->getName().data());
+        }
+        Carrot::Log::debug("=== Longest chain ===");
+
+        // 4. put chain elements and their descendants into columns
+        std::unordered_set<const CompiledPass*> visited;
+        columns.resize(longestChain.size());
+        for (u32 columnIndex = 0; columnIndex < longestChain.size(); columnIndex++) {
+            Carrot::Vector<const CompiledPass*>& column = columns[columnIndex];
+            column.pushBack(longestChain[columnIndex]);
+
+            visited.insert(longestChain[columnIndex]);
+        }
+
+        // done in two loops to avoid adding descendants which are part of chain twice
+        for (u32 columnIndex = 0; columnIndex < longestChain.size(); columnIndex++) {
+            Carrot::Vector<const CompiledPass*>& column = columns[columnIndex];
+
+            auto descendantsIter = directLinks.find(longestChain[columnIndex]);
+            if (descendantsIter == directLinks.end()) {
+                continue;
+            }
+
+            verify(columnIndex +1 < columns.size(), "The last chain element is *last* but still has a pass after it?");
+
+            for (const CompiledPass* descendant : descendantsIter->second) {
+                if (visited.insert(descendant).second) { // descendant might be part of chain
+                    columns[columnIndex+1].pushBack(descendant);
+                }
+            }
+        }
+
+        // 5. add missing elements from first column and their descendants, breadth first
+        std::queue<Carrot::Pair<const CompiledPass*, u32> /*pass / column index*/> traversalQueue;
+        std::function<void(const CompiledPass*, int)> traverse = [&](const CompiledPass* pass, int columnIndex) {
+            if (visited.contains(pass)) {
+                return;
+            }
+            visited.insert(pass);
+            if (columns.size() <= columnIndex) {
+                columns.resize(columnIndex+1);
+            }
+
+            Carrot::Vector<const CompiledPass*>& column = columns[columnIndex];
+            column.pushBack(pass);
+            for (const CompiledPass* descendant : directLinks[pass]) {
+                traverse(descendant, columnIndex+1);
+            }
+        };
+        for (const CompiledPass* firstColumnPass : firstColumn) {
+            if (!visited.contains(firstColumnPass))
+                traversalQueue.push({firstColumnPass, 0});
+        }
+        while (!traversalQueue.empty()) {
+            Pair<const CompiledPass*, u32> passInfo = traversalQueue.front();
+            traversalQueue.pop();
+
+            const CompiledPass* pass = passInfo.first;
+            visited.insert(pass);
+
+            const u32 columnIndex = passInfo.second;
+            if (columns.size() <= columnIndex) {
+                columns.resize(columnIndex+1);
+            }
+
+            Carrot::Vector<const CompiledPass*>& column = columns[columnIndex];
+            column.pushBack(pass);
+            for (const CompiledPass* descendant : directLinks[pass]) {
+                if (!visited.contains(descendant)) {
+                    traversalQueue.push({descendant, columnIndex+1});
+                }
+            }
+        }
+
+        // 6. find node graph ids
+        std::unordered_map<const CompiledPass*, ed::NodeId> pass2nodeID;
+        for (u32 passIndex = 0; passIndex < sortedPasses.size(); passIndex++) {
+            pass2nodeID[sortedPasses[passIndex]] = getNodeID(passIndex);
+        }
+
+        float xCursor = 0.0f;
+        const float horizontalSpacing = 150.0f;
+        const float verticalSpacing = 30.0f;
+        for (const auto& column : columns) {
+            float yCursor = 0.0f;
+
+            float maxWidth = 0.0f;
+            for (const CompiledPass* pass : column) {
+                ed::NodeId nodeId = pass2nodeID[pass];
+                ed::SetNodePosition(nodeId, ImVec2(xCursor, yCursor));
+                ImVec2 size = ed::GetNodeSize(nodeId);
+
+                maxWidth = std::max(maxWidth, size.x);
+                yCursor += size.y + verticalSpacing;
+            }
+            xCursor += maxWidth + horizontalSpacing;
+        }
     }
 
     void Graph::onFrame(const Render::Context& context) {
@@ -516,6 +599,9 @@ namespace Carrot::Render {
 
                                 passIndex++;
                             }
+                        }
+                        if (ImGui::MenuItem("Recenter")) {
+                            ed::NavigateToContent();
                         }
                         ImGui::EndPopup();
                     }
