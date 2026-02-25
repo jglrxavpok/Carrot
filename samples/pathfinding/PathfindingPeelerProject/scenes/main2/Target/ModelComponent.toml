@@ -1,0 +1,6 @@
+castsShadows = true
+color = [ 0.60714280605316162, 1.0, 0.0, 1.0 ]
+isTransparent = false
+
+[model]
+modelPath = 'engine://resources/models/simple_sphere.obj'

@@ -1,5 +1,13 @@
 {
-    "scene": "game://scenes/main2.json",
+    "scene": "game://scenes/main",
+    "scenes": [
+        "game://scenes/main2",
+        "game://scenes/main"
+    ],
+    "open_scenes": [
+        "game://scenes/main",
+        "game://scenes/main2"
+    ],
     "selectedIDs": [
         "d5577523-8895-438a-bb4f-d14f5f73584c"
     ],
@@ -13,21 +21,22 @@
         "zFar": 1000.0,
         "fov": 1.2217304706573487,
         "eulerAngles": [
-            -5.473161220550537,
+            -5.473161697387695,
             0.0,
-            13.064973831176758
+            1.5649693012237549
         ],
         "position": [
-            4.779646396636963,
-            -11.306103706359864,
-            9.10909366607666
+            10.786602973937989,
+            3.0539679527282717,
+            11.103830337524414
         ]
     },
+    "open_tools": [],
     "window": {
         "x": 1920,
-        "y": 23,
-        "width": 1920,
-        "height": 1027,
+        "y": 61,
+        "width": 2560,
+        "height": 1379,
         "maximised": true
     },
     "collision_layers": {

@@ -220,13 +220,17 @@ namespace Carrot {
                 bool operator<( BankSortHelper const& other ) { return ordering < other.ordering; }
             };
 
-            auto lower = std::lower_bound( banks.begin(), banks.end(), startIndex,
+            auto upper = std::upper_bound( banks.begin(), banks.end(), startIndex,
               []( BankSortHelper left, BankSortHelper right ) {
                 return left < right;
               }
             );
-            if (lower != banks.end()) {
-                return &(*lower);
+            if (upper != banks.begin()) {
+                auto iter = std::prev(upper);
+                if (iter->startIndex <= index && iter->startIndex + Granularity > index) {
+                    return &(*iter);
+                }
+                return nullptr;
             }
 
             return nullptr;

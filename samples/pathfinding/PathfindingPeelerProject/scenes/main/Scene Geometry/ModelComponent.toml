@@ -1,0 +1,7 @@
+castsShadows = true
+color = [ 1.0, 1.0, 1.0, 1.0 ]
+isTransparent = false
+
+[model]
+modelPath = 'processed/scene1.gltf'
+model_renderer = 'ceb0ed95-e61b-4752-b82c-e7b762f00c55'

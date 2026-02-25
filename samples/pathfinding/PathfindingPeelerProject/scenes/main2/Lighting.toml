@@ -1,0 +1,2 @@
+ambient = [ 1.0, 1.0, 1.0 ]
+raytracedShadows = true

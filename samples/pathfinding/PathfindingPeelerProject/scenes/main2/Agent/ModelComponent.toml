@@ -1,0 +1,6 @@
+castsShadows = true
+color = [ 1.0, 0.0, 0.0, 1.0 ]
+isTransparent = false
+
+[model]
+modelPath = 'resources/models/simple_cube.obj'

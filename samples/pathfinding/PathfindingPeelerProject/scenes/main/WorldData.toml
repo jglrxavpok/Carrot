@@ -1,0 +1,7 @@
+[model_renderers.ceb0ed95-e61b-4752-b82c-e7b762f00c55]
+model = 'processed/scene1.gltf'
+
+    [[model_renderers.ceb0ed95-e61b-4752-b82c-e7b762f00c55.overrides]]
+    mesh_index = 0
+    pipeline_name = 'resources/pipelines/gBufferBlockout.pipeline'
+    virtualized_geometry = false
