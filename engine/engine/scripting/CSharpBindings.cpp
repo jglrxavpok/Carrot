@@ -610,7 +610,7 @@ namespace Carrot::Scripting {
                     .clazz = CameraComponentClass,
             };
             hardcodedComponents["Carrot.KinematicsComponent"] = {
-                    .id = ECS::CameraComponent::getID(),
+                    .id = ECS::Kinematics::getID(),
                     .clazz = KinematicsComponentClass,
             };
             hardcodedComponents["Carrot.Components.AnimatedModelComponent"] = {
