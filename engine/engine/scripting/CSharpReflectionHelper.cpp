@@ -187,7 +187,7 @@ namespace Carrot::Scripting {
         std::string typeClassName = lastDotPosition == std::string::npos ? typeName : typeName.substr(lastDotPosition+1);
 
         CSClass* userTypeClass = GetCSharpScripting().findClass(typeNamespace, typeClassName);
-        if(mono_class_is_enum(userTypeClass->toMono())) {
+        if(userTypeClass && mono_class_is_enum(userTypeClass->toMono())) {
             outProperty.type = ComponentType::UserEnum;
             MonoString* fullTypeStr = mono_string_new_wrapper(typeName.c_str());
 
