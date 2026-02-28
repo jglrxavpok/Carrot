@@ -3,6 +3,9 @@
 //
 
 #include "ShaderSource.h"
+
+#include <core/io/FileSystemOS.h>
+
 #include "core/data/ShaderMetadata.h"
 #include "engine/utils/Macros.h"
 #include "core/io/IO.h"
@@ -59,7 +62,9 @@ namespace Carrot::Render {
         Carrot::Log::debug("Creating watcher on file '%s'", filepath.u8string().c_str());
 
         watcher = GetEngine().createFileWatcher([this, commandArgs = metadata.commandArguments](const std::filesystem::path& p) {
-            std::string command = "./shadercompiler";
+            const std::filesystem::path exePath = Carrot::IO::getExecutablePath();
+            const std::filesystem::path compilerPath = exePath.parent_path() / Carrot::IO::addExecutableExtension("./shadercompiler");
+            std::string command = Carrot::toString(compilerPath.u8string());
             for(size_t i = 0; i < commandArgs.size(); i++) {
                 command += " ";
                 command += "\"";

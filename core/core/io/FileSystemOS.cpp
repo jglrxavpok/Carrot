@@ -26,6 +26,16 @@ namespace Carrot::IO {
 #endif
     }
 
+    std::filesystem::path addExecutableExtension(const std::filesystem::path& filename) {
+#ifdef _WIN32
+        std::filesystem::path withExtension = filename;
+        withExtension.replace_extension(".exe");
+        return withExtension;
+#else
+        return filename;
+#endif
+    }
+
     std::filesystem::path getExecutablePath() {
 #ifdef _WIN32
         std::size_t bufferSize = 256;

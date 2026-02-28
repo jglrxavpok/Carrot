@@ -103,7 +103,6 @@ static bool queueJetLiveReload = false;
 Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
     Carrot::Engine::instance = e;
     Carrot::IO::Resource::vfsToUse = &e->vfs;
-    auto exePath = Carrot::IO::getExecutablePath();
     e->vfs.addRoot("engine", std::filesystem::current_path());
 }
 
