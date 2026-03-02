@@ -96,13 +96,12 @@ namespace SlangCompiler {
             }
         });*/
 
-        // TODO: This is currently required because Carrot binds to unused parameters, which Slang removes.
-        //  This creates GPU hangs/crashes on RADV :c
+        // TODO: Mesa 26.0.1 crashes on the reflections(or direct lighting?) shader with optimisations on. TODO: find out why
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::Optimization,
             .value = CompilerOptionValue {
                 .kind = CompilerOptionValueKind::Int,
-                .intValue0 = SLANG_OPTIMIZATION_LEVEL_MAXIMAL
+                .intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE
             }
         });
         compilerOptions.emplace_back(CompilerOptionEntry {
