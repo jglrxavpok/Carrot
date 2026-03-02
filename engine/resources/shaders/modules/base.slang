@@ -65,3 +65,7 @@ public void computeTangents(float3 normal, out float3 tangent, out float3 bitang
     tangent = cross(normal, toUse);
     bitangent = cross(normal, tangent);
 }
+
+public float luminance(float3 rgb) {
+    return dot(rgb, float3(0.2126F, 0.7152F, 0.0722F));
+}

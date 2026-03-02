@@ -525,7 +525,7 @@ void Carrot::Pipeline::bind(const RenderingPipelineCreateInfo& createInfo, const
     // TODO: find bindpoint automatically
     ZoneScopedN("Bind pipeline");
 #ifdef TRACY_ENABLE
-    std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str());
+    std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s ; Compute = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str(), description.computeShader.getName().c_str());
     ZoneText(zoneText.c_str(), zoneText.size());
 #endif
     auto& pipeline = getOrCreatePipelineForRendering(createInfo);

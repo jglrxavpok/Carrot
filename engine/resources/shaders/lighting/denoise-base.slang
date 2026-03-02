@@ -9,6 +9,7 @@ interface IConfiguration {
 
 extern struct Configuration : IConfiguration;
 
+import modules.base;
 import modules.gbuffer;
 
 ParameterBlock<GBufferInputs> gbufferInputs;
@@ -102,7 +103,7 @@ void denoise(
 ) {
     Configuration config;
     const float sigmaPositions = 320.0f;
-    const float sigmaLuminance = 2.0f;
+    const float sigmaLuminance = 200.0f;
 
     uint outputWidth;
     uint outputHeight;
@@ -129,6 +130,7 @@ void denoise(
     finalPixel *= totalWeight;
 
     const int STEP_SIZE = 1 << iterationIndex;
+    const float currentLuminance = luminance(finalPixel.rgb);
 
     bool firstIter = true;
     for(int dy = -FILTER_RADIUS; dy <= FILTER_RADIUS; dy++) {
@@ -164,8 +166,10 @@ void denoise(
             const float dPosition = filterPosition.z - currentPosition.z;
             const float distanceSquared = dot(dPosition, dPosition);
             const float positionWeight = min(1, exp(-distanceSquared * sigmaPositions));
+            const float luminanceDistanceSquared = abs(currentLuminance - luminance(filterPixel.rgb));
+            const float luminanceWeight = min(1, exp(-luminanceDistanceSquared * sigmaLuminance));
 
-            const float weight = normalWeight * positionWeight * filterWeight;
+            const float weight = normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;
             totalWeight += weight;
         }

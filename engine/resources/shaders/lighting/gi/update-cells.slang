@@ -224,11 +224,6 @@ float3 sampleInDirection(int index, float u, float v) {
     return getHemisphereDirection(theta, phi);
 }
 
-float luminance(float3 rgb)
-{
-    return dot(rgb, float3(0.2126F, 0.7152F, 0.0722F));
-}
-
 [shader("compute")]
 [numthreads(32, 1, 1)]
 void spawnRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms push) {

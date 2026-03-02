@@ -641,6 +641,7 @@ namespace Carrot::Render {
                 cmds.dispatch(groups, 1, 1);                                                                                         \
             });
 
+        // TODO: move GI after reflections, to use firstbounce positions
         auto reorderSpawnedRays = ADD_PROBE_DISPATCH_PASS(spawnScreenProbes, false, "reorder-rays", 1);
         auto spawnGIRays = ADD_PROBE_DISPATCH_PASS(reorderSpawnedRays, false, "spawn-rays", 1);
         auto traceRays = ADD_PROBE_DISPATCH_PASS(spawnGIRays, true, "trace-rays", MaxRaysPerProbe);
@@ -978,8 +979,7 @@ namespace Carrot::Render {
                 data.reflectionsFirstBounceViewPositions = graph.read(lightingPass.getData().reflectionsFirstBounceViewPositions, vk::ImageLayout::eGeneral);
                 data.reflectionsFirstBounceViewNormalsTangents = graph.read(lightingPass.getData().reflectionsFirstBounceViewNormalsTangents, vk::ImageLayout::eGeneral);
             }, [applySpatialDenoising](const CompiledPass& pass, const Context& frame, const FinalDenoise& data, vk::CommandBuffer& cmds) {
-                // TODO: use reflectionsFirstBounceViewPositions
-                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 1, cmds);
+                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.reflectionsFirstBounceViewPositions, data.reflectionsFirstBounceViewNormalsTangents, data.denoisedCombinedLighting, 1, cmds);
             });
 
         PassData::Lighting data {
