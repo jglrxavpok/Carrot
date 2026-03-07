@@ -32,6 +32,7 @@ public struct GBuffer {
     public vec3 motionVector; // motion vector, in UV space
 
     public float readDepth; // depth of this pixel, only valid when *reading* from the gbuffer
+    public bool readIsSky; // is this pixel a sky pixel, only valid when *reading* from the gbuffer
 
     public __init() {
         albedo = vec4(0.0);
@@ -49,6 +50,7 @@ public struct GBuffer {
         emissiveColor = vec3(0.0);
         motionVector = vec3(0.0);
         readDepth = 0.0f/0.0f;
+        readIsSky = false;
     }
 };
 
@@ -78,7 +80,7 @@ public struct EncodedGBuffer {
 
     public __init(GBuffer gbuffer) {
         color = gbuffer.albedo;
-        viewPosition = vec4(gbuffer.viewPosition, 1);
+        viewPosition = vec4(gbuffer.viewPosition, 1 /*not sky*/);
         viewNormalTangent = vec4(1);
         intProperty = gbuffer.intProperty;
         entityID = gbuffer.entityID;

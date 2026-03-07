@@ -4,7 +4,6 @@ import modules.raytracing;
 import modules.gi;
 
 [[vk::binding(0, 6)]] ParameterBlock<Raytracing::Data> rt;
-[[vk::binding(0, 7)]] ParameterBlock<HashGrid::Block> gi;
 
 [shader("compute")]
 [numthreads(32, 32, 1)]

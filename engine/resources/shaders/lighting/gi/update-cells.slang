@@ -101,20 +101,23 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
     const float2 uv = (pixel + 0.5f) / size;
 
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+    const bool isReflection = pixelInfo.gBuffer.metallicness > 0.01f;
 
     GroupMemoryBarrier();
     if(!pixelInfo.isSky) {
         // check if we can reuse a probe from the previous frame
         if(let reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, uv, pixelInfo.gBuffer.motionVector.xy)) {
             const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];
-            const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
-            const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
-            const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
-            const float cellSize = HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos);
-            if(planeDist < cellSize && normalCheck > 0.95) {
-                const float dist = length(dPos) / cellSize;
-                const uint probeScore = (packHalf(dist) << 16) | localIndex;
-                InterlockedMin(reprojectionScore, probeScore);
+            if(reprojectedProbe.isOnReflection == isReflection){
+                const float3 dPos = reprojectedProbe.worldPos - pixelInfo.worldPosition;
+                const float planeDist = abs(dot(dPos, pixelInfo.worldNormal));
+                const float normalCheck = dot(pixelInfo.worldNormal, reprojectedProbe.normal);
+                const float cellSize = HashGrid::giGetCellSize(pixelInfo.worldPosition, pixelInfo.cameraPos);
+                if(planeDist < cellSize && normalCheck > 0.95) {
+                    const float dist = length(dPos) / cellSize;
+                    const uint probeScore = (packHalf(dist) << 16) | localIndex;
+                    InterlockedMin(reprojectionScore, probeScore);
+                }
             }
         }
     }
@@ -131,7 +134,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
 
     if(reusedPixel == 0xFFFFu) {
         // no reuse
-        probeData.probes[probeIndex].reset(pixelInfo.worldPosition, pixelInfo.worldNormal, pixel);
+        probeData.probes[probeIndex].reset(pixelInfo.worldPosition, pixelInfo.worldNormal, pixel, isReflection);
 
         uint emptyIndex; 
         InterlockedAdd(probeData.counts[0].emptyProbes, 1, emptyIndex);
@@ -154,6 +157,7 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const float3 worldNormal = transpose(inverse(float3x3(cameras.CurrentFrame().inverseView))) * currentGBuffer.viewTBN[2];
         probeData.probes[probeIndex].worldPos = worldPos;
         probeData.probes[probeIndex].normal = worldNormal;
+        probeData.probes[probeIndex].isOnReflection = isReflection;
         
 
         uint reprojectedIndex;
@@ -321,7 +325,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
     const float2 uv = float2(pixel + 0.5f) / size;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
 
-    if(pixelInfo.isSky) {
+    if(pixelInfo.gBuffer.readIsSky) {
         return;
     }
 

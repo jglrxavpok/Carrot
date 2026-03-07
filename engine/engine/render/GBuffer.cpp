@@ -126,14 +126,14 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
     albedo.previousLayout = albedo.layout;
 }
 
-void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, const GBuffer& other) {
-    albedo = graph.write(other.albedo, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    positions = graph.write(other.positions, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    viewSpaceNormalTangents = graph.write(other.viewSpaceNormalTangents, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    flags = graph.write(other.flags, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    entityID = graph.write(other.entityID, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    metallicRoughnessVelocityXY = graph.write(other.metallicRoughnessVelocityXY, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
-    emissiveVelocityZ = graph.write(other.emissiveVelocityZ, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
+void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout) {
+    albedo = graph.write(other.albedo, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    positions = graph.write(other.positions, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    viewSpaceNormalTangents = graph.write(other.viewSpaceNormalTangents, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    flags = graph.write(other.flags, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    entityID = graph.write(other.entityID, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    metallicRoughnessVelocityXY = graph.write(other.metallicRoughnessVelocityXY, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    emissiveVelocityZ = graph.write(other.emissiveVelocityZ, vk::AttachmentLoadOp::eLoad, wantedLayout);
     depthStencil = graph.write(other.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
 
     // TODO: fix (double read in two != passes result in no 'previousLayout' change
@@ -173,6 +173,37 @@ void Carrot::Render::PassData::GBuffer::bindInputsFromGivenFrame(Carrot::Pipelin
         skyboxCubeMap = renderer.getBlackCubeMapTexture();
     }
     renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 10);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 11);
+}
+
+void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID) const {
+    const u64 frameNumber = frame.frameNumber;
+    const vk::ImageLayout expectedLayout = vk::ImageLayout::eGeneral;
+    auto& renderer = GetRenderer();
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(albedo, frameNumber), setID, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(positions, frameNumber), setID, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frameNumber), setID, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(flags, frameNumber), setID, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frameNumber), setID, 6, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+
+    vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
+    if(expectedLayout == vk::ImageLayout::eGeneral) {
+        depthLayout = vk::ImageLayout::eGeneral;
+    } else if(expectedLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+        depthLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+    }
+    // 7 unused
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(depthStencil, frameNumber), setID, 8, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
+
+    Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
+    if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
+        skyboxCubeMap = renderer.getBlackCubeMapTexture();
+    }
+    renderer.bindStorageImage(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 10);
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 11);

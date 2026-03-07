@@ -150,22 +150,29 @@ void debug(
         return;
     }
 
+    const float3 cameraPosition = (cameras.CurrentFrame().inverseView * float4(0,0,0,1)).xyz;
     const ScreenProbe probe = data.probes.getFromIndex(probeIndex);
 
     float4 uvPos = cameras.CurrentFrame().nonJitteredProjection * cameras.CurrentFrame().view * float4(probe.worldPos, 1);
     uvPos.xy /= uvPos.w;
     uvPos *= 0.5f;
     uvPos += 0.5f;
-    int2 probeLocation = int2(uvPos.xy * float2(w, h));
+    int2 probeLocation = probe.bestPixel;//int2(uvPos.xy * float2(w, h));
     if(probeLocation.x >= w || probeLocation.y >= h || probeLocation.x < 0 || probeLocation.y < 0) {
         return;
     }
 
     probeLocation /= ScreenProbeSize;
     probeLocation *= ScreenProbeSize;
+
+    float3 color = probe.readRadianceFromCameraPos(cameraPosition);
+    //color = frac(probe.worldPos*1);
+    if(isnan(color.x)) {
+        color = float3(10,0,0);
+    }
     for(int y = 0; y < ScreenProbeSize; y++) {
         for(int x = 0; x < ScreenProbeSize; x++) {
-            data.destination.Store(uint2(probeLocation + int2(x, y)), float4(1, 0, 0, 1));
+            data.destination.Store(uint2(probeLocation + int2(x, y)), float4(color, 1));
         }
     }
 }

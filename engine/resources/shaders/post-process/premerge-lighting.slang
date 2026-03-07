@@ -29,8 +29,8 @@ void main(uint2 coords: SV_DispatchThreadID) {
     float3 diffuseLighting = io.directLighting.Load(coords).rgb;
     const float3 gi = io.gi.Load(coords).rgb;
     const float3 reflectionsValue = io.reflections.Load(coords).rgb;
-    diffuseLighting += gi;
+    //diffuseLighting += gi;
 
-    float3 finalColor = lerp(diffuseLighting, reflectionsValue, gBuffer.metallicness);
+    float3 finalColor = lerp(diffuseLighting, reflectionsValue, gBuffer.metallicness) + gi;
     io.output.Store(coords, float4(finalColor, 1));
 }

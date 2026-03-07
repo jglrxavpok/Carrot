@@ -406,15 +406,18 @@ public struct ScreenProbe {
     uint sampleCount;
 
     SampleAccumulation accumulatedRadiance;
+    public bool isOnReflection;
+    public int pad[3];
 
 
     public float3 readRadianceFromCameraPos(float3 cameraPos) {
         if(sampleCount > 0) {
             const float3 direction = normalize(cameraPos - worldPos);
-            return radiance.evalutateCosineLobe(direction) / sampleCount;
-        } else {
-            return 0;
+            if(dot(direction, direction) > 0.01) {
+                return radiance.evalutateCosineLobe(direction) / sampleCount;
+            }
         }
+        return 0;
     }
 
     public float3 evaluateCosineLobe(float3 dir) {
@@ -430,12 +433,13 @@ public struct ScreenProbe {
     }
 
     [mutating]
-    public void reset(float3 worldPos, float3 normal, int2 bestPixel) {
+    public void reset(float3 worldPos, float3 normal, int2 bestPixel, bool isOnReflection) {
         this.worldPos = worldPos;
         this.normal = normal;
         this.radiance.reset();
         this.sampleCount = 0;
         this.bestPixel = bestPixel;
+        this.isOnReflection = isOnReflection;
 
         this.accumulatedRadiance.reset();
     }
@@ -445,6 +449,7 @@ public struct ScreenProbe {
         this.radiance = other.radiance;
         this.sampleCount = other.sampleCount;
         this.accumulatedRadiance.reset();
+        this.isOnReflection = other.isOnReflection;
     }
 
     [mutating]

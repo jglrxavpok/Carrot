@@ -159,7 +159,7 @@ namespace Carrot::Render {
         // Take visibility buffer as input and render materials to GBuffer
         auto& materialPass = graph.addPass<VisibilityPassData>("visibility buffer materials",
             [this, &gBufferData, &rasterizePass, &debugViews](Render::GraphBuilder& builder, Render::Pass<VisibilityPassData>& pass, VisibilityPassData& data) {
-                data.gbuffer.writeTo(builder, gBufferData);
+                data.gbuffer.writeTo(builder, gBufferData, vk::ImageLayout::eColorAttachmentOptimal);
                 data.visibilityBuffer = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eGeneral);
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;

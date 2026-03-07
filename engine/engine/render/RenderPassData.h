@@ -158,8 +158,9 @@ namespace Carrot::Render {
             FrameResource depthStencil;
 
             void readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout);
-            void writeTo(Render::GraphBuilder& graph, const GBuffer& other);
+            void writeTo(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout);
             void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
+            void bindRW(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID) const;
             void bindLastFrameInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
 
         private:
@@ -190,14 +191,10 @@ namespace Carrot::Render {
 
             // outputs
             TemporalDenoising reflections;
-            FrameResource reflectionsFirstBounceViewPositions; // view position of surface after first bounce for reflections. equal to gBuffer.positions if no reflection occured for a given texel
-            FrameResource reflectionsFirstBounceViewNormalsTangents; // view normals+tangents of surface after first bounce for reflections. equal to gBuffer.viewSpaceNormalTangents if no reflection occured for a given texel
 
             TemporalDenoising directLighting; //< also contains shadows
             TemporalDenoising ambientOcclusionTemporal;
             SpatialDenoising ambientOcclusionSpatial;
-
-            HashGridResources hashGrid;
         };
 
         struct Lighting {

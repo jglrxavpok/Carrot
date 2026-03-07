@@ -26,10 +26,13 @@ public struct PixelInfo {
         loadFrom(camera, gBufferInputs.read(uv));
     }
 
+    public __init(in CameraBufferObject camera, in RWGBufferInputs gBufferInputs, float2 uv) {
+        loadFrom(camera, gBufferInputs.read(uv));
+    }
+
     [mutating]
     private void loadFrom(in CameraBufferObject camera, in GBuffer gBufferIn) {
-        float depth = gBufferIn.readDepth;
-        if(depth >= 1.0) {
+        if(gBufferIn.readIsSky) {
             isSky = true;
             return;
         }

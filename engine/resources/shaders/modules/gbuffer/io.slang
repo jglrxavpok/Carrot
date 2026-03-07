@@ -36,7 +36,10 @@ public struct GBufferInputs {
     public GBuffer read(float2 uv) {
         GBuffer result;
         result.albedo = albedo.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
-        result.viewPosition = viewPos.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).xyz;
+
+        float4 viewPosData = viewPos.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        result.viewPosition = viewPosData.xyz;
+        result.readIsSky = viewPosData.w < 0.5f;
         result.readDepth = depth.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).r;
 
         const float4 compressedTBN = viewNormalTangents.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
@@ -63,6 +66,65 @@ public struct GBufferInputs {
 
     public float2 readMotionVector(float2 at) {
         const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.SampleGrad(gNearestSampler, at, float2(0), float2(0));
+        return metallicRoughnessVelocityXY.zw;
+    }
+}
+
+public struct RWGBufferInputs {
+    public RWTexture2D albedo;
+    public RWTexture2D viewPos;
+    public RWTexture2D viewNormalTangents;
+    public RWTexture2D<IntProperties::__Tag> intPropertiesInput;
+    public RWTexture2D<uvec4> entityID;
+    public RWTexture2D metallicRoughnessValuesVelocityXY;
+    public RWTexture2D emissiveValuesVelocityZ;
+    public RWTexture2D _unused;
+    public RWTexture2D depth;
+    public SamplerCube skybox3D;
+    public SamplerState linearSampler;
+    public SamplerState gNearestSampler;
+
+    public GBuffer read(float2 uv) {
+        GBuffer result;
+        int2 dimensions;
+        albedo.GetDimensions(dimensions.x, dimensions.y);
+        
+        const int2 coords = uv * dimensions;
+        result.albedo = albedo.Load(coords);
+
+        float4 viewPosData = viewPos.Load(coords);
+        result.viewPosition = viewPosData.xyz;
+        result.readIsSky = viewPosData.w < 0.5f;
+        result.readDepth = depth.Load(coords).r;
+
+        const float4 compressedTBN = viewNormalTangents.Load(coords);
+        
+        const IntProperties properties = IntProperties(intPropertiesInput.Load(coords).r);
+        result.intProperty = properties;
+        const bool negativeNormal = properties & IntProperties::NegativeViewNormalZ;
+        const bool negativeTangent = properties & IntProperties::NegativeViewTangentZ;
+        const bool negativeBitangent = properties & IntProperties::NegativeViewBitangentZ;
+        decompressTBN(compressedTBN, negativeNormal, negativeTangent, negativeBitangent, result.viewTBN);
+
+        result.entityID = entityID.Load(coords);
+
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Load(coords);
+
+        result.metallicness = metallicRoughnessVelocityXY.x;
+        result.roughness = metallicRoughnessVelocityXY.y;
+
+        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.Load(coords);
+        result.emissiveColor = emissiveAndVelocityZ.xyz;
+        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in UV space
+        return result;
+    }
+
+    public float2 readMotionVector(float2 at) {
+        int2 dimensions;
+        albedo.GetDimensions(dimensions.x, dimensions.y);
+        
+        const int2 coords = at * dimensions;
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Load(coords);
         return metallicRoughnessVelocityXY.zw;
     }
 }

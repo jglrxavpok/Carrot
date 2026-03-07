@@ -7,7 +7,7 @@ import modules.compute_fullscreen;
 import modules.raytracing_capabilities;
 import modules.debug;
 
-ParameterBlock<GBufferInputs> gBufferInputs;
+ParameterBlock<RWGBufferInputs> gBufferInputs;
 ParameterBlock<Camera> cameras;
 ParameterBlock<Lighting> lighting;
 ParameterBlock<DebugParams> debug;
@@ -15,8 +15,6 @@ ParameterBlock<MaterialSystem> materials;
 
 struct IO {
     RWTexture2D<float4> outImage;
-    RWTexture2D<float4> firstBounceViewPosition;
-    RWTexture2D<float4> firstBounceViewNormalsTangents;
 }
 ParameterBlock<IO> io;
 
@@ -39,7 +37,7 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
     const float3 reflectedDir = reflect(viewDir, pixelInfo.worldNormal);
 
     float3 finalColor;
-    float3 firstBounceViewPos = float3(0);
+    float4 firstBounceViewPos = float4(0);
     float3 firstBounceNormal = float3(0);
     float3 firstBounceTangent = float3(0);
     constexpr float MaxDistance = 500.0f;
@@ -63,7 +61,8 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
         const float3 gi = 0; // TODO
         const float ao = 1; // TODO
 
-        firstBounceViewPos = (cameras.CurrentFrame().view * float4(intersection.worldPosition, 1)).xyz;
+        firstBounceViewPos.xyz = (cameras.CurrentFrame().view * float4(intersection.worldPosition, 1)).xyz;
+        firstBounceViewPos.w = 1.0f; // not sky
         const float3x3 cboNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().view)));
         firstBounceNormal = cboNormalView * intersection.worldNormal;
         firstBounceTangent = cboNormalView * intersection.worldTangent;
@@ -79,15 +78,17 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
         const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * reflectedDir, float3(0), float3(0)).rgb;
         
         finalColor = skyboxRGB;
+
+        firstBounceViewPos.w = 0.0f; // sky
     }
 
-    io.outImage.Store(coords, float4(finalColor, 1));
-    io.firstBounceViewPosition.Store(coords, float4(firstBounceViewPos, 1));
+    io.outImage.Store(coords, float4(finalColor * pixelInfo.gBuffer.albedo.rgb, 1));
+    gBufferInputs.viewPos.Store(coords, firstBounceViewPos);
 
     bool nSign = false;
     bool tSign = false;
     bool bSign = false;
     float4 compressedViewNormalTangent;
     compressTBN(float3x3(firstBounceTangent, 0, firstBounceNormal), compressedViewNormalTangent, nSign, tSign, bSign);
-    io.firstBounceViewNormalsTangents.Store(coords, compressedViewNormalTangent);
+    gBufferInputs.viewNormalTangents.Store(coords, compressedViewNormalTangent);
 }
