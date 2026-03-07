@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 
         const fs::path& scene = file.path();
         if (scene.extension() == ".json") {
-            convert(scene, sceneFolder);
+            Carrot::SceneConverter ::convert(scene, sceneFolder);
         }
     }
     return 0;

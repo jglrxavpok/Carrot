@@ -17,6 +17,7 @@
 #include <Jolt/Math/Vec4.h>
 #include <Jolt/Math/Quat.h>
 #include <Jolt/Math/Float2.h>
+#include <engine/vr/includes.h>
 
 namespace Carrot {
     // From https://github.com/jherico/Vulkan/blob/experimental/openxr/examples/vr_openxr/vr_openxr.cpp

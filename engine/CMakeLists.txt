@@ -324,7 +324,6 @@ function(add_engine_precompiled_headers Target)
     add_core_precompiled_headers(${Target})
     target_precompile_headers(${Target} PRIVATE
             <engine/vulkan/includes.h>
-            <engine/vr/includes.h>
             <Jolt/Jolt.h>
             )
 endfunction()

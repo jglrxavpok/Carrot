@@ -106,3 +106,6 @@
 [submodule "thirdparty/openal-soft"]
 	path = thirdparty/openal-soft
 	url = https://github.com/kcat/openal-soft
+[submodule "thirdparty/zlib"]
+	path = thirdparty/zlib
+	url = https://github.com/madler/zlib

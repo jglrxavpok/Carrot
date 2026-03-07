@@ -5,6 +5,7 @@
 #pragma once
 
 #include "engine/constants.h"
+#include "engine/vr/includes.h"
 #include "core/io/Resource.h"
 #include <optional>
 

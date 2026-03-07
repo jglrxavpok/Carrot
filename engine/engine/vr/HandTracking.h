@@ -7,6 +7,7 @@
 #include <core/utils/Lookup.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <engine/vr/includes.h>
 
 namespace Carrot::VR {
     class Interface;
