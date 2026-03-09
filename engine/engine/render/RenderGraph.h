@@ -68,6 +68,7 @@ namespace Carrot::Render {
         void debugDraw(const Render::Context& context);
         void drawResource(const Render::Context& context);
         void autoLayoutDebugView();
+        void drawPerfDebugPanel();
 
         Carrot::VulkanDriver& driver;
         std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;

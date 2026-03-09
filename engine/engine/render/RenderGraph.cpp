@@ -11,6 +11,8 @@
 #include "engine/Engine.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include "RenderGraph.h"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_node_editor.h>
@@ -406,6 +408,36 @@ namespace Carrot::Render {
         ImGui::EndTooltip();
     }
 
+    void Graph::drawPerfDebugPanel() {
+        if (ImGui::BeginTable("perf table", 3)) {
+
+            ImGui::TableSetupColumn("Pass name");
+            ImGui::TableSetupColumn("Pass timing");
+            ImGui::TableSetupColumn("Pass timing %");
+
+            ImGui::TableHeadersRow();
+
+            float totalTime = 0.0f;
+            for (const CompiledPass* pass : sortedPasses) {
+                totalTime += pass->getTimingMeasure();
+            }
+            for (const CompiledPass* pass : sortedPasses) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", pass->getName().c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%.5f ms", pass->getTimingMeasure() * 1000);
+                ImGui::TableNextColumn();
+                if (totalTime > 0) {
+                    ImGui::ProgressBar(pass->getTimingMeasure() / totalTime);
+                }
+            }
+
+            ImGui::EndTable();
+        }
+    }
+
+
     void Graph::autoLayoutDebugView() {
         // this layout works by generating columns of render passes
         // it starts by finding the longest chain of render passes, and lays it out at the top of the layout
@@ -587,6 +619,15 @@ namespace Carrot::Render {
                 }
 
                 if(graphToDebug == this) {
+                    static bool showPerfGraph = false;
+                    ImGui::Checkbox("Show performance graph", &showPerfGraph);
+                    if (showPerfGraph) {
+                        if (ImGui::Begin("RenderGraph performances", &showPerfGraph)) {
+                            drawPerfDebugPanel();
+                        }
+                        ImGui::End();
+                    }
+
                     ed::SetCurrentEditor((ed::EditorContext*)nodesContext);
                     ed::EnableShortcuts(true);
 

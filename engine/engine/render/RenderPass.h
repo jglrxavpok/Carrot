@@ -92,7 +92,7 @@ namespace Carrot::Render {
 
         const Graph& getGraph() const { return graph; }
 
-        std::string_view getName() const { return name; }
+        const std::string& getName() const { return name; }
 
         std::span<const FrameResource> getInputs() const { return inputs; }
         std::span<const FrameResource> getOutputs() const { return outputs; }
