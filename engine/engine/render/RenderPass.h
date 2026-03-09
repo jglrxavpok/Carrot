@@ -106,6 +106,10 @@ namespace Carrot::Render {
     public:
         void setInputsOutputsForDebug(const std::list<Input>& inputs, const std::list<Output>& outputs);
 
+        /// How long, in seconds, this pass took. Filled by Render::Graph::execute
+        void setTimingMeasure(float measure);
+        float getTimingMeasure() const;
+
     private:
         void recreateResources();
         void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
@@ -133,6 +137,7 @@ namespace Carrot::Render {
         std::vector<FrameResource> outputs;
         std::vector<bool> needBufferClearEachFrame;
         std::vector<FrameResource> inouts; // inputs used as read-write
+        float timingMeasure = 0.0f;
     };
 
     template<typename> class Pass;

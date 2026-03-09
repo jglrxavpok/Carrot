@@ -201,6 +201,13 @@ namespace Carrot::Render {
         ed::Config config;
         config.NavigateButtonIndex = 2; // pan graph with middle button (left = select, right = popup menu)
         nodesContext = ed::CreateEditor(&config);
+
+        timingQueryPool = driver.getLogicalDevice().createQueryPoolUnique(vk::QueryPoolCreateInfo {
+            .queryType = vk::QueryType::eTimestamp,
+            .queryCount = MAX_FRAMES_IN_FLIGHT * MaxPassTimingQueries * static_cast<u32>(Eye::Count),
+        }, driver.getAllocationCallbacks());
+
+        timingQueries.fill(Timestamp{0,1}); // start with all available
     }
 
     static std::uint32_t uniqueID = 1;
@@ -302,7 +309,7 @@ namespace Carrot::Render {
         ImGui::EndVertical();
 
         ImGui::BeginVertical("center");
-        ImGui::Text("%s", pass->getName().data());
+        ImGui::Text("%.5f ms", pass->getTimingMeasure() * 1000.0f);
         ImGui::EndVertical();
 
 
@@ -697,6 +704,18 @@ namespace Carrot::Render {
         hoveredResourceForRender = hoveredResourceForMain;
 
         std::string id = "";
+        // TODO: multiviewport?
+        const u32 startQueryIndex = static_cast<u64>(data.eye) * data.frameIndex * MaxPassTimingQueries;
+        u32 queryIndex = startQueryIndex;
+
+        DISCARD(driver.getLogicalDevice().getQueryPoolResults(*timingQueryPool,
+            startQueryIndex,
+            MaxPassTimingQueries,
+            MaxPassTimingQueries * sizeof(Timestamp),
+            &timingQueries[startQueryIndex],
+            sizeof(Timestamp),
+            vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability));
+        cmds.resetQueryPool(*timingQueryPool, startQueryIndex, MaxPassTimingQueries);
         for(auto* pass : sortedPasses) {
 #ifdef TRACY_ENABLE
             std::string passName = "Execute pass ";
@@ -731,7 +750,17 @@ namespace Carrot::Render {
             id += " ";
             ZoneScopedN("Execute pass");
 #endif
+            cmds.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, queryIndex);
             pass->execute(data, cmds);
+            cmds.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, queryIndex+1);
+
+            if (timingQueries[queryIndex].available && timingQueries[queryIndex+1].available) {
+                u64 diff = timingQueries[queryIndex+1].value - timingQueries[queryIndex].value;
+                float time = diff * driver.getPhysicalDeviceLimits().timestampPeriod / 1000000000.0f;
+                pass->setTimingMeasure(time);
+            }
+
+            queryIndex += 2;
 
             if(hoveredResourceForRender || clickedResourceForRender) {
                 auto isAnOutput = [&](const FrameResource& resource) {

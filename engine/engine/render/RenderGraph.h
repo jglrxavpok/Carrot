@@ -84,6 +84,16 @@ namespace Carrot::Render {
         std::unique_ptr<Carrot::Render::Texture> hoveredResourceViewer;
         std::unique_ptr<Carrot::Render::Texture> clickedResourceViewer;
 
+        // Timing measuring for each render pass
+        static constexpr u32 MaxPassTimingQueries = 256; // had to pick *some* value, /2 for start and end timestamps
+
+        struct Timestamp {
+            u64 value;
+            u64 available;
+        };
+        std::array<Timestamp, MaxPassTimingQueries * MAX_FRAMES_IN_FLIGHT> timingQueries;
+        vk::UniqueQueryPool timingQueryPool;
+
         friend class GraphBuilder;
     };
 

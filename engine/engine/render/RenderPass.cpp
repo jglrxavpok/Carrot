@@ -375,6 +375,14 @@ void Carrot::Render::CompiledPass::setInputsOutputsForDebug(const std::list<Inpu
     }
 }
 
+void Carrot::Render::CompiledPass::setTimingMeasure(float measure) {
+    this->timingMeasure = measure;
+}
+
+float Carrot::Render::CompiledPass::getTimingMeasure() const {
+    return timingMeasure;
+}
+
 void Carrot::Render::CompiledPass::recreateResources(){
     this->initCallback(*this, viewportSize, renderSize);
     swapchainRecreationCallback(*this);

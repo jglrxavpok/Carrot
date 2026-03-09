@@ -9,5 +9,6 @@ namespace Carrot::Render {
         LeftEye = 0,
         RightEye = 1,
         NoVR = LeftEye,
+        Count,
     };
 }
