@@ -92,6 +92,9 @@ set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_canvas.cpp
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor.cpp
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
+
+        ${ProjectRoot}thirdparty/implot/implot.cpp
+        ${ProjectRoot}thirdparty/implot/implot_items.cpp
         )
 
 # TODO: Seems like my Release build of Mono is broken?

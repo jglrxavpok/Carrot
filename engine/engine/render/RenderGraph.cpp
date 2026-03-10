@@ -18,6 +18,7 @@
 #include <imgui_node_editor.h>
 #include <imgui_node_editor_internal.h>
 #include <engine/console/RuntimeOption.hpp>
+#include <implot.h>
 
 namespace ed = ax::NodeEditor;
 
@@ -409,6 +410,22 @@ namespace Carrot::Render {
     }
 
     void Graph::drawPerfDebugPanel() {
+        ImPlot::SetNextAxisToFit(ImAxis_X1);
+        ImPlot::SetNextAxisLimits(ImAxis_Y1, 0, 20, ImPlotCond_Once);
+        if (ImPlot::BeginPlot("perf pie")) {
+            Carrot::Vector<const char*> labels;
+            Carrot::Vector<float> values;
+
+            labels.ensureReserve(sortedPasses.size());
+            values.ensureReserve(sortedPasses.size());
+            for (const CompiledPass* pass : sortedPasses) {
+                labels.emplaceBack(pass->getName().c_str());
+                values.emplaceBack(pass->getTimingMeasure() * 1000.0f);
+            }
+            ImPlot::PlotBarGroups(labels.data(), values.data(), labels.size(), 1);
+            ImPlot::EndPlot();
+        }
+
         if (ImGui::BeginTable("perf table", 3)) {
 
             ImGui::TableSetupColumn("Pass name");

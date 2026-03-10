@@ -5,6 +5,7 @@
 #include "ImGuiBackend.h"
 
 #include <IconsFontAwesome6.h>
+#include <implot.h>
 #include <core/Macros.h>
 #include <engine/render/resources/Texture.h>
 #include <engine/Engine.h>
@@ -112,6 +113,7 @@ namespace Carrot::Render {
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImPlot::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls

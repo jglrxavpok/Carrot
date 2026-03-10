@@ -12,6 +12,7 @@
 #include <chrono>
 #include <algorithm>
 #include <ImGuiNotify.hpp>
+#include <implot.h>
 #include <stdexcept>
 #include <vector>
 #include <set>
@@ -751,6 +752,7 @@ Carrot::Engine::~Engine() {
     Carrot::Render::Sprite::cleanup();
     ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
     tracyCtx.clear();
     vkDriver.executeDeferredDestructionsNow();
