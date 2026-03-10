@@ -188,17 +188,17 @@ namespace Peeler {
                 }
             };
 
-            if(ImGui::ImageButton(icon(PlayButtonIcons, state.state == PreviewState::Playing), buttonSize)) {
+            if(ImGui::ImageButton("play", icon(PlayButtonIcons, state.state == PreviewState::Playing), buttonSize)) {
                 startPlaying();
             }
             ImGui::SameLine();
 
-            if(ImGui::ImageButton(icon(PauseButtonIcons, state.state == PreviewState::Paused), buttonSize)) {
+            if(ImGui::ImageButton("pause", icon(PauseButtonIcons, state.state == PreviewState::Paused), buttonSize)) {
                 pausePlaying();
             }
             ImGui::SameLine();
 
-            if(ImGui::ImageButton(icon(StopButtonIcons, state.state == PreviewState::Stopped), buttonSize)) {
+            if(ImGui::ImageButton("stop", icon(StopButtonIcons, state.state == PreviewState::Stopped), buttonSize)) {
                 stopPlaying();
             }
             ImGui::EndDisabled();

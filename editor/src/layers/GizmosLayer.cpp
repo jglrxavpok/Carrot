@@ -79,21 +79,21 @@ namespace Peeler {
             const float iconSize = 32.0f;
 
             setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::TRANSLATE);
-            if (ImGui::ImageButton(translateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
+            if (ImGui::ImageButton("translate", translateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
                 gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
             }
             ImGui::PopStyleColor(3);
 
             ImGui::SameLine();
             setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::ROTATE);
-            if (ImGui::ImageButton(rotateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
+            if (ImGui::ImageButton("rotate", rotateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
                 gizmoOperation = ImGuizmo::OPERATION::ROTATE;
             }
             ImGui::PopStyleColor(3);
 
             ImGui::SameLine();
             setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::SCALE);
-            if (ImGui::ImageButton(scaleIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
+            if (ImGui::ImageButton("scale", scaleIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
                 gizmoOperation = ImGuizmo::OPERATION::SCALE;
             }
             ImGui::PopStyleColor(3);

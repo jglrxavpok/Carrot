@@ -1568,7 +1568,7 @@ namespace Peeler {
         const bool isEditing = !isPlaying;
 
         ImGui::SameLine((ImGui::GetContentRegionMax().x - smallestDimension * 4.0f + spacing * 3.0f) / 2.0f );
-        if(ImGui::ImageButton((isPlaying && !isPaused ? playActiveButtonIcon : playButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(ImGui::ImageButton("play", (isPlaying && !isPaused ? playActiveButtonIcon : playButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
             if(!isPlaying) {
                 startSimulation();
             } else if(isPaused) {
@@ -1577,7 +1577,7 @@ namespace Peeler {
         }
 
         ImGui::SameLine();
-        if(ImGui::ImageButton(stepButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(ImGui::ImageButton("step", stepButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
             if(!isPlaying) {
                 startSimulation();
             }
@@ -1587,7 +1587,7 @@ namespace Peeler {
 
         ImGui::SameLine();
         ImGui::BeginDisabled(isEditing);
-        if(ImGui::ImageButton((isPaused ? pauseActiveButtonIcon : pauseButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(ImGui::ImageButton("pause", (isPaused ? pauseActiveButtonIcon : pauseButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
             if(!isPaused) {
                 pauseSimulation();
             }
@@ -1596,7 +1596,7 @@ namespace Peeler {
 
         ImGui::SameLine();
         ImGui::BeginDisabled(isEditing);
-        if(ImGui::ImageButton(stopButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(ImGui::ImageButton("stop", stopButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
             stopSimulation();
         }
         ImGui::EndDisabled();

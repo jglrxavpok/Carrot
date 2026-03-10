@@ -23,8 +23,8 @@ namespace Fertilizer::NodeEditor {
 
         // Always consume the SetNextWindowSizeConstraint() call in our early return paths
         ImGuiContext& g = *GImGui;
-        bool has_window_size_constraint = (g.NextWindowData.Flags & ImGuiNextWindowDataFlags_HasSizeConstraint) != 0;
-        g.NextWindowData.Flags &= ~ImGuiNextWindowDataFlags_HasSizeConstraint;
+        bool has_window_size_constraint = (g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint) != 0;
+        g.NextWindowData.HasFlags &= ~ImGuiNextWindowDataFlags_HasSizeConstraint;
 
         ImGuiWindow *window = GetCurrentWindow();
         if (window->SkipItems)
@@ -59,13 +59,13 @@ namespace Fertilizer::NodeEditor {
         if (!(flags & ImGuiComboFlags_NoPreview))
             window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(value_x2, frame_bb.Max.y), frame_col,
                                             style.FrameRounding,
-                                            (flags & ImGuiComboFlags_NoArrowButton) ? ImDrawCornerFlags_All
-                                                                                    : ImDrawCornerFlags_Left);
+                                            (flags & ImGuiComboFlags_NoArrowButton) ? ImDrawFlags_RoundCornersAll
+                                                                                    : ImDrawFlags_RoundCornersLeft);
         if (!(flags & ImGuiComboFlags_NoArrowButton)) {
             ImU32 bg_col = GetColorU32((popup_open || hovered) ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
             ImU32 text_col = GetColorU32(ImGuiCol_Text);
             window->DrawList->AddRectFilled(ImVec2(value_x2, frame_bb.Min.y), frame_bb.Max, bg_col, style.FrameRounding,
-                                            (w <= arrow_size) ? ImDrawCornerFlags_All : ImDrawCornerFlags_Right);
+                                            (w <= arrow_size) ? ImDrawFlags_RoundCornersAll : ImDrawFlags_RoundCornersRight);
             if (value_x2 + arrow_size - style.FramePadding.x <= frame_bb.Max.x)
                 RenderArrow(window->DrawList,
                             ImVec2(value_x2 + style.FramePadding.y, frame_bb.Min.y + style.FramePadding.y), text_col,
@@ -89,7 +89,7 @@ namespace Fertilizer::NodeEditor {
             return false;
 
         if (has_window_size_constraint) {
-            g.NextWindowData.Flags |= ImGuiNextWindowDataFlags_HasSizeConstraint;
+            g.NextWindowData.HasFlags |= ImGuiNextWindowDataFlags_HasSizeConstraint;
             g.NextWindowData.SizeConstraintRect.Min.x = ImMax(g.NextWindowData.SizeConstraintRect.Min.x, w);
         } else {
             if ((flags & ImGuiComboFlags_HeightMask_) == 0)

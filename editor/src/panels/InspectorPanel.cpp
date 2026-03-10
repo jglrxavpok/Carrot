@@ -230,7 +230,7 @@ namespace Peeler {
                 Carrot::Render::Texture::Ref texture = GetAssetServer().blockingLoadTexture(assetPath);
                 const float aspectRatio = (float)texture->getSize().width / (float) texture->getSize().height;
 
-                const ImVec2 size = ImVec2(ImGui::GetContentRegionAvailWidth(), ImGui::GetContentRegionAvailWidth() / aspectRatio);
+                const ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x / aspectRatio);
                 ImGui::Image(texture->getImguiID(), size);
             }
         }

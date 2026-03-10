@@ -55,7 +55,7 @@ namespace Peeler {
 
         if(hasEntity) {
             auto texture = GetAssetServer().blockingLoadTexture(ResetWidgetTexture);
-            if (ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize))) {
+            if (ImGui::ImageButton("reset", texture->getImguiID(), ImVec2(buttonSize, buttonSize))) {
                 destination = {Carrot::UUID::null(), currentScene.world};
                 hasChanged = true;
             }
@@ -63,7 +63,7 @@ namespace Peeler {
         }
 
         float l = ImGui::GetTextLineHeight();
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth() - buttonSize - 2 * ImGui::GetStyle().CellPadding.x - ImGui::GetStyle().WindowPadding.x);
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttonSize - 2 * ImGui::GetStyle().CellPadding.x - ImGui::GetStyle().WindowPadding.x);
         ImGui::InputText("##entity name display", entityName, ImGuiInputTextFlags_ReadOnly);
 
         if(ImGui::BeginDragDropTarget()) {
@@ -102,7 +102,7 @@ namespace Peeler {
                 tintColor = ImVec4(0.5f, 1.0f, 0.5f, 1.0f);
             }
 
-            if (ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize), uv0, uv1, -1, backgroundColor,
+            if (ImGui::ImageButton("pick", texture->getImguiID(), ImVec2(buttonSize, buttonSize), uv0, uv1, backgroundColor,
                                    tintColor)) {
                 state.tryingToPick = !state.tryingToPick;
             }

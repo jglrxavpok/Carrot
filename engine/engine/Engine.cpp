@@ -582,11 +582,15 @@ static void windowResize(GLFWwindow* window, int width, int height) {
 static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
     auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
     GetEngine().onMouseMove(*pWindow, xpos, ypos, false);
+
+    ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
 }
 
 static void mouseButton(GLFWwindow* window, int button, int action, int mods) {
     auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
     GetEngine().onMouseButton(*pWindow, button, action, mods);
+
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 }
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {

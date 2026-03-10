@@ -83,8 +83,8 @@ namespace Peeler {
     }
 
     void ResourcePanel::draw(const Carrot::Render::Context& renderContext) {
-        static float leftPaneWidth = 0.4f * ImGui::GetContentRegionAvailWidth();
-        static float rightPaneWidth = ImGui::GetContentRegionAvailWidth() - leftPaneWidth;
+        static float leftPaneWidth = 0.4f * ImGui::GetContentRegionAvail().x;
+        static float rightPaneWidth = ImGui::GetContentRegionAvail().x - leftPaneWidth;
 
         const char* treeViewID = "Resource Panel Tree View##resource panel tree view";
         const char* fileViewID = "Resource Panel File View##resource panel file view";
@@ -137,7 +137,7 @@ namespace Peeler {
                     }
 
                     const std::string imguiID = filepath.string();
-                    const bool wasOpen = ImGui::TreeNodeBehaviorIsOpen(ImGui::GetID(imguiID.c_str()), localFlags);
+                    const bool wasOpen = ImGui::TreeNodeUpdateNextOpen(ImGui::GetID(imguiID.c_str()), localFlags);
                     const bool opened = ImGui::TreeNodeEx(imguiID.c_str(), localFlags, "");
 
                     auto vfsPath = GetVFS().represent(filepath);

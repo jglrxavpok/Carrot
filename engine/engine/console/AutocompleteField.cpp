@@ -5,11 +5,12 @@
 
 #include "AutocompleteField.h"
 
+#include <imgui_internal.h>
 #include <utility>
 #include <core/utils/stringmanip.h>
-
-#include "imgui_internal.h"
-#include "imgui_stdlib.h"
+namespace ImStb {
+#include <imstb_textedit.h>
+}
 
 namespace Carrot {
 
@@ -148,7 +149,7 @@ namespace Carrot {
                 auto fieldImID = window->GetID(fieldID);
                 ImGuiInputTextState* state = ImGui::GetInputTextState(fieldImID);
                 if(state != nullptr) {
-                    state->Stb.cursor = imguiInputBuffer.size();
+                    state->Stb->cursor = imguiInputBuffer.size();
                 }
             } else {
                 // Handle text input here
@@ -224,7 +225,7 @@ namespace Carrot {
         ImGui::SetNextWindowPos ( popupPosition );
         ImGui::SetNextWindowSize( popupSize );
         ImGui::Begin( "autocomplete_popup", nullptr, flags );
-        ImGui::PushAllowKeyboardFocus( false );
+        ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 
         for( int i = 0; i < currentSuggestions.size(); i++ )
         {
@@ -264,7 +265,7 @@ namespace Carrot {
 
         bool isFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_::ImGuiFocusedFlags_RootWindow);
 
-        ImGui::PopAllowKeyboardFocus();
+        ImGui::PopItemFlag();
         ImGui::End();
         ImGui::PopStyleVar(1);
 

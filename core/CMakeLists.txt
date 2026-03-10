@@ -86,6 +86,7 @@ set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui/imgui_widgets.cpp
         ${ProjectRoot}thirdparty/imgui/imgui_tables.cpp
         ${ProjectRoot}thirdparty/imgui/misc/cpp/imgui_stdlib.cpp
+        ${ProjectRoot}thirdparty/imgui/imgui_stacklayout.cpp
 
         ${ProjectRoot}thirdparty/imgui-node-editor/crude_json.cpp
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_canvas.cpp

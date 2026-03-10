@@ -239,7 +239,7 @@ namespace Peeler {
         ImGui::PushID(id);
         float buttonSize = ImGui::GetTextLineHeight();
         auto texture = GetAssetServer().blockingLoadTexture(ResetWidgetTexture);
-        bool result = ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize));
+        bool result = ImGui::ImageButton("reset", texture->getImguiID(), ImVec2(buttonSize, buttonSize));
         ImGui::PopID();
         return result;
     }

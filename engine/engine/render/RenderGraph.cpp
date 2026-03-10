@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 20/06/2021.
 //
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "RenderGraph.h"
 #include "core/utils/Assert.h"
 #include "core/io/Logging.hpp"
@@ -10,7 +11,6 @@
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/Engine.h"
 
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "RenderGraph.h"
 
 #include <imgui.h>

@@ -369,7 +369,7 @@ void Peeler::ParticleEditor::onSwapchainSizeChange(Carrot::Window& w, int newWid
 ImTextureID Peeler::ParticleEditor::getExpressionType(const Carrot::ExpressionType& type) {
     auto iter = expressionTypesTextures.find(type);
     if (iter == expressionTypesTextures.end()) {
-        return nullptr;
+        return 0;
     }
     return iter->second->getImguiID();
 }
