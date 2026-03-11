@@ -105,7 +105,6 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     createPerDrawSetResources();
     createDebugSetResources();
     createRayTracer();
-    createUIResources();
     createGBuffer();
     createDefaultResources();
 
