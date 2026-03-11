@@ -462,8 +462,6 @@ namespace Carrot {
         void createDebugSetResources();
         void createDefaultResources();
 
-        void createUIResources();
-
         /// Create the pipeline responsible for lighting via the gbuffer
         void createGBuffer();
 

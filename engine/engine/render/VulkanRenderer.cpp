@@ -173,29 +173,6 @@ void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {
     }
 }
 
-void Carrot::VulkanRenderer::createUIResources() {
-    vk::DescriptorPoolSize pool_sizes[] =
-            {
-                    { vk::DescriptorType::eSampler, 1000 },
-                    { vk::DescriptorType::eCombinedImageSampler, 1000 },
-                    { vk::DescriptorType::eSampledImage, 1000 },
-                    { vk::DescriptorType::eStorageImage, 1000 },
-                    { vk::DescriptorType::eUniformTexelBuffer, 1000 },
-                    { vk::DescriptorType::eStorageTexelBuffer, 1000 },
-                    { vk::DescriptorType::eUniformBuffer, 1000 },
-                    { vk::DescriptorType::eStorageBuffer, 1000 },
-                    { vk::DescriptorType::eUniformBufferDynamic, 1000 },
-                    { vk::DescriptorType::eStorageBufferDynamic, 1000 },
-                    { vk::DescriptorType::eInputAttachment, 1000 }
-            };
-    vk::DescriptorPoolCreateInfo pool_info = {};
-    pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-    pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
-    pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
-    pool_info.pPoolSizes = pool_sizes;
-    imguiDescriptorPool = driver.getLogicalDevice().createDescriptorPoolUnique(pool_info, driver.getAllocationCallbacks());
-}
-
 void Carrot::VulkanRenderer::createGBuffer() {
     gBuffer = std::make_unique<GBuffer>(*this, *raytracer);
     visibilityBuffer = std::make_unique<Render::VisibilityBuffer>(*this);
