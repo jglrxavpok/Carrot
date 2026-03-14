@@ -462,7 +462,7 @@ namespace Carrot::Render {
                        if (isRWGBuffer) {
                            data.gBuffer.bindRW(pipeline, frame, pass.getGraph(), 0);
                        } else {
-                           data.gBuffer.bindInputs(pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                           data.gBuffer.bindInputs(pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
                        }
 
                        // outputs

@@ -206,6 +206,7 @@ namespace Carrot::Render {
         nodesContext = ed::CreateEditor(&config);
 
         timingQueryPool = driver.getLogicalDevice().createQueryPoolUnique(vk::QueryPoolCreateInfo {
+            .flags = vk::QueryPoolCreateFlagBits::eResetKHR,
             .queryType = vk::QueryType::eTimestamp,
             .queryCount = MAX_FRAMES_IN_FLIGHT * MaxPassTimingQueries * static_cast<u32>(Eye::Count),
         }, driver.getAllocationCallbacks());
