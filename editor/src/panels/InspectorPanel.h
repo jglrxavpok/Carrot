@@ -82,11 +82,14 @@ namespace Peeler {
         // used when systems are selected
         void drawSystem(const Carrot::Render::Context& renderContext);
 
+        std::string getDisplayName(const Carrot::ECS::Component* pComponent, const Carrot::ComponentID& componentID) const;
+
         void editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components);
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;
         std::unordered_map<Carrot::ComponentID, std::string> displayNames;
         bool wantsToFocusNameInput = false;
+        std::string searchQuery;
 
         friend class Application;
     };

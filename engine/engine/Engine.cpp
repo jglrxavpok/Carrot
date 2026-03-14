@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <ImGuiNotify.hpp>
 #include <implot.h>
+#include <imsearch.h>
 #include <stdexcept>
 #include <vector>
 #include <set>
@@ -752,6 +753,7 @@ Carrot::Engine::~Engine() {
     Carrot::Render::Sprite::cleanup();
     ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
+    ImSearch::DestroyContext();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     tracyCtx.clear();

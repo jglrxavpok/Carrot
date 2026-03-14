@@ -95,6 +95,9 @@ set(CORE-THIRDPARTY-SOURCES
 
         ${ProjectRoot}thirdparty/implot/implot.cpp
         ${ProjectRoot}thirdparty/implot/implot_items.cpp
+
+        ${ProjectRoot}thirdparty/imsearch/imsearch.cpp
+        ${ProjectRoot}thirdparty/imsearch/imsearch_demo.cpp
         )
 
 # TODO: Seems like my Release build of Mono is broken?

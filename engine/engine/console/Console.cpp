@@ -3,6 +3,9 @@
 //
 
 #include "Console.h"
+
+#include <imsearch.h>
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "RuntimeOption.hpp"
@@ -29,9 +32,7 @@ namespace Carrot {
             // suggestions
             [this](std::vector<std::string>& out, const std::string& currentInput) {
                 for(const auto& [str, _] : commands) {
-                    if(Carrot::toLowerCase(str).find(Carrot::toLowerCase(currentInput)) != std::string::npos) {
-                        out.emplace_back(str);
-                    }
+                    out.emplace_back(str);
                 }
             }) {}
 
@@ -59,9 +60,7 @@ namespace Carrot {
             return;
         }
 
-        ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags() | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse;
-
-        const bool suggestionsStoleFocus = autocompleteField.drawAutocompleteSuggestions();
+        ImGuiWindowFlags flags = ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse;
 
         if(ImGui::Begin("Console", &visible, flags)) {
             if(ImGui::BeginChild("Messages", ImVec2( 0, -ImGui::GetTextLineHeightWithSpacing() * 1.5f))) {
@@ -128,7 +127,7 @@ namespace Carrot {
 
             {
                 autocompleteField.drawField();
-                if(suggestionsStoleFocus || !wasVisibleLastFrame) {
+                if(!wasVisibleLastFrame) {
                     ImGui::SetKeyboardFocusHere(-1);
                 }
             }

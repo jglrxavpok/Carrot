@@ -21,29 +21,13 @@ namespace Carrot {
     public:
         void drawField();
 
-        /**
-         * Returns true if stole focus to appear on top
-         * @return
-         */
-        bool drawAutocompleteSuggestions();
-
         struct State {
-            bool isPopupOpen = false;
             int  activeIndex = -1;         // Index of currently 'active' item by use of up/down keys
-            int  clickedIndex = -1;        // Index of popup item clicked with the mouse
-            bool selectionChanged = false;  // Flag to help focus the correct item when selecting active item
         };
 
-    public:
-        std::string& getBuffer();
-
-    public: // public only for interfacing with ImGui
-        void refreshSuggestions();
-        std::vector<std::string>& getCurrentSuggestions();
-        State& getState();
-        void setInputFromActiveIndex(ImGuiInputTextCallbackData* data, int entryIndex);
-
     private:
+        void refreshSuggestions();
+        void applySelection(const std::string& selection);
 
     private:
         State currentState;

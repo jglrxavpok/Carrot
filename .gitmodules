@@ -112,3 +112,6 @@
 [submodule "thirdparty/implot"]
 	path = thirdparty/implot
 	url = https://github.com/epezent/implot
+[submodule "thirdparty/imsearch"]
+	path = thirdparty/imsearch
+	url = https://github.com/GuusKemperman/imsearch

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <imsearch.h>
 #include <commands/UndoStack.h>
 #include <commands/UpdateComponentCommands.h>
 #include <Peeler.h>
@@ -564,28 +565,30 @@ namespace Peeler {
         std::function<void(TComponent&, const TPropertyType&)> setterFunc,
         const Helpers::Limits<TPropertyType>& limits = {}
     ) {
-        Carrot::Vector<TPropertyType> values;
-        values.ensureReserve(components.size());
-        for(TComponent* pComponent : components) {
-            values.emplaceBack(getterFunc(*pComponent));
-        }
-
-        bool modified = editMultiple<TPropertyType>(id, values, limits);
-
-        if(modified) {
-            if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
-                verify(values.size() == 1, "Only one system can be edited at a time");
-                if(edition.editor.inspectorType == Application::InspectorType::System) {
-                    edition.editor.undoStack.push<UpdateSystemValue<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name,  edition.editor.selectedSystems[0].isRenderSystem, values[0], getterFunc, setterFunc);
-                }
-            } else {
-                verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
-                if(edition.editor.inspectorType == Application::InspectorType::Entities) {
-                    edition.editor.undoStack.push<UpdateComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
-                }
+        ImSearch::SearchableItem(id, [=, &edition](const char* id) {
+            Carrot::Vector<TPropertyType> values;
+            values.ensureReserve(components.size());
+            for(TComponent* pComponent : components) {
+                values.emplaceBack(getterFunc(*pComponent));
             }
-            edition.hasModifications = true;
-        }
+
+            bool modified = editMultiple<TPropertyType>(id, values, limits);
+
+            if(modified) {
+                if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
+                    verify(values.size() == 1, "Only one system can be edited at a time");
+                    if(edition.editor.inspectorType == Application::InspectorType::System) {
+                        edition.editor.undoStack.push<UpdateSystemValue<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name,  edition.editor.selectedSystems[0].isRenderSystem, values[0], getterFunc, setterFunc);
+                    }
+                } else {
+                    verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
+                    if(edition.editor.inspectorType == Application::InspectorType::Entities) {
+                        edition.editor.undoStack.push<UpdateComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
+                    }
+                }
+                edition.hasModifications = true;
+            }
+        });
     }
 
     /**
@@ -617,8 +620,8 @@ namespace Peeler {
     template<typename TComponent, typename TPropertyType>
     static void multiEditField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*> components, TPropertyType&(accessor)(TComponent&), const Helpers::Limits<TPropertyType>& limits = {}) {
         multiEditField(edition, id, components,
-            std::function([&](TComponent& c) -> TPropertyType { return accessor(c); }),
-            std::function([&](TComponent& c, const TPropertyType& v) { accessor(c) = v; }),
+            std::function([accessor](TComponent& c) -> TPropertyType { return accessor(c); }),
+            std::function([accessor](TComponent& c, const TPropertyType& v) { accessor(c) = v; }),
             limits);
     }
 
@@ -630,48 +633,51 @@ namespace Peeler {
         const Carrot::Vector<TEnum>& validValues,
         const Helpers::Limits<TEnum>& limits = {})
     {
-        Carrot::Vector<TEnum> values;
-        values.ensureReserve(components.size());
-        TEnum currentlySelectedValue = getter(*components[0]);
-        bool allSame = true;
-        for(TComponent* pComponent : components) {
-            values.emplaceBack(getter(*pComponent));
-            allSame = currentlySelectedValue == values[values.size()-1];
-        }
+        // ReSharper disable once CppDeclarationHidesLocal
+        ImSearch::SearchableItem(id, [=, &edition](const char* id) {
+            Carrot::Vector<TEnum> values;
+            values.ensureReserve(components.size());
+            TEnum currentlySelectedValue = getter(*components[0]);
+            bool allSame = true;
+            for(TComponent* pComponent : components) {
+                values.emplaceBack(getter(*pComponent));
+                allSame = currentlySelectedValue == values[values.size()-1];
+            }
 
-        bool modified = false;
-        const char* previewValue = allSame ? nameGetter(currentlySelectedValue) : "<VARIOUS>";
-        if(ImGui::BeginCombo(id, previewValue)) {
-            auto selectable = [&](TEnum entry) {
-                bool selected = entry == currentlySelectedValue;
-                if(ImGui::Selectable(nameGetter(entry), &selected)) {
-                    modified = true;
-                    for(auto& v : values) {
-                        v = entry;
+            bool modified = false;
+            const char* previewValue = allSame ? nameGetter(currentlySelectedValue) : "<VARIOUS>";
+            if(ImGui::BeginCombo(id, previewValue)) {
+                auto selectable = [&](TEnum entry) {
+                    bool selected = entry == currentlySelectedValue;
+                    if(ImGui::Selectable(nameGetter(entry), &selected)) {
+                        modified = true;
+                        for(auto& v : values) {
+                            v = entry;
+                        }
+                    }
+                };
+
+                for(const auto& validValue : validValues) {
+                    selectable(validValue);
+                }
+
+                ImGui::EndCombo();
+            }
+
+            if(modified) {
+                if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
+                    verify(values.size() == 1, "Only one system can be edited at a time");
+                    if(edition.editor.inspectorType == Application::InspectorType::System) {
+                        edition.editor.undoStack.push<UpdateSystemValue<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name, edition.editor.selectedSystems[0].isRenderSystem, values[0], getter, setter);
+                    }
+                } else {
+                    verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
+                    if(edition.editor.inspectorType == Application::InspectorType::Entities) {
+                        edition.editor.undoStack.push<UpdateComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
                     }
                 }
-            };
-
-            for(const auto& validValue : validValues) {
-                selectable(validValue);
             }
-
-            ImGui::EndCombo();
-        }
-
-        if(modified) {
-            if constexpr (std::is_base_of_v<Carrot::ECS::System, TComponent>) {
-                verify(values.size() == 1, "Only one system can be edited at a time");
-                if(edition.editor.inspectorType == Application::InspectorType::System) {
-                    edition.editor.undoStack.push<UpdateSystemValue<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedSystems[0].name, edition.editor.selectedSystems[0].isRenderSystem, values[0], getter, setter);
-                }
-            } else {
-                verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
-                if(edition.editor.inspectorType == Application::InspectorType::Entities) {
-                    edition.editor.undoStack.push<UpdateComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
-                }
-            }
-        }
+        });
     }
 
     template<typename TComponent, typename TEnum>

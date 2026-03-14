@@ -4,6 +4,7 @@
 
 #include "InspectorPanel.h"
 
+#include <imsearch.h>
 #include <commands/AddComponentsCommand.h>
 #include <commands/RemoveComponentsCommand.h>
 #include <commands/RenameEntities.h>
@@ -164,20 +165,32 @@ namespace Peeler {
             return strcmp((*a.second)[0]->getName(), (*b.second)[0]->getName()) < 0;
         });
 
+        ImGui::InputTextWithHint("##Searchbar", "Search", &searchQuery);
+
         for(auto& [componentID, pComponentList] : sortedComponentsList) {
-            EditContext editContext {
-                .editor = app,
-                .inspector = *this,
-                .renderContext = renderContext
-            };
-            editComponents(editContext, componentID, *pComponentList);
-            if(editContext.shouldBeRemoved) {
-                toRemoveIDs.pushBack(componentID);
-                toRemoveNames.pushBack((*pComponentList)[0]->getName());
+            if (pComponentList->empty()) {
+                continue;
             }
 
-            if(editContext.hasModifications) {
-                app.markDirty();
+            if (ImSearch::BeginSearch()) {
+                ImSearch::SetUserQuery(searchQuery.c_str());
+                const std::string displayName = getDisplayName((*pComponentList)[0], componentID);
+                EditContext editContext {
+                    .editor = app,
+                    .inspector = *this,
+                    .renderContext = renderContext
+                };
+                editComponents(editContext, componentID, *pComponentList);
+                if(editContext.shouldBeRemoved) {
+                    toRemoveIDs.pushBack(componentID);
+                    toRemoveNames.pushBack((*pComponentList)[0]->getName());
+                }
+
+                if(editContext.hasModifications) {
+                    app.markDirty();
+                }
+
+                ImSearch::EndSearch();
             }
         }
 
@@ -258,19 +271,29 @@ namespace Peeler {
         }
     }
 
-    void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {
-        bool shouldKeep = true;
-        verify(!components.empty(), "There must be at least one component to edit.");
-
+    std::string InspectorPanel::getDisplayName(const Carrot::ECS::Component* pComponent, const Carrot::ComponentID& componentID) const {
         std::string displayName;
         auto displayNameIter = displayNames.find(componentID);
         if(displayNameIter == displayNames.end()) {
-            displayName = components[0]->getName();
+            displayName = pComponent->getName();
         } else {
             displayName = displayNameIter->second;
         }
-        displayName += "##inspector";
-        if(ImGui::CollapsingHeader(displayName.c_str(), &shouldKeep)) {
+        return displayName;
+    }
+
+    void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {
+        verify(!components.empty(), "There must be at least one component to edit.");
+
+        std::string displayName = getDisplayName(components[0], componentID);
+        if(ImSearch::PushSearchable(displayName.c_str(), [&](const char* n) {
+            bool shouldKeep = true;
+            bool r = ImGui::CollapsingHeader(n, &shouldKeep);
+            if(!shouldKeep) {
+                editContext.shouldBeRemoved = true;
+            }
+            return r;
+        })) {
             ImGui::PushID(displayName.c_str());
             auto iter = editionFunctions.find(componentID);
             if(iter == editionFunctions.end()) {
@@ -280,10 +303,8 @@ namespace Peeler {
                 editor(editContext, components);
             }
             ImGui::PopID();
-        }
 
-        if(!shouldKeep) {
-            editContext.shouldBeRemoved = true;
+            ImSearch::PopSearchable();
         }
     }
 
