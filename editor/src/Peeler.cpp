@@ -1268,7 +1268,7 @@ namespace Peeler {
             }
 
             if(finished && !sceneName.empty()) {
-                newScene(Carrot::IO::VFS::Path { "game://scenes/" + sceneName + ".json" });
+                newScene(Carrot::IO::VFS::Path { "game://scenes/" + sceneName });
                 showNewScenePopup = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -1834,6 +1834,7 @@ namespace Peeler {
 
             hasUnsavedChanges = true;
             addCurrentSceneToSceneList();
+            saveCurrentScene(); // force a save to create new scene
         }, [](){});
     }
 
