@@ -520,6 +520,39 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
                                                     }, driver.getAllocationCallbacks());
 }
 
+Carrot::Vector<u8> Carrot::Image::blockingCopyPixelsFromGPU(vk::ImageLayout currentLayout, Carrot::Allocator& allocator) const {
+    return blockingCopyPixelsFromGPU(currentLayout, vk::Offset3D{0,0,0}, getSize(), allocator);
+}
+
+Carrot::Vector<u8> Carrot::Image::blockingCopyPixelsFromGPU(vk::ImageLayout currentLayout, vk::Offset3D offset, vk::Extent3D extent, Carrot::Allocator& allocator) const {
+    std::size_t bufferSize = ImageFormats::computeMipSize(0, extent.width, extent.height, extent.depth, static_cast<VkFormat>(format));
+    Carrot::Buffer tmpBuffer{driver, bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible};
+    driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+        transition(getVulkanImage(), cmds, currentLayout, vk::ImageLayout::eTransferSrcOptimal);
+        vk::BufferImageCopy region {
+                .bufferOffset = 0,
+                .bufferRowLength = 0,
+                .bufferImageHeight = 0,
+                .imageSubresource = vk::ImageSubresourceLayers {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .mipLevel = 0,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                },
+                .imageOffset = offset,
+                .imageExtent = extent,
+        };
+        cmds.copyImageToBuffer(getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, tmpBuffer.getVulkanBuffer(), region);
+
+        // put image back into previous layout
+        transition(getVulkanImage(), cmds, vk::ImageLayout::eTransferSrcOptimal, currentLayout);
+    }, true);
+    Vector<u8> data{allocator};
+    data.resize(tmpBuffer.getSize());
+    memcpy(data.data(), tmpBuffer.map<u8>(), data.size());
+    return data;
+}
+
 void Carrot::Image::setDebugNames(const std::string& name) {
     nameSingle(name, getVulkanImage());
     if(imageData.ownsImage) {

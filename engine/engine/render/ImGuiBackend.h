@@ -48,13 +48,30 @@ namespace Carrot {
             ImFont* getBigIconsFont();
 
         public: // called by ImGui
+            struct ImgTexInspect {
+                glm::mat4 colorTransform;
+                glm::vec4 colorOffset;
+
+                glm::vec2 textureSize;
+                float premultiplyAlpha;
+                float disableFinalAlpha;
+
+                glm::vec3 backgroundColor;
+                bool forceNearestSampling;
+
+                glm::vec4 grid;
+                glm::vec2 gridWidth;
+            } imgTexInspectParams;
+
             void createWindowImGui(ImGuiViewport* pViewport);
             void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, u8 frameIndex, std::size_t swapchainIndex);
+            void setImgTexInspectPipeline(const ImgTexInspect& params);
 
         private:
             VulkanRenderer& renderer;
             PImpl* pImpl = nullptr;
             ImFont* bigIconsFont = nullptr;
+            bool isRenderingImgTexInspect = false;
         };
 
     }

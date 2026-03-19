@@ -12,6 +12,7 @@
 #include <chrono>
 #include <algorithm>
 #include <ImGuiNotify.hpp>
+#include <imgui_tex_inspect.h>
 #include <implot.h>
 #include <imsearch.h>
 #include <stdexcept>
@@ -753,6 +754,8 @@ Carrot::Engine::~Engine() {
     Carrot::Render::Sprite::cleanup();
     ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
+    ImGuiTexInspect::Shutdown();
+    ImGuiTexInspect::DestroyContext(nullptr/*default context*/);
     ImSearch::DestroyContext();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();

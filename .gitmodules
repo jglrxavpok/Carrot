@@ -115,3 +115,6 @@
 [submodule "thirdparty/imsearch"]
 	path = thirdparty/imsearch
 	url = https://github.com/GuusKemperman/imsearch
+[submodule "thirdparty/imgui_tex_inspect"]
+	path = thirdparty/imgui_tex_inspect
+	url = https://github.com/jglrxavpok/imgui_tex_inspect

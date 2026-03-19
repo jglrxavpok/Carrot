@@ -1,3 +1,5 @@
+import modules.base;
+
 // mostly based on ImGui's Vulkan backend
 
 struct Vertex {
@@ -36,4 +38,39 @@ VSOutput vertex(uniform DisplayRect display, Vertex v) {
 [shader("pixel")]
 float4 pixel(uniform DisplayRect display, VSOutput v) {
     return textures[NonUniformResourceIndex(display.textureIndex)].Sample(v.uv) * v.color;
+}
+
+struct InspectParams {
+    float4x4 colorTransform;
+    float4 colorOffset;
+
+    float2 textureSize;
+    float premultiplyAlpha;
+    float disableFinalAlpha;
+
+    float3 backgroundColor;
+    bool forceNearestSampling;
+
+    float4 grid;
+    float2 gridWidth;
+}
+
+// adapted from tex_inspect_opengl.cpp
+[shader("pixel")]
+float4 imgTexInspect(uniform DisplayRect display, uniform InspectParams params, VSOutput v) {
+    float2 texel = v.uv * params.textureSize;
+    float2 uv;
+    if(params.forceNearestSampling) {
+        uv = (floor(texel) + 0.5f) / params.textureSize;
+    } else {
+        uv = v.uv;
+    }
+    float2 texelEdge = step(fmod(texel, float2(1.0)), params.gridWidth);
+    float isGrid = max(texelEdge.x, texelEdge.y);
+    float4 ct = params.colorTransform * textures[NonUniformResourceIndex(display.textureIndex)].Sample(uv) + params.colorOffset;
+    ct.rgb = ct.rgb * lerp(1.0, ct.a, params.premultiplyAlpha);
+    ct.rgb += params.backgroundColor * (1 - ct.a);
+    ct.a = lerp(ct.a, 1, params.disableFinalAlpha);
+    ct = lerp(ct, float4(params.grid.rgb, 1), params.grid.a * isGrid);
+    return ct;
 }

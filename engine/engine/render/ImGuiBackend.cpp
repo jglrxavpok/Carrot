@@ -13,9 +13,13 @@
 #include <engine/render/VulkanRenderer.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <core/render/VertexTypes.h>
+#include <imgui_tex_inspect.h>
+#include <imgui_tex_inspect_internal.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Carrot::Render {
     constexpr const char* PipelinePath = "resources/pipelines/imgui.pipeline";
+    constexpr const char* TexInspectPipelinePath = "resources/pipelines/imgui_tex_inspect.pipeline";
     constexpr int MaxTextures = 1024;
 
     struct PImpl {
@@ -23,6 +27,7 @@ namespace Carrot::Render {
 
         struct PerFrameData {
             std::shared_ptr<Pipeline> pipeline;
+            std::shared_ptr<Pipeline> imguiTexInspectPipeline;
             Render::PerFrame<Carrot::BufferAllocation> vertexBuffers; // vertex buffer per frame
             Render::PerFrame<Carrot::BufferAllocation> indexBuffers; // index buffer per frame
             Render::PerFrame<Carrot::BufferAllocation> stagingBuffers;
@@ -41,6 +46,7 @@ namespace Carrot::Render {
         void initPerFrameData(VulkanRenderer& renderer, WindowID w, Viewport* pViewport) {
             PerFrameData& v = perWindow[w];
             v.pipeline = renderer.getOrCreatePipelineFullPath(PipelinePath, (std::uint64_t)w); // one per window to avoid texture binding conflicts
+            v.imguiTexInspectPipeline = renderer.getOrCreatePipelineFullPath(TexInspectPipelinePath, (std::uint64_t)w); // one per window to avoid texture binding conflicts
             v.pViewport = pViewport;
 
             std::size_t imageCount = MAX_FRAMES_IN_FLIGHT;
@@ -116,6 +122,8 @@ namespace Carrot::Render {
         ImGui::CreateContext();
         ImPlot::CreateContext();
         ImSearch::CreateContext();
+        ImGuiTexInspect::Init();
+        ImGuiTexInspect::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -268,37 +276,50 @@ namespace Carrot::Render {
         }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags2>(0), *copySyncSemaphore);
         renderer.getEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
-        Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, Render::PacketType::DrawIndexedInstanced, renderContext);
-        packet.pipeline = pImpl->perWindow[windowID].pipeline;
-        packet.vertexBuffer = vertexBuffer;
-        packet.indexBuffer = indexBuffer;
-
-        struct {
-            glm::vec2 translation;
-            glm::vec2 scale;
-            std::uint32_t textureIndex;
-        } displayConstantData;
-        // map from 0,0 - w,h to -1,-1 - 1,1
-        displayConstantData.scale.x = 2.0f / pDrawData->DisplaySize.x;
-        displayConstantData.scale.y = 2.0f / pDrawData->DisplaySize.y;
-        displayConstantData.translation.x = -pDrawData->DisplayPos.x * displayConstantData.scale.x - 1.0f;
-        displayConstantData.translation.y = -pDrawData->DisplayPos.y * displayConstantData.scale.y - 1.0f;
-
-        Packet::PushConstant& displayConstant = packet.addPushConstant("Display", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
-        displayConstant.setData(displayConstantData);
-
         float viewportWidth = pDrawData->DisplaySize.x * pDrawData->FramebufferScale.x;
         float viewportHeight = pDrawData->DisplaySize.y * pDrawData->FramebufferScale.y;
         if (viewportWidth <= 0 || viewportHeight <= 0)
             return;
 
-        packet.viewportExtents = vk::Viewport {
-            .x = 0,
-            .y = 0,
-            .width = viewportWidth,
-            .height = viewportHeight,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
+        struct PushConstantData {
+            struct DisplayConstantData {
+                glm::vec2 translation;
+                glm::vec2 scale;
+                std::uint32_t textureIndex;
+            } display;
+
+            alignas(16) ImgTexInspect imgTexInspect;
+        };
+
+        PushConstantData displayConstantData{};
+        displayConstantData.imgTexInspect = imgTexInspectParams;
+        // map from 0,0 - w,h to -1,-1 - 1,1
+        displayConstantData.display.scale.x = 2.0f / pDrawData->DisplaySize.x;
+        displayConstantData.display.scale.y = 2.0f / pDrawData->DisplaySize.y;
+        displayConstantData.display.translation.x = -pDrawData->DisplayPos.x * displayConstantData.display.scale.x - 1.0f;
+        displayConstantData.display.translation.y = -pDrawData->DisplayPos.y * displayConstantData.display.scale.y - 1.0f;
+
+        auto setupRenderPacket = [&](std::shared_ptr<Carrot::Pipeline> pipeline)-> Carrot::Pair<Carrot::Render::Packet*, Packet::PushConstant*> {
+            Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, Render::PacketType::DrawIndexedInstanced, renderContext);
+            packet.pipeline = pipeline;
+            packet.vertexBuffer = vertexBuffer;
+            packet.indexBuffer = indexBuffer;
+
+            packet.viewportExtents = vk::Viewport {
+                .x = 0,
+                .y = 0,
+                .width = viewportWidth,
+                .height = viewportHeight,
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f,
+            };
+
+            packet.commands.emplace_back();
+
+            Packet::PushConstant& displayConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+            displayConstant.setData(displayConstantData);
+
+            return {&packet, &displayConstant};
         };
 
         auto& textureIndexMap = pImpl->perWindow[windowID].textureIndices;
@@ -309,12 +330,33 @@ namespace Carrot::Render {
                 renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
                                      vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
                                      i);
+                renderer.bindTexture(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, *pImpl->fontsTexture, 0, 0,
+                                     vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
+                                     i);
             }
             pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex] = false;
         }
 
         int drawIndex = 0;
-        auto& drawCommand = packet.commands.emplace_back().drawIndexedInstanced;
+
+        Carrot::Render::Packet* pRegularImGuiPacket;
+        Carrot::Render::Packet* pImgTexInspectPacket;
+        Carrot::Render::Packet::PushConstant* pRegularImGuiConstant;
+        Carrot::Render::Packet::PushConstant* pImgTexInspectConstant;
+        auto a = setupRenderPacket(pImpl->perWindow[windowID].pipeline);
+        pRegularImGuiPacket = a.first;
+        pRegularImGuiConstant = a.second;
+
+        auto b = setupRenderPacket(pImpl->perWindow[windowID].imguiTexInspectPipeline);
+        pImgTexInspectPacket = b.first;
+        pImgTexInspectConstant = b.second;
+
+        Carrot::Pipeline* pCurrentPipeline = pImpl->perWindow[windowID].pipeline.get();
+        vk::DrawIndexedIndirectCommand* pCurrentDrawCommand = &pRegularImGuiPacket->commands.back().drawIndexedInstanced;
+        Carrot::Render::Packet* pCurrentPacket = pRegularImGuiPacket;
+        Carrot::Render::Packet::PushConstant* pCurrentDisplayConstant = pRegularImGuiConstant;
+
+        isRenderingImgTexInspect = false;
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
             std::size_t commandListVertexOffset = vertexStarts[n];
@@ -322,8 +364,26 @@ namespace Carrot::Render {
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
                 if (pcmd->UserCallback) {
-                    pcmd->UserCallback(cmd_list, pcmd);
+                    if (pcmd->UserCallback == ImDrawCallback_ResetRenderState) {
+                        isRenderingImgTexInspect = false;
+                    } else {
+                        pcmd->UserCallback(cmd_list, pcmd);
+                    }
+
+                    displayConstantData.imgTexInspect = imgTexInspectParams;
                 } else {
+                    if (isRenderingImgTexInspect) {
+                        pCurrentPipeline = pImpl->perWindow[windowID].imguiTexInspectPipeline.get();
+                        pCurrentDrawCommand = &pImgTexInspectPacket->commands.back().drawIndexedInstanced;
+                        pCurrentPacket = pImgTexInspectPacket;
+                        pCurrentDisplayConstant = pImgTexInspectConstant;
+                    } else {
+                        pCurrentPipeline = pImpl->perWindow[windowID].pipeline.get();
+                        pCurrentDrawCommand = &pRegularImGuiPacket->commands.back().drawIndexedInstanced;
+                        pCurrentPacket = pRegularImGuiPacket;
+                        pCurrentDisplayConstant = pRegularImGuiConstant;
+                    }
+
                     // The texture for the draw call is specified by pcmd->GetTexID().
                     // The vast majority of draw calls will use the Dear ImGui texture atlas, which value you have set yourself during initialization.
                     auto [iter, bInserted] = textureIndexMap.try_emplace(pcmd->GetTexID(), 0);
@@ -334,8 +394,11 @@ namespace Carrot::Render {
                         renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, texture, 0, 0,
                                              vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
                                              iter->second);
+                        renderer.bindTexture(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, texture, 0, 0,
+                                             vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
+                                             iter->second);
                     }
-                    displayConstantData.textureIndex = iter->second;
+                    displayConstantData.display.textureIndex = iter->second;
 
                     // We are using scissoring to clip some objects. All low-level graphics API should support it.
                     // - If your engine doesn't support scissoring yet, you may ignore this at first. You will get some small glitches
@@ -359,22 +422,27 @@ namespace Carrot::Render {
                             .width = static_cast<std::uint32_t>(std::min(viewportWidth, pcmd->ClipRect.z - pcmd->ClipRect.x)),
                             .height = static_cast<std::uint32_t>(std::min(viewportHeight, pcmd->ClipRect.w - pcmd->ClipRect.y)),
                     };
-                    packet.scissor = scissorRect;
+                    pCurrentPacket->scissor = scissorRect;
 
                     // force packets to be ordered. this is because the sort used before recording is not stable: similar packets are not guaranteed to stay in the same order
-                    packet.transparentGBuffer.zOrder = drawIndex++;
+                    pCurrentPacket->transparentGBuffer.zOrder = drawIndex++;
                     // Render 'pcmd->ElemCount/3' indexed triangles.
                     // By default the indices ImDrawIdx are 16-bit, you can change them to 32-bit in imconfig.h if your engine doesn't support 16-bit indices.
-                    drawCommand.instanceCount = 1;
-                    drawCommand.indexCount = pcmd->ElemCount;
-                    drawCommand.firstIndex = pcmd->IdxOffset + commandListIndexOffset;
-                    drawCommand.vertexOffset = pcmd->VtxOffset + commandListVertexOffset;
+                    pCurrentDrawCommand->instanceCount = 1;
+                    pCurrentDrawCommand->indexCount = pcmd->ElemCount;
+                    pCurrentDrawCommand->firstIndex = pcmd->IdxOffset + commandListIndexOffset;
+                    pCurrentDrawCommand->vertexOffset = pcmd->VtxOffset + commandListVertexOffset;
 
-                    displayConstant.setData(displayConstantData);
-                    renderer.render(packet);
+                    pCurrentDisplayConstant->setData(displayConstantData);
+                    renderer.render(*pCurrentPacket);
                 }
             }
         }
+    }
+
+    void ImGuiBackend::setImgTexInspectPipeline(const ImgTexInspect& params) {
+        isRenderingImgTexInspect = true;
+        imgTexInspectParams = params;
     }
 
     void ImGuiBackend::record(vk::CommandBuffer& cmds, const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext) {
@@ -436,3 +504,52 @@ namespace Carrot::Render {
         render(renderContext, rendererData.pWindow->getWindowID(), pDrawData);
     }
 } // Carrot::Render
+
+namespace ImGuiTexInspect {
+    void BackEnd_SetShader(ImDrawList const*, ImDrawCmd const*, ImGuiTexInspect::Inspector const* inspector) {
+        ImGuiIO& io = ImGui::GetIO();
+        Carrot::Render::ImGuiBackend* pThis = (Carrot::Render::ImGuiBackend*)io.BackendRendererUserData;
+
+        const ShaderOptions *texConversion = &inspector->CachedShaderOptions;
+        Carrot::Render::ImGuiBackend::ImgTexInspect params{};
+
+        params.colorTransform = glm::make_mat4x4(texConversion->ColorTransform);
+        params.textureSize = glm::make_vec2(&inspector->TextureSize.x);
+        params.colorOffset = glm::make_vec4(texConversion->ColorOffset);
+        params.backgroundColor = glm::make_vec4(&texConversion->BackgroundColor.x);
+        params.premultiplyAlpha = texConversion->PremultiplyAlpha;
+        params.disableFinalAlpha = texConversion->DisableFinalAlpha;
+        params.forceNearestSampling = texConversion->ForceNearestSampling;
+        params.gridWidth = glm::make_vec2(&texConversion->GridWidth.x);
+        params.grid = glm::make_vec4(&texConversion->GridColor.x);
+
+        pThis->setImgTexInspectPipeline(params);
+    }
+
+    bool BackEnd_GetData(Inspector *inspector, ImTextureID texture, int /*x*/, int /*y*/, int /*width*/, int /*height*/, BufferDesc *bufferDesc) {
+        // TODO: support something else than rgba
+        Carrot::Render::Texture* pTexture = reinterpret_cast<Carrot::Render::Texture*>(texture);
+        Carrot::Vector<u8> pixels = pTexture->getImage().blockingCopyPixelsFromGPU(pTexture->getCurrentImageLayout());
+        ImU8* pDest = GetBuffer(inspector, pixels.bytes_size());
+        if (!pDest) {
+            return false;
+        }
+        memcpy(pDest, pixels.data(), pixels.bytes_size());
+
+        bufferDesc->Data_uint8_t = pDest;
+        bufferDesc->BufferByteSize = pixels.bytes_size();
+        bufferDesc->LineStride = pTexture->getSize().width * 4/*channel count*/;
+        bufferDesc->Width = pTexture->getSize().width;
+        bufferDesc->Height = pTexture->getSize().height;
+        bufferDesc->StartX = 0;
+        bufferDesc->StartY = 0;
+        bufferDesc->Stride = 4;
+        bufferDesc->Alpha = 3;
+        bufferDesc->Red = 0;
+        bufferDesc->Green = 1;
+        bufferDesc->Blue = 2;
+        bufferDesc->ChannelCount = 4;
+
+        return true;
+    }
+}

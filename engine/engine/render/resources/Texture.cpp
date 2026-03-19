@@ -3,6 +3,9 @@
 //
 
 #include "Texture.h"
+
+#include <core/allocators/InlineAllocator.h>
+
 #include "core/utils/Assert.h"
 #include "engine/Engine.h"
 
@@ -143,41 +146,12 @@ namespace Carrot::Render {
     }
 
     glm::vec<4, std::uint32_t> Texture::sampleUVec4(float u, float v) const {
-        auto& engine = Carrot::Engine::getInstance();
         using vectype = glm::vec<4, std::uint32_t>;
         std::int32_t x = u * getSize().width;
         std::int32_t y = v * getSize().height;
-        Carrot::Buffer tmpBuffer{engine.getVulkanDriver(), sizeof(vectype), vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible};
-        engine.getVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-            // TODO: move color attachment to parameters
-            getImage().transition(getImage().getVulkanImage(), cmds, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eTransferSrcOptimal);
-            vk::BufferImageCopy region {
-                    .bufferOffset = 0,
-                    .bufferRowLength = 0,
-                    .bufferImageHeight = 0,
-                    .imageSubresource = vk::ImageSubresourceLayers {
-                            .aspectMask = vk::ImageAspectFlagBits::eColor,
-                            .mipLevel = 0,
-                            .baseArrayLayer = 0,
-                            .layerCount = 1,
-                    },
-                    .imageOffset = vk::Offset3D {
-                        .x = x,
-                        .y = y,
-                        .z = 0,
-                    },
-                    .imageExtent = vk::Extent3D {
-                            .width = 1,
-                            .height = 1,
-                            .depth = 1,
-                    }
-            };
-            cmds.copyImageToBuffer(getImage().getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, tmpBuffer.getVulkanBuffer(), region);
-
-            // TODO: move color attachment to parameters
-            // put image back into previous layout
-            getImage().transition(getImage().getVulkanImage(), cmds, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eColorAttachmentOptimal);
-        }, true);
-        return *tmpBuffer.map<vectype>();
+        InlineAllocator<sizeof(vectype)*2 /*for temp copy*/> allocator;
+        Carrot::Vector<u8> pixels = getImage().blockingCopyPixelsFromGPU(vk::ImageLayout::eColorAttachmentOptimal/*not currentLayout to replicate previous behavior*/, vk::Offset3D{x, y, 0}, vk::Extent3D{1,1,1}, allocator);
+        vectype result = *reinterpret_cast<vectype*>(pixels.data());
+        return result;
     }
 }

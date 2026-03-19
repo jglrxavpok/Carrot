@@ -62,7 +62,7 @@ namespace Carrot::Render {
 
     private:
         // Draws a source resource to the destination texture
-        void drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds);
+        void drawViewer(const char* debugName, const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds);
 
         void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
         void debugDraw(const Render::Context& context);

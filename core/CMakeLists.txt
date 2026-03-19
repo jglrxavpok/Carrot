@@ -98,6 +98,8 @@ set(CORE-THIRDPARTY-SOURCES
 
         ${ProjectRoot}thirdparty/imsearch/imsearch.cpp
         ${ProjectRoot}thirdparty/imsearch/imsearch_demo.cpp
+
+        ${ProjectRoot}thirdparty/imgui_tex_inspect/imgui_tex_inspect.cpp
         )
 
 # TODO: Seems like my Release build of Mono is broken?

@@ -261,6 +261,7 @@ set(PIPELINES
         gBufferSprite
         gBufferWireframe
         imgui
+        imgui_tex_inspect
         material-pass
         particles
         text-rendering

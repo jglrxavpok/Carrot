@@ -17,6 +17,7 @@
 #include <imgui_internal.h>
 #include <imgui_node_editor.h>
 #include <imgui_node_editor_internal.h>
+#include <imgui_tex_inspect.h>
 #include <engine/console/RuntimeOption.hpp>
 #include <implot.h>
 
@@ -378,7 +379,9 @@ namespace Carrot::Render {
 
                 if(clickedResourceViewer) {
                     float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
-                    ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+
+                    ImGuiTexInspect::BeginInspectorPanel("Inspector", clickedResourceViewer->getImguiID(), ImVec2(clickedResourceViewer->getSize().width, clickedResourceViewer->getSize().height));
+                    ImGuiTexInspect::EndInspectorPanel();
                 }
             }
             ImGui::End();
@@ -687,12 +690,14 @@ namespace Carrot::Render {
         }
     }
 
-    void Graph::drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds) {
+    void Graph::drawViewer(const char* debugName, const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds) {
         if(!destinationTexture) {
             destinationTexture = std::make_unique<Texture>(driver, vk::Extent3D {
                 1024,1024,1
-            }, vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+            }, vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc,
             vk::Format::eR8G8B8A8Unorm);
+            destinationTexture->name(debugName);
+            destinationTexture->assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
         }
 
         bool isBuffer = sourceResource.type == ResourceType::StorageBuffer;
@@ -797,10 +802,10 @@ namespace Carrot::Render {
                 };
 
                 if(hoveredResourceForRender && isAnInput(*hoveredResourceForRender)) {
-                    drawViewer(data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
+                    drawViewer("RenderGraph debug Hovered", data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
                 }
                 if(clickedResourceForRender && isAnInput(*clickedResourceForRender)) {
-                    drawViewer(data, *clickedResourceForRender, clickedResourceViewer, cmds);
+                    drawViewer("RenderGraph debug Clicked", data, *clickedResourceForRender, clickedResourceViewer, cmds);
                 }
             }
 
@@ -838,10 +843,10 @@ namespace Carrot::Render {
                 };
 
                 if(hoveredResourceForRender && isAnOutput(*hoveredResourceForRender)) {
-                    drawViewer(data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
+                    drawViewer("RenderGraph debug Hovered", data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
                 }
                 if(clickedResourceForRender && isAnOutput(*clickedResourceForRender)) {
-                    drawViewer(data, *clickedResourceForRender, clickedResourceViewer, cmds);
+                    drawViewer("RenderGraph debug Clicked", data, *clickedResourceForRender, clickedResourceViewer, cmds);
                 }
             }
         }

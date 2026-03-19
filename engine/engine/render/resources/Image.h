@@ -14,6 +14,7 @@
 #include <engine/render/resources/BufferView.h>
 #include <core/io/Resource.h>
 #include <core/async/Locks.h>
+#include <core/containers/Vector.hpp>
 
 namespace Carrot {
     class VulkanDriver;
@@ -118,6 +119,10 @@ namespace Carrot {
 
         /// Creates a ImageView pointing to this image
         vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t layerCount = 1);
+
+        /// currentLayout is here because there is a transition needed to copy image
+        [[nodiscard]] Carrot::Vector<u8> blockingCopyPixelsFromGPU(vk::ImageLayout currentLayout, Carrot::Allocator& allocator = Carrot::Allocator::getDefault()) const;
+        [[nodiscard]] Carrot::Vector<u8> blockingCopyPixelsFromGPU(vk::ImageLayout currentLayout, vk::Offset3D offset, vk::Extent3D extent, Carrot::Allocator& allocator = Carrot::Allocator::getDefault()) const;
 
         /// Create and fill an Image from a given image file
         static std::unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);

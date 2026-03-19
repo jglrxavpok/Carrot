@@ -1,0 +1,7 @@
+{
+  "_import": "imgui.pipeline",
+  "fragmentShader": {
+    "file": "resources/shaders/imgui.slang",
+    "entry_point": "imgTexInspect"
+  }
+}
