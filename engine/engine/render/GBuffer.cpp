@@ -203,7 +203,7 @@ void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const
     if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
         skyboxCubeMap = renderer.getBlackCubeMapTexture();
     }
-    renderer.bindStorageImage(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+    //renderer.bindStorageImage(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 10);
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 11);

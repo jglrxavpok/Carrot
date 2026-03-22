@@ -85,7 +85,7 @@ namespace Carrot {
                 from = Carrot::IO::Resource{ path, convertedPath };
             }
         } catch(std::runtime_error& e) {
-            Carrot::Log::error("Failed to load model %s", modelPath.c_str());
+            Carrot::Log::error("Failed to load model '%s': %s", modelPath.c_str(), e.what());
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
         } catch(AssetConversionException& e) {
@@ -135,6 +135,10 @@ namespace Carrot {
         models.remove(vfsPath.toString());
     }
 
+    void AssetServer::deleteConvertedAsset(const Carrot::IO::VFS::Path& vfsPath) {
+        const std::filesystem::path& path = getConvertedPath(vfsPath);
+        std::filesystem::remove(path);
+    }
 
     std::shared_ptr<Render::Texture> AssetServer::blockingLoadTexture(const Carrot::IO::VFS::Path& path) {
         ZoneScopedN("Loading texture");

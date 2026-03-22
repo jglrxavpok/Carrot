@@ -152,6 +152,24 @@ namespace Peeler {
             edition.hasModifications = true;
         }
 
+        ImGui::SameLine();
+        if(ImGui::SmallButton("Regenerate")) {
+            std::unordered_set<Carrot::IO::VFS::Path> toInvalidate;
+            for(auto& pComponent : components) {
+                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                toInvalidate.insert(vfsPath);
+            }
+            for (const auto& path : toInvalidate) {
+                GetAssetServer().removeFromModelCache(path);
+                GetAssetServer().deleteConvertedAsset(path);
+            }
+            for(auto& pComponent : components) {
+                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                pComponent->setFile(vfsPath);
+            }
+            edition.hasModifications = true;
+        }
+
         multiEditField(edition, "Transparent", components,
             +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.isTransparent; });
         multiEditField(edition, "Casts shadows", components,

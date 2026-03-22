@@ -19,7 +19,9 @@
 
 #include <models/MikkTSpaceInterface.h>
 
+#define CLUSTERLOD_IMPLEMENTATION
 #include <meshoptimizer.h>
+#include <clusterlod.h>
 
 #define IDXTYPEWIDTH 64
 #define REALTYPEWIDTH 64
