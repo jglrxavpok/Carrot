@@ -105,6 +105,10 @@ namespace Carrot::ECS {
         modelRenderer = nullptr;
         if(GetCapabilities().supportsRaytracing) {
             Async::LockGuard l{ tlasAccess };
+            if (tlas) {
+                tlas->enabled = false;
+            }
+            tlas = nullptr; // reset
             tlasIsWaitingForModel = true;
         }
     }
