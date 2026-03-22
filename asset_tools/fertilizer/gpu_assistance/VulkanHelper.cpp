@@ -8,6 +8,8 @@
 #include <core/Macros.h>
 
 namespace Fertilizer {
+    IVulkanImpl* IVulkanImpl::OverrideInstance = nullptr;
+
     static std::vector<std::string> requiredExtensions {
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
@@ -16,7 +18,7 @@ namespace Fertilizer {
     };
 
     std::uint32_t VulkanHelper::findMemoryType(vk::PhysicalDevice device, std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
-        auto memProperties = device.getMemoryProperties(*dispatch);
+        auto memProperties = device.getMemoryProperties(getDispatcher());
         for(std::uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
             if(typeFilter & (1 << i)
                && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -40,33 +42,38 @@ namespace Fertilizer {
             .usage = usage,
             .sharingMode = vk::SharingMode::eExclusive,
         };
-        auto vkBuffer = vkDevice->createBufferUnique(createInfo, nullptr, *dispatch);
-        vk::MemoryRequirements memoryRequirements = vkDevice->getBufferMemoryRequirements(*vkBuffer, *dispatch);
+        vk::Device device = getDevice();
+        auto vkBuffer = device.createBufferUnique(createInfo, nullptr, getDispatcher());
+        vk::MemoryRequirements memoryRequirements = device.getBufferMemoryRequirements(*vkBuffer, getDispatcher());
 
         vk::MemoryAllocateFlagsInfo allocateFlags {
             .flags = vk::MemoryAllocateFlagBits::eDeviceAddress,
         };
-        auto mem = vkDevice->allocateMemoryUnique(vk::MemoryAllocateInfo {
+        auto mem = device.allocateMemoryUnique(vk::MemoryAllocateInfo {
             .pNext = &allocateFlags,
             .allocationSize = memoryRequirements.size,
-            .memoryTypeIndex = findMemoryType(vkPhysicalDevice, memoryRequirements.memoryTypeBits, memoryFlags),
-        }, nullptr, *dispatch);
-        vkDevice->bindBufferMemory(*vkBuffer, *mem, 0, *dispatch);
+            .memoryTypeIndex = findMemoryType(getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryFlags),
+        }, nullptr, getDispatcher());
+        device.bindBufferMemory(*vkBuffer, *mem, 0, getDispatcher());
         return GPUBuffer {
             .vkMemory = std::move(mem),
             .vkBuffer = std::move(vkBuffer),
         };
     }
 
-    vk::Device VulkanHelper::getDevice() {
-        return *vkDevice;
+    vk::Device VulkanHelper::getDevice() const {
+        return pImpl->getDevice();
     }
 
-    VK_DISPATCHER_TYPE& VulkanHelper::getDispatcher() {
-        return *dispatch;
+    vk::PhysicalDevice VulkanHelper::getPhysicalDevice() const {
+        return pImpl->getPhysicalDevice();
     }
 
-    VulkanHelper::VulkanHelper() {
+    VK_DISPATCHER_TYPE& VulkanHelper::getDispatcher() const {
+        return pImpl->getDispatcher();
+    }
+
+    StandaloneVulkanImpl::StandaloneVulkanImpl() {
         // Providing a function pointer resolving vkGetInstanceProcAddr, just the few functions not depending an an instance or a device are fetched
         dispatch = std::make_unique<VK_DISPATCHER_TYPE>(vkGetInstanceProcAddr);
         dispatch->init(dl);
@@ -147,8 +154,9 @@ namespace Fertilizer {
         }, nullptr, *dispatch);
     }
 
-    void VulkanHelper::executeCommands(const std::function<void(vk::CommandBuffer)>& commandGenerator) {
-        vk::CommandBuffer cmds = vkDevice->allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+    void StandaloneVulkanImpl::dispatchComputeCommands(const std::function<void(vk::CommandBuffer& cmds)>& generator) {
+        vk::Device device = getDevice();
+        vk::CommandBuffer cmds = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = *vkComputeCommandPool,
             .commandBufferCount = 1,
         }, *dispatch)[0];
@@ -156,7 +164,7 @@ namespace Fertilizer {
         cmds.begin(vk::CommandBufferBeginInfo {
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
         }, *dispatch);
-        commandGenerator(cmds);
+        generator(cmds);
         cmds.end(*dispatch);
 
         vkComputeQueue.submit(vk::SubmitInfo {
@@ -165,10 +173,23 @@ namespace Fertilizer {
         }, {}, *dispatch);
         vkComputeQueue.waitIdle(*dispatch);
 
-        vkDevice->freeCommandBuffers(*vkComputeCommandPool, cmds, *dispatch);
+        device.freeCommandBuffers(*vkComputeCommandPool, cmds, *dispatch);
     }
 
-    vk::PhysicalDevice VulkanHelper::findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch) {
+    void VulkanHelper::executeCommands(const std::function<void(vk::CommandBuffer)>& commandGenerator) {
+        pImpl->dispatchComputeCommands(commandGenerator);
+    }
+
+    VulkanHelper::VulkanHelper() {
+        if (IVulkanImpl::OverrideInstance) {
+            pImpl = IVulkanImpl::OverrideInstance;
+        } else {
+            pOwnedImpl = std::make_unique<StandaloneVulkanImpl>();
+            pImpl = pOwnedImpl.get();
+        }
+    }
+
+    vk::PhysicalDevice StandaloneVulkanImpl::findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch) {
         const std::vector<vk::PhysicalDevice> devices = vkInstance->enumeratePhysicalDevices(dispatch);
 
         for (const auto& physicalDevice : devices) {

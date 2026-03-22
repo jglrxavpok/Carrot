@@ -64,6 +64,10 @@ namespace Carrot {
     };
 };
 
+namespace Fertilizer {
+    struct IVulkanImpl;
+}
+
 namespace std {
     template<>
     struct hash<Carrot::BindingKey> {
@@ -439,6 +443,8 @@ namespace Carrot {
         Render::PerFrame<vk::UniqueSemaphore> asyncCopySemaphores;
 
         Render::DebugRenderer debugRenderer;
+
+        Fertilizer::IVulkanImpl* pVulkanHelperImpl = nullptr;
 
     private:
         bool hasBlinked = false;

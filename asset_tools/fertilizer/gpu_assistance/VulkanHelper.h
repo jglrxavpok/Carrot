@@ -6,6 +6,7 @@
 #include <functional>
 #include <glm/matrix.hpp>
 
+#ifndef IN_ENGINE_VULKANHELPER
 #ifdef VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
     #if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
         #error This file should not be included inside any engine code!
@@ -22,11 +23,46 @@
 
 #define VK_DISPATCHER_TYPE vk::detail::DispatchLoaderDynamic
 #define VK_LOADER_TYPE vk::detail::DynamicLoader
+#endif
 
 namespace Fertilizer {
     struct GPUBuffer {
         vk::UniqueHandle<vk::DeviceMemory, VK_DISPATCHER_TYPE> vkMemory;
         vk::UniqueHandle<vk::Buffer, VK_DISPATCHER_TYPE> vkBuffer;
+    };
+
+    struct IVulkanImpl {
+        // Set to non-null to make VulkanHelper use your instance instead of creating a new one
+        static IVulkanImpl* OverrideInstance;
+
+        virtual ~IVulkanImpl() = default;
+
+        virtual vk::Device getDevice() = 0;
+        virtual vk::PhysicalDevice getPhysicalDevice() = 0;
+        virtual void dispatchComputeCommands(const std::function<void(vk::CommandBuffer& cmds)>& generator) = 0;
+
+        virtual VK_DISPATCHER_TYPE& getDispatcher() = 0;
+    };
+
+    class StandaloneVulkanImpl: public IVulkanImpl {
+    public:
+        StandaloneVulkanImpl();
+
+        void dispatchComputeCommands(const std::function<void(vk::CommandBuffer& cmds)>& generator) override;
+        vk::Device getDevice() override { return *vkDevice; }
+        vk::PhysicalDevice getPhysicalDevice() override { return vkPhysicalDevice; }
+        vk::detail::DispatchLoaderDynamic& getDispatcher() override { return *dispatch; }
+
+    private:
+        vk::PhysicalDevice findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch);
+
+        VK_LOADER_TYPE dl;
+        std::unique_ptr<VK_DISPATCHER_TYPE> dispatch;
+        vk::UniqueHandle<vk::Instance, VK_DISPATCHER_TYPE> vkInstance;
+        vk::PhysicalDevice vkPhysicalDevice;
+        vk::UniqueHandle<vk::Device, VK_DISPATCHER_TYPE> vkDevice;
+        vk::Queue vkComputeQueue;
+        vk::UniqueHandle<vk::CommandPool, VK_DISPATCHER_TYPE> vkComputeCommandPool;
     };
 
     /**
@@ -44,26 +80,17 @@ namespace Fertilizer {
         void executeCommands(const std::function<void(vk::CommandBuffer)>& commandGenerator);
         GPUBuffer newHostVisibleBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
         GPUBuffer newDeviceLocalBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
-        vk::Device getDevice();
-
-        VK_DISPATCHER_TYPE& getDispatcher();
+        vk::Device getDevice() const;
+        vk::PhysicalDevice getPhysicalDevice() const;
+        VK_DISPATCHER_TYPE& getDispatcher() const;
 
         static vk::TransformMatrixKHR glmToRTTransformMatrix(const glm::mat4& mat);
-
-
     private:
+        std::uint32_t findMemoryType(vk::PhysicalDevice device, std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
         GPUBuffer newBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags);
 
-        vk::PhysicalDevice findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch);
-        std::uint32_t findMemoryType(vk::PhysicalDevice device, std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
-
-        VK_LOADER_TYPE dl;
-        std::unique_ptr<VK_DISPATCHER_TYPE> dispatch;
-        vk::UniqueHandle<vk::Instance, VK_DISPATCHER_TYPE> vkInstance;
-        vk::PhysicalDevice vkPhysicalDevice;
-        vk::UniqueHandle<vk::Device, VK_DISPATCHER_TYPE> vkDevice;
-        vk::Queue vkComputeQueue;
-        vk::UniqueHandle<vk::CommandPool, VK_DISPATCHER_TYPE> vkComputeCommandPool;
+        std::unique_ptr<StandaloneVulkanImpl> pOwnedImpl; // can be nullptr if running inside engine instead of standalone
+        IVulkanImpl* pImpl = nullptr;
     };
 
 } // Fertilizer

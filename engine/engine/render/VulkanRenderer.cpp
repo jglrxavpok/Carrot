@@ -33,6 +33,9 @@
 #include <engine/Engine.h>
 #include <engine/assets/AssetServer.h>
 
+#define IN_ENGINE_VULKANHELPER 1
+#include <gpu_assistance/VulkanHelper.h>
+
 static constexpr std::size_t SingleFrameAllocatorSize = 16 * 1024 * 1024; // 16MiB per frame-in-flight
 static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 
@@ -111,10 +114,38 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     initImGui();
 
     makeCurrentThreadRenderCapable();
+
+    // make conversion code use VK objects from the engine (to avoid conflicts with conversion tool)
+
+    struct VulkanHelperImpl : public Fertilizer::IVulkanImpl {
+        VulkanRenderer* pRenderer;
+        explicit VulkanHelperImpl(VulkanRenderer* pRenderer): pRenderer(pRenderer) {}
+
+        vk::Device getDevice() override {
+            return pRenderer->getLogicalDevice();
+        }
+
+        VK_DISPATCHER_TYPE& getDispatcher() override {
+            return VULKAN_HPP_DEFAULT_DISPATCHER;
+        }
+
+        vk::PhysicalDevice getPhysicalDevice() override {
+            return pRenderer->getVulkanDriver().getPhysicalDevice();
+        }
+
+        void dispatchComputeCommands(const std::function<void(vk::CommandBuffer& cmds)>& generator) override {
+            pRenderer->getVulkanDriver().performSingleTimeComputeCommands([&](vk::CommandBuffer& cmds) {
+                generator(cmds);
+            }, true);
+        }
+    };
+
+    Fertilizer::IVulkanImpl::OverrideInstance = new VulkanHelperImpl{this};
 }
 
 Carrot::VulkanRenderer::~VulkanRenderer() {
     waitForRenderToComplete(); // wait for last render job
+    delete pVulkanHelperImpl;
     running = false; // ask render thread to stop
     renderThreadKickoff.decrement(); // tell render thread to wake up
     renderThread.join(); // wait for render thread to stop
