@@ -299,6 +299,7 @@ namespace Carrot::Render {
 
         // create RTData for each group inside this model:
         GroupRTData& rtDataMap = groupRTDataPerModel[pModel->getSlot()];
+        rtDataMap = {};
         rtDataMap.firstGroupInstanceIndex = minGroupInstanceID;
         rtDataMap.data.resize(maxGroupInstanceID +1 - minGroupInstanceID); // create RTData for this group if does not already exist
 
