@@ -24,7 +24,7 @@ layout(set = 1, binding = 2, scalar) buffer ClusterInstanceRef {
 };
 
 layout(set = 1, binding = 3, scalar) buffer ModelDataRef {
-    InstanceData modelData[];
+    ClusterBasedModelData modelData[];
 };
 DEFINE_CAMERA_SET(2)
 

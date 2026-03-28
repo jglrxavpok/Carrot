@@ -33,7 +33,7 @@ namespace Carrot::Render {
                 auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.frameNumber);
                 if(readbackBufferOpt.hasValue()) {
                     vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
-                    renderer.pushConstantBlock("address", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
+                    renderer.pushConstantBlock("entryPointParams", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
 
                     clearReadbackPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(1, 1, 1);

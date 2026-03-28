@@ -52,19 +52,6 @@ layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
 const float testFOV = M_PI_OVER_2;
 const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
 
-// project given transformed (ie in view space) sphere to an error value in pixels
-// xyz is center of sphere
-// w is radius of sphere
-float projectErrorToScreen(vec4 transformedSphere) {
-    // https://stackoverflow.com/questions/21648630/radius-of-projected-sphere-in-screen-space
-    if (isinf(transformedSphere.w)) {
-        return transformedSphere.w;
-    }
-    const float d2 = dot(transformedSphere.xyz, transformedSphere.xyz);
-    const float r = transformedSphere.w;
-    return push.screenHeight * cotHalfFov * r / sqrt(d2 - r*r);
-}
-
 bool cull(uint clusterInstanceID) {
     // TODO: occlusion culling
     // TODO: backface culling
@@ -77,7 +64,7 @@ bool cull(uint clusterInstanceID) {
 
     if(push.lodSelectionMode == 0) {
         const mat4 model = modelData[modelDataIndex].instanceData.transform * mat4(clusters[clusterID].transform);
-        const mat4 modelview = cbo.view * model;
+        const vec3 cameraPos = (cbo.view * vec4(0,0,0,1)).xyz;
 
         // frustum check
         {
@@ -87,15 +74,11 @@ bool cull(uint clusterInstanceID) {
                 return true;
             }
         }
-        vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
-        projectedBounds = transformSphere(projectedBounds, modelview);
 
-        vec4 parentProjectedBounds = vec4(clusters[clusterID].parentBoundingSphere.xyz, max(clusters[clusterID].parentError, 10e-10f));
-        parentProjectedBounds = transformSphere(parentProjectedBounds, modelview);
+        float clusterError = computeClusterScreenError(cameraPos, model, clusters[clusterID].boundingSphere, clusters[clusterID].error) * push.screenHeight;
+        float refinedError = computeClusterScreenError(cameraPos, model, clusters[clusterID].refinedBoundingSphere, clusters[clusterID].refinedError) * push.screenHeight;
 
-        const float clusterError = projectErrorToScreen(projectedBounds);
-        const float parentError = projectErrorToScreen(parentProjectedBounds);
-        const bool render = clusterError <= push.lodErrorThreshold && parentError > push.lodErrorThreshold;
+        const bool render = clusterError > push.lodErrorThreshold && refinedError <= push.lodErrorThreshold;
         return !render;
     } else {
         return clusters[clusterID].lod != uint(push.forcedLOD);

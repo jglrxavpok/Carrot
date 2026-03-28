@@ -50,9 +50,9 @@ namespace Carrot::Render {
         std::uint8_t lod;
         glm::mat4x3 transform{ 1.0f };
         Math::Sphere boundingSphere{}; // xyz + radius
-        Math::Sphere parentBoundingSphere{}; // xyz + radius
+        Math::Sphere refinedBoundingSphere{}; // xyz + radius
         float error = 0.0f;
-        float parentError = std::numeric_limits<float>::infinity();
+        float refinedError = 0.0f;
     };
 
     /**

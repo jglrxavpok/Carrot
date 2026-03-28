@@ -4,23 +4,10 @@
 float projectError(uint instanceID, uint clusterID, float testScreenWidth, float testScreenHeight) {
     const float cotHalfFov = 1.0f / tan(3.1415f/2.0f / 2.0f);
     uint modelDataIndex = instances[instanceID].instanceDataIndex;
-
-    // replicates what is done by ClusterManager
-#define cluster (clusters[clusterID])
-    const mat4 completeTransform = cbo.view * modelData[modelDataIndex].transform * mat4(cluster.transform);
-    const vec3 sphereCenter = (completeTransform * vec4(cluster.boundingSphere.xyz, 1.0)).xyz;
-    float sphereRadius = cluster.error;
-
-    sphereRadius = length((completeTransform * vec4(sphereRadius, 0,0,0)).xyz);
-
-    if(isinf(sphereRadius)) {
-        return sphereRadius;
-    }
-    const float d2 = dot(sphereCenter, sphereCenter);
-    const float r = sphereRadius;
-    //return max(r * testScreenWidth / 2.0f, r * testScreenHeight / 2.0f);
-    return testScreenHeight * cotHalfFov * r / sqrt(d2 - r*r);
-    //return cluster.error;
+    #define cluster (clusters[clusterID])
+    vec3 cameraPos = (cbo.view * vec4(0,0,0,1)).xyz;
+    const mat4 completeTransform = modelData[modelDataIndex].instanceData.transform * mat4(cluster.transform);
+    return computeClusterScreenError(cameraPos, completeTransform, cluster.boundingSphere, cluster.error) * testScreenHeight;
 }
 
 vec4 debugColor(uint triangleIndex, uint instanceIndex, uint clusterID) {

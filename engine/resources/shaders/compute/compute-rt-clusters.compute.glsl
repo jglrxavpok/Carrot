@@ -88,17 +88,12 @@ bool cull(uint clusterInstanceID) {
 
     if(push.lodSelectionMode == 0) {
         const mat4 model = modelData[modelDataIndex].instanceData.transform * mat4(clusters[clusterID].transform);
-        const mat4 modelview = cbo.view * model;
+        const vec3 cameraPos = (cbo.view * vec4(0,0,0,1)).xyz;
 
-        vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
-        projectedBounds = transformSphere(projectedBounds, modelview);
+        float clusterError = computeClusterScreenError(cameraPos, model, clusters[clusterID].boundingSphere, clusters[clusterID].error) * push.screenHeight;
+        float refinedError = computeClusterScreenError(cameraPos, model, clusters[clusterID].refinedBoundingSphere, clusters[clusterID].refinedError) * push.screenHeight;
 
-        vec4 parentProjectedBounds = vec4(clusters[clusterID].parentBoundingSphere.xyz, max(clusters[clusterID].parentError, 10e-10f));
-        parentProjectedBounds = transformSphere(parentProjectedBounds, modelview);
-
-        const float clusterError = projectErrorToScreen(projectedBounds);
-        const float parentError = projectErrorToScreen(parentProjectedBounds);
-        const bool render = clusterError <= push.lodErrorThreshold && parentError > push.lodErrorThreshold;
+        const bool render = clusterError > push.lodErrorThreshold && refinedError <= push.lodErrorThreshold;
         return !render;
     } else {
         return clusters[clusterID].lod != uint(push.forcedLOD);

@@ -6,6 +6,7 @@
 
 #include <core/containers/Vector.hpp>
 #include <core/io/Logging.hpp>
+#include <core/math/BasicFunctions.h>
 #include <engine/utils/Profiling.h>
 #include <engine/utils/Macros.h>
 #include <engine/render/resources/ResourceAllocator.h>
@@ -135,8 +136,8 @@ namespace Carrot::Render {
             transforms.emplace_back(RaytracingScene::glmToRTTransformMatrix(desc.transform));
 
             cluster.boundingSphere = meshlet.boundingSphere;
-            cluster.parentBoundingSphere = meshlet.parentBoundingSphere;
-            cluster.parentError = meshlet.parentError;
+            cluster.refinedBoundingSphere = meshlet.refinedBoundingSphere;
+            cluster.refinedError = meshlet.refinedError;
             cluster.error = meshlet.clusterError;
 
             const std::size_t firstVertexIndex = vertices.size();
@@ -512,6 +513,10 @@ namespace Carrot::Render {
             return;
         }
 
+        if (activeGroupOffsets.empty()) {
+            return;
+        }
+
         clusterDataPerFrame[renderContext.frameIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         auto& instancesPerFrame = perViewport[renderContext.pViewport].instancesPerFrame;
         instancesPerFrame[renderContext.frameIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
@@ -586,13 +591,13 @@ namespace Carrot::Render {
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
         const int groupSize = 32;
-        drawCommand.drawMeshTasks.groupCountX = activeInstances.size() / groupSize;
+        drawCommand.drawMeshTasks.groupCountX = Carrot::Math::alignUp(static_cast<int>(activeInstances.size()), groupSize) / groupSize;
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
         renderer.render(packet);
 
         Render::PacketCommand& prePassDrawCommand = prePassPacket.commands.emplace_back();
-        prePassDrawCommand.compute.x = activeGroupOffsets.size() / groupSize;
+        prePassDrawCommand.compute.x = Carrot::Math::alignUp(static_cast<int>(activeGroupOffsets.size()), groupSize) / groupSize;
         prePassDrawCommand.compute.y = 1;
         prePassDrawCommand.compute.z = 1;
         renderer.render(prePassPacket);

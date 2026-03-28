@@ -19,12 +19,10 @@ namespace Carrot::Render {
 
         std::uint32_t lod = 0;
         Math::Sphere boundingSphere;
-        Math::Sphere parentBoundingSphere;
+        Math::Sphere refinedBoundingSphere;
 
-        // Meshlets form a graph where the root is the most simplified version of the entire model, and each node's children
-        // are the meshlets which were simplified to create that node.
         // Everything is expressed in mesh space here
-        float parentError = std::numeric_limits<float>::infinity(); // set to infinity if there is no parent (ie the node has no further simplification)
-        float clusterError = 0.0f;
+        float refinedError = 0.0f; // error of the group that was used to generate this meshlet. 0 if it is from the original mesh
+        float clusterError = std::numeric_limits<float>::infinity();
     };
 }
