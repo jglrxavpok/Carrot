@@ -41,14 +41,14 @@ public struct Vertex: IVertex {
 }
 
 public struct PackedVertex: IVertex {
-    public float4 pos;
+    public float3 pos;
     public float3 color;
     public float3 normal;
     public float4 tangent;
     public float2 uv;
 
     public float4 getPos() {
-        return pos;
+        return float4(pos, 1.0);
     }
 
     public float3 getColor() {
@@ -73,3 +73,10 @@ public struct VertexWithBones {
     public float4 boneWeights;
     public uint8_t4 boneIDs;
 }
+
+public struct InstanceData {
+    public float4 color;
+    public uint4 uuid;
+    public float4x4 transform;
+    public float4x4 lastFrameTransform;
+};

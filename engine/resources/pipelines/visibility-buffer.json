@@ -11,20 +11,24 @@
     {
       "type": "camera",
       "setID": 1
+    },
+    {
+      "type": "viewport",
+      "setID": 2
     }
   ],
   "depthWrite": true,
   "depthTest": true,
   "taskShader": {
-    "file": "resources/shaders/visibility-buffer.task.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_virtual_geometry.slang",
+    "entry_point": "task"
   },
   "meshShader": {
-    "file": "resources/shaders/visibility-buffer.mesh.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_virtual_geometry.slang",
+    "entry_point": "mesh"
   },
   "fragmentShader": {
-    "file": "resources/shaders/visibility-buffer.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_virtual_geometry.slang",
+    "entry_point": "pixel"
   }
 }

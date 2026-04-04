@@ -37,6 +37,7 @@
 #include "assimp/Importer.hpp"
 
 namespace Fertilizer {
+    // must match with draw_virtual_geometry.slang
     static constexpr std::size_t MaxVertices = 64;
     static constexpr std::size_t MaxTriangles = 128;
 

@@ -545,7 +545,7 @@ namespace Carrot::Render {
         }
 
         {
-            auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
+            auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eMeshEXT);
             using Flags = std::uint8_t;
             constexpr std::uint8_t Flags_None = 0;
             constexpr std::uint8_t Flags_OutputTriangleCount = 1;
@@ -554,7 +554,6 @@ namespace Carrot::Render {
                 std::uint32_t lodSelectionMode;
                 float lodErrorThreshold;
                 std::uint32_t forcedLOD;
-                float screenHeight;
                 Flags flags;
             };
             PushConstantData data{};
@@ -562,7 +561,6 @@ namespace Carrot::Render {
             data.lodSelectionMode = lodSelectionMode;
             data.lodErrorThreshold = errorThreshold;
             data.forcedLOD = globalLOD;
-            data.screenHeight = renderContext.pViewport->getHeight();
             data.flags = Flags_None;
             if(ShowLODOverride && showTriangleCount) {
                 data.flags |= Flags_OutputTriangleCount;

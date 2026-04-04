@@ -574,6 +574,8 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                             .multiDrawIndirect = true,
                             .drawIndirectFirstInstance = true,
                             .samplerAnisotropy = true,
+
+                            .fragmentStoresAndAtomics = true,
                             .shaderStorageImageWriteWithoutFormat = true,
 
                             .shaderUniformBufferArrayDynamicIndexing = true,

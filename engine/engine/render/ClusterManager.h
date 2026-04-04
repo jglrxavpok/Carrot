@@ -53,6 +53,8 @@ namespace Carrot::Render {
         Math::Sphere refinedBoundingSphere{}; // xyz + radius
         float error = 0.0f;
         float refinedError = 0.0f;
+
+        std::uint32_t _pad = 0; // alignment required due to usage of pointers
     };
 
     /**

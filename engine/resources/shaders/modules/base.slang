@@ -69,3 +69,14 @@ public void computeTangents(float3 normal, out float3 tangent, out float3 bitang
 public float luminance(float3 rgb) {
     return dot(rgb, float3(0.2126F, 0.7152F, 0.0722F));
 }
+
+public float4 transformSphere(float4 sphere, float4x4 transform) {
+    float4 hCenter = float4(sphere.xyz, 1.0f);
+    hCenter = transform * hCenter;
+    const float3 center = hCenter.xyz / hCenter.w;
+    return float4(center, length((transform * float4(sphere.w, 0, 0, 0)).xyz));
+}
+
+public float getSignedDistanceToPlane(vec3 planeNormal, float planeDistanceFromOrigin, vec3 point) {
+    return dot(planeNormal, point) + planeDistanceFromOrigin;
+}
