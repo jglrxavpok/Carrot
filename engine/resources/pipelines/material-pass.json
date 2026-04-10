@@ -7,7 +7,7 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/material-pass.fragment.glsl",
+    "file": "resources/shaders/material-pass.slang",
     "entry_point": "main"
   },
   "depthWrite": true,
@@ -28,6 +28,10 @@
     {
       "type": "camera",
       "setID": 3
+    },
+    {
+      "type": "viewport",
+      "setID": 4
     }
   ]
 }
