@@ -173,7 +173,7 @@ namespace Peeler {
         multiEditField(edition, "Transparent", components,
             +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.isTransparent; });
         multiEditField(edition, "Casts shadows", components,
-            +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.castsShadows; });
+            +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.rendererStorage.castsShadows; });
 
         multiEditField(edition, "Model color", components,
             +[](Carrot::ECS::ModelComponent& c) { return Helpers::RGBAColorWrapper { c.color }; },

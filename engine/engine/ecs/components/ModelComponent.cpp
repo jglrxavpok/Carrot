@@ -21,10 +21,7 @@ namespace Carrot::ECS {
     ModelComponent::ModelComponent(const Carrot::DocumentElement& doc, Entity entity): ModelComponent::ModelComponent(std::move(entity)) {
         isTransparent = doc["isTransparent"].getAsBool();
         color = DocumentHelpers::read<4, float>(doc["color"]);
-
-        if(doc.contains("castsShadows")) {
-            castsShadows = doc["castsShadows"].getAsBool();
-        }
+        rendererStorage.castsShadows = doc["castsShadows"].getAsBool();
 
         if(doc.contains("model")) {
             auto& modelData = doc["model"];
@@ -56,7 +53,7 @@ namespace Carrot::ECS {
 
         obj["isTransparent"] = isTransparent;
         obj["color"] = DocumentHelpers::write(color);
-        obj["castsShadows"] = castsShadows;
+        obj["castsShadows"] = rendererStorage.castsShadows;
 
         Carrot::DocumentElement modelData;
         auto& resource = asyncModel->getOriginatingResource();
@@ -74,20 +71,6 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    void ModelComponent::loadTLASIfPossible() {
-        if(!GetCapabilities().supportsRaytracing) {
-            return;
-        }
-        if(tlasIsWaitingForModel && asyncModel.isReady()) {
-            Async::LockGuard l{ tlasAccess };
-            if(tlasIsWaitingForModel) {
-                tlasIsWaitingForModel = false;
-                tlas = GetRenderer().getRaytracingScene().addInstance(asyncModel->getStaticBLAS());
-                tlas->enabled = true;
-            }
-        }
-    }
-
     std::unique_ptr<Component> ModelComponent::duplicate(const Entity& newOwner) const {
         auto result = std::make_unique<ModelComponent>(newOwner);
         asyncModel.forceWait();
@@ -95,7 +78,6 @@ namespace Carrot::ECS {
         result->isTransparent = isTransparent;
         result->color = color;
         result->modelRenderer = modelRenderer;
-        result->castsShadows = castsShadows;
         result->rendererStorage = rendererStorage.clone();
         return result;
     }
@@ -104,26 +86,15 @@ namespace Carrot::ECS {
         asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(path)));
         modelRenderer = nullptr;
         if(GetCapabilities().supportsRaytracing) {
-            Async::LockGuard l{ tlasAccess };
-            if (tlas) {
-                tlas->enabled = false;
-            }
-            tlas = nullptr; // reset
-            tlasIsWaitingForModel = true;
+            rendererStorage.resetTLAS();
         }
     }
 
     void ModelComponent::enableTLAS() {
-        Async::LockGuard l{ tlasAccess };
-        if(tlas) {
-            tlas->enabled = true;
-        }
+        rendererStorage.enableTLAS();
     }
 
     void ModelComponent::disableTLAS() {
-        Async::LockGuard l{ tlasAccess };
-        if(tlas) {
-            tlas->enabled = false;
-        }
+        rendererStorage.disableTLAS();
     }
 }

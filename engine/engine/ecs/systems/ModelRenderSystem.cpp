@@ -23,8 +23,8 @@ namespace Carrot::ECS {
                 if(pMeshlets) {
                     pMeshlets->enabled = false;
                 }
-                if(modelComp.tlas) {
-                    modelComp.tlas->enabled = false;
+                if(modelComp.rendererStorage.tlas) {
+                    modelComp.rendererStorage.tlas->enabled = false;
                 }
                 return;
             }
@@ -41,22 +41,6 @@ namespace Carrot::ECS {
                 } else {
                     // TODO: support for virtualized geometry?
                     modelComp.asyncModel->renderStatic(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
-                }
-                //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
-
-                modelComp.loadTLASIfPossible();
-                if(modelComp.tlas) {
-                    modelComp.tlas->transform = instanceData.transform;
-                    modelComp.tlas->customIndex = 0; // TODO?
-                    modelComp.tlas->instanceColor = modelComp.color;
-
-                    if(modelComp.tlas->enabled != modelComp.castsShadows) { // avoid locking for a simple check
-                        if(modelComp.castsShadows) {
-                            modelComp.enableTLAS();
-                        } else {
-                            modelComp.disableTLAS();
-                        }
-                    }
                 }
             }
         });

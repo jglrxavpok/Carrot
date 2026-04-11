@@ -14,6 +14,7 @@
 #include <core/io/DocumentHelpers.h>
 #include <core/data/Hashes.h>
 #include <robin_hood.h>
+#include <engine/Capabilities.h>
 
 Carrot::RuntimeOption DrawBoundingSpheres("Debug/Draw bounding spheres", false);
 Carrot::RuntimeOption DisableFrustumCheck("Debug/Disable frustum culling", false);
@@ -352,6 +353,37 @@ namespace Carrot::Render {
             }
         }
 
+        bool canUseTLAS = !hasVirtualizedGeometry;
+        if (canUseTLAS && storage.castsShadows) {
+            if(!GetCapabilities().supportsRaytracing) {
+                return;
+            }
+            if(storage.tlasIsWaitingForModel) {
+                Async::LockGuard l{ storage.tlasAccess };
+                if(storage.tlasIsWaitingForModel) {
+                    storage.tlasIsWaitingForModel = false;
+                    storage.tlas = GetRenderer().getRaytracingScene().addInstance(model.getStaticBLAS());
+                    storage.tlas->enabled = true;
+                }
+            }
+        } else {
+            storage.disableTLAS();
+        }
+
+        if(canUseTLAS && storage.tlas) {
+            storage.tlas->transform = instanceData.transform;
+            storage.tlas->customIndex = 0; // TODO?
+            storage.tlas->instanceColor = instanceData.color;
+
+            if(storage.tlas->enabled != storage.castsShadows) { // avoid locking for a simple check
+                if(storage.castsShadows) {
+                    storage.enableTLAS();
+                } else {
+                    storage.disableTLAS();
+                }
+            }
+        }
+
         // TODO: support for skinned meshes
         for(const auto& bucket : buckets) {
             if(bucket.virtualizedGeometry) {
@@ -527,4 +559,70 @@ namespace Carrot::Render {
             hasVirtualizedGeometry |= virtualizedGeometry;
         }
     }
+
+    ModelRendererStorage::ModelRendererStorage(const ModelRendererStorage& toCopy) {
+        *this = toCopy;
+    }
+
+    ModelRendererStorage::ModelRendererStorage(ModelRendererStorage&& toMove) {
+        *this = std::move(toMove);
+    }
+
+    ModelRendererStorage& ModelRendererStorage::operator=(const ModelRendererStorage& toCopy) {
+        if (this == &toCopy) {
+            return *this;
+        }
+
+        clusterModelsPerViewport = toCopy.clusterModelsPerViewport;
+        pCreator = toCopy.pCreator;
+        castsShadows = toCopy.castsShadows;
+
+        Async::LockGuard g { tlasAccess };
+        tlas = nullptr;
+        if (toCopy.tlas) {
+            tlasIsWaitingForModel = toCopy.tlasIsWaitingForModel;
+        }
+
+        return *this;
+    }
+
+    ModelRendererStorage& ModelRendererStorage::operator=(ModelRendererStorage&& toMove) {
+        if (this == &toMove) {
+            return *this;
+        }
+
+        clusterModelsPerViewport = std::move(toMove.clusterModelsPerViewport);
+        pCreator = std::exchange(toMove.pCreator, nullptr);
+        castsShadows = toMove.castsShadows;
+
+        Async::LockGuard g { tlasAccess };
+        Async::LockGuard g2 { toMove.tlasAccess };
+        tlas = std::move(toMove.tlas);
+        tlasIsWaitingForModel = toMove.tlasIsWaitingForModel;
+        return *this;
+    }
+
+    void ModelRendererStorage::enableTLAS() {
+        Async::LockGuard l{ tlasAccess };
+        if(tlas) {
+            tlas->enabled = true;
+        }
+    }
+
+    void ModelRendererStorage::disableTLAS() {
+        Async::LockGuard l{ tlasAccess };
+        if(tlas) {
+            tlas->enabled = false;
+        }
+    }
+
+    void ModelRendererStorage::resetTLAS() {
+        Async::LockGuard l{ tlasAccess };
+        if(tlas) {
+            tlas->enabled = false;
+        }
+        tlas = nullptr; // reset
+        tlasIsWaitingForModel = true;
+    }
+
 } // Carrot::Render

@@ -16,6 +16,8 @@
 
 #include <engine/render/RenderPacket.h>
 
+#include "raytracing/RaytracingScene.h"
+
 namespace Carrot {
     class Model;
 }
@@ -97,6 +99,21 @@ namespace Carrot::Render {
     struct ModelRendererStorage {
         std::unordered_map<Viewport*, std::shared_ptr<ClusterModel>> clusterModelsPerViewport;
         const ModelRenderer* pCreator = nullptr;
+        bool castsShadows = true;
+
+        Async::SpinLock tlasAccess;
+        std::shared_ptr<InstanceHandle> tlas = nullptr;
+        bool tlasIsWaitingForModel = true;
+
+        ModelRendererStorage() = default;
+        ModelRendererStorage(const ModelRendererStorage& toCopy);
+        ModelRendererStorage(ModelRendererStorage&& toMove);
+        ModelRendererStorage& operator=(const ModelRendererStorage& toCopy);
+        ModelRendererStorage& operator=(ModelRendererStorage&& toMove);
+
+        void enableTLAS();
+        void disableTLAS();
+        void resetTLAS();
 
         ModelRendererStorage clone() const;
     };
