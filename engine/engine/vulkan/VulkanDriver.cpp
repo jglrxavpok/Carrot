@@ -602,6 +602,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
             vk::PhysicalDeviceVulkan11Features {
                     .storageBuffer16BitAccess = true,
+                    .uniformAndStorageBuffer16BitAccess = true,
                     .shaderDrawParameters = true,
             },
             vk::PhysicalDeviceVulkan12Features {

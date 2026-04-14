@@ -60,3 +60,10 @@ public struct ClusterBasedModelData {
     public uint8_t visible;
     uint8_t pad[15]; // TODO: remove
 };
+
+public struct ActiveClusterGroup {
+    public uint32_t groupIndex;
+    public uint8_t clusterCount;
+    public uint8_t _pad[3]; // TODO: remove
+    public uint32_t clusterInstances[];
+}

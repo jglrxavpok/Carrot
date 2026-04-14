@@ -8,10 +8,14 @@
     {
       "type": "camera",
       "setID": 1
+    },
+    {
+      "type": "viewport",
+      "setID": 2
     }
   ],
   "computeShader": {
-    "file": "resources/shaders/compute/compute-rt-clusters.compute.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_virtual_geometry.slang",
+    "entry_point": "computeVisibleClusters"
   }
 }

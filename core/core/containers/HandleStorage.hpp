@@ -7,6 +7,7 @@
 #include <core/utils/Types.h>
 #include <core/containers/Vector.hpp>
 #include <core/SparseArray.hpp>
+#include <core/async/Locks.h>
 #include <optional>
 
 namespace Carrot {
@@ -39,7 +40,7 @@ namespace Carrot {
         struct Slot {
             std::optional<TObjectType> pObject;
             HandleStorage<TObjectType>* pStorage = nullptr;
-            i32 refCount = 0;
+            std::atomic<i32> refCount = 0;
             i32 index = 0;
             i32 generationIndex = 0;
 
@@ -106,8 +107,6 @@ namespace Carrot {
      *  but if by some reason you manage to get a handle that points to the same slot, its generation index will be different,
      *  meaning that the handle is considered invalid.
      *
-     * HandleStorage is not thread-safe by itself, and needs external synchronisation if it can be used concurrently.
-     *
      * @tparam TObjectType type of contained objects, must respect concept CanBeUsedForHandles
      */
     template<typename TObjectType>
@@ -136,6 +135,7 @@ namespace Carrot {
     private:
         HandleDetails::Slot<TObjectType>& allocateSlot();
 
+        Async::ReadWriteLock storageLock;
         SparseArray<Slot> storage;
         Vector<i32> freeList;
 

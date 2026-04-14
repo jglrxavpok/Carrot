@@ -13,6 +13,11 @@ struct Statistics {
     uint totalTriangleCount;
 }
 
+struct Readback {
+    uint visibleGroupCount;
+    uint visibleGroupInstanceIndices[];
+}
+
 struct IO {
     StructuredBuffer<Cluster, ScalarDataLayout> clusters;
     StructuredBuffer<ClusterInstance, ScalarDataLayout> clusterInstances;
@@ -21,6 +26,11 @@ struct IO {
 
     RWStructuredBuffer<Statistics, ScalarDataLayout> stats;
     RWStructuredBuffer<uint, ScalarDataLayout> activeClusters;
+
+    // Finding out which groups are visible for RT
+    StructuredBuffer<uint64_t, ScalarDataLayout> activeGroupOffsets;
+    RWStructuredBuffer<uint, ScalarDataLayout> readbackVisibleCount;
+    RWStructuredBuffer<uint, ScalarDataLayout> readbackVisibleGroups;
 };
 
 ParameterBlock<IO> io;
@@ -39,12 +49,13 @@ enum ConfigurationFlags {
 }
 
 struct PushConstant {
-    uint maxCluster;
+    uint maxElementCount;
     LodSelectionMode lodSelection;
     float lodErrorThreshold;
     uint forcedLOD;
 
     ConfigurationFlags flags;
+    ActiveClusterGroup* activeGroupBaseAddress;
 }
 
 
@@ -64,25 +75,28 @@ struct PrimitiveAttributes {
     uint primitiveID : SV_PrimitiveID;
 }
 
-bool cull(const in ClusterInstance clusterInstance, Optional<uint> forcedLOD, float errorThreshold) {
+bool cull(const in ClusterInstance clusterInstance, Optional<uint> forcedLOD, float errorThreshold, bool bypassFrustum) {
     const Cluster cluster = io.clusters[clusterInstance.clusterID];
     const ClusterBasedModelData clusterInstanceData = io.modelData[clusterInstance.instanceDataIndex];
     if(clusterInstanceData.visible == 0) {
         return true;
     }
 
-    if(let forcedLODValue = forcedLOD) {
-        return cluster.getLOD() != forcedLODValue;
-    } else { // based on screen size
-        const float4x4 modelMatrix = clusterInstanceData.instanceData.transform * transpose(float4x4(transpose(cluster.transform), float4(0,0,0,1)));
-        const float3 cameraPos = (cameras.CurrentFrame().view * float4(0,0,0,1)).xyz;
-        
-        // frustum check
+    // frustum check
+    const float4x4 modelMatrix = clusterInstanceData.instanceData.transform * transpose(float4x4(transpose(cluster.transform), float4(0,0,0,1)));
+    if(!bypassFrustum) {
         const float4 worldSphere = transformSphere(cluster.getBoundingSphere(), modelMatrix);
         if(!cameras.CurrentFrame().frustumCheck(worldSphere.xyz, worldSphere.w)) {
             return true;
         }
+    }
 
+
+    if(let forcedLODValue = forcedLOD) {
+        return cluster.getLOD() != forcedLODValue;
+    } else { // based on screen size
+        const float3 cameraPos = (cameras.CurrentFrame().view * float4(0,0,0,1)).xyz;
+        
         // check if this cluster is not too simple, but not too detailed either
         const float selfError = viewport.frameHeight * cluster.computeScreenError(cameraPos, modelMatrix);
         const float refinedError = viewport.frameHeight * cluster.computeScreenErrorOfRefinedOrigin(cameraPos, modelMatrix);
@@ -91,6 +105,35 @@ bool cull(const in ClusterInstance clusterInstance, Optional<uint> forcedLOD, fl
     }
 }
 
+/// Compute visible cluster groups for RT. Every cluster inside a group will have the same LOD decision, so using the entire group is enough
+[numthreads(TaskWorkGroupSize, 1, 1)]
+[shader("compute")]
+void computeVisibleClusters(uniform PushConstant push, 
+    uint groupIndex : SV_DispatchThreadID) {
+    if(groupIndex < push.maxElementCount) {
+        ActiveClusterGroup* pGroup = (ActiveClusterGroup*)(((uint64_t)push.activeGroupBaseAddress) + io.activeGroupOffsets[groupIndex]);
+        // TODO: in theory only the first cluster should be enough?
+        for(int index = 0; index < pGroup->clusterCount; index++) {
+            uint clusterID = pGroup->clusterInstances[index];
+
+            const bool culled = cull(
+                io.clusterInstances[clusterID],
+                select(push.lodSelection == LodSelectionMode::Forced, push.forcedLOD, none),
+                push.lodErrorThreshold,
+                true // bypass frustum
+            );
+
+            if(!culled) {
+                uint index;
+                InterlockedAdd(io.readbackVisibleCount[0], 1, index);
+                io.readbackVisibleGroups[index] = pGroup->groupIndex;
+                return;
+            }
+        }
+    }
+}
+
+/// Checks which clusters are visible and feeds them to the mesh shader
 groupshared uint meshletCount;
 groupshared Payload payload;
 [numthreads(TaskWorkGroupSize, 1, 1)]
@@ -103,13 +146,14 @@ void task(uniform PushConstant push,
     GroupMemoryBarrier();
 
     uint clusterID = io.activeClusters[localInvocationIndex + workgroupID * TaskWorkGroupSize];
-    bool shouldRender = clusterID < push.maxCluster;
+    bool shouldRender = clusterID < push.maxElementCount;
 
     if(shouldRender) {
         const bool culled = cull(
             io.clusterInstances[clusterID], 
             select(push.lodSelection == LodSelectionMode::Forced, push.forcedLOD, none),
-            push.lodErrorThreshold
+            push.lodErrorThreshold,
+            false
         );
 
         if(!culled) {
@@ -124,6 +168,7 @@ void task(uniform PushConstant push,
     DispatchMesh(meshletCount, 1, 1, payload);
 }
 
+/// Generates vertices for the visible clusters
 [numthreads(MeshWorkGroupSize, 1, 1)]
 [outputtopology("triangle")]
 [shader("mesh")]
@@ -169,6 +214,7 @@ void mesh(const in uint workgroupID : SV_GroupID,
     }
 }
 
+/// Write to the visibility buffer
 [shader("pixel")]
 void pixel(in PixelIn input, uint primitiveID: SV_PrimitiveID) {
     int w, h;

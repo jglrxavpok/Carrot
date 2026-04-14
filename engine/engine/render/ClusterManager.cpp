@@ -539,53 +539,44 @@ namespace Carrot::Render {
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, clusterRefs, 0, 0);
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceRefs, 0, 1);
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceDataRefs, 0, 2);
-            // output image
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeGroupOffsetsBufferView, 0, 5);
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, readbackBufferView, 0, 6);
+
+            prePassPacket.pipeline->setStorageBuffer(renderContext, "io.activeGroupOffsets", activeGroupOffsetsBufferView);
+            prePassPacket.pipeline->setStorageBuffer(renderContext, "io.readbackVisibleCount", readbackBufferView.subView(0, sizeof(std::uint32_t)));
+            prePassPacket.pipeline->setStorageBuffer(renderContext, "io.readbackVisibleGroups", readbackBufferView.subView(sizeof(std::uint32_t)));
+        }
+
+        using Flags = std::uint8_t;
+        constexpr std::uint8_t Flags_None = 0;
+        constexpr std::uint8_t Flags_OutputTriangleCount = 1;
+        struct PushConstantData {
+            std::uint32_t maxElementCount;
+            std::uint32_t lodSelectionMode;
+            float lodErrorThreshold;
+            std::uint32_t forcedLOD;
+            Flags flags;
+            vk::DeviceAddress activeGroupBaseAddress;
+        };
+
+        PushConstantData data{};
+        data.lodSelectionMode = lodSelectionMode;
+        data.lodErrorThreshold = errorThreshold;
+        data.forcedLOD = globalLOD;
+        data.flags = Flags_None;
+        if(ShowLODOverride && showTriangleCount) {
+            data.flags |= Flags_OutputTriangleCount;
         }
 
         {
             auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eMeshEXT);
-            using Flags = std::uint8_t;
-            constexpr std::uint8_t Flags_None = 0;
-            constexpr std::uint8_t Flags_OutputTriangleCount = 1;
-            struct PushConstantData {
-                std::uint32_t maxClusterID;
-                std::uint32_t lodSelectionMode;
-                float lodErrorThreshold;
-                std::uint32_t forcedLOD;
-                Flags flags;
-            };
-            PushConstantData data{};
-            data.maxClusterID = gpuInstances.size();
-            data.lodSelectionMode = lodSelectionMode;
-            data.lodErrorThreshold = errorThreshold;
-            data.forcedLOD = globalLOD;
-            data.flags = Flags_None;
-            if(ShowLODOverride && showTriangleCount) {
-                data.flags |= Flags_OutputTriangleCount;
-            }
-            pushConstant.setData(std::move(data));
+            data.maxElementCount = gpuInstances.size();
+            pushConstant.setData(data);
         }
         {
-            auto& pushConstant = prePassPacket.addPushConstant("push", vk::ShaderStageFlagBits::eCompute);
-            struct PushConstantData {
-                std::uint32_t maxGroupID;
-                std::uint32_t lodSelectionMode;
-                float lodErrorThreshold;
-                std::uint32_t forcedLOD;
-                float screenHeight;
-                vk::DeviceAddress groupDataAddress;
-            };
-            PushConstantData data{};
-            data.maxGroupID = activeGroupOffsets.size();
-            data.lodSelectionMode = lodSelectionMode;
-            data.lodErrorThreshold = errorThreshold;
-            data.forcedLOD = globalLOD;
-            data.screenHeight = renderContext.pViewport->getHeight();
+            auto& pushConstant = prePassPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eCompute);
+            data.maxElementCount = activeGroupOffsets.size();
             // the shader will directly reinterpret the bytes of the buffer
-            data.groupDataAddress = activeGroupsBufferView.getDeviceAddress();
-            pushConstant.setData(std::move(data));
+            data.activeGroupBaseAddress = activeGroupsBufferView.getDeviceAddress();
+            pushConstant.setData(data);
         }
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();

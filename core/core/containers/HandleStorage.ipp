@@ -160,6 +160,7 @@ namespace Carrot {
 
     HANDLE_TEMPLATE
     HandleDetails::Slot<TObjectType>* HandleStorage<TObjectType>::getSlot(i32 index, i32 expectedGenerationIndex) {
+        Async::LockGuard g { storageLock.read() };
         if(index >= storage.size()) {
             return nullptr;
         }
@@ -174,6 +175,7 @@ namespace Carrot {
 
     HANDLE_TEMPLATE
     HandleDetails::Slot<TObjectType>& HandleStorage<TObjectType>::allocateSlot() {
+        Async::LockGuard g { storageLock.write() };
         i32 freeIndex;
         if (!freeList.empty()) {
             freeIndex = freeList[0];
@@ -204,6 +206,7 @@ namespace Carrot {
 
     HANDLE_TEMPLATE
     void HandleStorage<TObjectType>::iterate(const std::function<void(TObjectType& obj)>& func) {
+        Async::LockGuard g { storageLock.read() };
         storage.iterate([&func](Slot& slot) {
             if (slot.pObject.has_value()) {
                 func(slot.pObject.value());
@@ -213,6 +216,7 @@ namespace Carrot {
 
     HANDLE_TEMPLATE
     void HandleStorage<TObjectType>::cleanup() {
+        Async::LockGuard g { storageLock.read() };
         storage.iterate([&](Slot& slot) {
             if (slot.refCount == 0) {
                 slot.pObject.reset();
