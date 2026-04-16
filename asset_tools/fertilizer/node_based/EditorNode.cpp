@@ -36,41 +36,14 @@ bool Fertilizer::EditorNode::draw() {
 
     ImGui::BeginVertical("node");
 
-    // split channel to draw background behind "title bar". The draw is split to compute size of title bar after drawing it, while still drawing the background behind it
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
-    drawList->ChannelsSplit(2); // background + foreground
+    // compensate for the 0 padding of nodes (used to render IO pins properly)
+    ImGui::Dummy(EditorGraph::PaddingDummySize);
+    ImGui::SameLine();
+    modified |= renderHeaderWidgets();
+    ImGui::SameLine();
+    ImGui::Dummy(EditorGraph::PaddingDummySize);
 
-    // channel 1 = foreground, decided by node
-    {
-        drawList->ChannelsSetCurrent(1);
-
-        // compensate for the 0 padding of nodes (used to render IO pins properly)
-        ImGui::Dummy(EditorGraph::PaddingDummySize);
-        ImGui::SameLine();
-        modified |= renderHeaderWidgets();
-        ImGui::SameLine();
-        ImGui::Dummy(EditorGraph::PaddingDummySize);
-    }
-
-    // draw header background on channel 0
-    {
-        drawList->ChannelsSetCurrent(0);
-        const float headerHeight = ImGui::GetCursorPosY() - nodePosition.y;
-        const auto borderWidth = ed::GetStyle().NodeBorderWidth;
-        ImVec2 min = nodePosition;
-        ImVec2 max = min;
-        max.x += nodeSize.x;
-        max.y += headerHeight;
-
-        min.x += borderWidth;
-        min.y += borderWidth;
-        max.x -= borderWidth;
-        max.y -= borderWidth;
-
-        drawList->AddRectFilled(min, max, getHeaderColor(), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
-    }
-
-    drawList->ChannelsMerge();
+    const float headerHeight = ImGui::GetCursorPosY() - nodePosition.y;
 
     ImGui::BeginHorizontal("content");
 
@@ -109,6 +82,27 @@ bool Fertilizer::EditorNode::draw() {
 
     ImGui::PopID();
     ed::EndNode();
+
+    for (auto& func : postNodeDrawCallbacks) {
+
+        func();
+    }
+    postNodeDrawCallbacks.clear();
+
+    ImDrawList* pBackgroundDraw = ed::GetNodeBackgroundDrawList(graph.getEditorID(id));
+    const auto borderWidth = ed::GetStyle().NodeBorderWidth;
+    ImVec2 min = nodePosition;
+    ImVec2 max = min;
+    max.x += nodeSize.x;
+    max.y += headerHeight;
+
+    min.x += borderWidth;
+    min.y += borderWidth;
+    max.x -= borderWidth;
+    max.y -= borderWidth;
+
+    pBackgroundDraw->AddRectFilled(min, max, getHeaderColor(), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+
     return modified;
 }
 
@@ -148,12 +142,9 @@ bool Fertilizer::EditorNode::renderHeaderWidgets() {
 }
 
 void Fertilizer::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
-    // style inspired by Blender
-    const ed::Style& style = ed::GetStyle();
     const float lineHeight = ImGui::GetTextLineHeight();
     const float circleRadius = lineHeight/2;
     const float innerCircleRadius = lineHeight/2 - 1;
-    ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
     bool isConnected = false;
     if (isOutput) {
@@ -163,30 +154,24 @@ void Fertilizer::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
     }
 
     auto drawPinCircle = [&](ImVec2 pinCircleCursorPosition) {
-        pinCircleCursorPosition.y += circleRadius;
-        pDrawList->AddCircleFilled(pinCircleCursorPosition, circleRadius, ImColor(style.Colors[ed::StyleColor_NodeBorder]));
+        postNodeDrawCallbacks.emplaceBack([isConnected, innerCircleRadius, pinCircleCursorPosition, circleRadius]() {
+            int segmentCount = 22;
+            ImVec2 pos = pinCircleCursorPosition;
+            const ed::Style& style = ed::GetStyle();
+            ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
-        ImColor innerColor = ImGuiUtils::getCarrotColor();
-        if (!isConnected) {
-            innerColor.Value.x *= 0.3f;
-            innerColor.Value.y *= 0.3f;
-            innerColor.Value.z *= 0.3f;
-        }
-        pDrawList->AddCircleFilled(pinCircleCursorPosition, innerCircleRadius, innerColor);
+            pos.y += circleRadius;
+            pDrawList->AddCircleFilled(pos, circleRadius, ImColor(style.Colors[ed::StyleColor_NodeBorder]), segmentCount);
+
+            ImColor innerColor = ImGuiUtils::getCarrotColor();
+            if (!isConnected) {
+                innerColor.Value.x *= 0.3f;
+                innerColor.Value.y *= 0.3f;
+                innerColor.Value.z *= 0.3f;
+            }
+            pDrawList->AddCircleFilled(pos, innerCircleRadius, innerColor, segmentCount);
+        });
     };
-    if (!isOutput) { // force pin to be on left border of node
-        ImVec2 pinCirclePosition = ImGui::GetCursorPos();
-        drawPinCircle(pinCirclePosition);
-    } else { // otherwise, we force the pin to be on right border of node, but this requires to compute the size of the pin first
-        const float currentCursorX = ImGui::GetCursorPosX();
-        const float pinWidth = ImGui::CalcTextSize(pin.name.c_str()).x /*text*/ + ImGui::GetStyle().ItemSpacing.x + lineHeight /*icon*/ + style.NodePadding.z;
-        const float cursorX = position.x + ed::GetNodeSize(graph.getEditorID(id)).x - pinWidth;
-        ImGui::SetCursorPosX(cursorX);
-
-        ImVec2 pinCirclePosition = ImGui::GetCursorPos() + ImVec2(pinWidth, 0);
-        drawPinCircle(pinCirclePosition);
-        ImGui::SetCursorPosX(currentCursorX);
-    }
 
     ed::BeginPin(graph.getEditorID(pin.id), isOutput ? ed::PinKind::Output : ed::PinKind::Input);
     ImGui::BeginHorizontal(&pin.id);
@@ -209,6 +194,20 @@ void Fertilizer::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
         ImGui::Dummy(ImVec2(circleRadius/2, 1));
     }
     ImGui::EndHorizontal();
+
+    if (isOutput) {
+        ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax() + ImVec2(circleRadius, 0));
+    } else {
+        ed::PinRect(ImGui::GetItemRectMin() - ImVec2(circleRadius, 0), ImGui::GetItemRectMax());
+    }
+
+    if (!isOutput) { // force pin to be on left border of node
+        ImVec2 pinCirclePosition = ImGui::GetItemRectMin();
+        drawPinCircle(pinCirclePosition);
+    } else { // otherwise, we force the pin to be on right border of node, but this requires to compute the size of the pin first
+        ImVec2 pinCirclePosition = ImGui::GetItemRectMax() - ImVec2(0.0f, circleRadius*2);
+        drawPinCircle(pinCirclePosition);
+    }
     ed::EndPin();
 }
 

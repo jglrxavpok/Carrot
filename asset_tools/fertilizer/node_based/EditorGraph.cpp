@@ -18,9 +18,9 @@ namespace ed = ax::NodeEditor;
 
 Fertilizer::EditorGraph::EditorGraph(std::string name): name(std::move(name)) {
     config.NavigateButtonIndex = 2; // pan graph with middle button (left = select, right = popup menu)
-    g_Context = ed::CreateEditor(&config);
+    edContext = ed::CreateEditor(&config);
 
-    ed::SetCurrentEditor(g_Context);
+    ed::SetCurrentEditor(edContext);
 
     rootMenu = std::make_unique<NodeLibraryMenu>("<root>");
     currentMenu = rootMenu.get();
@@ -33,8 +33,28 @@ Fertilizer::EditorGraph::EditorGraph(std::string name): name(std::move(name)) {
 }
 
 void Fertilizer::EditorGraph::draw() {
-    ed::SetCurrentEditor(g_Context);
+    ed::SetCurrentEditor(edContext);
     ed::EnableShortcuts(true);
+
+    // style inspired by Blender
+    {
+        ed::Style& style = ed::GetStyle();
+
+        // colors taken from Blender's node editor
+        style.Colors[ed::StyleColor_Bg] = ImColor(29, 29, 29, 255);
+        style.Colors[ed::StyleColor_Grid] = ImColor(40, 40, 40, 255);
+
+        style.Colors[ed::StyleColor_NodeBorder] = ImColor(18, 18, 18, 255);
+        style.Colors[ed::StyleColor_SelNodeBorder] = ImColor(237, 237, 237, 255);
+        style.Colors[ed::StyleColor_HovNodeBorder] = style.Colors[ed::StyleColor_NodeBorder];
+        style.Colors[ed::StyleColor_NodeBg] = ImColor(48, 48, 48, 255);
+
+        style.Colors[ed::StyleColor_GroupBg] = ImColor(5, 5, 5, 255);
+        style.Colors[ed::StyleColor_GroupBorder] = style.Colors[ed::StyleColor_NodeBorder];
+
+        style.NodePadding.x = 0;
+        style.NodePadding.z = 0;
+    }
 
     ed::Begin(name.c_str());
 
@@ -490,8 +510,8 @@ std::vector<Fertilizer::Link> Fertilizer::EditorGraph::getLinksStartingFrom(cons
 
 Fertilizer::EditorGraph::~EditorGraph() {
     clear();
-    ed::DestroyEditor(g_Context);
-    g_Context = nullptr;
+    ed::DestroyEditor(edContext);
+    edContext = nullptr;
 }
 
 Fertilizer::EditorNode& Fertilizer::EditorGraph::loadSingleNode(const rapidjson::Value& nodeJSON) {

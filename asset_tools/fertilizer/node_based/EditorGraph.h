@@ -136,7 +136,7 @@ namespace Fertilizer {
         std::unordered_set<Carrot::UUID> coloredLinkUUIDs;
         std::vector<TemporaryLabel> tmpLabels;
         bool zoomToContent = false;
-        ed::EditorContext* g_Context = nullptr;
+        ed::EditorContext* edContext = nullptr;
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
         NodeLibraryMenu* currentMenu = nullptr;
         ImGuiTexturesProvider* pImguiTextures = nullptr;

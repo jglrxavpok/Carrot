@@ -6,6 +6,7 @@
 
 #include <imgui_node_editor.h>
 #include <unordered_set>
+#include <core/containers/Vector.hpp>
 #include <rapidjson/document.h>
 #include "core/utils/UUID.h"
 #include "core/expressions/Expressions.h"
@@ -128,5 +129,6 @@ namespace Fertilizer {
 
     private:
         ImDrawListSplitter drawListSplitter;
+        Carrot::Vector<std::function<void()>> postNodeDrawCallbacks;
     };
 }
