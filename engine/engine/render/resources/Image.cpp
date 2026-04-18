@@ -134,6 +134,33 @@ void Carrot::Image::stageUpload(Carrot::BufferView textureData, std::uint32_t la
     transitionLayout(format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
+void Carrot::Image::stageSingleMipUpload(Carrot::BufferView textureData, std::uint32_t layer, std::uint32_t mipLevel, const vk::Offset3D& offset, const vk::Extent3D& subregion) {
+    verify(mipLevel < mipCount, "Mip must be < mipCount");
+    // prepare image for transfer
+    transitionLayout(format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    // copy from staging buffer to image
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
+        vk::BufferImageCopy region = {
+                .bufferOffset = textureData.getStart(),
+                .bufferRowLength = 0,
+                .bufferImageHeight = 0,
+                .imageSubresource = {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .mipLevel = mipLevel,
+                        .baseArrayLayer = layer,
+                        .layerCount = 1,
+                },
+                .imageOffset = offset,
+                .imageExtent = { .width = subregion.width, .height = subregion.height, .depth = subregion.depth }
+        };
+        commands.copyBufferToImage(textureData.getVulkanBuffer(), getVulkanImage(),
+                                   vk::ImageLayout::eTransferDstOptimal, region);
+    });
+
+    // prepare image for shader reads
+    transitionLayout(format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+}
+
 void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_t layerCount) {
     verify(usage & vk::ImageUsageFlagBits::eTransferDst, "Cannot transfer to this image!");
     // create buffer holding data

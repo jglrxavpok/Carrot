@@ -57,6 +57,8 @@ namespace Fertilizer {
 
         if (ed::BeginGroupHint(groupID))
         {
+            const float fontRasterizerDensity = ImGui::GetFontRasterizerDensity();
+            ImGui::SetFontRasterizerDensity(1.0f);
             auto bgAlpha = static_cast<int>(ImGui::GetStyle().Alpha * 255);
 
             auto min = ed::GetGroupMin();
@@ -95,6 +97,8 @@ namespace Fertilizer {
                 hintFrameBounds.GetTL(),
                 hintFrameBounds.GetBR(),
                 IM_COL32(255, 255, 255, 128 * bgAlpha / 255), 4.0f);
+
+            ImGui::SetFontRasterizerDensity(fontRasterizerDensity);
         }
         ed::EndGroupHint();
 

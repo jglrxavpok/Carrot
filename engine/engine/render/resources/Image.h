@@ -109,6 +109,10 @@ namespace Carrot {
         /// Note: mip 'startMip' is expected to be at the start of the buffer data, and mip data is expected to be tightly packed
         void stageUpload(Carrot::BufferView textureData, std::uint32_t layer, std::uint32_t layerCount, std::uint32_t startMip, std::uint32_t mipCount);
 
+        /// Copies the contents of the input buffer to this image, and wait for the upload to finish.
+        /// Texture data is expected to be by row, then by column.
+        void stageSingleMipUpload(Carrot::BufferView textureData, std::uint32_t layer, std::uint32_t mip, const vk::Offset3D& offset, const vk::Extent3D& subregion);
+
         /// Transition the layout of this image from one layout to another
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 

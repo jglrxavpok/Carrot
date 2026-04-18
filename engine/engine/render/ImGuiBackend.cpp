@@ -168,24 +168,12 @@ namespace Carrot::Render {
         bigIconsFont = io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/fa-solid-900.ttf")).u8string()).c_str(),
                                       iconFontSize*4, &icons_config, icons_ranges );
 
-        io.Fonts->Build();
 
         io.BackendRendererName = "Carrot ImGui Backend";
         io.BackendRendererUserData = this;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
-
-        unsigned char* pixels;
-        int width, height;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-        std::unique_ptr<Image> fontsImage = std::make_unique<Image>(GetVulkanDriver(),
-                                                                    vk::Extent3D { static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
-                                                                    vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
-                                                                    vk::Format::eR8G8B8A8Unorm);
-        fontsImage->stageUpload(std::span{ pixels, static_cast<std::size_t>(width * height * 4) });
-        pImpl->fontsTexture = std::make_unique<Texture>(std::move(fontsImage));
-        io.Fonts->SetTexID(pImpl->fontsTexture->getImguiID());
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
         pImpl->initPerFrameData(renderer, renderer.getEngine().getMainWindow().getWindowID(), nullptr /* directly rendered on top of main viewport */);
 
@@ -230,6 +218,14 @@ namespace Carrot::Render {
 
         vertices.clear();
         indices.clear();
+
+        if (pDrawData->Textures != nullptr) {
+            for (ImTextureData* texture : *pDrawData->Textures) {
+                if (texture->Status != ImTextureStatus_OK) {
+                    updateImGuiTexture(texture);
+                }
+            }
+        }
 
         // merge all vertices and indices into two big buffers
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
@@ -327,12 +323,8 @@ namespace Carrot::Render {
 
         if(pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex]) {
             for (int i = 0; i < MaxTextures; ++i) {
-                renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
-                                     vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
-                                     i);
-                renderer.bindTexture(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, *pImpl->fontsTexture, 0, 0,
-                                     vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
-                                     i);
+                renderer.unbindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, 0, 0,i);
+                renderer.unbindTexture(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, 0, 0, i);
             }
             pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex] = false;
         }
@@ -437,6 +429,58 @@ namespace Carrot::Render {
                     renderer.render(*pCurrentPacket);
                 }
             }
+        }
+    }
+
+    void ImGuiBackend::updateImGuiTexture(ImTextureData* texture) {
+        if (texture->Status == ImTextureStatus_WantCreate) {
+            Texture* pTexture = IM_NEW(Texture){
+                GetVulkanDriver(), vk::Extent3D{(std::uint32_t)texture->Width, (std::uint32_t)texture->Height, 1},
+                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8G8B8A8Unorm
+            };
+
+            texture->SetTexID(pTexture->getImguiID());
+        }
+        if (texture->Status == ImTextureStatus_WantCreate || texture->Status == ImTextureStatus_WantUpdates) {
+            Texture* pTexture = reinterpret_cast<Texture*>(texture->TexID);
+            vk::Offset3D offset {
+                .x = texture->UpdateRect.x,
+                .y = texture->UpdateRect.y,
+                .z = 0,
+            };
+            vk::Extent3D subregion {
+                .width = texture->UpdateRect.w,
+                .height = texture->UpdateRect.h,
+                .depth = 1,
+            };
+
+            // on creation, clear the texture
+            // this is not just an optimisation, but actually required if you want frames on your ImGui windows
+            if (texture->Status == ImTextureStatus_WantCreate) {
+                offset = vk::Offset3D{};
+                subregion = pTexture->getSize();
+            }
+
+            const std::size_t dataSize = Carrot::ImageFormats::computeMipSize(0, subregion.width, subregion.height, subregion.depth, static_cast<VkFormat>(pTexture->getImage().getFormat()));
+            Carrot::BufferView textureData = renderer.getSingleFrameHostBuffer(dataSize);
+            void* pBufferData = textureData.map<void>();
+            const i32 pitch = texture->BytesPerPixel * subregion.width;
+            verify(pitch * subregion.height == dataSize, "Pitch and datasize do not match");
+            for (int y = 0; y < subregion.height; y++) {
+                memcpy(reinterpret_cast<void*>(reinterpret_cast<u64>(pBufferData) + pitch * y), texture->GetPixelsAt(offset.x, offset.y + y), pitch);
+            }
+            pTexture->getImage().stageSingleMipUpload(textureData, 0, 0, offset, subregion);
+
+            texture->SetStatus(ImTextureStatus_OK);
+        }
+
+
+        if (texture->Status == ImTextureStatus_WantDestroy && texture->UnusedFrames > MAX_FRAMES_IN_FLIGHT) {
+            Texture* pTexture = reinterpret_cast<Texture*>(texture->TexID);
+            IM_DELETE(pTexture);
+
+            texture->SetTexID(ImTextureID_Invalid);
+            texture->SetStatus(ImTextureStatus_Destroyed);
         }
     }
 

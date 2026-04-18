@@ -58,6 +58,9 @@ void Fertilizer::EditorGraph::draw() {
 
     ed::Begin(name.c_str());
 
+    float rasterizerDensity = ImGui::GetFontRasterizerDensity();
+    ImGui::SetFontRasterizerDensity(1.0f/ed::GetCurrentZoom());
+
     for(auto& [id, node] : id2node) {
         if (node->draw()) {
             markDirty();
@@ -258,6 +261,7 @@ void Fertilizer::EditorGraph::draw() {
         duplicateQueued = false;
     }
 
+    ImGui::SetFontRasterizerDensity(rasterizerDensity);
     ed::End();
 
     isFocused = ImGui::IsWindowFocused();
@@ -634,6 +638,8 @@ uint32_t Fertilizer::EditorGraph::getEditorID(const Carrot::UUID& uuid) {
 }
 
 void Fertilizer::EditorGraph::showLabel(const std::string& text, ImColor color) {
+    const float rasterizerDensity = ImGui::GetFontRasterizerDensity();
+    ImGui::SetFontRasterizerDensity(1.0f);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetTextLineHeight());
     auto size = ImGui::CalcTextSize(text.c_str());
 
@@ -648,6 +654,7 @@ void Fertilizer::EditorGraph::showLabel(const std::string& text, ImColor color) 
     auto drawList = ImGui::GetWindowDrawList();
     drawList->AddRectFilled(rectMin, rectMax, color, size.y * 0.15f);
     ImGui::TextUnformatted(text.c_str());
+    ImGui::SetFontRasterizerDensity(rasterizerDensity);
 }
 
 void Fertilizer::EditorGraph::addTemporaryLabel(const std::string& text) {

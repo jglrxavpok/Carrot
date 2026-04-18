@@ -6,6 +6,7 @@
 
 #include <engine/Window.h>
 
+struct ImTextureData;
 struct ImFont;
 struct ImDrawData;
 struct ImGuiViewport;
@@ -66,6 +67,7 @@ namespace Carrot {
             void createWindowImGui(ImGuiViewport* pViewport);
             void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, u8 frameIndex, std::size_t swapchainIndex);
             void setImgTexInspectPipeline(const ImgTexInspect& params);
+            void updateImGuiTexture(ImTextureData* pTexture);
 
         private:
             VulkanRenderer& renderer;
