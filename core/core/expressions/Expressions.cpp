@@ -50,6 +50,10 @@ namespace Carrot {
     VISIT(Once);
     VISIT(Prefixed);
 
+    VISIT(SampleImage);
+    VISIT(GetVectorComponent);
+    VISIT(MakeVector);
+
 #undef VISIT
 #undef VISIT_T
 

@@ -12,6 +12,7 @@ add_library(fertilizer-lib STATIC
         node_based/nodes/BinaryFunctionNode.cpp
         node_based/nodes/CommentNode.cpp
         node_based/nodes/DefaultNodes.cpp
+        node_based/nodes/ImageNodes.cpp
         node_based/nodes/TerminalNodes.cpp
         node_based/nodes/NodeEditorUtils.cpp
         node_based/nodes/NodeWithVariants.cpp

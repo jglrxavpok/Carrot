@@ -353,6 +353,17 @@ ImTextureID Peeler::ParticleEditor::getExpressionType(const Carrot::ExpressionTy
     return iter->second->getImguiID();
 }
 
+ImTextureID Peeler::ParticleEditor::requestTextureID(std::string_view imagePath) {
+    try {
+        Carrot::IO::VFS::Path vfsPath {imagePath};
+        if (GetVFS().safeResolve(vfsPath).has_value()) {
+            return GetAssetServer().blockingLoadTexture(vfsPath)->getImguiID();
+        }
+        return 0;
+    } catch (std::invalid_argument& e) {
+        return 0;
+    }
+}
 
 void Peeler::ParticleEditor::onCutShortcut(const Carrot::Render::Context& frame) {
     switch(focusedGraph) {

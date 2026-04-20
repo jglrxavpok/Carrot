@@ -9,7 +9,6 @@
 namespace Carrot {
     class RenderableParticleBlueprint: public ParticleBlueprint {
     public:
-        // TODO: use Carrot::IO::Resource
         explicit RenderableParticleBlueprint(const Carrot::IO::Resource& file): ParticleBlueprint(file) {}
         explicit RenderableParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque)
         : ParticleBlueprint(std::move(computeCode), std::move(fragmentCode), opaque) {}

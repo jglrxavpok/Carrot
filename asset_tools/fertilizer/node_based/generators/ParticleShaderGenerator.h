@@ -26,6 +26,11 @@ namespace Fertilizer {
         std::vector<uint32_t> compileToSPIRV(const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
 
     private:
+        spv::Id particleStats;
+        spv::Id texturesArray;
+        spv::Id linearSampler;
+        spv::Id nearestSampler;
+
         void generateCompute(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
         void generateFragment(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
     };

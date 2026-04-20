@@ -118,6 +118,7 @@ namespace Fertilizer {
     struct ImGuiTexturesProvider {
         virtual ~ImGuiTexturesProvider() = default;
         virtual ImTextureID getExpressionType(const Carrot::ExpressionType& type) = 0;
+        virtual ImTextureID requestTextureID(std::string_view imagePath) = 0;
     };
 
     class EditorGraph {

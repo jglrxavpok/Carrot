@@ -7,3 +7,4 @@
 #include "LogicExpressions.h"
 #include "BuiltinFunctions.h"
 #include "UtilityExpressions.h"
+#include "ImageExpressions.h"

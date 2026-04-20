@@ -46,6 +46,10 @@ namespace Carrot {
     VISIT(Placeholder);                      \
     VISIT(Once);                             \
     VISIT(Prefixed);                         \
+                                             \
+    VISIT(SampleImage);                      \
+    VISIT(GetVectorComponent);               \
+    VISIT(MakeVector);                       \
 
 
     class BaseExpressionVisitor {
@@ -79,7 +83,7 @@ namespace Carrot {
             }
         };
 
-        inline ReturnType visitUnimplemented(Expression& expression) {
+        inline virtual ReturnType visitUnimplemented(Expression& expression) {
             if constexpr(std::is_void_v<ReturnType>) {
                 _visitUnimplemented(expression);
             } else {

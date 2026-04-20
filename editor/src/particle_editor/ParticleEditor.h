@@ -51,6 +51,7 @@ namespace Peeler {
         void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 
         ImTextureID getExpressionType(const Carrot::ExpressionType& type) override;
+        ImTextureID requestTextureID(std::string_view imagePath) override;
 
     private:
         Carrot::Engine& engine;

@@ -9,6 +9,7 @@
 #include "BuiltinFunctions.h"
 #include "CommentNode.h"
 #include "Constants.hpp"
+#include "ImageNodes.h"
 #include "Logics.hpp"
 
 namespace Fertilizer::Nodes {
@@ -57,6 +58,15 @@ namespace Fertilizer::Nodes {
         graph.addVariableToLibrary<VariableNodeType::GetPosition>();
     }
 
+    void addCommonColor(EditorGraph& graph) {
+        graph.addToLibrary<SplitColorNode>("split_color_rgba", "Split Color");
+        graph.addToLibrary<CombineColorNode>("combine_color_rgba", "Combine Color");
+    }
+
+    void addCommonImage(EditorGraph& graph) {
+        graph.addToLibrary<SampleImageNode>("sample_image", "Sample Image");
+    }
+
     void addCommonParticleEditorNodes(EditorGraph& graph) {
         {
             NodeLibraryMenuScope s1("Operators", &graph);
@@ -75,6 +85,16 @@ namespace Fertilizer::Nodes {
         {
             NodeLibraryMenuScope s1("Inputs", &graph);
             Nodes::addCommonInputs(graph);
+        }
+
+        {
+            NodeLibraryMenuScope s1("Image", &graph);
+            Nodes::addCommonImage(graph);
+        }
+
+        {
+            NodeLibraryMenuScope s1("Color", &graph);
+            Nodes::addCommonColor(graph);
         }
 
         graph.addToLibrary<CommentNode>("comment", "Comment");

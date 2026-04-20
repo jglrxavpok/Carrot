@@ -15,6 +15,7 @@ std::unique_ptr<Carrot::ComputePipeline> Carrot::RenderableParticleBlueprint::bu
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 0, particleBuffer)
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 1, statisticsBuffer)
+    // TODO: add texture stuff
             .build();
 }
 

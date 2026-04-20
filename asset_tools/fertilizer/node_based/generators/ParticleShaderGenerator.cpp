@@ -10,6 +10,7 @@
 #include <stack>
 #include <strstream>
 #include <utility>
+#include <core/utils/stringmanip.h>
 #include <SPIRV/disassemble.h>
 #include <SPIRV/SpvBuilder.h>
 
@@ -43,7 +44,13 @@ namespace Fertilizer {
 
         struct {
             Id floatType;
+            Id float4Type;
         } types;
+
+        Id particleStats;
+        Id texturesArray;
+        Id linearSampler;
+        Id nearestSampler;
 
         ParticleShaderMode shaderMode;
     };
@@ -344,12 +351,74 @@ namespace Fertilizer {
             visit(expression.getExpressionToExecute());
         }
 
+        void visitSampleImage(Carrot::SampleImageExpression& expression) override {
+            // 1. generate slot for image
+            auto [iter, isNew] = imageIndices.try_emplace(expression.getImagePath());
+            if (isNew) {
+                Id imageType = builder.makeImageType(builder.makeFloatType(32), spv::Dim2D, false, false, false, 1, spv::ImageFormatUnknown);
+                Id sampledImageType = builder.makeSampledImageType(imageType);
+
+                // TODO: allow selection of sampler
+                const i32 imageIndex = static_cast<i32>(imageIndices.size()-1);
+                spv::Builder::AccessChain textureAccess = accessChain(builder, imageType, vars.texturesArray, {builder.makeIntConstant(imageIndex)});
+                Id image = accessChainLoad(builder, textureAccess);
+
+                Id sampler = builder.createLoad(vars.linearSampler, spv::NoPrecision);
+                Id sampledImage = builder.createBinOp(spv::Op::OpSampledImage, sampledImageType, image, sampler);
+
+                iter->second = sampledImage;
+            }
+
+            const Id imageId = iter->second;
+
+            // 2. generate UV vector
+            visit(expression.getU());
+            visit(expression.getV());
+            auto vID = popID();
+            throwInvalidType(Carrot::ExpressionTypes::Float, popType(), "sample image V");
+            auto uID = popID();
+            throwInvalidType(Carrot::ExpressionTypes::Float, popType(), "sample image U");
+
+            auto vectorID = builder.createCompositeConstruct(builder.makeVectorType(vars.types.floatType, 2), {uID, vID});
+
+            // 3. sample image
+            auto resultID = builder.createOp(spv::OpImageSampleImplicitLod, vars.types.float4Type, {imageId, vectorID});
+            ids.push(resultID);
+            types.push(Carrot::ExpressionTypes::Color);
+        }
+
+        void visitGetVectorComponent(Carrot::GetVectorComponentExpression& expression) override {
+            visit(expression.getVectorInput());
+            auto vectorID = popID();
+            auto vectorType = popType();
+            throwInvalidType(Carrot::ExpressionTypes::Color, vectorType, "make vector");
+            auto componentID = builder.createCompositeExtract(vectorID, builder.makeFloatType(32), expression.getComponentIndex());
+            ids.push(componentID);
+            types.push(Carrot::ExpressionTypes::Float);
+        }
+
+        void visitMakeVector(Carrot::MakeVectorExpression& expression) override {
+            std::vector<Id> componentIDs;
+            for (const auto& pComponentExpr : expression.getInputs()) {
+                visit(pComponentExpr);
+                componentIDs.emplace_back(popID());
+                auto componentType = popType();
+                throwInvalidType(Carrot::ExpressionTypes::Float, componentType, "make vector");
+            }
+            Id float32Type = builder.makeFloatType(32);
+            Id typeID = builder.makeVectorType(float32Type, expression.getVectorSize());
+            auto vectorID = builder.createCompositeConstruct(typeID, componentIDs);
+            ids.push(vectorID);
+            types.push(Carrot::ExpressionTypes::Color);
+        }
+
     private:
         spv::Builder& builder;
         std::stack<Id> ids;
         std::stack<Carrot::ExpressionType> types;
         Variables vars;
         std::unordered_set<Carrot::UUID> alreadyVisited;
+        std::unordered_map<std::string, Id> imageIndices;
 
         void visitGLSLFunction(GLSLstd450 function) {
             auto operand = popID();
@@ -486,6 +555,12 @@ namespace Fertilizer {
         layout(set = 1, binding = 1, scalar) uniform Emitters {
             Emitter emitter[];
         };
+
+        layout(set = 1, binding = 2, scalar) buffer ParticleStats;
+
+        layout(set = 1, binding = 3) image2D textures[];
+        layout(set = 1, binding = 4) sampler2D linearSampler;
+        layout(set = 1, binding = 5) sampler2D pointSampler;
          */
         auto particleType = builder.makeStructType(std::vector<Id>{
                 vec3Type,
@@ -526,6 +601,40 @@ namespace Fertilizer {
         builder.addDecoration(descriptorSet, spv::DecorationDescriptorSet, 1);
         builder.addDecoration(descriptorSet, spv::DecorationBinding, 0);
 
+        // Carrot::ParticleStatistics
+        auto particleStatsType = builder.makeStructType(std::vector<Id>{builder.makeFloatType(32), builder.makeUintType(32)}, "ParticleStatistics");
+        builder.addMemberName(particleStatsType, 0, "deltaTime");
+        builder.addMemberName(particleStatsType, 1, "particleCount");
+
+        builder.addDecoration(particleStatsType, spv::DecorationBlock);
+        builder.addMemberDecoration(particleStatsType, 0, spv::DecorationOffset, 0);
+        builder.addMemberDecoration(particleStatsType, 1, spv::DecorationOffset, 4);
+
+        particleStats = builder.createVariable(spv::NoPrecision, spv::StorageClassStorageBuffer, particleStatsType);
+        builder.addDecoration(particleStats, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(particleStats, spv::DecorationBinding, 2);
+        builder.addName(particleStats, "particleStats");
+
+        // textures array
+        auto imgType = builder.makeImageType(float32Type, spv::Dim2D, false, false, false, 1, spv::ImageFormatUnknown);
+        auto texturesArrayType = builder.makeRuntimeArray(imgType);
+        texturesArray = builder.createVariable(spv::NoPrecision, spv::StorageClassUniformConstant, texturesArrayType);
+        builder.addDecoration(texturesArray, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(texturesArray, spv::DecorationBinding, 3);
+        builder.addName(texturesArray, "textures");
+
+        // samplers
+        auto samplerType = builder.makeSamplerType();
+        linearSampler = builder.createVariable(spv::NoPrecision, spv::StorageClassUniformConstant, samplerType);
+        builder.addDecoration(linearSampler, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(linearSampler, spv::DecorationBinding, 4);
+        builder.addName(linearSampler, "linearSampler");
+
+        nearestSampler = builder.createVariable(spv::NoPrecision, spv::StorageClassUniformConstant, samplerType);
+        builder.addDecoration(nearestSampler, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(nearestSampler, spv::DecorationBinding, 5);
+        builder.addName(nearestSampler, "nearestSampler");
+
         switch(shaderMode) {
             case ParticleShaderMode::Compute:
                 generateCompute(builder, glslImport, descriptorSet, expressions);
@@ -557,6 +666,9 @@ namespace Fertilizer {
         }
 
         system("spirv-cross -V spvbuilder.bin");
+
+        std::cout << "\n=== spir-val: ===\n";
+        system("spirv-val spvbuilder.bin");
 
         std::cout << "\n=== END of SpvBuilder output ===\n";
 
@@ -645,6 +757,11 @@ layout(location = 0) in flat uint particleIndex;
         vars.size = sizeAccess;
         vars.particleIndex = castParticleID;
         vars.types.floatType = float32Type;
+        vars.types.float4Type = vec4Type;
+        vars.texturesArray = texturesArray;
+        vars.linearSampler = linearSampler;
+        vars.nearestSampler = nearestSampler;
+        vars.particleStats = particleStats;
         for(auto& expr : expressions) {
             builder.getStringId(expr->toString());
 
@@ -666,6 +783,10 @@ layout(location = 0) in flat uint particleIndex;
         entryPoint->addIdOperand(outNormal);
         entryPoint->addIdOperand(outIntProperties);
         entryPoint->addIdOperand(descriptorSet);
+        entryPoint->addIdOperand(vars.texturesArray);
+        entryPoint->addIdOperand(vars.linearSampler);
+        entryPoint->addIdOperand(vars.nearestSampler);
+        entryPoint->addIdOperand(vars.particleStats);
 
         builder.addExecutionMode(mainFunction, spv::ExecutionModeOriginUpperLeft);
     }
@@ -678,20 +799,7 @@ layout(location = 0) in flat uint particleIndex;
         auto uint32Type = builder.makeUintType(32);
         auto float32Type = builder.makeFloatType(32);
         auto vec3Type = builder.makeVectorType(float32Type, 3);
-
-        // Carrot::ParticleStatistics
-        auto particleStatsType = builder.makeStructType(std::vector<Id>{builder.makeFloatType(32), builder.makeUintType(32)}, "ParticleStatistics");
-        builder.addMemberName(particleStatsType, 0, "deltaTime");
-        builder.addMemberName(particleStatsType, 1, "particleCount");
-
-        builder.addDecoration(particleStatsType, spv::DecorationBlock);
-        builder.addMemberDecoration(particleStatsType, 0, spv::DecorationOffset, 0);
-        builder.addMemberDecoration(particleStatsType, 1, spv::DecorationOffset, 4);
-
-        auto particleStats = builder.createVariable(spv::NoPrecision, spv::StorageClassStorageBuffer, particleStatsType);
-        builder.addDecoration(particleStats, spv::DecorationDescriptorSet, 1);
-        builder.addDecoration(particleStats, spv::DecorationBinding, 1);
-        builder.addName(particleStats, "particleStats");
+        auto vec4Type = builder.makeVectorType(float32Type, 4);
 
         auto globalInvocationId = builder.createVariable(spv::NoPrecision,
                                                          spv::StorageClassInput,
@@ -769,6 +877,11 @@ layout(location = 0) in flat uint particleIndex;
         vars.size = sizeAccess;
         vars.particleIndex = castParticleID;
         vars.types.floatType = float32Type;
+        vars.types.float4Type = vec4Type;
+        vars.texturesArray = texturesArray;
+        vars.linearSampler = linearSampler;
+        vars.nearestSampler = nearestSampler;
+        vars.particleStats = particleStats;
         for(auto& expr : expressions) {
             builder.getStringId(expr->toString());
 
@@ -779,8 +892,11 @@ layout(location = 0) in flat uint particleIndex;
         builder.leaveFunction();
         auto entryPoint = builder.addEntryPoint(spv::ExecutionModelGLCompute, mainFunction, "main");
         entryPoint->addIdOperand(globalInvocationId);
-        entryPoint->addIdOperand(particleStats);
         entryPoint->addIdOperand(descriptorSet);
+        entryPoint->addIdOperand(vars.texturesArray);
+        entryPoint->addIdOperand(vars.linearSampler);
+        entryPoint->addIdOperand(vars.nearestSampler);
+        entryPoint->addIdOperand(vars.particleStats);
 
         builder.addExecutionMode(mainFunction, spv::ExecutionModeLocalSize, 1024, 1, 1);
     }

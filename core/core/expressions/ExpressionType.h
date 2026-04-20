@@ -39,6 +39,7 @@ namespace Carrot {
         inline ExpressionType Int{"int"};
         inline ExpressionType Float{"float"};
         inline ExpressionType Bool{"bool"};
+        inline ExpressionType Color{"color"};
 
         inline ExpressionType fromName(const std::string& name) {
             if(name == "void")
@@ -49,6 +50,9 @@ namespace Carrot {
 
             if(name == "float")
                 return Float;
+
+            if(name == "color")
+                return Color;
 
             if(name == "bool")
                 return Bool;

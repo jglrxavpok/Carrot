@@ -17,6 +17,7 @@ set(CORE-SOURCES
         ${CoreRoot}data/ShaderMetadata.cpp
 
         ${CoreRoot}expressions/Expressions.cpp
+        ${CoreRoot}expressions/ImageExpressions.cpp
 
         ${CoreRoot}io/Document.cpp
         ${CoreRoot}io/FileHandle.cpp

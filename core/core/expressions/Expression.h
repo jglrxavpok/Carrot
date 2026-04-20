@@ -15,6 +15,8 @@ namespace Carrot {
 
     class Expression: public std::enable_shared_from_this<Expression> {
     public:
+        using Ptr = std::shared_ptr<Expression>;
+
         Expression() = default;
         virtual ~Expression() = default;
 
