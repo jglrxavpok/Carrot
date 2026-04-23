@@ -106,8 +106,8 @@ namespace Carrot {
 
         void onFrame(const Carrot::Render::Context& renderContext) override;
 
-        void renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
-        void renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
+        void renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) override;
+        void renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
@@ -123,9 +123,11 @@ namespace Carrot {
         Carrot::EmitterData& getEmitterData(u32 emitterID);
         friend class ParticleEmitter;
 
-        void render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const;
+        void render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands);
         void pullDataFromGPU();
         void pushDataToGPU();
+
+        void bindTextures(const Render::Context& renderContext);
 
     private:
         RenderableParticleBlueprint& blueprint;
@@ -154,6 +156,7 @@ namespace Carrot {
         Carrot::BufferView statisticsBuffer;
         ParticleStatistics* statistics = nullptr;
         std::atomic<bool> gotUpdated = false;
+        //std::array<Carrot::AsyncResource<Carrot::Render::Texture, false>, ParticleBlueprint::MaxTexturesPerShader> textures;
 
         void initNewParticles();
         void updateParticles(double deltaTime);

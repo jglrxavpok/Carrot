@@ -14,7 +14,7 @@ std::unique_ptr<Carrot::ComputePipeline> Carrot::RenderableParticleBlueprint::bu
             .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 0, particleBuffer)
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 1, statisticsBuffer)
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 2, statisticsBuffer)
     // TODO: add texture stuff
             .build();
 }

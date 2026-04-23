@@ -176,7 +176,8 @@ namespace Fertilizer {
         {
             NodeLibraryMenuScope s1("Update Inputs", internalGraph.get());
             internalGraph->addVariableToLibrary<VariableNodeType::GetDeltaTime>();
-            internalGraph->addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
+            internalGraph->addVariableToLibrary<VariableNodeType::GetOffsetFromCenter>();
+            internalGraph->addVariableToLibrary<VariableNodeType::GetUV>();
         }
         {
             NodeLibraryMenuScope s3("Render/Update Outputs", internalGraph.get());

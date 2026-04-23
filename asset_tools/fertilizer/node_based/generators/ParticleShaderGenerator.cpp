@@ -38,7 +38,8 @@ namespace Fertilizer {
 
             struct {
                 Id particleColor;
-                Id fragmentPosition;
+                Id offsetFromCenter;
+                Id uv;
             } fragment;
         };
 
@@ -85,7 +86,7 @@ namespace Fertilizer {
 
     class SPIRVisitor: public Carrot::ExpressionVisitor {
     public:
-        inline explicit SPIRVisitor(spv::Builder& builder, Variables vars): builder(builder), vars(vars) {}
+        inline explicit SPIRVisitor(spv::Builder& builder, ParticleShaderGenerator& generator, Variables vars): builder(builder), generator(generator), vars(vars) {}
 
     public:
         void visitConstant(Carrot::ConstantExpression& expression) override {
@@ -131,14 +132,20 @@ namespace Fertilizer {
             }
         // === COMPUTE ===
             else if(var == VariableNode::getInternalName(VariableNodeType::GetDeltaTime)) {
-                assert(vars.shaderMode == ParticleShaderMode::Compute);
+                assert(vars.shaderMode == ParticleShaderMode::ComputeUpdateParticle);
                 ids.push(vars.compute.deltaTime);
                 types.push(Carrot::ExpressionTypes::Float);
             }
         // === FRAGMENT ===
-            else if(var == VariableNode::getInternalName(VariableNodeType::GetFragmentPosition)) {
+            else if(var == VariableNode::getInternalName(VariableNodeType::GetOffsetFromCenter)) {
                 assert(vars.shaderMode == ParticleShaderMode::Fragment);
-                auto access = accessChainLoad(builder, accessChain(builder, vars.types.floatType, vars.fragment.fragmentPosition, {builder.makeIntConstant(expression.getSubIndex())}));
+                auto access = accessChainLoad(builder, accessChain(builder, vars.types.floatType, vars.fragment.offsetFromCenter, {builder.makeIntConstant(expression.getSubIndex())}));
+                ids.push(access);
+                types.push(Carrot::ExpressionTypes::Float);
+            }
+            else if(var == VariableNode::getInternalName(VariableNodeType::GetUV)) {
+                assert(vars.shaderMode == ParticleShaderMode::Fragment);
+                auto access = accessChainLoad(builder, accessChain(builder, vars.types.floatType, vars.fragment.uv, {builder.makeIntConstant(expression.getSubIndex())}));
                 ids.push(access);
                 types.push(Carrot::ExpressionTypes::Float);
             }
@@ -366,6 +373,8 @@ namespace Fertilizer {
                 Id sampler = builder.createLoad(vars.linearSampler, spv::NoPrecision);
                 Id sampledImage = builder.createBinOp(spv::Op::OpSampledImage, sampledImageType, image, sampler);
 
+                generator.metadata.imageIndices[expression.getImagePath()] = imageIndex;
+
                 iter->second = sampledImage;
             }
 
@@ -419,6 +428,7 @@ namespace Fertilizer {
         Variables vars;
         std::unordered_set<Carrot::UUID> alreadyVisited;
         std::unordered_map<std::string, Id> imageIndices;
+        ParticleShaderGenerator& generator;
 
         void visitGLSLFunction(GLSLstd450 function) {
             auto operand = popID();
@@ -513,11 +523,11 @@ namespace Fertilizer {
         }
     };
 
-    ParticleShaderGenerator::ParticleShaderGenerator(ParticleShaderMode shaderMode, const std::string& projectName): shaderMode(shaderMode), projectName(projectName) {
+    ParticleShaderGenerator::ParticleShaderGenerator(const std::string& projectName): projectName(projectName) {
 
     }
 
-    std::vector<uint32_t> ParticleShaderGenerator::compileToSPIRV(const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
+    std::vector<uint32_t> ParticleShaderGenerator::compileToSPIRV(ParticleShaderMode shaderMode, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         SpvBuildLogger logger;
         Builder builder(spv::SpvVersion::Spv_1_5, 0, &logger);
 
@@ -525,6 +535,7 @@ namespace Fertilizer {
         builder.setDebugMainSourceFile(projectName);
         builder.addCapability(spv::CapabilityShader);
         builder.addCapability(spv::CapabilityShaderNonUniform);
+        builder.addCapability(spv::CapabilityRuntimeDescriptorArray);
         auto glslImport = builder.import("GLSL.std.450");
         builder.setMemoryModel(spv::AddressingModelLogical, spv::MemoryModelGLSL450);
 
@@ -636,8 +647,8 @@ namespace Fertilizer {
         builder.addName(nearestSampler, "nearestSampler");
 
         switch(shaderMode) {
-            case ParticleShaderMode::Compute:
-                generateCompute(builder, glslImport, descriptorSet, expressions);
+            case ParticleShaderMode::ComputeUpdateParticle:
+                generateComputeUpdateParticle(builder, glslImport, descriptorSet, expressions);
                 break;
 
             case ParticleShaderMode::Fragment:
@@ -685,13 +696,15 @@ namespace Fertilizer {
         auto vec3Type = builder.makeVectorType(float32Type, 3);
         auto vec4Type = builder.makeVectorType(float32Type, 4);
 
-        /*
+        /* TODO: update gbuffer write
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec3 outViewPosition;
 layout(location = 2) out vec3 outNormal;
 layout(location = 3) out uint outIntProperties;
 
 layout(location = 0) in flat uint particleIndex;
+layout(location = 1) in vec2 offsetFromCenter;
+layout(location = 2) in vec2 uv;
          */
         auto outColor = builder.createVariable(spv::NoPrecision, spv::StorageClassOutput, vec4Type);
         builder.addName(outColor, "outColor");
@@ -714,19 +727,28 @@ layout(location = 0) in flat uint particleIndex;
         builder.addDecoration(inParticleIndex, spv::DecorationLocation, 0);
         builder.addDecoration(inParticleIndex, spv::DecorationFlat);
 
-        auto inFragPosition = builder.createVariable(spv::NoPrecision, spv::StorageClassInput, vec2Type);
-        builder.addName(inFragPosition, "inFragPosition");
-        builder.addDecoration(inFragPosition, spv::DecorationLocation, 1);
+        auto offsetFromCenter = builder.createVariable(spv::NoPrecision, spv::StorageClassInput, vec2Type);
+        builder.addName(offsetFromCenter, "offsetFromCenter");
+        builder.addDecoration(offsetFromCenter, spv::DecorationLocation, 1);
+
+        auto uv = builder.createVariable(spv::NoPrecision, spv::StorageClassInput, vec2Type);
+        builder.addName(uv, "uv");
+        builder.addDecoration(uv, spv::DecorationLocation, 2);
 
         auto varParticleIndex = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, uint32Type);
         auto tmpParticleIndex = builder.createLoad(inParticleIndex, spv::NoPrecision);
         builder.createStore(tmpParticleIndex, varParticleIndex);
         builder.addName(varParticleIndex, "particleIndex");
 
-        auto varFragmentPosition = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, vec2Type);
-        auto tmpFragmentPosition = builder.createLoad(inFragPosition, spv::NoPrecision);
-        builder.createStore(tmpFragmentPosition, varFragmentPosition);
-        builder.addName(varFragmentPosition, "fragmentPosition");
+        auto varOffsetFromCenter = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, vec2Type);
+        auto tmpOffsetFromCenter = builder.createLoad(offsetFromCenter, spv::NoPrecision);
+        builder.createStore(tmpOffsetFromCenter, varOffsetFromCenter);
+        builder.addName(varOffsetFromCenter, "offsetFromCenter");
+
+        auto varUV = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, vec2Type);
+        auto tmpUV = builder.createLoad(uv, spv::NoPrecision);
+        builder.createStore(tmpUV, varUV);
+        builder.addName(varUV, "uv");
 
         auto particleIndex = builder.createLoad(varParticleIndex, spv::NoPrecision);
 
@@ -747,9 +769,10 @@ layout(location = 0) in flat uint particleIndex;
         // user-specific code
         Variables vars{};
         vars.glslImport = glslImport;
-        vars.shaderMode = shaderMode;
+        vars.shaderMode = ParticleShaderMode::Fragment;
         vars.fragment.particleColor = varFinalColor;
-        vars.fragment.fragmentPosition = varFragmentPosition;
+        vars.fragment.offsetFromCenter = varOffsetFromCenter;
+        vars.fragment.uv = varUV;
         vars.emissionID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, accessChainLoad(builder, emissionIDAccess));
         vars.position = positionAccess;
         vars.life = lifeAccess;
@@ -767,7 +790,7 @@ layout(location = 0) in flat uint particleIndex;
 
             builder.setDebugSourceLocation(0, expr->toString().c_str());
 
-            SPIRVisitor exprBuilder(builder, vars);
+            SPIRVisitor exprBuilder(builder, *this, vars);
             exprBuilder.visit(expr);
         }
 
@@ -777,7 +800,8 @@ layout(location = 0) in flat uint particleIndex;
         builder.leaveFunction();
         auto entryPoint = builder.addEntryPoint(spv::ExecutionModelFragment, mainFunction, "main");
         entryPoint->addIdOperand(inParticleIndex);
-        entryPoint->addIdOperand(inFragPosition);
+        entryPoint->addIdOperand(offsetFromCenter);
+        entryPoint->addIdOperand(uv);
         entryPoint->addIdOperand(outColor);
         entryPoint->addIdOperand(outViewPosition);
         entryPoint->addIdOperand(outNormal);
@@ -791,7 +815,7 @@ layout(location = 0) in flat uint particleIndex;
         builder.addExecutionMode(mainFunction, spv::ExecutionModeOriginUpperLeft);
     }
 
-    void ParticleShaderGenerator::generateCompute(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
+    void ParticleShaderGenerator::generateComputeUpdateParticle(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         spv::Block* functionBlock;
         Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, {}, &functionBlock);
 
@@ -868,7 +892,7 @@ layout(location = 0) in flat uint particleIndex;
         // user-specific code
         Variables vars{};
         vars.glslImport = glslImport;
-        vars.shaderMode = shaderMode;
+        vars.shaderMode = ParticleShaderMode::ComputeUpdateParticle;
         vars.compute.deltaTime = dt;
         vars.emissionID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, emissionID);
         vars.position = positionAccess;
@@ -885,7 +909,7 @@ layout(location = 0) in flat uint particleIndex;
         for(auto& expr : expressions) {
             builder.getStringId(expr->toString());
 
-            SPIRVisitor exprBuilder(builder, vars);
+            SPIRVisitor exprBuilder(builder, *this, vars);
             exprBuilder.visit(expr);
         }
 
@@ -900,4 +924,9 @@ layout(location = 0) in flat uint particleIndex;
 
         builder.addExecutionMode(mainFunction, spv::ExecutionModeLocalSize, 1024, 1, 1);
     }
+
+    const ParticleShadersMetadata& ParticleShaderGenerator::getMetadata() const {
+        return metadata;
+    }
+
 }

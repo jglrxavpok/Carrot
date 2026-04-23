@@ -19,9 +19,10 @@ namespace Carrot {
     class ParticleBlueprint {
     public:
         static constexpr char Magic[] = "carrot particle";
+        static constexpr u32 MaxTexturesPerShader = 32;
 
         explicit ParticleBlueprint(const IO::Resource& filename);
-        explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque);
+        explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque, const std::unordered_map<std::string, i32>& textureIndices);
 
         // (re)loads the blueprint from the given file
         void load(const IO::Resource& file);
@@ -41,11 +42,14 @@ namespace Carrot {
 
         bool isOpaque() const { return opaque; }
 
+        const std::unordered_map<std::string, i32>& getTextureIndices() const;
+
     protected:
         std::uint32_t version = 0;
         std::vector<std::uint32_t> computeShaderCode;
         std::vector<std::uint32_t> fragmentShaderCode;
         bool opaque = false;
+        std::unordered_map<std::string, i32> textureIndices;
 
         bool readyForHotReload = false;
     };

@@ -83,12 +83,24 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
 
     // draw particles
     const Carrot::Render::PassName targetPass = isOpaque() ? Carrot::Render::PassEnum::TransparentGBuffer : Carrot::Render::PassEnum::OpaqueGBuffer;
+    bindTextures(renderContext);
     Render::Packet& packet = renderContext.renderer.makeRenderPacket(targetPass, Carrot::Render::PacketType::Procedural, renderContext);
     packet.pipeline = renderingPipeline;
     Render::PacketCommand& command = packet.commands.emplace_back();
     command.procedural.instanceCount = 1;
     command.procedural.vertexCount = 6 * usedParticleCount;
     renderContext.renderer.render(packet);
+}
+
+void Carrot::ParticleSystem::bindTextures(const Carrot::Render::Context& renderContext) {
+    for (const auto& [imagePath, imageIndex] : blueprint.getTextureIndices()) {
+        auto pTexture = GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path{imagePath}); // TODO: non blocking - use AsyncResource
+        if (pTexture) {
+            GetRenderer().bindTexture(*renderingPipeline, renderContext, *pTexture, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, imageIndex);
+        }
+    }
+    GetRenderer().bindSampler(*renderingPipeline, renderContext, GetVulkanDriver().getLinearSampler(), 1, 4);
+    GetRenderer().bindSampler(*renderingPipeline, renderContext, GetVulkanDriver().getNearestSampler(), 1, 5);
 }
 
 void Carrot::ParticleSystem::pullDataFromGPU() {
@@ -172,7 +184,7 @@ std::shared_ptr<Carrot::ParticleEmitter> Carrot::ParticleSystem::createEmitter()
             const vk::DescriptorBufferInfo emitterBufferInfo = emitterData.view.asBufferInfo();
             vk::WriteDescriptorSet writeEmitters = {
                 .dstSet = set,
-                .dstBinding = 2,
+                .dstBinding = 1,
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eStorageBuffer,
                 .pBufferInfo = &emitterBufferInfo,
@@ -193,19 +205,21 @@ Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
     return particle;
 }
 
-void Carrot::ParticleSystem::render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::render(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
+    // TODO: move to renderpacket system
+    bindTextures(renderContext);
     renderingPipeline->bind(pass, renderContext, commands);
     commands.draw(6 * usedParticleCount, 1, 0, 0);
 }
 
-void Carrot::ParticleSystem::renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::renderOpaqueGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
     if(!isOpaque()) {
         return;
     }
     render(pass, renderContext, commands);
 }
 
-void Carrot::ParticleSystem::renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::renderTransparentGBuffer(const Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
     if(isOpaque()) {
         return;
     }

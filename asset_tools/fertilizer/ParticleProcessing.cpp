@@ -28,14 +28,18 @@ namespace Fertilizer {
         std::unordered_set<Carrot::UUID> activeLinks; // not read from during generation (only used for visualisation)
         auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
         auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
-        ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, filepathAsString);
-        ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, filepathAsString);
+        ParticleShaderGenerator shaderGenerator(filepathAsString);
 
-        auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
-        auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+        auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
+        auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
+        const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
         bool isOpaque = false; // TODO: determine via render graph
 
-        Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque);
+        if (metadata.imageIndices.size() >= Carrot::ParticleBlueprint::MaxTexturesPerShader) {
+            return ConversionResult { ConversionResultError::UnsupportedInputType, "Too many different textures used in particle (max 32)" };
+        }
+
+        Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
 
         Carrot::IO::writeFile(outputFile.string(), [&](std::ostream& out) {
             out << blueprint;

@@ -18,7 +18,8 @@ namespace Fertilizer {
         GetDeltaTime,
 
         // FRAGMENT
-        GetFragmentPosition,
+        GetOffsetFromCenter,
+        GetUV,
         // TODO
     };
 
@@ -52,15 +53,17 @@ namespace Fertilizer {
                 case VariableNodeType::GetLife:
                     return "Get Life";
                 case VariableNodeType::GetParticleIndex:
-                    return "Get ParticleIndex";
+                    return "Get Particle Index";
                 case VariableNodeType::GetEmissionID:
-                    return "Get EmissionID";
+                    return "Get Emission ID";
                 case VariableNodeType::GetDeltaTime:
-                    return "Get DeltaTime";
+                    return "Get Delta Time";
                 case VariableNodeType::GetPosition:
                     return "Get Position";
-                case VariableNodeType::GetFragmentPosition:
-                    return "Get Fragment Position";
+                case VariableNodeType::GetOffsetFromCenter:
+                    return "Get Offset from center";
+                case VariableNodeType::GetUV:
+                    return "Get UV";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
@@ -81,8 +84,10 @@ namespace Fertilizer {
                     return "get_delta_time";
                 case VariableNodeType::GetPosition:
                     return "get_position";
-                case VariableNodeType::GetFragmentPosition:
-                    return "get_fragment_position";
+                case VariableNodeType::GetOffsetFromCenter:
+                    return "get_fragment_position"; // name is legacy :)
+                case VariableNodeType::GetUV:
+                    return "get_uv";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
@@ -96,7 +101,8 @@ namespace Fertilizer {
                 case VariableNodeType::GetPosition:
                 case VariableNodeType::GetParticleIndex:
                 case VariableNodeType::GetEmissionID:
-                case VariableNodeType::GetFragmentPosition:
+                case VariableNodeType::GetOffsetFromCenter:
+                case VariableNodeType::GetUV:
                     return Carrot::ExpressionTypes::Float;
 
             }
@@ -108,7 +114,8 @@ namespace Fertilizer {
                 case VariableNodeType::GetVelocity:
                 case VariableNodeType::GetPosition:
                     return 3;
-                case VariableNodeType::GetFragmentPosition:
+                case VariableNodeType::GetOffsetFromCenter:
+                case VariableNodeType::GetUV:
                     return 2;
                 default:
                     return 1;
@@ -127,7 +134,7 @@ namespace Fertilizer {
         void init() {
             const char** names = DIMENSION_NAMES;
             switch(nodeType) {
-                case VariableNodeType::GetFragmentPosition:
+                case VariableNodeType::GetUV:
                     names = TEX_DIMENSION_NAMES;
                     break;
 

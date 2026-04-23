@@ -122,7 +122,8 @@ namespace Fertilizer::Nodes {
 
         {
             NodeLibraryMenuScope s2("Render Inputs", &graph);
-            graph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
+            graph.addVariableToLibrary<VariableNodeType::GetOffsetFromCenter>();
+            graph.addVariableToLibrary<VariableNodeType::GetUV>();
         }
         {
             NodeLibraryMenuScope s2("Render Outputs", &graph);

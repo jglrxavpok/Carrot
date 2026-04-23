@@ -5,7 +5,8 @@ import modules.particles;
 struct VSOutput {
     float4 hPos : SV_Position;
     nointerpolation uint32_t particleIndex;
-    float2 fragPosition;
+    float2 offsetFromCenter;
+    float2 uv;
 }
 
 [vk::binding(0,0)]
@@ -36,7 +37,9 @@ VSOutput vertex(uint vertexID: SV_VertexID) {
     VSOutput o;
 
     vec3 inPosition = quad(vertexID);
-    o.fragPosition = inPosition.xz * 2;
+    o.offsetFromCenter = inPosition.xz * 2;
+    o.uv = inPosition.zx + 0.5;
+    o.uv.y *= -1;
 
     inPosition = inPosition.zxy;
 

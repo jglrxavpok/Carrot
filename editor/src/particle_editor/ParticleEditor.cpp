@@ -14,6 +14,7 @@
 #include <rapidjson/filewritestream.h>
 #include <filesystem>
 #include <cstdlib>
+#include <ImGuiNotify.hpp>
 
 #include "core/io/IO.h"
 #include "core/utils/JSON.h"
@@ -136,14 +137,18 @@ void Peeler::ParticleEditor::generateParticleFile(const std::filesystem::path& f
     std::unordered_set<Carrot::UUID> activeLinks; // not read from during generation (only used for visualisation)
     auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
     auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
-    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, getCurrentProjectName());
-    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, getCurrentProjectName());
+    ParticleShaderGenerator shaderGenerator(getCurrentProjectName());
 
-    auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
-    auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+    auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
+    auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
     bool isOpaque = false; // TODO: determine via render graph
+    const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
+    if (metadata.imageIndices.size() >= Carrot::ParticleBlueprint::MaxTexturesPerShader) {
+        ImGui::InsertNotification({ImGuiToastType::Error, 3000, "Too many different textures used in particle (max 32)"});
+        return;
+    }
 
-    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque);
+    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
 
     Carrot::IO::writeFile(filename.string(), [&](std::ostream& out) {
         out << blueprint;
@@ -268,14 +273,19 @@ void Peeler::ParticleEditor::reloadPreview() {
     auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
     colorActiveLinks(renderGraph);
 
-    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor-Preview");
-    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor-Preview");
+    ParticleShaderGenerator shaderGenerator("ParticleEditor-Preview");
 
-    auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
-    auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+    auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
+    auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
+    const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
     bool isOpaque = false; // TODO: determine via render graph
 
-    previewBlueprint = std::make_unique<Carrot::RenderableParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque);
+    if (metadata.imageIndices.size() >= Carrot::ParticleBlueprint::MaxTexturesPerShader) {
+        ImGui::InsertNotification({ImGuiToastType::Error, 3000, "Too many different textures used in particle (max 32)"});
+        return;
+    }
+
+    previewBlueprint = std::make_unique<Carrot::RenderableParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
 
     auto& emitter = *previewSystem->createEmitter();
