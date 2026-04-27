@@ -3,6 +3,9 @@
 //
 
 #include "PhysicsSystem.h"
+
+#include <core/io/Logging.hpp>
+
 #include "engine/utils/Macros.h"
 #include "engine/utils/conversions.h"
 #include "engine/Engine.h"
@@ -26,6 +29,8 @@
 using namespace JPH;
 
 namespace Carrot::Physics {
+
+    static Log::Category joltCategory{"Jolt"};
 
     BPLayerInterfaceImpl::BPLayerInterfaceImpl(CollisionLayers& layers): layers(layers) {}
 
@@ -77,8 +82,17 @@ namespace Carrot::Physics {
         return system;
     }
 
+    static void JoltTrace(const char* inFMT, ...) {
+        va_list args;
+        va_start(args, inFMT);
+        Carrot::Log::error(joltCategory, Carrot::sprintf(inFMT, args));
+        va_end(args);
+    }
+
     PhysicsSystem::PhysicsSystem() {
         JPH::RegisterDefaultAllocator();
+
+        JPH::Trace = JoltTrace;
 
         Factory::sInstance = new Factory();
 

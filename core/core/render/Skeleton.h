@@ -39,7 +39,7 @@ namespace Carrot::Render {
     public:
         Bone bone{};
         NodeKey nodeKey; //< key used for maps inside LoadedScene
-        std::optional<std::vector<std::size_t>> meshIndices;
+        std::optional<std::vector<std::size_t>> meshIndices; // index of primitive inside LoadedScene::primitives
         SkeletonTreeNode* pParent = nullptr;
 
         explicit SkeletonTreeNode(SkeletonTreeNode* pParent): pParent(pParent) {};

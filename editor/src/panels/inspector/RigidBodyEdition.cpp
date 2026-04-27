@@ -99,6 +99,11 @@ namespace Peeler {
                 }
                     break;
 
+                case ColliderType::StaticConcaveTriangleMesh: {
+                    auto& mesh = dynamic_cast<StaticConcaveTriangleMeshShape&>(shape);
+                    localTransform.scale = mesh.getScale();
+                }
+
                 default:
                     TODO; // not implemented yet
             }
@@ -166,6 +171,12 @@ namespace Peeler {
 
                         case ColliderType::Heightmap: {
                             dynamic_cast<HeightmapCollisionShape&>(shape).changeShapeScale(
+                                    glm::vec3(scale[0], scale[1], scale[2]));
+                        }
+                            break;
+
+                        case ColliderType::StaticConcaveTriangleMesh: {
+                            dynamic_cast<StaticConcaveTriangleMeshShape&>(shape).changeShapeScale(
                                     glm::vec3(scale[0], scale[1], scale[2]));
                         }
                             break;
@@ -388,6 +399,28 @@ namespace Peeler {
                     edition.hasModifications = true;
                     modified = true;
                     heightmap.changeShapeScale({ scaleArray[0], scaleArray[1], scaleArray[2] });
+                }
+
+            }
+                break;
+
+            case Carrot::Physics::ColliderType::StaticConcaveTriangleMesh: {
+                auto& meshShape = static_cast<Carrot::Physics::StaticConcaveTriangleMeshShape&>(shape);
+
+                Carrot::IO::VFS::Path path = meshShape.getSourcePath();
+                if (editVFSPath("Mesh path", path, Helpers::Limits<Carrot::IO::VFS::Path> {
+                    .validityChecker = [](auto& p) { return Carrot::IO::isModelFormatFromPath(p.toString().c_str()); }
+                })) {
+                    edition.hasModifications = true;
+                    modified = true;
+                    meshShape.updateSourcePath(path);
+                }
+
+                float scaleArray[3] = { meshShape.getScale().x, meshShape.getScale().y, meshShape.getScale().z };
+                if(ImGui::SliderFloat3("Scale", scaleArray, 0.001f, 10000)) {
+                    edition.hasModifications = true;
+                    modified = true;
+                    meshShape.changeShapeScale({ scaleArray[0], scaleArray[1], scaleArray[2] });
                 }
 
             }
@@ -651,6 +684,10 @@ namespace Peeler {
                     }
                     if(ImGui::MenuItem("Heightmap##rigidbodycomponent colliders")) {
                         rigidbody.addCollider(Carrot::Physics::HeightmapCollisionShape());
+                        edition.hasModifications = true;
+                    }
+                    if(ImGui::MenuItem("Static mesh##rigidbodycomponent colliders")) {
+                        rigidbody.addCollider(Carrot::Physics::StaticConcaveTriangleMeshShape());
                         edition.hasModifications = true;
                     }
                     // TODO: convex

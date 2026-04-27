@@ -15,6 +15,8 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 
 #include <stb_image.h>
+#include <engine/render/resources/model_loading/SceneLoader.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 
 using namespace JPH;
 
@@ -75,7 +77,7 @@ namespace Carrot::Physics {
                 break;
 
             case ColliderType::StaticConcaveTriangleMesh:
-                TODO;
+                collisionShape = std::make_unique<StaticConcaveTriangleMeshShape>(object);
                 break;
 
             default:
@@ -370,6 +372,115 @@ namespace Carrot::Physics {
     void HeightmapCollisionShape::setSourcePath(const Carrot::IO::VFS::Path& sourcePath) {
         samples.clear();
         sourceMap = sourcePath;
+        recreateShape();
+        reattachCollider();
+    }
+
+    StaticConcaveTriangleMeshShape::StaticConcaveTriangleMeshShape(): StaticConcaveTriangleMeshShape({}, glm::vec3(1.0f)) {}
+
+    StaticConcaveTriangleMeshShape::StaticConcaveTriangleMeshShape(const Carrot::DocumentElement& element) {
+        this->path = element["path"].getAsString();
+        this->scale = DocumentHelpers::read<3, float>(element["scale"]);
+        recreateShape();
+        reattachCollider();
+    }
+
+    StaticConcaveTriangleMeshShape::StaticConcaveTriangleMeshShape(const Carrot::IO::VFS::Path& sourceModelPath, const glm::vec3& scale) {
+        this->path = sourceModelPath;
+        this->scale = scale;
+        recreateShape();
+        reattachCollider();
+    }
+
+    StaticConcaveTriangleMeshShape::~StaticConcaveTriangleMeshShape() {
+    }
+
+    void StaticConcaveTriangleMeshShape::recreateShape() {
+        shape = nullptr;
+        VertexList vertices;
+        IndexedTriangleList triangles;
+        if (path.isEmpty()) {
+            vertices.resize(3);
+            triangles.resize(1);
+            vertices[0] = {0,0,0};
+            vertices[1] = {1,0,0};
+            vertices[2] = {0,1,0};
+            triangles[0].mIdx[0] = 0;
+            triangles[0].mIdx[1] = 1;
+            triangles[0].mIdx[2] = 2;
+            shape = MeshShapeSettings{vertices, triangles}.Create().Get();
+            return;
+        }
+        Render::SceneLoader loader;
+        const Render::LoadedScene& scene = loader.load(path);
+
+        std::function<void(const Render::SkeletonTreeNode&, glm::mat4)> iterateOverHierarchy = [&](const Render::SkeletonTreeNode& node, glm::mat4 parentTransform) {
+            const glm::mat4 transform = parentTransform * node.bone.originalTransform;
+            if (node.meshIndices.has_value()) {
+                for (const std::size_t& meshIndex : *node.meshIndices) {
+                    const Render::LoadedPrimitive& primitive = scene.primitives[meshIndex];
+                    if (primitive.isSkinned) {
+                        continue;
+                    }
+
+                    const u32 vertexOffset = vertices.size();
+                    const u32 triangleOffset = triangles.size();
+                    vertices.resize(vertexOffset + primitive.vertices.size());
+                    triangles.resize(triangleOffset + primitive.indices.size()/3);
+
+                    for (u32 vertexIndex = 0; vertexIndex < primitive.vertices.size(); vertexIndex++) {
+                        Float3& pos = vertices[vertexOffset + vertexIndex];
+                        glm::vec4 transformedPos = transform * primitive.vertices[vertexIndex].pos;
+                        pos.x = transformedPos.x;
+                        pos.y = transformedPos.y;
+                        pos.z = transformedPos.z;
+                    }
+                    for (u32 triangleIndex = 0; triangleIndex < primitive.indices.size() / 3; triangleIndex++) {
+                        IndexedTriangle& triangle = triangles[triangleIndex + triangleOffset];
+                        triangle.mIdx[0] = vertexOffset + primitive.indices[triangleIndex * 3 + 0];
+                        triangle.mIdx[1] = vertexOffset + primitive.indices[triangleIndex * 3 + 1];
+                        triangle.mIdx[2] = vertexOffset + primitive.indices[triangleIndex * 3 + 2];
+                    }
+                }
+            }
+
+            for (const Render::SkeletonTreeNode& child : node.getChildren()) {
+                iterateOverHierarchy(child, transform);
+            }
+        };
+        iterateOverHierarchy(scene.nodeHierarchy->hierarchy, glm::scale(glm::mat4(1.0f), scale));
+        shape = MeshShapeSettings{vertices, triangles}.Create().Get();
+    }
+
+    std::unique_ptr<CollisionShape> StaticConcaveTriangleMeshShape::duplicate() const {
+        return std::make_unique<StaticConcaveTriangleMeshShape>(path, scale);
+    }
+
+    ColliderType StaticConcaveTriangleMeshShape::getType() const {
+        return ColliderType::StaticConcaveTriangleMesh;
+    }
+
+    void StaticConcaveTriangleMeshShape::serialiseTo(Carrot::DocumentElement& target) const {
+        target["path"] = path.toString();
+        target["scale"] = DocumentHelpers::write(scale);
+    }
+
+    const glm::vec3& StaticConcaveTriangleMeshShape::getScale() const {
+        return scale;
+    }
+
+    void StaticConcaveTriangleMeshShape::changeShapeScale(const glm::vec3& scale) {
+        this->scale = scale;
+        recreateShape();
+        reattachCollider();
+    }
+
+    const Carrot::IO::VFS::Path& StaticConcaveTriangleMeshShape::getSourcePath() const {
+        return path;
+    }
+
+    void StaticConcaveTriangleMeshShape::updateSourcePath(const Carrot::IO::VFS::Path& path) {
+        this->path = path;
         recreateShape();
         reattachCollider();
     }

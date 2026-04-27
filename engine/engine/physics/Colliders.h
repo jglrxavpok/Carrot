@@ -222,6 +222,33 @@ namespace Carrot::Physics {
         Carrot::IO::VFS::Path sourceMap;
     };
 
+    class StaticConcaveTriangleMeshShape: public CollisionShape {
+    public:
+        explicit StaticConcaveTriangleMeshShape();
+        explicit StaticConcaveTriangleMeshShape(const Carrot::DocumentElement& element);
+        explicit StaticConcaveTriangleMeshShape(const Carrot::IO::VFS::Path& sourceModelPath, const glm::vec3& scale);
+        explicit StaticConcaveTriangleMeshShape(const StaticConcaveTriangleMeshShape&) = delete;
+
+        ~StaticConcaveTriangleMeshShape();
+
+    public:
+        ColliderType getType() const override;
+        std::unique_ptr<CollisionShape> duplicate() const override;
+        void serialiseTo(Carrot::DocumentElement& target) const override;
+
+        const glm::vec3& getScale() const;
+        void changeShapeScale(const glm::vec3& scale) override;
+
+        const Carrot::IO::VFS::Path& getSourcePath() const;
+        void updateSourcePath(const Carrot::IO::VFS::Path&);
+
+    private:
+        void recreateShape();
+
+        Carrot::IO::VFS::Path path;
+        glm::vec3 scale{1.0f};
+    };
+
     class Collider {
     public:
         static std::unique_ptr<Collider> load(const Carrot::DocumentElement& object);
