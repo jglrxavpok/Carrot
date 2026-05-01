@@ -23,6 +23,7 @@ namespace Carrot {
         operator std::string_view() const; // NOLINT(*-explicit-constructor)
 
         bool operator==(const Identifier&) const;
+        bool isEmpty() const;
 
     private:
         void update(std::string_view text);

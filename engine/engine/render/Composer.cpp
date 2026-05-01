@@ -14,6 +14,9 @@
 #include <engine/utils/Profiling.h>
 
 namespace Carrot::Render {
+    ViewportComposition::ViewportComposition() {
+    }
+
     PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
         // graph containing composer pass can be initialised after the 'toDraw' texture has been created
         driver.getEngine().getResourceRepository().getTextureUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
@@ -101,4 +104,13 @@ namespace Carrot::Render {
             }
         });
     }
+
+    void Composer::clear() {
+        regions.clear();
+    }
+
+    bool Composer::hasRegions() const {
+        return !regions.empty();
+    }
+
 }

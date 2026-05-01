@@ -20,6 +20,10 @@ namespace Carrot::ECS {
             perspectiveFar = doc["z_far"].getAsDouble();
             perspectiveFov = doc["fov"].getAsDouble();
         }
+
+        if (doc.contains("target_viewport")) {
+            targetViewportID = Carrot::Identifier{ doc["target_viewport"].getAsString() };
+        }
     }
 
     Carrot::DocumentElement CameraComponent::serialise() const {
@@ -27,6 +31,7 @@ namespace Carrot::ECS {
 
         obj["primary"] = isPrimary;
         obj["orthographic"] = isOrthographic;
+        obj["target_viewport"] = std::string{targetViewportID};
         if(isOrthographic) {
             obj["ortho_bounds"] = DocumentHelpers::write(orthoSize);
         } else {

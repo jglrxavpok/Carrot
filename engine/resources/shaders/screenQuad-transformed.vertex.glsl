@@ -5,7 +5,7 @@ layout(location = 0) out vec2 uv;
 layout(location = 1) flat out uint texIndex;
 
 layout(push_constant) uniform Region {
-    layout(offset = 24) float left;
+    float left;
     float right;
     float top;
     float bottom;

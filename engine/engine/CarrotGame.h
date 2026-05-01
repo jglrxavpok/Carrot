@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "render/Composer.h"
 #include "vulkan/SwapchainAware.h"
 
 namespace Carrot {
@@ -47,6 +48,17 @@ namespace Carrot {
     public:
         void requestShutdown() { requestedShutdown = true; };
         bool hasRequestedShutdown() const { return requestedShutdown; }
+
+        /// Allows to move a single viewport
+        Render::ViewportLocation& getViewportLocation(const Identifier& viewportID);
+
+        /// Modifies count, location, and ids of viewports used by game
+        /// Returns the texture in which the game will be rendered
+        Carrot::Render::FrameResource updateViewportComposition(Render::ViewportComposition&& composition);
+
+        /// Allows game to select in which viewport it will be rendered
+        /// Returns the texture in which the game will be rendered
+        Carrot::Render::FrameResource setGameViewport(const Identifier& gameViewportID);
 
     private:
         bool requestedShutdown = false;

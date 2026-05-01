@@ -63,11 +63,12 @@ namespace fs = std::filesystem;
 
 namespace Peeler {
     static constexpr const char* ExportPopupID = "Exporting wizard";
+    static const Carrot::Identifier GameViewportID{"Peeler-Preview"};
 
     Application* Instance = nullptr;
 
     void Application::setupCamera(const Carrot::Render::Context& renderContext) {
-        if(renderContext.pViewport == &gameViewport) {
+        /*if(renderContext.pViewport->getViewportID() == GameViewportID) */{
             cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
 
             currentScene.setupCamera(renderContext);
@@ -318,6 +319,7 @@ namespace Peeler {
             ImGui::EndMenuBar();
 
             drawCameraSettingsWindow();
+            drawViewportSettingsWindow();
             drawPhysicsSettingsWindow();
             drawNewSceneWindow();
 
@@ -1234,6 +1236,7 @@ namespace Peeler {
             //showPhysicsSettings = !showPhysicsSettings;
         }
         ImGui::MenuItem(ICON_FA_CAMERA "  Editor camera settings", nullptr, &showCameraSettings /* TODO: save to editor settings */);
+        ImGui::MenuItem(ICON_FA_IMAGES "  Viewport settings", nullptr, &showViewportSettings /* TODO: save to editor settings */);
     }
 
     void Application::drawToolsMenu() {
@@ -1281,6 +1284,47 @@ namespace Peeler {
         if (showCameraSettings) {
             if (ImGui::Begin("Camera settings", &showCameraSettings)) {
                 ImGui::SliderFloat("Speed", &cameraSpeedMultiplier, 0.01f, 1000.0f);
+            }
+            ImGui::End();
+        }
+    }
+
+    void Application::drawViewportSettingsWindow() {
+        if (showViewportSettings) {
+            if (ImGui::Begin("Viewport settings", &showViewportSettings)) {
+                if (ImGui::Button("Split screen")) {
+                    Carrot::Render::ViewportComposition splitScreen2Players;
+                    Carrot::Render::ViewportLocation& player0Loc = splitScreen2Players.viewports[Carrot::Identifier{"player_0"}];
+                    player0Loc.offset = {0, 0};
+                    player0Loc.size = {1.0f, 0.5f};
+
+                    Carrot::Render::ViewportLocation& player1Loc = splitScreen2Players.viewports[Carrot::Identifier{"player_1"}];
+                    player1Loc.offset = {0, 0.5f};
+                    player1Loc.size = {1.0f, 0.5f};
+                    gameTexture = updateViewportComposition(std::move(splitScreen2Players));
+                }
+                if (ImGui::Button("4-way split")) {
+                    Carrot::Render::ViewportComposition splitScreen4Players;
+                    Carrot::Render::ViewportLocation& player0Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_0"}];
+                    player0Loc.offset = {0, 0};
+                    player0Loc.size = {0.5f, 0.5f};
+
+                    Carrot::Render::ViewportLocation& player1Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_1"}];
+                    player1Loc.offset = {0.5f, 0.0f};
+                    player1Loc.size = {0.5f, 0.5f};
+
+                    Carrot::Render::ViewportLocation& player2Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_2"}];
+                    player2Loc.offset = {0.0f, 0.5f};
+                    player2Loc.size = {0.5f, 0.5f};
+
+                    Carrot::Render::ViewportLocation& player3Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_3"}];
+                    player3Loc.offset = {0.5f, 0.5f};
+                    player3Loc.size = {0.5f, 0.5f};
+                    gameTexture = updateViewportComposition(std::move(splitScreen4Players));
+                }
+                if (ImGui::Button("Single screen")) {
+                    gameTexture = updateViewportComposition({});
+                }
             }
             ImGui::End();
         }
@@ -1608,7 +1652,7 @@ namespace Peeler {
     Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(),
         currentScene(engine.getSceneManager().getMainScene()),
         settings("peeler"),
-        gameViewport(engine.createViewport(GetEngine().getMainWindow())),
+        gameViewport(engine.createViewport(GetEngine().getMainWindow(), GameViewportID)),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
         playActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button_playing.png"),
         pauseButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button.png"),

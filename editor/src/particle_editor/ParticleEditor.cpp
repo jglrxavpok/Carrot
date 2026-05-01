@@ -38,7 +38,7 @@ static std::uint32_t MaxPreviewParticles = 10000;
 
 Peeler::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
 : Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
-updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), previewViewport(engine.createViewport(engine.getMainWindow()))
+updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), previewViewport(engine.createViewport(engine.getMainWindow(), Carrot::Identifier{"ParticleEditor-Preview"}))
 {
     previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver(), engine.getMainWindow());
     struct TmpPass {

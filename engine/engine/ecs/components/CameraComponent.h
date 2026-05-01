@@ -21,6 +21,7 @@ namespace Carrot::ECS {
         float perspectiveNear = 0.1f;
         float perspectiveFar = 1000.0f;
         float perspectiveFov = glm::radians(70.0f);
+        Carrot::Identifier targetViewportID; // viewport in which to use this camera. Set to null for all viewports
         constexpr static float PerspectiveAspectRatio = 16.0f / 9.0f; // TODO: take viewport size into account
 
         explicit CameraComponent(Entity entity): IdentifiableComponent<CameraComponent>(std::move(entity)) {};
@@ -41,6 +42,7 @@ namespace Carrot::ECS {
             result->perspectiveNear = perspectiveNear;
             result->perspectiveFar = perspectiveFar;
             result->perspectiveFov = perspectiveFov;
+            result->targetViewportID = targetViewportID;
             return result;
         }
 

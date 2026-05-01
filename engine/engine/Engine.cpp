@@ -213,47 +213,19 @@ void Carrot::Engine::init() {
     allocateGraphicsCommandBuffers();
     createTracyContexts();
 
-    createViewport(mainWindow); // main viewport
+    createViewport(mainWindow, Carrot::Identifier{"Main"}); // main viewport
     getMainViewport().vrCompatible = true;
 
     // quickly render something on screen
     LoadingScreen screen{*this};
     initVulkan();
 
-    auto addPresentPass = [&](Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent) {
-        auto& blitToSwapchain = mainGraph.addPass<Carrot::Render::PassData::Present>("blit-to-swapchain",
-                                                             [toPresent](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
-                                                                 data.input = builder.read(toPresent, vk::ImageLayout::eShaderReadOnlyOptimal);
-                                                                 data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                                                             },
-                                                             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
-                                                                 ZoneScopedN("CPU RenderGraph present");
-                                                                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameNumber);
-                                                                 auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainImageIndex);
-                                                                 frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
-
-                                                                 renderer.recordImGuiPass(cmds, pass, frame);
-                                                             }
-        );
-        struct PresentFinal {
-            Render::FrameResource swapchainImage;
-        };
-        mainGraph.addPass<PresentFinal>("present",
-                                                             [toPresent, previousPassData = blitToSwapchain.getData()](Render::GraphBuilder& builder, Render::Pass<PresentFinal>& pass, PresentFinal& data) {
-                                                                 pass.rasterized = false;
-                                                                 data.swapchainImage = builder.write(previousPassData.output, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::ePresentSrcKHR, vk::ClearColorValue(std::array{0,0,0,0}));
-                                                                 builder.present(data.swapchainImage);
-                                                             },
-                                                             [this](const Render::CompiledPass& pass, const Render::Context& frame, const PresentFinal& data, vk::CommandBuffer& cmds) {}
-        );
-    };
-
-    Render::GraphBuilder mainGraph(vkDriver, mainWindow);
     if(config.runInVR) {
+        Render::GraphBuilder mainGraph(vkDriver, mainWindow);
         Render::GraphBuilder leftEyeGraph(vkDriver, mainWindow);
         Render::Composer companionComposer(vkDriver);
 
-        auto leftEyeFinalPass = fillGraphBuilder(leftEyeGraph, Render::Eye::LeftEye);
+        auto leftEyeFinalPass = fillGraphBuilderForSingleGameViewport(leftEyeGraph, Render::Eye::LeftEye);
         auto& rightEyeFinalPass = leftEyeFinalPass;
 
         Render::GraphBuilder rightEyeGraph = leftEyeGraph; // reuse most textures
@@ -275,34 +247,10 @@ void Carrot::Engine::init() {
         rightEyeGlobalFrameGraph = std::move(rightEyeGraph.compile());
 
         addPresentPass(mainGraph, composerPass.getData().color);
+        getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     } else {
-        if(config.simplifiedMainRenderGraph) {
-            struct DummyPass {
-                Render::FrameResource dummy;
-            };
-            // created to provide an empty image to present pass
-            auto dummyPass = mainGraph.addPass<DummyPass>("dummy",
-                [](Render::GraphBuilder& builder, Render::Pass<DummyPass>& pass, DummyPass& data) {
-                    Render::TextureSize dummySize;
-                    dummySize.type = Render::TextureSize::Type::Fixed;
-                    dummySize.width = 1;
-                    dummySize.height = 1;
-                    dummySize.depth = 1;
-                    data.dummy = builder.createRenderTarget("Dummy", vk::Format::eR8G8B8A8Unorm, dummySize, vk::AttachmentLoadOp::eClear);
-                }, [](const Render::CompiledPass& pass, const Render::Context& frame, const DummyPass& data, vk::CommandBuffer& cmds) {
-                    // no op
-                });
-            addPresentPass(mainGraph, dummyPass.getData().dummy);
-        } else {
-            auto lastPass = fillGraphBuilder(mainGraph);
-
-            composers[Render::Eye::NoVR]->add(lastPass);
-            auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
-            addPresentPass(mainGraph, composerPass.getData().color);
-        }
-
+        updateGameViewportRenderGraph(&getMainViewport());
     }
-    getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
 
     initConsole();
     initInputStructures();
@@ -1762,9 +1710,9 @@ Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
     return viewports.front();
 }
 
-Carrot::Render::Viewport& Carrot::Engine::createViewport(Window& window) {
+Carrot::Render::Viewport& Carrot::Engine::createViewport(Window& window, const Identifier& viewportID) {
     verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
-    viewports.emplace_back(renderer, window.getWindowID());
+    viewports.emplace_back(renderer, viewportID, window.getWindowID());
     return viewports.back();
 }
 
@@ -1775,6 +1723,16 @@ void Carrot::Engine::destroyViewport(Carrot::Render::Viewport& viewport) {
     viewports.remove_if([&](const Carrot::Render::Viewport& v) {
         return &v == &viewport;
     });
+}
+
+Carrot::Render::Viewport& Carrot::Engine::getOrCreateViewport(const Identifier& viewportID) {
+    for (Render::Viewport& viewport : viewports) {
+        if (viewport.getViewportID() == viewportID) {
+            return viewport;
+        }
+    }
+
+    return createViewport(mainWindow, viewportID);
 }
 
 Carrot::Window& Carrot::Engine::getMainWindow() {

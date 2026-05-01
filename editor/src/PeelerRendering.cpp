@@ -9,23 +9,7 @@ using namespace Carrot::Render;
 
 namespace Peeler {
     void Application::setupGameViewport() {
-        GraphBuilder graphBuilder(engine.getVulkanDriver(), engine.getMainWindow());
-
-        auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Eye::NoVR,
-                                     [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         GetRenderer().recordOpaqueGBufferPass(pass, frame, cmds);
-                                     },
-                                     [&](const CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         GetRenderer().recordTransparentGBufferPass(pass, frame, cmds);
-                                     });
-
-        engine.getResourceRepository().getTextureUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
-        const auto gbufferPass = graphBuilder.getPassData<PassData::GBuffer>("gbuffer").value();
-        engine.getResourceRepository().getTextureUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
-
-        gameTexture = addOutlinePass(graphBuilder, resolvePassResult);
-        gameViewport.setRenderGraph(std::move(graphBuilder.compile()));
-
+        gameTexture = setGameViewport(gameViewport.getViewportID());
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
     }
 

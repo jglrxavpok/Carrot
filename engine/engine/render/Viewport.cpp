@@ -14,7 +14,7 @@
 #include "ViewportBufferObject.h"
 
 namespace Carrot::Render {
-    Viewport::Viewport(VulkanRenderer& renderer, WindowID windowID): renderer(renderer), windowID(windowID) {
+    Viewport::Viewport(VulkanRenderer& renderer, const Identifier& viewportIdentifier, WindowID windowID): renderer(renderer), viewportID(viewportIdentifier), windowID(windowID) {
         onSwapchainImageCountChange(MAX_FRAMES_IN_FLIGHT);
         std::int32_t w, h;
         renderer.getEngine().getWindow(windowID).getWindowSize(w, h);
@@ -157,6 +157,10 @@ namespace Carrot::Render {
         }
     }
 
+    void Viewport::removeAllScenes() {
+        scenes.clear();
+    }
+
     void Viewport::addScene(Scene* pScene) {
         verify(pScene != nullptr, "Cannot add null scene");
         scenes.emplace_back(pScene);
@@ -211,4 +215,9 @@ namespace Carrot::Render {
     void Viewport::setOffset(const glm::vec2& offset) {
         this->offset = offset;
     }
+
+    const Identifier& Viewport::getViewportID() const {
+        return viewportID;
+    }
+
 }

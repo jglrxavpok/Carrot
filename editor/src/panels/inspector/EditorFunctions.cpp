@@ -217,6 +217,9 @@ namespace Peeler {
         } else {
             ImGui::Text("Cannot edit mix of orthographic and perspective cameras at the same time.");
         }
+
+        multiEditField(edition, "Target Viewport", components,
+            +[](Carrot::ECS::CameraComponent& c) -> Carrot::Identifier& { return c.targetViewportID; });
     }
 
     void editTextComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::TextComponent*>& components) {

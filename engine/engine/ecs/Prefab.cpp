@@ -105,18 +105,20 @@ namespace Carrot::ECS {
                 continue;
             }
 
-            internalScene.world.addRenderSystem(pSystem->duplicate(internalScene.world));
+       //     internalScene.world.addRenderSystem(pSystem->duplicate(internalScene.world));
         }
         for (const System* pSystem : entity.getWorld().getLogicSystems()) {
             if (!pSystem->shouldBeSerialized()) {
                 continue;
             }
 
-            internalScene.world.addLogicSystem(pSystem->duplicate(internalScene.world));
+        //    internalScene.world.addLogicSystem(pSystem->duplicate(internalScene.world));
         }
 
-        std::function<void(const Entity&, const EntityID&)> copyRecursively = [&](const Entity& toCopy, const EntityID& parentID) {
+        std::unordered_map<EntityID, EntityID> remap;
+        std::function<Entity(const Entity&, const EntityID&)> copyRecursively = [&](const Entity& toCopy, const EntityID& parentID) {
             Entity copy = internalScene.world.newEntity(toCopy.getName());
+            remap[toCopy.getID()] = copy.getID();
             copy.setFlags(toCopy.getFlags());
             for (const Component* pComp : toCopy.getAllComponents()) {
                 if (!pComp->isSerializable()) {
@@ -131,10 +133,12 @@ namespace Carrot::ECS {
             }
 
             for (const auto& child : toCopy.getChildren(ShouldRecurse::NoRecursion)) {
-                copyRecursively(child, copy.getID());
+                DISCARD(copyRecursively(child, copy.getID()));
             }
+            return copy;
         };
-        copyRecursively(entity, PrefabRootUUID);
+        Entity rootEntity = copyRecursively(entity, PrefabRootUUID);
+        internalScene.world.repairLinks(rootEntity, remap);
         internalScene.world.tick(0.0f); // ensure entities are properly added
     }
 

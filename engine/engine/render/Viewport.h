@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <core/containers/Vector.hpp>
+#include <core/utils/Identifier.h>
 
 #include "RenderEye.h"
 #include "Camera.h"
@@ -25,7 +26,7 @@ namespace Carrot::Render {
 
     class Viewport: public SwapchainAware {
     public:
-        explicit Viewport(VulkanRenderer& renderer, WindowID windowID);
+        explicit Viewport(VulkanRenderer& renderer, const Identifier& viewportIdentifier, WindowID windowID);
         Viewport(const Viewport&) = delete;
         ~Viewport();
 
@@ -58,6 +59,11 @@ namespace Carrot::Render {
          */
         void removeScene(Scene* scene);
 
+        /**
+         * Remove all scenes to render to this viewport automatically
+         */
+        void removeAllScenes();
+
     public:
         void resize(std::uint32_t width, std::uint32_t height);
         std::uint32_t getWidth() const;
@@ -77,8 +83,12 @@ namespace Carrot::Render {
         Graph* getRenderGraph();
         void setRenderGraph(std::unique_ptr<Graph>&& renderGraph);
 
+    public:
+        const Identifier& getViewportID() const;
+
     private:
         VulkanRenderer& renderer;
+        Identifier viewportID;
         WindowID windowID;
         std::unique_ptr<Graph> renderGraph;
         std::vector<Carrot::Scene*> scenes; // scenes to render inside this viewport, not owning. Assuming the Scene instances remove themselves from the vector on destruction

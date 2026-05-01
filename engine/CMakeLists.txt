@@ -8,6 +8,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}io/actions/ActionSet.cpp
         ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 
+        ${EngineRoot}CarrotGame.cpp
         ${EngineRoot}CarrotRenderingPipeline.cpp
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/Model.cpp

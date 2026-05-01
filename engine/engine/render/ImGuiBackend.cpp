@@ -524,7 +524,7 @@ namespace Carrot::Render {
 
         pRendererUserData->pWindow = &externalWindow;
 
-        Render::Viewport& viewport = renderer.getEngine().createViewport(externalWindow);
+        Render::Viewport& viewport = renderer.getEngine().createViewport(externalWindow, Identifier{Carrot::sprintf("Window-%x", pViewport)});
         Render::GraphBuilder renderGraphBuilder { renderer.getVulkanDriver(), externalWindow };
         struct ImGuiRenderPassData {
             Render::FrameResource targetTexture;

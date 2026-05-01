@@ -481,6 +481,28 @@ namespace Peeler {
     }
 
     template<>
+    inline bool editMultiple<Carrot::Identifier>(const char* id, std::span<Carrot::Identifier> values, const Helpers::Limits<Carrot::Identifier>& limits) {
+        std::string sameValue { values[0] };
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(std::string_view{values[i]} != sameValue) {
+                sameValue = "<VARIOUS>";
+                break;
+            }
+        }
+
+        bool modified = ImGui::InputText(id, sameValue);
+
+        if(modified) {
+            for(Carrot::Identifier& v : values) {
+                v = Carrot::Identifier{sameValue};
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    template<>
     inline bool editMultiple<Carrot::ECS::Entity>(const char* id, std::span<Carrot::ECS::Entity> values, const Helpers::Limits<Carrot::ECS::Entity>& limits) {
         Carrot::ECS::Entity sameValue { values[0] };
         const char* nameOverride = nullptr;

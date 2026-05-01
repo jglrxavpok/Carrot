@@ -243,14 +243,32 @@ namespace Carrot {
         void setShutdownRequestHandler(std::function<void()> handler);
         void requestShutdown();
 
-    public:
+    private:
         const Render::FrameResource& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
-        const Render::FrameResource& fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
+        void addPresentPass(Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent);
+
+    public:
+        const Render::FrameResource& fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
+
+        ///
+        const Render::FrameResource& fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
 
     public: // viewports
         Render::Viewport& getMainViewport();
-        Render::Viewport& createViewport(Window& window);
+
+        /// Viewport ID is used for gameplay to know which viewports exist and where
+        Render::Viewport& createViewport(Window& window, const Identifier& viewportID);
         void destroyViewport(Render::Viewport& viewport);
+        Render::Viewport& getOrCreateViewport(const Identifier& viewportID);
+
+        /// Sets up the render graph of the game viewport (set via CarrotGame::setGameViewport - by default Main viewport) to compose the different game viewports inside it
+        /// Returns the final color image, to be used to blit later on if needed
+        Render::FrameResource updateGameViewportRenderGraph(std::optional<Render::Viewport*> viewportOverride = {});
+
+        /// Sets which viewport is used for rendering the game
+        void setGameViewport(Render::Viewport& gameViewport);
+
+    public:
 
         SceneManager& getSceneManager();
 
@@ -460,6 +478,7 @@ namespace Carrot {
         std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};
 
         std::list<Carrot::Render::Viewport> viewports;
+        Render::Viewport* pGameViewport = nullptr;
         std::list<Carrot::Window> externalWindows;
 
         bool framebufferResized = false;

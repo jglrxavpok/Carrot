@@ -246,7 +246,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     return finalTAA.getData().denoisedResult;
 }
 
-const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
     return fillInDefaultPipeline(mainGraph, eye,
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 GPUZone(tracyCtx[frame.frameIndex], cmds, "Opaque Rendering");
@@ -260,4 +260,102 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::Gr
                                             },
                                             framebufferSize);
 
+}
+
+const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+    Render::Composer& composer = *composers[eye];
+    if (composer.hasRegions()) {
+        // if there are game viewports, they are expected to render the game themselves (via fillGraphBuilderForSingleGameViewport for example)
+        return composer.appendPass(mainGraph).getData().color;
+    } else {
+        // draw game inside main viewport directly
+        return fillGraphBuilderForSingleGameViewport(mainGraph, eye, framebufferSize);
+    }
+}
+
+void Carrot::Engine::addPresentPass(Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent) {
+    auto& blitToSwapchain = mainGraph.addPass<Carrot::Render::PassData::Present>("blit-to-swapchain",
+                                                         [toPresent](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
+                                                             data.input = builder.read(toPresent, vk::ImageLayout::eShaderReadOnlyOptimal);
+                                                             data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
+                                                         },
+                                                         [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
+                                                             ZoneScopedN("CPU RenderGraph present");
+                                                             auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameNumber);
+                                                             auto& swapchainTexture = pass.getGraph().getSwapchainTexture(data.output, frame.swapchainImageIndex);
+                                                             frame.renderer.fullscreenBlit(pass, frame, inputTexture, swapchainTexture, cmds);
+
+                                                             renderer.recordImGuiPass(cmds, pass, frame);
+                                                         }
+    );
+    struct PresentFinal {
+        Render::FrameResource swapchainImage;
+    };
+    mainGraph.addPass<PresentFinal>("present",
+                                                         [toPresent, previousPassData = blitToSwapchain.getData()](Render::GraphBuilder& builder, Render::Pass<PresentFinal>& pass, PresentFinal& data) {
+                                                             pass.rasterized = false;
+                                                             data.swapchainImage = builder.write(previousPassData.output, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::ePresentSrcKHR, vk::ClearColorValue(std::array{0,0,0,0}));
+                                                             builder.present(data.swapchainImage);
+                                                         },
+                                                         [this](const Render::CompiledPass& pass, const Render::Context& frame, const PresentFinal& data, vk::CommandBuffer& cmds) {}
+    );
+}
+
+Carrot::Render::FrameResource Carrot::Engine::updateGameViewportRenderGraph(std::optional<Render::Viewport*> viewportOverride) {
+    Render::FrameResource finalColor;
+    Carrot::Render::Viewport* pViewport = pGameViewport;
+    if (viewportOverride.has_value()) {
+        pViewport = *viewportOverride;
+    }
+    const bool isMainViewport = pViewport->getViewportID() == Carrot::Identifier{"Main"};
+    Render::Viewport& gameViewport = isMainViewport ? getMainViewport() : *pViewport;
+    Render::GraphBuilder mainGraph{vkDriver, mainWindow};
+    if (!composers[Render::Eye::NoVR]->hasRegions()) { // if rendering to a single viewport
+        if(config.simplifiedMainRenderGraph) {
+            if (isMainViewport) {
+                struct DummyPass {
+                    Render::FrameResource dummy;
+                };
+                // created to provide an empty image to present pass
+                auto dummyPass = mainGraph.addPass<DummyPass>("dummy",
+                    [](Render::GraphBuilder& builder, Render::Pass<DummyPass>& pass, DummyPass& data) {
+                        Render::TextureSize dummySize;
+                        dummySize.type = Render::TextureSize::Type::Fixed;
+                        dummySize.width = 1;
+                        dummySize.height = 1;
+                        dummySize.depth = 1;
+                        data.dummy = builder.createRenderTarget("Dummy", vk::Format::eR8G8B8A8Unorm, dummySize, vk::AttachmentLoadOp::eClear);
+                    }, [](const Render::CompiledPass& pass, const Render::Context& frame, const DummyPass& data, vk::CommandBuffer& cmds) {
+                        // no op
+                    });
+                addPresentPass(mainGraph, dummyPass.getData().dummy);
+            } else {
+                auto lastPass = fillGraphBuilderForSingleGameViewport(mainGraph);
+                finalColor = lastPass;
+            }
+        } else {
+            auto lastPass = fillGraphBuilderForSingleGameViewport(mainGraph);
+
+            Render::Composer composerCopy = *composers[Render::Eye::NoVR];
+            composerCopy.add(lastPass);
+            auto& composerPass = composerCopy.appendPass(mainGraph);
+            if (isMainViewport) {
+                addPresentPass(mainGraph, composerPass.getData().color);
+            }
+            finalColor = composerPass.getData().color;
+        }
+    } else { // if rendering to multiple viewports
+        auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
+        if (isMainViewport) {
+            addPresentPass(mainGraph, composerPass.getData().color);
+        }
+        finalColor = composerPass.getData().color;
+    }
+
+    gameViewport.setRenderGraph(std::move(mainGraph.compile()));
+    return finalColor;
+}
+
+void Carrot::Engine::setGameViewport(Render::Viewport& gameViewport) {
+    pGameViewport = &gameViewport;
 }

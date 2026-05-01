@@ -51,6 +51,10 @@ namespace Carrot {
         crc = CRC64(storage.data(), storage.size());
     }
 
+    bool Identifier::isEmpty() const {
+        return storage.empty();
+    }
+
 } // Carrot
 
 std::size_t std::hash<Carrot::Identifier>::operator()(const Carrot::Identifier& identifier) const noexcept {

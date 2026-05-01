@@ -12,6 +12,13 @@ namespace Carrot::ECS {
             if(!cameraComponent.isPrimary) {
                 return;
             }
+
+            if (!cameraComponent.targetViewportID.isEmpty()) {
+                if (cameraComponent.targetViewportID != renderContext.pViewport->getViewportID()) {
+                    return;
+                }
+            }
+
             auto viewMatrix = transform.toTransformMatrix();
             viewMatrix = glm::inverse(viewMatrix);
 
