@@ -164,11 +164,11 @@ namespace Carrot::Render {
         /**
          * Compile this pass into 'graph', preparing framebuffers and render passes
          * @param driver
-         * @param window window for which this pass will be used. Mostly used to know the size of the framebuffer
+         * @param framebufferSize size of the framebuffer (where this render pass will be drawn, and used to determine final size of resources)
          * @param graph
          * @return
          */
-        std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Window& window, Graph& graph);
+        std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, vk::Extent2D framebufferSize, Graph& graph);
 
     protected:
         Carrot::VulkanDriver& driver;

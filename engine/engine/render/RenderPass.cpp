@@ -227,7 +227,7 @@ void Carrot::Render::PassBase::present(FrameResource& toPresent) {
     output->resource.layout = vk::ImageLayout::ePresentSrcKHR;
 }
 
-std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, Carrot::Window& window, Carrot::Render::Graph& graph) {
+std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, vk::Extent2D viewportSize, Carrot::Render::Graph& graph) {
     // TODO: input and output can be the same attachment (subpasses)
     std::vector<vk::AttachmentDescription> attachments;
     std::vector<vk::AttachmentReference> inputAttachments;
@@ -256,7 +256,6 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         }
     }
 
-    vk::Extent2D viewportSize = window.getFramebufferExtent();
     std::unique_ptr<CompiledPass> result = nullptr;
 
     auto resetBuffers = [outputs = outputs, &graph, &driver]() {

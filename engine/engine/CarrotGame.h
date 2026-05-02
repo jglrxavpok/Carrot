@@ -60,7 +60,11 @@ namespace Carrot {
         /// Returns the texture in which the game will be rendered
         Carrot::Render::FrameResource setGameViewport(const Identifier& gameViewportID);
 
+        /// Called after the game viewport has changed size, to allow subviewports to be resized
+        void onGameViewportSizeChanged(u32 w, u32 h);
+
     private:
+        Carrot::Render::ViewportComposition currentComposition; // stored without render graphs, they are moved inside the viewports
         bool requestedShutdown = false;
     };
 

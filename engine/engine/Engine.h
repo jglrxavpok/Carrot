@@ -265,8 +265,12 @@ namespace Carrot {
         /// Returns the final color image, to be used to blit later on if needed
         Render::FrameResource updateGameViewportRenderGraph(std::optional<Render::Viewport*> viewportOverride = {});
 
-        /// Sets which viewport is used for rendering the game
-        void setGameViewport(Render::Viewport& gameViewport);
+        /// Sets which viewport is used for rendering the game. (can be useful for embedding the game inside a window)
+        /// To reset, use getMainViewport() as the argument
+        void setGameViewport(Render::Viewport& pGameViewport);
+
+        /// Gets which viewport is used for rendering the game.
+        Render::Viewport& getGameViewport();
 
     public:
 

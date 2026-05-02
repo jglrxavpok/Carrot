@@ -186,6 +186,10 @@ namespace Carrot::Render {
             renderGraph->onSwapchainSizeChange(GetEngine().getWindow(windowID), w, h);
         }
         followSwapchainSize = false;
+
+        if (getViewportID() == GetEngine().getGameViewport().getViewportID()) {
+            GetEngine().getGame()->onGameViewportSizeChanged(w, h);
+        }
     }
 
     std::uint32_t Viewport::getWidth() const {

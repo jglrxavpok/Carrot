@@ -14,7 +14,14 @@
 #include <engine/utils/Profiling.h>
 
 namespace Carrot::Render {
-    ViewportComposition::ViewportComposition() {
+    void ViewportComposition::copyViewportPositions(const ViewportComposition& other) {
+        viewports.clear();
+        for (const auto& [id, locationToCopy] : other.viewports) {
+            ViewportLocation& location = viewports[id];
+            location.offset = locationToCopy.offset;
+            location.size = locationToCopy.size;
+            location.z = locationToCopy.z;
+        }
     }
 
     PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {

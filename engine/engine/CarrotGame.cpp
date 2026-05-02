@@ -11,9 +11,8 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
     Render::Composer& composer = engine.getMainComposer();
     composer.clear();
 
-    i32 windowWidth;
-    i32 windowHeight;
-    engine.getMainWindow().getFramebufferSize(windowWidth, windowHeight);
+    const i32 windowWidth = static_cast<i32>(engine.getGameViewport().getSizef().x);
+    const i32 windowHeight = static_cast<i32>(engine.getGameViewport().getSizef().y);
 
     for (auto& [id, location] : composition.viewports) {
         Render::Viewport& viewport = engine.getOrCreateViewport(id);
@@ -42,6 +41,7 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
         composer.add(colorTexture, left, right, top, bottom, location.z);
     }
 
+    currentComposition.copyViewportPositions(composition);
     return engine.updateGameViewportRenderGraph();
 }
 
@@ -49,4 +49,15 @@ Carrot::Render::FrameResource Carrot::CarrotGame::setGameViewport(const Identifi
     Render::Viewport& gameViewport = engine.getOrCreateViewport(gameViewportID);
     engine.setGameViewport(gameViewport);
     return engine.updateGameViewportRenderGraph();
+}
+
+void Carrot::CarrotGame::onGameViewportSizeChanged(u32 w, u32 h) {
+    for (const auto& [viewportID, location] : currentComposition.viewports) {
+        Render::Viewport& viewport = engine.getOrCreateViewport(viewportID);
+
+        // need to be after render graph, to tell render graph about new size
+        glm::ivec2 viewportSize = location.size * glm::vec2{w, h};
+        verify(viewportSize.x > 0 && viewportSize.y > 0, "Invalid viewport size");
+        viewport.resize(viewportSize.x, viewportSize.y);
+    }
 }

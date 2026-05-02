@@ -185,11 +185,18 @@ namespace Carrot::Render {
         return r;
     }
 
-    std::unique_ptr<Graph> GraphBuilder::compile() {
+    std::unique_ptr<Graph> GraphBuilder::compile(std::optional<vk::Extent2D> forcedViewportSize) {
         auto result = std::make_unique<Graph>(GetVulkanDriver());
 
+        vk::Extent2D viewportSize;
+        if (forcedViewportSize.has_value()) {
+            viewportSize = *forcedViewportSize;
+        } else {
+            viewportSize = window.getFramebufferExtent();
+        }
+
         for(const auto& [name, pass] : passes) {
-            result->passes.emplace_back(name, std::move(pass->compile(GetVulkanDriver(), window, *result)));
+            result->passes.emplace_back(name, std::move(pass->compile(GetVulkanDriver(), viewportSize, *result)));
         }
 
         // TODO: actually sort

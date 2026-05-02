@@ -28,7 +28,10 @@ namespace Carrot::Render {
         std::unordered_map<Carrot::Identifier, ViewportLocation> viewports;
 
         /// Default composition: Main viewport takes entire screen
-        ViewportComposition();
+        ViewportComposition() = default;
+
+        /// Copies the viewport list and positions of each viewport from 'other'. Does not copy render graph
+        void copyViewportPositions(const ViewportComposition& other);
 
         /// Set ups the given composer to match what is inside viewports
         void fillComposer(Composer& composer);

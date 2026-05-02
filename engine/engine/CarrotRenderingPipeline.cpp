@@ -352,10 +352,17 @@ Carrot::Render::FrameResource Carrot::Engine::updateGameViewportRenderGraph(std:
         finalColor = composerPass.getData().color;
     }
 
-    gameViewport.setRenderGraph(std::move(mainGraph.compile()));
+    vk::Extent2D gameViewportExtent;
+    gameViewportExtent.width = static_cast<u32>(gameViewport.getSizef().x);
+    gameViewportExtent.height = static_cast<u32>(gameViewport.getSizef().y);
+    gameViewport.setRenderGraph(std::move(mainGraph.compile(gameViewportExtent)));
     return finalColor;
 }
 
+Carrot::Render::Viewport& Carrot::Engine::getGameViewport() {
+    return pGameViewport ? *pGameViewport : getMainViewport();
+}
+
 void Carrot::Engine::setGameViewport(Render::Viewport& gameViewport) {
-    pGameViewport = &gameViewport;
+    this->pGameViewport = &gameViewport;
 }

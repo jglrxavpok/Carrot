@@ -122,7 +122,8 @@ namespace Carrot::Render {
             return *pass;
         }
 
-        std::unique_ptr<Graph> compile();
+        /// @param forcedViewportSize used to force a viewport size which is not the window size
+        std::unique_ptr<Graph> compile(std::optional<vk::Extent2D> forcedViewportSize = {});
 
     public:
         FrameResource& getSwapchainImage() {
