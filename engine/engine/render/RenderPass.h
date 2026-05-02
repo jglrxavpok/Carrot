@@ -81,6 +81,8 @@ namespace Carrot::Render {
                 const Carrot::UUID& passID
         );
 
+        ~CompiledPass();
+
     public:
         void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 

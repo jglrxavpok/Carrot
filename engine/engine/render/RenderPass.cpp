@@ -76,6 +76,10 @@ Carrot::Render::CompiledPass::CompiledPass(
             recreateResources();
         }
 
+Carrot::Render::CompiledPass::~CompiledPass() {
+    getVulkanDriver().getEngine().getResourceRepository().removeBelongingTo(passID);
+}
+
 void Carrot::Render::CompiledPass::performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds) {
     {
         ZoneScopedN("Pre-Pass Layout transitions");
