@@ -18,6 +18,14 @@ inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) {
     return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y);
 }
 
+inline ImVec2 operator*(const ImVec2& lhs, float rhs) {
+    return ImVec2(lhs.x * rhs, lhs.y * rhs);
+}
+
+inline ImVec2 operator/(const ImVec2& lhs, float rhs) {
+    return ImVec2(lhs.x / rhs, lhs.y / rhs);
+}
+
 namespace ImGui {
     inline int StdStringInputCallback( ImGuiInputTextCallbackData* data ) {
         switch( data->EventFlag ) {
@@ -102,4 +110,8 @@ namespace ImGui {
 
 namespace ImGuiUtils {
     const ImColor& getCarrotColor();
+
+    glm::vec4 getDebugColorFromPalette(uint64_t index);
+    ImColor getDebugColorFromPaletteAsImColor(uint64_t index);
+
 }

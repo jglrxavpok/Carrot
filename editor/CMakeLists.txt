@@ -6,6 +6,7 @@ set(EditorSources
         ${EditorRoot}GridRenderer.cpp
         ${EditorRoot}InspectorWidgets.cpp
         ${EditorRoot}EntityWarnings.cpp
+        ${EditorRoot}ViewportEdition.cpp
 
         ${EditorRoot}commands/AddComponentsCommand.cpp
         ${EditorRoot}commands/DeleteEntitiesCommand.cpp

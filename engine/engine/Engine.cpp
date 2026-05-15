@@ -181,7 +181,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
 #else
                 constexpr bool allowASANTarget = false;
 #endif
-                if (cu.objFilePath.find("-ASAN.dir") != std::string::npos) {
+                if (cu.objFilePath.find("-ASAN") != std::string::npos) {
                     return allowASANTarget;
                 }
                 return true;

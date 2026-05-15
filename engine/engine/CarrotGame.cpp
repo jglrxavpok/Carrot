@@ -51,6 +51,10 @@ Carrot::Render::FrameResource Carrot::CarrotGame::setGameViewport(const Identifi
     return engine.updateGameViewportRenderGraph();
 }
 
+bool Carrot::CarrotGame::hasMultipleGameViewports() const {
+    return !currentComposition.viewports.empty();
+}
+
 void Carrot::CarrotGame::onGameViewportSizeChanged(u32 w, u32 h) {
     for (const auto& [viewportID, location] : currentComposition.viewports) {
         Render::Viewport& viewport = engine.getOrCreateViewport(viewportID);

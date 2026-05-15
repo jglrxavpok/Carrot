@@ -1133,7 +1133,7 @@ namespace Peeler {
         }
 
         entityIDPickedThisFrame = Carrot::UUID::null();
-        if(canPickEntity && ImGui::IsItemClicked()) {
+        if(canPickEntity && ImGui::IsItemClicked() && !hasMultipleGameViewports()) {
             verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
             const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
             const auto& entityIDTexture = GetEngine().getResourceRepository().getTexture(gbufferPass.entityID, renderContext.getPreviousFrameNumber());
@@ -1284,47 +1284,6 @@ namespace Peeler {
         if (showCameraSettings) {
             if (ImGui::Begin("Camera settings", &showCameraSettings)) {
                 ImGui::SliderFloat("Speed", &cameraSpeedMultiplier, 0.01f, 1000.0f);
-            }
-            ImGui::End();
-        }
-    }
-
-    void Application::drawViewportSettingsWindow() {
-        if (showViewportSettings) {
-            if (ImGui::Begin("Viewport settings", &showViewportSettings)) {
-                if (ImGui::Button("Split screen")) {
-                    Carrot::Render::ViewportComposition splitScreen2Players;
-                    Carrot::Render::ViewportLocation& player0Loc = splitScreen2Players.viewports[Carrot::Identifier{"player_0"}];
-                    player0Loc.offset = {0, 0};
-                    player0Loc.size = {1.0f, 0.5f};
-
-                    Carrot::Render::ViewportLocation& player1Loc = splitScreen2Players.viewports[Carrot::Identifier{"player_1"}];
-                    player1Loc.offset = {0, 0.5f};
-                    player1Loc.size = {1.0f, 0.5f};
-                    gameTexture = updateViewportComposition(std::move(splitScreen2Players));
-                }
-                if (ImGui::Button("4-way split")) {
-                    Carrot::Render::ViewportComposition splitScreen4Players;
-                    Carrot::Render::ViewportLocation& player0Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_0"}];
-                    player0Loc.offset = {0, 0};
-                    player0Loc.size = {0.5f, 0.5f};
-
-                    Carrot::Render::ViewportLocation& player1Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_1"}];
-                    player1Loc.offset = {0.5f, 0.0f};
-                    player1Loc.size = {0.5f, 0.5f};
-
-                    Carrot::Render::ViewportLocation& player2Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_2"}];
-                    player2Loc.offset = {0.0f, 0.5f};
-                    player2Loc.size = {0.5f, 0.5f};
-
-                    Carrot::Render::ViewportLocation& player3Loc = splitScreen4Players.viewports[Carrot::Identifier{"player_3"}];
-                    player3Loc.offset = {0.5f, 0.5f};
-                    player3Loc.size = {0.5f, 0.5f};
-                    gameTexture = updateViewportComposition(std::move(splitScreen4Players));
-                }
-                if (ImGui::Button("Single screen")) {
-                    gameTexture = updateViewportComposition({});
-                }
             }
             ImGui::End();
         }

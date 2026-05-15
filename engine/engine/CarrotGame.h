@@ -63,8 +63,13 @@ namespace Carrot {
         /// Called after the game viewport has changed size, to allow subviewports to be resized
         void onGameViewportSizeChanged(u32 w, u32 h);
 
-    private:
+        /// Does the game have multiple viewports?
+        bool hasMultipleGameViewports() const;
+
+    protected:
         Carrot::Render::ViewportComposition currentComposition; // stored without render graphs, they are moved inside the viewports
+
+    private:
         bool requestedShutdown = false;
     };
 
