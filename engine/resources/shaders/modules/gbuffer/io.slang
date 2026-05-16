@@ -79,7 +79,7 @@ public struct RWGBufferInputs {
     public RWTexture2D metallicRoughnessValuesVelocityXY;
     public RWTexture2D emissiveValuesVelocityZ;
     public RWTexture2D _unused;
-    public RWTexture2D depth;
+    public Texture2D depth; // depth not writtable
     public SamplerCube skybox3D;
     public SamplerState linearSampler;
     public SamplerState gNearestSampler;
@@ -95,7 +95,7 @@ public struct RWGBufferInputs {
         float4 viewPosData = viewPos.Load(coords);
         result.viewPosition = viewPosData.xyz;
         result.readIsSky = viewPosData.w < 0.5f;
-        result.readDepth = depth.Load(coords).r;
+        result.readDepth = depth.Load(float3(coords, 0)).r;
 
         const float4 compressedTBN = viewNormalTangents.Load(coords);
         

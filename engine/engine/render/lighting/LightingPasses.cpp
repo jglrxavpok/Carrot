@@ -214,6 +214,8 @@ namespace Carrot::Render {
             const PassData::TemporalDenoising& data,
             std::uint8_t index,
 
+            vk::ImageLayout gBufferLayout,
+
             bool isAO, // has different neighbor clamping
             vk::CommandBuffer& cmds) {
             auto& renderer = GetRenderer();
@@ -241,7 +243,7 @@ namespace Carrot::Render {
             auto temporalDenoisePipeline = renderer.getOrCreatePipeline("lighting/temporal-denoise",
                                                                         (std::uint64_t)&pass + index);
             gBuffer.bindInputs(*temporalDenoisePipeline, frame, pass.getGraph(), 0,
-                               vk::ImageLayout::eShaderReadOnlyOptimal);
+                               gBufferLayout);
             renderer.bindTexture(*temporalDenoisePipeline, frame,
                                  pass.getGraph().getTexture(positionsTex, frame.frameNumber), 0, 1, nullptr,
                                  vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, positionsTex.layout);
@@ -522,10 +524,10 @@ namespace Carrot::Render {
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
 
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionTemporal, 0, true, cmds);
+                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionTemporal, 0, vk::ImageLayout::eGeneral, true, cmds);
                    applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionSpatial, 0, cmds);
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, false, cmds);
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.reflections, 2, false, cmds);
+                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, vk::ImageLayout::eGeneral, false, cmds);
+                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.reflections, 2, vk::ImageLayout::eGeneral, false, cmds);
                }
         );
 
@@ -818,7 +820,7 @@ namespace Carrot::Render {
         auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
             [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
                 pass.rasterized = false;
-                data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.gbuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.gi.hashGrid = HashGrid::write(graph, lastGIPass.getData().gi.hashGrid);
                 data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
                 data.screenProbes = graph.write(lastGIPass.getData().screenProbes, {}, {});
@@ -872,8 +874,8 @@ namespace Carrot::Render {
         auto& getGIResults = graph.addPass<GIFinal>("gi",
             [&](GraphBuilder& graph, Pass<GIFinal>& pass, GIFinal& data) {
                 pass.rasterized = false;
-                data.gbuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.screenProbesInput = graph.read(lastGIPass.getData().screenProbes, {});
+                data.gbuffer.readFrom(graph, debugGICells.getData().gbuffer, vk::ImageLayout::eGeneral);
+                data.screenProbesInput = graph.read(debugGICells.getData().screenProbes, {});
                 addTemporalDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output);
             },
             [preparePushConstant, applyTemporalDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
@@ -899,7 +901,7 @@ namespace Carrot::Render {
 
                 {
                     GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Denoise GI");
-                    applyTemporalDenoising(pass, frame, data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, false, cmds);
+                    applyTemporalDenoising(pass, frame, data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 2, vk::ImageLayout::eGeneral, false, cmds);
                 }
             });
 
@@ -957,6 +959,8 @@ namespace Carrot::Render {
                 data.denoisedCombinedLighting.iterationCount = 5;
                 data.denoisedCombinedLighting.noisy = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
                 data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
+
+                pass.rasterized = false;
             }, [applySpatialDenoising](const CompiledPass& pass, const Context& frame, const FinalDenoise& data, vk::CommandBuffer& cmds) {
                 applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 1, cmds);
             });

@@ -213,6 +213,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             "tone-mapping",
 
             [this, drawUnlit, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                builder.read(drawUnlit.getData().depthBuffer, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil); // force a transition (drawUnlit pass changed depth buffer layout)
                 data.postLighting = builder.read(drawUnlit.getData().inout, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget("Tone mapped",
                                                                 vk::Format::eR32G32B32A32Sfloat, // TODO: not sure why RGBA8_UNORM made the temporal blend fail in TAA

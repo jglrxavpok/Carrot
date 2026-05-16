@@ -230,9 +230,10 @@ namespace Carrot {
 
     BufferView ResourceAllocator::allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                                  vk::MemoryPropertyFlags properties,
-                                                                 const std::set<uint32_t>& families) {
+                                                                 const std::set<uint32_t>& families,
+                                                                 std::source_location sourceLoc) {
         // TODO: proper allocation algorithm
-        auto buffer = allocateDedicatedBuffer(size, usage, properties, families);
+        auto buffer = allocateDedicatedBuffer(size, usage, properties, families, sourceLoc);
         auto result = buffer->getWholeView();
         allocatedBuffers.emplaceBack(move(buffer));
         return result;
@@ -240,9 +241,10 @@ namespace Carrot {
 
     UniquePtr<Buffer> ResourceAllocator::allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                                           vk::MemoryPropertyFlags properties,
-                                                                          const std::set<uint32_t>& families) {
+                                                                          const std::set<uint32_t>& families,
+                                                                          std::source_location sourceLoc) {
         auto pBuffer = makeUnique<Buffer>(Allocator::getDefault(), device, size, usage, properties, families);
-        pBuffer->name("ResourceAllocator::allocateDedicatedBuffer");
+        pBuffer->name(Carrot::sprintf("ResourceAllocator::allocateDedicatedBuffer %s:%d", sourceLoc.file_name(), sourceLoc.line()));
         return pBuffer;
     }
 

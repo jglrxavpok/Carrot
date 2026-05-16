@@ -157,15 +157,15 @@ namespace Carrot::Render {
             templateClusterGroups[globalGroupIndex].clusters.pushBack(firstClusterIndex + i);
         }
 
-        BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterVertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+        BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterVertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eTransferDst);
         vertexData.name(Carrot::sprintf("Virtual geometry vertex buffer %llu meshlets", desc.meshlets.size()));
         vertexData.view.stageUpload(std::span<const ClusterVertex>{vertices});
 
-        BufferAllocation indexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterIndex) * indices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+        BufferAllocation indexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterIndex) * indices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eTransferDst);
         indexData.name(Carrot::sprintf("Virtual geometry index buffer %llu meshlets", desc.meshlets.size()));
         indexData.view.stageUpload(std::span<const ClusterIndex>{indices});
 
-        BufferAllocation rtTransformData = GetResourceAllocator().allocateDeviceBuffer(sizeof(vk::TransformMatrixKHR) * transforms.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+        BufferAllocation rtTransformData = GetResourceAllocator().allocateDeviceBuffer(sizeof(vk::TransformMatrixKHR) * transforms.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eTransferDst);
         rtTransformData.name(Carrot::sprintf("Virtual geometry transform buffer %llu meshlets", transforms.size()));
         rtTransformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>{transforms});
 

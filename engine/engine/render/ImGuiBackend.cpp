@@ -323,8 +323,8 @@ namespace Carrot::Render {
 
         if(pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex]) {
             for (int i = 0; i < MaxTextures; ++i) {
-                renderer.unbindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, 0, 0,i);
-                renderer.unbindTexture(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, 0, 0, i);
+                renderer.unbindCombinedTextureSampler(*pImpl->perWindow[windowID].pipeline, renderContext, 0, 0,i);
+                renderer.unbindCombinedTextureSampler(*pImpl->perWindow[windowID].imguiTexInspectPipeline, renderContext, 0, 0, i);
             }
             pImpl->perWindow[windowID].rebindTextures[renderContext.frameIndex] = false;
         }

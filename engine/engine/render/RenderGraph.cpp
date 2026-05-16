@@ -887,6 +887,9 @@ namespace Carrot::Render {
 
             default: verify(false, "unreachable");
         }
+        if (resource.format != GetVulkanDriver().getDepthFormat()) {
+            wanted |= vk::ImageUsageFlagBits::eStorage;
+        }
         return wanted;
     }
 

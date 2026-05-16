@@ -528,6 +528,39 @@ void Carrot::VulkanRenderer::unbindSampler(Carrot::Pipeline& pipeline, const Car
     bindSampler(pipeline, frame, VK_NULL_HANDLE, setID, bindingID);
 }
 
+void Carrot::VulkanRenderer::unbindCombinedTextureSampler(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
+    ZoneScoped;
+    if (!pipeline.hasBinding(setID, bindingID)) {
+        return;
+    }
+    BindingKey k { pipeline, frame.frameIndex, setID, bindingID };
+    std::erase_if(boundTextures, [&](const auto& pair) {
+        return pair.first == k; // leave out layout by design
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
+
+    vk::DescriptorImageInfo imageInfo {
+        .sampler = driver.getNearestSampler(), /*writing VK_NULL_HANDLE is against spec here*/
+        .imageView = VK_NULL_HANDLE,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eCombinedImageSampler;
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+        vk::WriteDescriptorSet {
+            .dstSet = descriptorSet,
+            .dstBinding = bindingID,
+            .dstArrayElement = arrayIndex,
+            .descriptorCount = 1,
+            .descriptorType = descType,
+            .pImageInfo = &imageInfo,
+    }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
 void Carrot::VulkanRenderer::unbindTexture(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
     ZoneScoped;
     if (!pipeline.hasBinding(setID, bindingID)) {

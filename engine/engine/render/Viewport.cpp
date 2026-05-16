@@ -57,13 +57,13 @@ namespace Carrot::Render {
         cameraUniformBuffers.resize(totalCount);
         for (std::size_t i = 0; i < totalCount; i++) {
             cameraUniformBuffers[i] = renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::CameraBufferObject),
-                                                                                       vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                       vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
 
         for(std::size_t i = 0; i < newCount; i++) {
             viewportUniformBuffers[i] = renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::ViewportBufferObject),
-                                                                                                 vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                 vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                                                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
         cameraDescriptorSets = renderer.createDescriptorSetForCamera(cameraUniformBuffers);
