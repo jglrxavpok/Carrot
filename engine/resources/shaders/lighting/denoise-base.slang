@@ -102,8 +102,8 @@ void denoise(
     uint3 localCoords
 ) {
     Configuration config;
-    const float sigmaPositions = 320.0f;
-    const float sigmaLuminance = 200.0f;
+    const float sigmaPositions = 32.0f;
+    const float sigmaLuminance = 20.0f;
 
     uint outputWidth;
     uint outputHeight;

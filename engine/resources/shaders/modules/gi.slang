@@ -172,6 +172,7 @@ namespace HashGrid {
         }
 
         [mutating]
+        // TODO: remove Key, not useful
         public void accumulate(uint cellIndex, in Key key, float3 radianceToAdd) {
             const int3 quantizedRadiance = packRadiance(radianceToAdd);
             InterlockedAdd(radianceAccumulation[cellIndex].x, quantizedRadiance.x);
@@ -263,6 +264,12 @@ namespace HashGrid {
     public struct Constants {
         public uint cellsPerBucket;
         public uint bucketCount;
+
+        public property uint totalCellCount {
+            get {
+                return cellsPerBucket * bucketCount;
+            }
+        }
     }
 
     public struct Grids {
@@ -276,8 +283,8 @@ namespace HashGrid {
     }
 }
 
-public static const uint ScreenProbeSize = 8;
-public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
+public static const uint ScreenProbeSize = 1;
+public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*4;
 
 public struct RayData {
     public uint32_t probeIndex;
@@ -454,10 +461,7 @@ public struct ScreenProbe {
 
     [mutating]
     public void accumulateSample(const in RayData ray) {
-        // TODO: remove check?
-        if(dot(ray.radiance, ray.radiance) > 0.01f) {
-            accumulatedRadiance.accumulate(ray.radiance, ray.direction);
-        }
+        accumulatedRadiance.accumulate(ray.radiance, ray.direction);
     }
 
     [mutating]

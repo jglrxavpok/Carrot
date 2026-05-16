@@ -371,17 +371,14 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         key.cameraPosition = giInputs.cameraPosition;
         key.rayLength = length(key.hitPosition - from);
         // TODO: reservoirs
-        // TODO: remove?
-        if(luminance(radiance) > 0.001f) { // don't accumulate poor samples
-            if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
-                if(wasNew) {
-                    hashGridData.grids.currentFrame.writeToCell(cellIndex, key, 0, 0);
-                }
-                hashGridData.grids.currentFrame.mark(cellIndex, push.frameCount);
-                hashGridData.grids.currentFrame.accumulate(cellIndex, key, radiance);
+        if(let cellIndex = hashGridData.grids.currentFrame.insert(key, wasNew)) {
+            if(wasNew) {
+                hashGridData.grids.currentFrame.writeToCell(cellIndex, key, 0, 0);
             }
-            // TODO: Radiance feedback
+            hashGridData.grids.currentFrame.mark(cellIndex, push.frameCount);
+            hashGridData.grids.currentFrame.accumulate(cellIndex, key, radiance);
         }
+        // TODO: Radiance feedback
 
         radiance += brdf * gi;
     } else {

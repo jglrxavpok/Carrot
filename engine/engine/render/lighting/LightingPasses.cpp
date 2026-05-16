@@ -619,8 +619,8 @@ namespace Carrot::Render {
             }
         };
 
-        static constexpr i32 ScreenProbeSize = 8; // how many pixels a screen probe covers in one direction
-        static constexpr i32 MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
+        static constexpr i32 ScreenProbeSize = 1; // how many pixels a screen probe covers in one direction
+        static constexpr i32 MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*4;
         static constexpr i32 ScreenProbeAccumulationMaxElements = 2 * MaxRaysPerProbe;
         struct ScreenProbe {
             float radianceR[9];
