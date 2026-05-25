@@ -25,7 +25,7 @@
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/unlitGBuffer.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_gbuffer.slang",
+    "entry_point": "unlit"
   }
 }

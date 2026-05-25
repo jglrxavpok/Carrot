@@ -63,3 +63,24 @@ EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
 
     return EncodedGBuffer(result);
 }
+
+[shader("pixel")]
+float4 unlit(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
+    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.inDrawID));
+    const Material material = materialSystem.materials[NonUniformResourceIndex(object.materialIndex)];
+    const MaterialOutput output = material.Compute(materialSystem, materialSystem.linearSampler, input.uv);
+    vec4 albedo = output.albedo;
+    albedo *= input.vertexColor;
+    if (albedo.a < 0.01) {
+        discard;
+    }
+
+    if (albedo.a < 1.0) {
+        // TODO: animate dithering? -> need smarter AA
+        if (materialSystem.Dither(uvec2(fragCoords.xy)) >= albedo.a) {
+            discard;
+        }
+    }
+    albedo.a = 1; // alpha done via dithering
+    return albedo;
+}
