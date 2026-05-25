@@ -50,7 +50,7 @@ namespace Carrot {
         std::uint32_t bindingID;
 
         bool operator==(const BindingKey& other) const {
-            return &pipeline == &other.pipeline && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && frameIndex == other.frameIndex && setID == other.setID && bindingID == other.bindingID;
+            return pipeline.getUID() == other.pipeline.getUID() && pipeline.getGenerationNumber() == other.pipeline.getGenerationNumber() && frameIndex == other.frameIndex && setID == other.setID && bindingID == other.bindingID;
         }
     };
 
@@ -412,9 +412,9 @@ namespace Carrot {
         bool imguiIsInitialized = false;
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstantList;
 
-        std::unordered_map<ImageBindingKey, vk::Image> boundTextures;
-        std::unordered_map<ImageBindingKey, vk::Image> boundStorageImages;
-        std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
+        std::unordered_map<ImageBindingKey, u64/*AS UID*/> boundTextures;
+        std::unordered_map<ImageBindingKey, u64/*AS UID*/> boundStorageImages;
+        std::unordered_map<BindingKey, u64/*AS UID*/> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
         std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;
 

@@ -351,10 +351,12 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
     if (!pipeline.hasBinding(setID, bindingID)) {
         return;
     }
-    if(boundAS[{pipeline, frame.frameIndex, setID, bindingID}] == as.getVulkanAS()) {
+
+    // need something else than Vk object equality, RADV copies the as data address into the descriptor, which may differ if the AS is reallocated at the same location
+    if(boundAS[{pipeline, frame.frameIndex, setID, bindingID}] == as.getUID()) {
         return;
     }
-    boundAS[{pipeline, frame.frameIndex, setID, bindingID}] = as.getVulkanAS();
+    boundAS[{pipeline, frame.frameIndex, setID, bindingID}] = as.getUID();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
 
     vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
@@ -385,8 +387,9 @@ void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render:
     if (!pipeline.hasBinding(setID, bindingID)) {
         return;
     }
+
     if(boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] == view) {
-        return;
+        // TODO: can't figure out why sometimes this check fails while the buffer is not bound. return;
     }
     boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] = view;
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
@@ -414,7 +417,7 @@ void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Contex
         return;
     }
     if(boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] == view) {
-        return;
+        // TODO: can't figure out why sometimes this check fails while the buffer is not bound. return;
     }
     boundBuffers[{pipeline, frame.frameIndex, setID, bindingID}] = view;
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
@@ -448,10 +451,10 @@ void Carrot::VulkanRenderer::bindStorageImage(Carrot::Pipeline& pipeline, const 
     if (!pipeline.hasBinding(setID, bindingID)) {
         return;
     }
-    if(boundStorageImages[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+    if(boundStorageImages[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getImage().getUID()) {
         return;
     }
-    boundStorageImages[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    boundStorageImages[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] = textureToBind.getImage().getUID();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
 
     vk::DescriptorImageInfo imageInfo {
@@ -491,10 +494,10 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     if (!pipeline.hasBinding(setID, bindingID)) {
         return;
     }
-    if(boundTextures[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+    if(boundTextures[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] == textureToBind.getImage().getUID()) {
         return;
     }
-    boundTextures[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    boundTextures[{pipeline, frame.frameIndex, setID, bindingID, textureLayout}] = textureToBind.getImage().getUID();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.frameIndex];
 
     vk::DescriptorImageInfo imageInfo {

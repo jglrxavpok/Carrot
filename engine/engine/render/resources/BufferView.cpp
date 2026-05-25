@@ -34,7 +34,13 @@ void Carrot::BufferView::flushMappedMemory() {
 }
 
 bool Carrot::BufferView::operator==(const Carrot::BufferView& other) const {
-    return start == other.start && size == other.size && buffer == other.buffer;
+    if (start != other.start || size != other.size ) {
+        return false;
+    }
+    if (buffer) {
+        return other.buffer && buffer->getUID() == other.buffer->getUID();
+    }
+    return other.buffer == nullptr;
 }
 
 const vk::Buffer& Carrot::BufferView::getVulkanBuffer() const {

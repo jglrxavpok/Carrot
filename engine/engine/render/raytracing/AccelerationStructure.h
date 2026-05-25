@@ -6,11 +6,13 @@
 
 #include <core/async/ParallelMap.hpp>
 #include <engine/render/resources/BufferAllocation.h>
+#include <engine/render/resources/UIDObject.h>
 
 namespace Carrot {
     class VulkanDriver;
 
-    class AccelerationStructure {
+    /// Represents an Acceleration Structure used for raytracing. Holds the Vulkan object and the corresponding memory
+    class AccelerationStructure: public Render::UIDObject {
     public:
         static Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> ASByStartAddress;
 
@@ -23,7 +25,7 @@ namespace Carrot {
         AccelerationStructure& operator=(AccelerationStructure&&) = default;
         AccelerationStructure& operator=(const AccelerationStructure&) = delete;
 
-        virtual ~AccelerationStructure();
+        ~AccelerationStructure() override;
 
         vk::AccelerationStructureKHR& getVulkanAS();
         const vk::DeviceAddress& getDeviceAddress() const;

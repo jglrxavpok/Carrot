@@ -13,7 +13,8 @@
 #include "engine/render/shaders/ShaderSource.h"
 #include <core/utils/Lookup.hpp>
 
-#include "engine/vulkan/DebugNameable.h"
+#include <engine/render/resources/UIDObject.h>
+#include <engine/vulkan/DebugNameable.h>
 
 namespace Carrot::Render {
     class Texture;
@@ -121,7 +122,7 @@ namespace Carrot {
         bool operator==(const RenderingPipelineCreateInfo&) const = default;
     };
 
-    class Pipeline: public SwapchainAware, public DebugNameable {
+    class Pipeline: public Render::UIDObject, public SwapchainAware, public DebugNameable {
     public:
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription& description);

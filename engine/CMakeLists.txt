@@ -27,6 +27,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
         ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/Texture.cpp
+        ${EngineRoot}render/resources/UIDObject.cpp
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
 

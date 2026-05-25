@@ -7,10 +7,11 @@
 #include <set>
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
+#include <engine/render/resources/BufferAllocation.h>
+#include <engine/render/resources/UIDObject.h>
 #include <engine/render/resources/DeviceMemory.h>
 #include <engine/render/resources/BufferView.h> // required for Buffer.ipp
 #include <core/async/ParallelMap.hpp>
-#include "BufferAllocation.h"
 
 namespace Carrot {
     class VulkanDriver;
@@ -18,7 +19,7 @@ namespace Carrot {
     class ResourceAllocator;
 
     /// Abstraction over Vulkan buffers
-    class Buffer: public DebugNameable, public DeviceAddressable, std::enable_shared_from_this<Buffer> {
+    class Buffer: public Render::UIDObject, public DebugNameable, public DeviceAddressable, std::enable_shared_from_this<Buffer> {
     public:
         //! How many buffers are alive, and where?
         static Async::ParallelMap<vk::DeviceAddress, const Buffer*> BufferByStartAddress;

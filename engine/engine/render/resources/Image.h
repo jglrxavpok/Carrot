@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <engine/render/Skybox.hpp>
 #include <engine/render/resources/BufferView.h>
+#include <engine/render/resources/UIDObject.h>
 #include <core/io/Resource.h>
 #include <core/async/Locks.h>
 #include <core/containers/Vector.hpp>
@@ -20,7 +21,7 @@ namespace Carrot {
     class VulkanDriver;
 
     /// Abstraction over Vulkan images. Manages lifetime and memory
-    class Image: public DebugNameable {
+    class Image: public Render::UIDObject, public DebugNameable {
     private:
         Carrot::VulkanDriver& driver;
         vk::Extent3D size{};
