@@ -429,6 +429,12 @@ namespace Carrot {
             }
         }
 
+        for(const auto& available : formats) {
+            if(available.format == vk::Format::eB8G8R8A8Unorm && available.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+                return available;
+            }
+        }
+
         // TODO: rank based on format and color space
 
         return formats[0];

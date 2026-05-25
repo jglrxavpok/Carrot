@@ -1513,6 +1513,7 @@ void Carrot::VulkanRenderer::fullscreenBlit(const Render::CompiledPass& pass, co
     };
     getVulkanDriver().getLogicalDevice().updateDescriptorSets(writeImage, {});
 
+    pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, cmds, vk::Bool32{false}/*don't gamma correct*/);
     pipeline->bind(pass, frame, cmds);
     getFullscreenQuad().bind(cmds);
     getFullscreenQuad().draw(cmds);

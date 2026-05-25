@@ -105,7 +105,10 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     RenderingPipelineCreateInfo createInfo {
             .colorAttachments = {swapchainTexture->getImage().getFormat()}
     };
-    pipeline.bind(createInfo, engine.newRenderContext(frameIndex, imageIndex, engine.getMainViewport()), cmds);
+
+    Carrot::Render::Context rdrContext = engine.newRenderContext(frameIndex, imageIndex, engine.getMainViewport());
+    engine.getRenderer().pushConstants("entryPointParams", pipeline, rdrContext, vk::ShaderStageFlagBits::eFragment, cmds, vk::Bool32{true}/*do gamma correct*/);
+    pipeline.bind(createInfo, rdrContext, cmds);
     quad.bind(cmds);
     quad.draw(cmds);
 

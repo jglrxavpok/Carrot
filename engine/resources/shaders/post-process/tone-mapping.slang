@@ -76,20 +76,24 @@ float3 aces(float3 color) {
     return lerp(tonemap.rgb, tonemap.aaa, t);
 }
 
+float4 ApplyToneMapping(ToneMappingOption option, float2 uv) {
+    float4 pixel = inputImage.Sample(nearestSampler, uv);
+    switch (option) {
+    case ToneMappingOption::None:
+        return pixel;
+
+    case ToneMappingOption::Reinhard:
+        return float4(reinhard(pixel.rgb), pixel.a);
+
+    case ToneMappingOption::Aces:
+        return float4(aces(pixel.rgb), pixel.a);
+    }
+    return pixel;
+}
+
 [shader("pixel")]
 float4 main(
     uniform ToneMappingOption option,
     in float2 uv) {
-    float4 pixel = inputImage.Sample(nearestSampler, uv);
-    switch(option) {
-        case ToneMappingOption::None:
-            return pixel;
-
-        case ToneMappingOption::Reinhard:
-            return float4(reinhard(pixel.rgb), pixel.a);
-
-        case ToneMappingOption::Aces:
-            return float4(aces(pixel.rgb), pixel.a);
-    }
-    return pixel;
+    return pow(ApplyToneMapping(option, uv), 1.0/2.2);
 }
