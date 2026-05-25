@@ -69,7 +69,7 @@ void main() {
 
     bool reprojectionInBounds = reprojectedUV.x >= 0.0f && reprojectedUV.x < 1.0f && reprojectedUV.y >= 0.0f && reprojectedUV.y < 1.0f;
     float reprojectionFactor = reprojectionInBounds ? 1.0f : 0.0f;
-    vec4 momentHistoryHistoryLength = imageLoad(lastFrameHistoryLengthImage, ivec2(reprojectedUV * textureDimensions + 0.5));
+    vec4 momentHistoryHistoryLength = imageLoad(lastFrameHistoryLengthImage, ivec2(reprojectedUV * textureDimensions));
     if(reprojectionInBounds) {
         reprojectionFactor *= exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 1);
     }
