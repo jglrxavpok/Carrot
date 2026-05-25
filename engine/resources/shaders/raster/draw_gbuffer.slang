@@ -19,8 +19,7 @@ mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
     return mat3(input.T, B_, input.N);
 }
 
-[shader("pixel")]
-EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
+GBuffer defaultGBuffer(VSGBufferOutput input, float4 fragCoords) {
     GBuffer result;
 
     const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.inDrawID));
@@ -60,7 +59,27 @@ EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
     result.motionVector.xy = previousClipPos.xy - input.svPos.xy;
     result.motionVector.xy /= float2(viewport.frameDimensions);
     result.motionVector.xy += (camera.CurrentFrame().jitter + camera.PreviousFrame().jitter) * 0.5f;
+    return result;
+}
 
+[shader("pixel")]
+EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
+    return EncodedGBuffer(defaultGBuffer(input, fragCoords));
+}
+
+[shader("pixel")]
+EncodedGBuffer blockout(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
+    float3 worldPos = (camera.CurrentFrame().inverseView * float4(input.viewPosition, 1)).xyz;
+
+    int3 roundedPos = int3(round(worldPos));
+
+    // color of splash screen (FF8146)
+    float4 color1 = float4(0xFF / 255.0f, 0x81 / 255.0f, 0x46 / 255.0f, 1);
+    float4 color2 = float4(0x30 / 255.0f, 0x30 / 255.0f, 0x30 / 255.0f, 1);
+    float4 texColor = ((roundedPos.x + roundedPos.y + roundedPos.z) & 1) == 0 ? color1 : color2;
+
+    GBuffer result = defaultGBuffer(input, fragCoords);
+    result.albedo *= float4(texColor.rgb, 1);
     return EncodedGBuffer(result);
 }
 
