@@ -114,6 +114,7 @@ namespace Carrot::Render {
         void enableTLAS();
         void disableTLAS();
         void resetTLAS();
+        void resetNonPersistent();
 
         ModelRendererStorage clone() const;
     };

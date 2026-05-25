@@ -133,6 +133,7 @@ namespace Carrot::Render {
         for(auto& [k, v] : clusterModelsPerViewport) {
             r.clusterModelsPerViewport[k] = v ? v->clone() : nullptr;
         }
+        r.castsShadows = castsShadows;
         return r;
     }
 
@@ -303,7 +304,7 @@ namespace Carrot::Render {
         ZoneScoped;
 
         if(storage.pCreator != this) {
-            storage = {};
+            storage.resetNonPersistent();
             storage.pCreator = this;
 
             // create clusters instances
@@ -593,7 +594,7 @@ namespace Carrot::Render {
 
         clusterModelsPerViewport = std::move(toMove.clusterModelsPerViewport);
         pCreator = std::exchange(toMove.pCreator, nullptr);
-        castsShadows = toMove.castsShadows;
+        castsShadows = std::exchange(toMove.castsShadows, true);
 
         Async::LockGuard g { tlasAccess };
         Async::LockGuard g2 { toMove.tlasAccess };
@@ -624,5 +625,12 @@ namespace Carrot::Render {
         tlas = nullptr; // reset
         tlasIsWaitingForModel = true;
     }
+
+    void ModelRendererStorage::resetNonPersistent() {
+        resetTLAS();
+        pCreator = nullptr;
+        clusterModelsPerViewport.clear();
+    }
+
 
 } // Carrot::Render

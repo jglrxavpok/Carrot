@@ -615,7 +615,9 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
                 .task = [direction, &allSizes, &allPixels, &textureSupplier](TaskHandle& task) -> void {
                     auto index = static_cast<std::size_t>(direction);
                     int w, h, n;
-                    stbi_uc* pixels = stbi_load(textureSupplier(direction).c_str(), &w, &h, &n, STBI_rgb_alpha);
+                    const std::string filepath = textureSupplier(direction);
+                    stbi_uc* pixels = stbi_load(filepath.c_str(), &w, &h, &n, STBI_rgb_alpha);
+                    verify(pixels != nullptr, stbi_failure_reason());
                     allSizes[index] = { w, h };
                     allPixels[index] = pixels;
                 },
