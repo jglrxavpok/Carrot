@@ -27,51 +27,48 @@ namespace Carrot {
 namespace Carrot::Physics {
     class Character;
 
-    namespace {
-        // BroadPhaseLayerInterface implementation
-        // This defines a mapping between object and broadphase layers.
-        class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
-        {
-            CollisionLayers& layers;
+    // BroadPhaseLayerInterface implementation
+    // This defines a mapping between object and broadphase layers.
+    class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
+    {
+        CollisionLayers& layers;
 
-        public:
-            // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
-            // a layer for non-moving and moving objects to avoid having to update a tree full of static objects every frame.
-            // You can have a 1-on-1 mapping between object layers and broadphase layers (like in this case) but if you have
-            // many object layers you'll be creating many broad phase trees, which is not efficient. If you want to fine tune
-            // your broadphase layers define JPH_TRACK_BROADPHASE_STATS and look at the stats reported on the TTY.
-            static inline JPH::BroadPhaseLayer StaticLayer{0};
-            static inline JPH::BroadPhaseLayer MovingLayer{1};
+    public:
+        // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
+        // a layer for non-moving and moving objects to avoid having to update a tree full of static objects every frame.
+        // You can have a 1-on-1 mapping between object layers and broadphase layers (like in this case) but if you have
+        // many object layers you'll be creating many broad phase trees, which is not efficient. If you want to fine tune
+        // your broadphase layers define JPH_TRACK_BROADPHASE_STATS and look at the stats reported on the TTY.
+        static inline JPH::BroadPhaseLayer StaticLayer{0};
+        static inline JPH::BroadPhaseLayer MovingLayer{1};
 
-            BPLayerInterfaceImpl(CollisionLayers& layers);
+        BPLayerInterfaceImpl(CollisionLayers& layers);
 
-            virtual JPH::uint GetNumBroadPhaseLayers() const override;
+        virtual JPH::uint GetNumBroadPhaseLayers() const override;
 
-            virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override;
+        virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override;
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-            virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override;
+        virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override;
 #endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
-        };
+    };
 
-        class ObjectVsBroadPhaseLayerFilterImpl: public JPH::ObjectVsBroadPhaseLayerFilter {
-            CollisionLayers& layers;
-        public:
-            ObjectVsBroadPhaseLayerFilterImpl(CollisionLayers& layers);
+    class ObjectVsBroadPhaseLayerFilterImpl: public JPH::ObjectVsBroadPhaseLayerFilter {
+        CollisionLayers& layers;
+    public:
+        ObjectVsBroadPhaseLayerFilterImpl(CollisionLayers& layers);
 
-            bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
-        };
+        bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
+    };
 
-        /// Class that determines if two object layers can collide
-        class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
-            CollisionLayers& layers;
-        public:
-            ObjectLayerPairFilterImpl(CollisionLayers& layers);
+    /// Class that determines if two object layers can collide
+    class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
+        CollisionLayers& layers;
+    public:
+        ObjectLayerPairFilterImpl(CollisionLayers& layers);
 
-            virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
-        };
-
-    }
+        virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
+    };
 
     class PhysicsSystem: public JPH::ContactListener {
     public:

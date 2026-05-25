@@ -16,7 +16,7 @@ namespace Peeler {
     }
 
     void NavMeshPanel::draw(const Carrot::Render::Context& renderContext) {
-        ImGui::Text("%llu selected entities", app.selectedEntityIDs.size());
+        ImGui::Text("%lu selected entities", app.selectedEntityIDs.size());
 
         auto& world = app.currentScene.world;
         bool waitForBaking = false;

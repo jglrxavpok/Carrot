@@ -660,9 +660,9 @@ namespace Peeler {
 
             if (!state.outputDirectoryValidityMessage.empty()) {
                 if (state.validOutputDirectory) {
-                    ImGui::TextColored(ImColor(255, 255, 0, 255), state.outputDirectoryValidityMessage.c_str());
+                    ImGui::TextColored(ImColor(255, 255, 0, 255), "%s", state.outputDirectoryValidityMessage.c_str());
                 } else {
-                    ImGui::TextColored(ImColor(255, 0, 0, 255), state.outputDirectoryValidityMessage.c_str());
+                    ImGui::TextColored(ImColor(255, 0, 0, 255), "%s", state.outputDirectoryValidityMessage.c_str());
                 }
             } else {
                 ImGui::Dummy(ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
