@@ -27,6 +27,44 @@ namespace Peeler {
     };
 
     /**
+     * A command that will apply the list of given commands when undone/redone
+     * Appears as a single command to the user
+     */
+    class CompoundCommand final : public ICommand {
+    public:
+        CompoundCommand(Application& app) = delete;
+
+        template<typename... TCommand>
+        explicit CompoundCommand(Application& app, Carrot::UniquePtr<TCommand>... subcommand): ICommand(app, makeDescription(subcommand...)) {
+            i32 count = 0;
+            ((
+                DISCARD(subcommand), count++
+            ), ...);
+
+            commands.resize(count);
+            i32 index = 0;
+            ((
+                commands[index] = std::move(subcommand), index++
+            ), ...);
+        }
+
+        void undo() override;
+        void redo() override;
+
+    private:
+        template<typename... TCommand>
+        static std::string makeDescription(const Carrot::UniquePtr<TCommand>&... command) {
+            std::string desc = "Compound of ";
+            (
+                (desc += command->getDescription(), desc += " ")
+            , ...);
+            return desc;
+        }
+
+        Carrot::Vector<Carrot::UniquePtr<ICommand>> commands;
+    };
+
+    /**
      * Represents the stack of actions done by user, which can be undone, then redone.
      * If actions are undone and a *new* action is done, then all undone actions are lost.
      */
@@ -35,9 +73,11 @@ namespace Peeler {
         explicit UndoStack(Application& app);
 
         template<typename TCommand, typename... TArgs>
-        void push(TArgs&&... args) {
+        TCommand& push(TArgs&&... args) {
             auto pCommand = Carrot::makeUnique<TCommand>(Carrot::Allocator::getDefault(), editor, std::forward<TArgs>(args)...);
+            TCommand& command = *pCommand;
             internalPush(std::move(pCommand));
+            return command;
         }
 
         /**

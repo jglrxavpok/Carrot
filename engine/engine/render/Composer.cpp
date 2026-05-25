@@ -6,12 +6,11 @@
 
 #include <engine/Engine.h>
 
-#include "RenderPass.h"
-#include "engine/render/VulkanRenderer.h"
-#include "engine/render/resources/Mesh.h"
-#include "engine/vulkan/VulkanDriver.h"
-#include "engine/render/TextureRepository.h"
-#include <engine/utils/Profiling.h>
+#include <engine/render/RenderPass.h>
+#include <engine/render/VulkanRenderer.h>
+#include <engine/render/resources/Mesh.h>
+#include <engine/vulkan/VulkanDriver.h>
+#include <engine/render/TextureRepository.h>
 
 namespace Carrot::Render {
     void ViewportComposition::copyViewportPositions(const ViewportComposition& other) {
@@ -21,6 +20,37 @@ namespace Carrot::Render {
             location.offset = locationToCopy.offset;
             location.size = locationToCopy.size;
             location.z = locationToCopy.z;
+        }
+    }
+
+    void ViewportComposition::serialize(const std::filesystem::path& destination) const {
+        Carrot::DocumentElement doc {};
+
+        auto& viewportsObj = doc["viewports"];
+
+        for (const auto& [id, viewport] : viewports) {
+            Carrot::DocumentElement& viewportObj = viewportsObj[std::string{id}];
+            viewportObj["offset_x"] = viewport.offset.x;
+            viewportObj["offset_y"] = viewport.offset.y;
+            viewportObj["size_x"] = viewport.size.x;
+            viewportObj["size_y"] = viewport.size.y;
+            viewportObj["z"] = viewport.z;
+        }
+
+        doc.saveToFile(destination, false);
+    }
+
+    void ViewportComposition::deserialize(const Carrot::IO::VFS::Path& source) {
+        Carrot::DocumentElement doc { Carrot::IO::Resource{source} };
+        for (const auto& [name, viewportElement] : doc.at("viewports").getAsObject()) {
+            Carrot::Identifier id { name };
+            Carrot::Render::ViewportLocation& loc = viewports[id];
+
+            loc.offset.x = static_cast<float>(viewportElement.at("offset_x").getAsDouble());
+            loc.offset.y = static_cast<float>(viewportElement.at("offset_y").getAsDouble());
+            loc.size.x = static_cast<float>(viewportElement.at("size_x").getAsDouble());
+            loc.size.y = static_cast<float>(viewportElement.at("size_y").getAsDouble());
+            loc.z = static_cast<float>(viewportElement.at("z").getAsDouble());
         }
     }
 

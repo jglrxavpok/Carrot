@@ -4,7 +4,9 @@
 
 #include "Document.h"
 
+#include <fstream>
 #include <core/utils/TOML.h>
+#include <core/io/Resource.h>
 
 namespace Carrot {
 
@@ -366,7 +368,24 @@ namespace Carrot {
 #pragma endregion Views
 
 #pragma region Serialisation
+    DocumentElement::DocumentElement(const Carrot::IO::Resource& readFrom) {
+        readFromFile(readFrom);
+    }
 
+    void DocumentElement::readFromFile(const Carrot::IO::Resource& from) {
+        // TODO: check if binary or not
+        toml::table t;
+        toml::table toml = toml::parse(from.readText());
+        toml >> *this;
+    }
+
+    void DocumentElement::saveToFile(const std::filesystem::path& to, bool binary) {
+        verify(!binary, "Binary not supported yet");
+        toml::table toml;
+        toml << *this;
+        std::ofstream f { to, std::ios::binary };
+        f << toml;
+    }
 
     toml::table& operator<<(toml::table& out, const DocumentElement& doc) {
         verify(doc.isObject(), "wrong type, only objects can be written to a TOML table!");

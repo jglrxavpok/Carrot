@@ -6,7 +6,6 @@ set(EditorSources
         ${EditorRoot}GridRenderer.cpp
         ${EditorRoot}InspectorWidgets.cpp
         ${EditorRoot}EntityWarnings.cpp
-        ${EditorRoot}ViewportEdition.cpp
 
         ${EditorRoot}commands/AddComponentsCommand.cpp
         ${EditorRoot}commands/DeleteEntitiesCommand.cpp
@@ -29,6 +28,7 @@ set(EditorSources
         ${EditorRoot}panels/InspectorPanel.cpp
         ${EditorRoot}panels/NavMeshPanel.cpp
         ${EditorRoot}panels/ResourcePanel.cpp
+        ${EditorRoot}panels/ViewportEditionPanel.cpp
 
         ${EditorRoot}particle_editor/ParticleEditor.cpp
         ${EditorRoot}particle_editor/TemplateEditor.cpp

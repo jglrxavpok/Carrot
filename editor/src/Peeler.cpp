@@ -319,9 +319,9 @@ namespace Peeler {
             ImGui::EndMenuBar();
 
             drawCameraSettingsWindow();
-            drawViewportSettingsWindow();
             drawPhysicsSettingsWindow();
             drawNewSceneWindow();
+            viewportEditionPanel.draw(renderContext);
 
             if(showDemo) {
                 ImGui::ShowDemoWindow();
@@ -1236,7 +1236,7 @@ namespace Peeler {
             //showPhysicsSettings = !showPhysicsSettings;
         }
         ImGui::MenuItem(ICON_FA_CAMERA "  Editor camera settings", nullptr, &showCameraSettings /* TODO: save to editor settings */);
-        ImGui::MenuItem(ICON_FA_IMAGES "  Viewport settings", nullptr, &showViewportSettings /* TODO: save to editor settings */);
+        ImGui::MenuItem(ICON_FA_IMAGES "  Viewport settings", nullptr, &viewportEditionPanel.showViewportSettings /* TODO: save to editor settings */);
     }
 
     void Application::drawToolsMenu() {
@@ -1621,6 +1621,7 @@ namespace Peeler {
         resourcePanel(*this),
         inspectorPanel(*this),
         navMeshPanel(*this),
+        viewportEditionPanel(*this),
         undoStack(*this)
     {
         Instance = this;
@@ -2091,6 +2092,7 @@ namespace Peeler {
             }
         }
 
+        viewportEditionPanel.loadCompositionsFromVFS();
         updateWindowTitle();
 
         if (needToSave) {
@@ -2111,6 +2113,8 @@ namespace Peeler {
             if(scenePath.isGeneric()) {
                 scenePath = Carrot::IO::VFS::Path("game", scenePath.getPath());
             }
+
+            viewportEditionPanel.saveCompositions();
 
             saveCurrentScene();
             document.AddMember("scene", scenePath.toString(), document.GetAllocator());

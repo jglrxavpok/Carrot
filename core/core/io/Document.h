@@ -15,6 +15,10 @@ namespace toml {
 
 namespace Carrot {
 
+    namespace IO {
+        class Resource;
+    }
+
     enum class DocumentType {
         Bool,
         String,
@@ -47,6 +51,7 @@ namespace Carrot {
 
         /// Creates an element with the given type.
         explicit DocumentElement(DocumentType type = DocumentType::Object);
+        explicit DocumentElement(const Carrot::IO::Resource& readFrom);
         DocumentElement(const DocumentElement&);
         DocumentElement(DocumentElement&&) noexcept = default;
         DocumentElement& operator=(const DocumentElement&);
@@ -164,6 +169,10 @@ namespace Carrot {
 
         bool operator==(const DocumentElement&) const;
         bool operator!=(const DocumentElement&) const;
+
+    public: // serialisation
+        void readFromFile(const Carrot::IO::Resource& from);
+        void saveToFile(const std::filesystem::path& to, bool binary);
 
     public:
         /// View of the sub-elements of a given element.

@@ -18,6 +18,7 @@
 #include "panels/InspectorPanel.h"
 #include "panels/NavMeshPanel.h"
 #include "panels/ResourcePanel.h"
+#include "panels/ViewportEditionPanel.h"
 #include "layers/ISceneViewLayer.h"
 #include <commands/UndoStack.h>
 #include <particle_editor/ParticleEditor.h>
@@ -116,7 +117,6 @@ namespace Peeler {
         void drawToolsMenu();
         void drawNewSceneWindow();
         void drawCameraSettingsWindow();
-        void drawViewportSettingsWindow();
         void drawPhysicsSettingsWindow();
 
     private: // C# project handling
@@ -225,7 +225,6 @@ namespace Peeler {
         bool showExportPopup = false;
 
         bool showCameraSettings = false;
-        bool showViewportSettings = false;
         float cameraSpeedMultiplier = 1.0f;
 
         bool showPhysicsSettings = false;
@@ -259,6 +258,10 @@ namespace Peeler {
 
         UndoStack undoStack;
 
+        ViewportEditionPanel& getViewportEditionPanel() {
+            return viewportEditionPanel;
+        }
+
     private:
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture playActiveButtonIcon;
@@ -276,6 +279,8 @@ namespace Peeler {
         ResourcePanel resourcePanel;
         InspectorPanel inspectorPanel;
         NavMeshPanel navMeshPanel;
+        ViewportEditionPanel viewportEditionPanel;
+        friend class ViewportEditionPanel;
 
     private:
         Carrot::UniquePtr<Peeler::ParticleEditor> pParticleEditor;

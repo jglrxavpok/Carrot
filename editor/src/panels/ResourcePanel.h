@@ -15,11 +15,11 @@ namespace Peeler {
         Carrot::Render::Texture::Ref loadedTexture;
     };
 
-    class ResourcePanel: public EditorPanel {
+    class ResourcePanel : public EditorPanel {
     public:
         explicit ResourcePanel(Application& app);
 
-        virtual void draw(const Carrot::Render::Context &renderContext) override final;
+        virtual void draw(const Carrot::Render::Context& renderContext) override final;
 
     private:
         /// Returns true iif the path corresponds to a folder and the user wants to open it (double click)
@@ -45,6 +45,7 @@ namespace Peeler {
             ResourceType type = ResourceType::GenericFile;
             Carrot::IO::VFS::Path path;
         };
+
         Carrot::IO::VFS::Path currentFolder = "engine://";
         Carrot::Vector<ResourceEntry> resourcesInCurrentFolder;
 

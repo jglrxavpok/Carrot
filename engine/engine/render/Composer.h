@@ -11,8 +11,8 @@
 namespace Carrot::Render {
 
     struct ViewportLocation {
-        glm::vec2 offset; // relative to main viewport size [0-1]
-        glm::vec2 size; // relative to main viewport size [0-1]
+        glm::vec2 offset = glm::vec2{0.0f}; // relative to main viewport size [0-1]
+        glm::vec2 size = glm::vec2{1.0f}; // relative to main viewport size [0-1]
         float z = 0.0f; // can be used to order viewports that overlap
 
         std::unique_ptr<Graph> renderGraph; // render graph to render to this viewport. If set to empty, will default to engine's game render graph
@@ -33,8 +33,8 @@ namespace Carrot::Render {
         /// Copies the viewport list and positions of each viewport from 'other'. Does not copy render graph
         void copyViewportPositions(const ViewportComposition& other);
 
-        /// Set ups the given composer to match what is inside viewports
-        void fillComposer(Composer& composer);
+        void serialize(const std::filesystem::path& destination) const;
+        void deserialize(const Carrot::IO::VFS::Path& source);
     };
 
     /// Renders multiple textures to a single one. Can be used for content embedding, or axis-aligned split screen

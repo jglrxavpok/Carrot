@@ -13,6 +13,19 @@ namespace Peeler {
         return description;
     }
 
+    void CompoundCommand::undo() {
+        for (auto iter = commands.rbegin(); iter.isValid(); ++iter) {
+            (*iter)->undo();
+        }
+    }
+
+    void CompoundCommand::redo() {
+        for (auto iter = commands.begin(); iter.isValid(); ++iter) {
+            (*iter)->redo();
+        }
+    }
+
+
     UndoStack::UndoStack(Application& app): editor(app) {
     }
 
