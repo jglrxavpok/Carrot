@@ -25,8 +25,7 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
         }
 
         Render::FrameResource colorTexture = location.colorTextureExtractor(*location.renderGraph);
-        viewport.removeAllScenes();
-        viewport.addScene(&engine.getSceneManager().getMainScene());
+        viewport.setScene(&engine.getSceneManager().getMainScene());
         viewport.setRenderGraph(std::move(location.renderGraph));
 
         // need to be after render graph, to tell render graph about new size

@@ -524,12 +524,12 @@ namespace Carrot {
     }
 
     void Scene::bindToViewport(Carrot::Render::Viewport& viewport) {
-        viewport.addScene(this);
+        viewport.setScene(this);
         viewports.emplace_back(&viewport);
     }
 
     void Scene::unbindFromViewport(Carrot::Render::Viewport& viewport) {
-        viewport.removeScene(this);
+        viewport.setScene(nullptr);
         std::erase(viewports, &viewport);
     }
 

@@ -50,19 +50,14 @@ namespace Carrot::Render {
 
     public:
         /**
-         * Add scene to render to this viewport automatically
+         * Sets scene to render to this viewport automatically
          */
-        void addScene(Scene* scene);
+        void setScene(Scene* scene);
 
         /**
          * Remove scene to render to this viewport automatically
          */
-        void removeScene(Scene* scene);
-
-        /**
-         * Remove all scenes to render to this viewport automatically
-         */
-        void removeAllScenes();
+        void removeScene();
 
     public:
         void resize(std::uint32_t width, std::uint32_t height);
@@ -91,7 +86,7 @@ namespace Carrot::Render {
         Identifier viewportID;
         WindowID windowID;
         std::unique_ptr<Graph> renderGraph;
-        std::vector<Carrot::Scene*> scenes; // scenes to render inside this viewport, not owning. Assuming the Scene instances remove themselves from the vector on destruction
+        std::optional<Carrot::Scene*> scene; // scenes to render inside this viewport, not owning. Assuming the Scene instances remove themselves from the vector on destruction
         bool followSwapchainSize = true;
 
         // used only if followSwapchainSize is false, otherwise getWidth/getHeight return the swapchain size

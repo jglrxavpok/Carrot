@@ -23,8 +23,8 @@ namespace Carrot::Render {
     }
 
     Viewport::~Viewport() {
-        for(auto& pScene : scenes) {
-            pScene->unbindFromViewport(*this);
+        if (scene.has_value()) {
+            (*scene)->unbindFromViewport(*this);
         }
         if(!cameraDescriptorSets.empty()) {
             renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
@@ -132,8 +132,8 @@ namespace Carrot::Render {
         auto& buffer = viewportUniformBuffers[context.frameNumber % viewportUniformBuffers.size()];
         buffer.uploadForFrame(&viewportBufferObject, sizeof(viewportBufferObject));
 
-        for(auto& pScene : scenes) {
-            pScene->onFrame(context);
+        if (scene.has_value()) {
+            (*scene)->onFrame(context);
         }
         if(renderGraph) {
             renderGraph->onFrame(context);
@@ -157,18 +157,13 @@ namespace Carrot::Render {
         }
     }
 
-    void Viewport::removeAllScenes() {
-        scenes.clear();
-    }
-
-    void Viewport::addScene(Scene* pScene) {
+    void Viewport::setScene(Scene* pScene) {
         verify(pScene != nullptr, "Cannot add null scene");
-        scenes.emplace_back(pScene);
+        scene = pScene;
     }
 
-    void Viewport::removeScene(Scene* pScene) {
-        verify(pScene != nullptr, "Cannot remove null scene");
-        std::erase(scenes, pScene);
+    void Viewport::removeScene() {
+        scene.reset();
     }
 
     Render::Graph* Viewport::getRenderGraph() {
