@@ -89,22 +89,28 @@ namespace Carrot::Render {
         return ptr;
     }
 
+    Light& Lighting::getLightData(LightHandle& handle) {
+        Data* data = reinterpret_cast<Data*>(dataBytes.data());
+        auto* lightPtr = data->lights;
+        return lightPtr[handle.getSlot()];
+    }
+
+
     void Lighting::reallocateBuffers(std::uint32_t lightCount) {
         lightBufferSize = std::max(lightCount, DefaultLightBufferSize);
         lightBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(Light),
                 vk::BufferUsageFlagBits::eStorageBuffer,
-                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+                vk::MemoryPropertyFlagBits::eDeviceLocal
         );
-        data = lightBuffer->map<Data>();
+        dataBytes.resize(lightBuffer->getSize());
 
-        // TODO: device local buffer?
         activeLightsBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(std::uint32_t),
                 vk::BufferUsageFlagBits::eStorageBuffer,
-                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+                vk::MemoryPropertyFlagBits::eDeviceLocal
         );
-        activeLightsData = activeLightsBuffer->map<ActiveLightsData>();
+        activeLightsDataBytes.resize(activeLightsBuffer->getSize());
 
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
@@ -134,6 +140,8 @@ namespace Carrot::Render {
 
     void Lighting::beginFrame(const Context& renderContext) {
         lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto& handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
+        Data* data = reinterpret_cast<Data*>(dataBytes.data());
+        ActiveLightsData* activeLightsData = reinterpret_cast<ActiveLightsData*>(activeLightsDataBytes.data());
         data->lightCount = lightBufferSize;
         data->ambient = ambientColor;
         data->fogColor = fogColor;
@@ -152,6 +160,9 @@ namespace Carrot::Render {
         }
 
         activeLightsData->count = activeCount;
+
+        lightBuffer->getWholeView().uploadForFrameOnRenderThread(dataBytes.data(), dataBytes.bytes_size());
+        activeLightsBuffer->getWholeView().uploadForFrameOnRenderThread(activeLightsDataBytes.data(), activeLightsDataBytes.bytes_size());
 
         if(descriptorNeedsUpdate[renderContext.frameIndex]) {
             auto& set = descriptorSets[renderContext.frameIndex];

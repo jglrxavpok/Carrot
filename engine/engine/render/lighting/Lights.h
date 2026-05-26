@@ -101,10 +101,7 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
-        Light& getLightData(LightHandle& handle) {
-            auto* lightPtr = data->lights;
-            return lightPtr[handle.getSlot()];
-        }
+        Light& getLightData(LightHandle& handle);
 
         void reallocateBuffers(std::uint32_t lightCount);
         void reallocateDescriptorSets();
@@ -141,8 +138,8 @@ namespace Carrot::Render {
             std::uint32_t indices[];
         };
 
-        Data* data = nullptr;
-        ActiveLightsData* activeLightsData = nullptr;
+        Carrot::Vector<u8> dataBytes;
+        Carrot::Vector<u8> activeLightsDataBytes;
         std::size_t lightBufferSize = 0; // in number of lights
         UniquePtr<Carrot::Buffer> lightBuffer = nullptr;
         UniquePtr<Carrot::Buffer> activeLightsBuffer = nullptr;
