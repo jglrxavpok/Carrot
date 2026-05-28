@@ -166,6 +166,14 @@ namespace Carrot::Render {
         scene.reset();
     }
 
+    Memory::OptionalRef<Scene> Viewport::getScene() {
+        if (scene.has_value()) {
+            return *scene;
+        }
+        return Memory::OptionalRef<Scene>{};
+    }
+
+
     Render::Graph* Viewport::getRenderGraph() {
         return renderGraph.get();
     }

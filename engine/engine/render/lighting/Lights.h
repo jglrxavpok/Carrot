@@ -71,9 +71,9 @@ namespace Carrot::Render {
 
         ~LightHandle();
 
-    private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 
+    private:
         Lighting& lightingSystem;
         friend class Lighting;
     };
@@ -84,16 +84,17 @@ namespace Carrot::Render {
 
     public:
         glm::vec3& getAmbientLight() { return ambientColor; }
+        const glm::vec3& getAmbientLight() const { return ambientColor; }
 
         std::shared_ptr<LightHandle> create();
 
     public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
-        void beginFrame(const Carrot::Render::Context& renderContext);
+        void onFrame(const Carrot::Render::Context& renderContext);
         void drawDebug();
 
     public:
-        const vk::DescriptorSetLayout& getDescriptorSetLayout() const { return *descriptorSetLayout; }
+        static vk::UniqueDescriptorSetLayout makeDescriptorSetLayout();
         vk::DescriptorSet getDescriptorSet(const Render::Context& context) { return descriptorSets[context.frameIndex]; }
 
     public:
@@ -107,7 +108,6 @@ namespace Carrot::Render {
         void reallocateDescriptorSets();
 
     private:
-        vk::UniqueDescriptorSetLayout descriptorSetLayout{};
         vk::UniqueDescriptorPool descriptorSetPool{};
         std::vector<vk::DescriptorSet> descriptorSets;
         std::vector<bool> descriptorNeedsUpdate;

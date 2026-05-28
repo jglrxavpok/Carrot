@@ -39,28 +39,6 @@ namespace Carrot::Render {
 
     Lighting::Lighting() {
         reallocateBuffers(DefaultLightBufferSize);
-        vk::ShaderStageFlags stageFlags = Carrot::AllVkStages;
-        std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
-                // Light Buffer
-                vk::DescriptorSetLayoutBinding {
-                        .binding = 0,
-                        .descriptorType = vk::DescriptorType::eStorageBuffer,
-                        .descriptorCount = 1,
-                        .stageFlags = stageFlags
-                },
-
-                // Active Lights Buffer
-                vk::DescriptorSetLayoutBinding {
-                        .binding = 1,
-                        .descriptorType = vk::DescriptorType::eStorageBuffer,
-                        .descriptorCount = 1,
-                        .stageFlags = stageFlags
-                },
-        };
-        descriptorSetLayout = GetVulkanDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-                .bindingCount = static_cast<std::uint32_t>(bindings.size()),
-                .pBindings = bindings.data(),
-        });
         std::array<vk::DescriptorPoolSize, BindingCount> poolSizes = {
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
@@ -138,7 +116,7 @@ namespace Carrot::Render {
         }
     }
 
-    void Lighting::beginFrame(const Context& renderContext) {
+    void Lighting::onFrame(const Context& renderContext) {
         lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto& handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
         Data* data = reinterpret_cast<Data*>(dataBytes.data());
         ActiveLightsData* activeLightsData = reinterpret_cast<ActiveLightsData*>(activeLightsDataBytes.data());
@@ -151,7 +129,6 @@ namespace Carrot::Render {
         std::uint32_t activeCount = 0;
         for(auto& [slot, handlePtr] : lightHandles) {
             if(auto handle = handlePtr.lock()) {
-                handle->updateHandle(renderContext);
                 if((handle->light.flags & LightFlags::Enabled) != LightFlags::None) {
                     activeLightsData->indices[activeCount] = slot;
                     activeCount++;
@@ -161,8 +138,8 @@ namespace Carrot::Render {
 
         activeLightsData->count = activeCount;
 
-        lightBuffer->getWholeView().uploadForFrameOnRenderThread(dataBytes.data(), dataBytes.bytes_size());
-        activeLightsBuffer->getWholeView().uploadForFrameOnRenderThread(activeLightsDataBytes.data(), activeLightsDataBytes.bytes_size());
+        lightBuffer->getWholeView().uploadForFrame(dataBytes.data(), dataBytes.bytes_size());
+        activeLightsBuffer->getWholeView().uploadForFrame(activeLightsDataBytes.data(), activeLightsDataBytes.bytes_size());
 
         if(descriptorNeedsUpdate[renderContext.frameIndex]) {
             auto& set = descriptorSets[renderContext.frameIndex];
@@ -193,7 +170,7 @@ namespace Carrot::Render {
     }
 
     void Lighting::reallocateDescriptorSets() {
-        std::vector<vk::DescriptorSetLayout> layouts{MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout};
+        std::vector<vk::DescriptorSetLayout> layouts{MAX_FRAMES_IN_FLIGHT, GetRenderer().getLightingDescriptorSetLayout()};
         descriptorSets = GetVulkanDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *descriptorSetPool,
                 .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
@@ -240,4 +217,30 @@ namespace Carrot::Render {
         }
         verify(false, "Unknown light type!");
     }
+
+    vk::UniqueDescriptorSetLayout Lighting::makeDescriptorSetLayout() {
+        vk::ShaderStageFlags stageFlags = Carrot::AllVkStages;
+        std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
+            // Light Buffer
+            vk::DescriptorSetLayoutBinding {
+                .binding = 0,
+                .descriptorType = vk::DescriptorType::eStorageBuffer,
+                .descriptorCount = 1,
+                .stageFlags = stageFlags
+        },
+
+        // Active Lights Buffer
+        vk::DescriptorSetLayoutBinding {
+            .binding = 1,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = stageFlags
+            },
+        };
+        return GetVulkanDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+                .bindingCount = static_cast<std::uint32_t>(bindings.size()),
+                .pBindings = bindings.data(),
+        });
+    }
+
 }

@@ -12,13 +12,13 @@
 namespace Carrot::ECS {
     LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(std::move(light)) {
         if(!lightRef) {
-            lightRef = GetRenderer().getLighting().create();
+            lightRef = entity.getWorld().getLighting().create();
             lightRef->light.flags = Render::LightFlags::Enabled;
         }
     };
 
     LightComponent::LightComponent(const Carrot::DocumentElement& doc, Entity entity): IdentifiableComponent<LightComponent>(std::move(entity)) {
-        lightRef = GetRenderer().getLighting().create();
+        lightRef = entity.getWorld().getLighting().create();
         auto& light = lightRef->light;
         if(doc.contains("enabled")) {
             lightRef->light.flags = doc["enabled"].getAsBool() ? Render::LightFlags::Enabled : Render::LightFlags::None;
@@ -75,21 +75,10 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    std::shared_ptr<Render::LightHandle> LightComponent::duplicateLight(const Render::LightHandle& light) {
-        auto clone = GetRenderer().getLighting().create();
+    std::shared_ptr<Render::LightHandle> LightComponent::duplicateLight(const Entity& newOwner, const Render::LightHandle& light) const {
+        Entity newOwnerModifiable = newOwner;
+        auto clone = newOwnerModifiable.getWorld().getLighting().create();
         clone->light = light.light;
         return clone;
-    }
-
-    void LightComponent::reload() {
-        if(savedLight) {
-            lightRef = GetRenderer().getLighting().create();
-            lightRef->light = savedLight.value();
-        }
-    }
-
-    void LightComponent::unload() {
-        savedLight = lightRef->light;
-        lightRef = nullptr;
     }
 }

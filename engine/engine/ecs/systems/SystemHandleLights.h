@@ -18,10 +18,6 @@ namespace Carrot::ECS {
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 
-        void reload() override;
-
-        void unload() override;
-
     public:
         inline static const char* getStringRepresentation() {
             return "HandleLights";

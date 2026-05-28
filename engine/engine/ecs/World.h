@@ -12,6 +12,7 @@
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/WorldData.h>
+#include <engine/render/lighting/Lights.h>
 #include <eventpp/callbacklist.h>
 
 #include "EntityTypes.h"
@@ -146,6 +147,9 @@ namespace Carrot::ECS {
         WorldData& getWorldData();
         const WorldData& getWorldData() const;
 
+        Render::Lighting& getLighting() { return lighting; }
+        const Render::Lighting& getLighting() const { return lighting; }
+
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);
@@ -198,6 +202,8 @@ namespace Carrot::ECS {
 
     private:
         WorldData worldData;
+        Render::Lighting lighting;
+
         std::vector<EntityID> entities;
         std::vector<EntityID> entitiesToAdd;
         std::vector<EntityID> entitiesToRemove;
@@ -219,6 +225,8 @@ namespace Carrot::ECS {
         // used to invalidate structures that hold csharp components
         eventpp::CallbackList<void()>::Handle csharpLoadCallbackHandle;
         eventpp::CallbackList<void()>::Handle csharpUnloadCallbackHandle;
+
+        u64 lastRenderedFrame = 0;
 
     private: // internal representation of hierarchy
         std::unordered_map<EntityID, EntityID> entityParents;

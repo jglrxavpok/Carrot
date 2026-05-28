@@ -103,6 +103,8 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     renderData.pAsyncCopyQueue = &asyncCopiesQueues[0];
     mainData.pAsyncCopyQueue = &asyncCopiesQueues[1];
 
+    lightingSetLayout = Render::Lighting::makeDescriptorSetLayout();
+
     createCameraSetResources();
     createViewportSetResources();
     createPerDrawSetResources();
@@ -245,7 +247,6 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
 
-    lighting.onSwapchainImageCountChange(newCount);
     forwardRenderingFrameInfo.clear();
     for (std::size_t j = 0; j < MAX_FRAMES_IN_FLIGHT; ++j) {
         forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
@@ -271,7 +272,6 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(Window& window, int newWidth,
     raytracer->onSwapchainSizeChange(window, newWidth, newHeight);
     gBuffer->onSwapchainSizeChange(window, newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(window, newWidth, newHeight);
-    lighting.onSwapchainSizeChange(window, newWidth, newHeight);
     if(raytracingScene) {
         raytracingScene->onSwapchainSizeChange(window, newWidth, newHeight);
     }
@@ -1019,7 +1019,6 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
         const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
 
         if (isMainViewport) {
-            lighting.drawDebug();
             materialSystem.drawDebug();
         }
 
@@ -1486,6 +1485,10 @@ const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getPerDrawDescriptorSetLa
     return *perDrawDescriptorSetLayout;
 }
 
+const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getLightingDescriptorSetLayout() const {
+    return *lightingSetLayout;
+}
+
 const vk::DescriptorSet& Carrot::VulkanRenderer::getDebugDescriptorSet(const Render::Context& renderContext) const {
     return debugDescriptorSets[renderContext.frameIndex];
 }
@@ -1897,7 +1900,6 @@ void Carrot::VulkanRenderer::renderThreadProc() {
 
         auto timeStart = std::chrono::steady_clock::now();
         materialSystem.endFrame(recordingRenderContext); // called here because new material may have been created during the frame
-        lighting.beginFrame(recordingRenderContext);
         preallocatePerDrawBuffers(recordingRenderContext);
 
         GetEngine().recordMainCommandBufferAndPresent(recordingFrameIndex, recordingRenderContext);

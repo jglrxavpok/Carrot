@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <core/containers/Vector.hpp>
+#include <core/memory/OptionalRef.h>
 #include <core/utils/Identifier.h>
 
 #include "RenderEye.h"
@@ -58,6 +59,8 @@ namespace Carrot::Render {
          * Remove scene to render to this viewport automatically
          */
         void removeScene();
+
+        Memory::OptionalRef<Scene> getScene();
 
     public:
         void resize(std::uint32_t width, std::uint32_t height);

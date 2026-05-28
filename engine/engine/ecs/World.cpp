@@ -384,6 +384,11 @@ namespace Carrot::ECS {
     void World::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
 
+        if (lastRenderedFrame != renderContext.frameNumber) {
+            lighting.onFrame(renderContext);
+            lastRenderedFrame = renderContext.frameNumber;
+        }
+
         updateEntityLists();
         {
             ZoneScopedN("Logic");
@@ -419,7 +424,8 @@ namespace Carrot::ECS {
 
         {
             ZoneScopedN("Debug");
-            if(showWorldHierarchy && renderContext.pViewport == &GetEngine().getMainViewport()) {
+            const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
+            if(showWorldHierarchy && isMainViewport) {
                 if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
                     std::function<void(Entity&)> showEntityTree = [&](Entity& entity) {
                         if(!entity)
@@ -443,6 +449,10 @@ namespace Carrot::ECS {
                     ImGui::Separator();
                 }
                 ImGui::End();
+            }
+
+            if (isMainViewport) {
+                lighting.drawDebug();
             }
         }
     }
@@ -738,6 +748,7 @@ namespace Carrot::ECS {
         entitiesToRemove = toCopy.entitiesToRemove;
         frozenLogic = toCopy.frozenLogic;
         entityComponents.clear();
+        lighting.getAmbientLight() = toCopy.getLighting().getAmbientLight();
 
         for(const auto& [entityID, componentMap] : toCopy.entityComponents) {
             auto& destComponents = entityComponents[entityID];

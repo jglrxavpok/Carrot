@@ -429,15 +429,31 @@ namespace Peeler {
         }
     }
 
+    struct SetAmbientLightCommand: public ICommand {
+        glm::vec3 oldValue;
+        glm::vec3 newValue;
+
+        SetAmbientLightCommand(Application& editor, float color[3]): ICommand(editor, "Update ambient color") {
+            newValue = { color[0], color[1], color[2] };
+            oldValue = editor.currentScene.world.getLighting().getAmbientLight();
+        }
+
+        void redo() override {
+            editor.currentScene.world.getLighting().getAmbientLight() = newValue;
+        }
+
+        void undo() override {
+            editor.currentScene.world.getLighting().getAmbientLight() = oldValue;
+        }
+    };
+
     void Application::UISceneProperties(const Carrot::Render::Context& renderContext) {
         if(ImGui::CollapsingHeader(ICON_FA_LIGHTBULB "  Lighting")) {
             if(ImGui::BeginMenu("Ambient color")) {
-                auto& ambientLight = GetRenderer().getLighting().getAmbientLight();
+                const auto& ambientLight = currentScene.world.getLighting().getAmbientLight();
                 float color[3] = { ambientLight.r, ambientLight.g, ambientLight.b };
                 if(ImGui::ColorPicker3("Ambient color picker", color)) {
-                    ambientLight = { color[0], color[1], color[2] };
-                    currentScene.lighting.ambient = ambientLight;
-                    markDirty();
+                    undoStack.push<SetAmbientLightCommand>(color);
                 }
                 ImGui::EndMenu();
             }
@@ -445,9 +461,6 @@ namespace Peeler {
             bool supportsRaytracing = false;
             if(!supportsRaytracing) {
                 ImGui::BeginDisabled();
-            }
-            if(ImGui::Checkbox("Raytraced shadows", &currentScene.lighting.raytracedShadows)) {
-                // TODO: tell shader
             }
             if(!supportsRaytracing) {
                 ImGui::EndDisabled();
@@ -2402,7 +2415,7 @@ namespace Peeler {
         // editing only systems
         addEditingSystems();
 
-        GetRenderer().getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
+        currentScene.world.getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
     }
 
     bool Application::onCloseButtonPressed() {

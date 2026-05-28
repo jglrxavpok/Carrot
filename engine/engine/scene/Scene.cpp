@@ -256,8 +256,7 @@ namespace Carrot {
         {
             toml::table tomlComp;
             Carrot::DocumentElement doc;
-            doc["raytracedShadows"] = lighting.raytracedShadows;
-            doc["ambient"] = Carrot::DocumentHelpers::write(lighting.ambient);
+            doc["ambient"] = Carrot::DocumentHelpers::write(world.getLighting().getAmbientLight());
             tomlComp << doc;
             std::ofstream { sceneFolder / "Lighting.toml", std::ios::binary } << tomlComp;
         }
@@ -293,8 +292,7 @@ namespace Carrot {
 
             if(vfs.exists(sceneFolder / "Lighting.toml")) {
                 auto src = loadDocument("Lighting.toml");
-                lighting.ambient = Carrot::DocumentHelpers::read<3, float>(src["ambient"]);
-                lighting.raytracedShadows = src["raytracedShadows"].getAsBool();
+                world.getLighting().getAmbientLight() = Carrot::DocumentHelpers::read<3, float>(src["ambient"]);
             }
 
             if(vfs.exists(sceneFolder / "Skybox.toml")) {
@@ -514,8 +512,6 @@ namespace Carrot {
 
     void Scene::load() {
         world.reloadSystems();
-
-        GetRenderer().getLighting().getAmbientLight() = lighting.ambient;
         GetEngine().setSkybox(skybox);
     }
 
@@ -539,7 +535,6 @@ namespace Carrot {
 
     void Scene::copyFrom(const Scene& toCopy) {
         world = toCopy.world;
-        lighting = toCopy.lighting;
         skybox = toCopy.skybox;
     }
 }

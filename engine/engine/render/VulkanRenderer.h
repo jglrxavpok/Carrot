@@ -183,8 +183,6 @@ namespace Carrot {
 
         const Render::MaterialHandle& getWhiteMaterial() const { return *whiteMaterial; }
 
-        Render::Lighting& getLighting() { return lighting; }
-
     public:
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
@@ -215,6 +213,7 @@ namespace Carrot {
         const vk::DescriptorSetLayout& getDebugDescriptorSetLayout() const;
         const vk::DescriptorSetLayout& getViewportDescriptorSetLayout() const;
         const vk::DescriptorSetLayout& getPerDrawDescriptorSetLayout() const;
+        const vk::DescriptorSetLayout& getLightingDescriptorSetLayout() const;
         const vk::DescriptorSet& getDebugDescriptorSet(const Render::Context& renderContext) const;
         const vk::DescriptorSet& getPerDrawDescriptorSet(const Render::Context& renderContext) const;
 
@@ -349,6 +348,7 @@ namespace Carrot {
         std::unique_ptr<Carrot::Buffer> nullBuffer;
         vk::DescriptorBufferInfo nullBufferInfo;
 
+        vk::UniqueDescriptorSetLayout lightingSetLayout{};
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
         vk::UniqueDescriptorSetLayout viewportDescriptorSetLayout{};
@@ -395,7 +395,6 @@ namespace Carrot {
         std::unique_ptr<RaytracingScene> raytracingScene = nullptr;
 
         Render::MaterialSystem materialSystem;
-        Render::Lighting lighting;
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 

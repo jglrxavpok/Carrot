@@ -60,6 +60,14 @@ namespace Carrot::Memory {
             return asPtr();
         }
 
+        /// Returns stored value if it exists, otherwise returns 'replacement'
+        T& orElse(T& replacement) const {
+            if (hasValue()) {
+                return *value;
+            }
+            return replacement;
+        }
+
     private:
         T* value = nullptr;
     };

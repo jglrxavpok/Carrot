@@ -13,11 +13,6 @@ namespace Carrot {
     public:
         Carrot::ECS::World world;
 
-        struct Lighting {
-            glm::vec3 ambient{1.0f};
-            bool raytracedShadows = true;
-        } lighting;
-
         Carrot::Skybox::Type skybox = Carrot::Skybox::Type::None;
 
         explicit Scene() = default;

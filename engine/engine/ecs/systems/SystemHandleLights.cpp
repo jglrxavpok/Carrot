@@ -6,7 +6,7 @@
 
 namespace Carrot::ECS {
     void SystemHandleLights::onFrame(const Carrot::Render::Context& renderContext) {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
+        parallelForEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
             auto transformMatrix = transform.toTransformMatrix();
             glm::vec3 position = transformMatrix * glm::vec4{0,0,0,1};
             glm::vec3 forward = transformMatrix * glm::vec4{0,1,0,0};
@@ -24,23 +24,12 @@ namespace Carrot::ECS {
                     break;
             }
 
+            light.lightRef->updateHandle(renderContext);
         });
     }
 
     std::unique_ptr<System> SystemHandleLights::duplicate(World& newOwner) const {
         auto system = std::make_unique<SystemHandleLights>(newOwner);
         return system;
-    }
-
-    void SystemHandleLights::reload() {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
-            light.reload();
-        });
-    }
-
-    void SystemHandleLights::unload() {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
-            light.unload();
-        });
     }
 }

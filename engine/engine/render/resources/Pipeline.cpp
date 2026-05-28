@@ -566,7 +566,7 @@ const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uin
             return GetRenderer().getCameraDescriptorSetLayout();
 
         case PipelineDescription::DescriptorSet::Type::Lights:
-            return GetRenderer().getLighting().getDescriptorSetLayout();
+            return GetRenderer().getLightingDescriptorSetLayout();
 
         case PipelineDescription::DescriptorSet::Type::Debug:
             return GetRenderer().getDebugDescriptorSetLayout();
@@ -731,7 +731,8 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
 
         case PipelineDescription::DescriptorSet::Type::Lights:
         {
-            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, GetRenderer().getLighting().getDescriptorSet(renderContext) };
+            Scene& currentRenderedScene = renderContext.pViewport->getScene().orElse(GetSceneManager().getMainScene());
+            std::vector<vk::DescriptorSet> sets { MAX_FRAMES_IN_FLIGHT, currentRenderedScene.world.getLighting().getDescriptorSet(renderContext) };
             return sets;
         }
 
