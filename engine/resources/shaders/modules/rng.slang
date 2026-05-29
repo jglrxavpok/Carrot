@@ -1,6 +1,7 @@
 module rng;
 import modules.materials;
 import modules.base;
+import modules.hash;
 
 // RNG based on blue noise textures.
 // Calling a 'nextX' function will mutate the internal state of this RNG.
@@ -22,10 +23,10 @@ public struct RandomSampler {
     public float next(in MaterialSystem materialSystem) {
         const uint BLUE_NOISE_SIZE = 64;
         const uint NOISE_COUNT = 64;
-        const float2 blueNoiseUV = r2Sequence(pixelPos);
+        const float2 blueNoiseUV = r2Sequence(pixelPos + sampleIndex);
 
         const uint components = 4;
-        const uint timeCoordinate = sampleIndex + frameCount;
+        const uint timeCoordinate = frameCount;
         const uint coordinate = timeCoordinate % components;
         const uint blueNoiseIndex = (timeCoordinate / components) % NOISE_COUNT;
         const uint textureIndex = materialSystem.globalTextures.blueNoises[blueNoiseIndex];
