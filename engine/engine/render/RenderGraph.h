@@ -92,7 +92,7 @@ namespace Carrot::Render {
             u64 value;
             u64 available;
         };
-        std::array<Timestamp, MaxPassTimingQueries * MAX_FRAMES_IN_FLIGHT> timingQueries;
+        std::array<Timestamp, static_cast<i32>(Eye::Count) * MaxPassTimingQueries * MAX_FRAMES_IN_FLIGHT> timingQueries;
         vk::UniqueQueryPool timingQueryPool;
 
         friend class GraphBuilder;

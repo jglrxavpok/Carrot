@@ -833,7 +833,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};
         signalSemaphores.reserve(3);
         signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
-            .semaphore = *renderFinishedSemaphore[frameIndex],
+            .semaphore = *renderFinishedSemaphore[swapchainIndex],
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
         signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
@@ -912,7 +912,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
             vk::PresentInfoKHR presentInfo {
                     .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = &(*renderFinishedSemaphore[frameIndex]),
+                    .pWaitSemaphores = &(*renderFinishedSemaphore[swapchainIndex]),
 
                     .swapchainCount = static_cast<std::uint32_t>(swapchains.size()),
                     .pSwapchains = swapchains.data(),
@@ -1210,9 +1210,13 @@ void Carrot::Engine::createSynchronizationObjects() {
             .flags = vk::FenceCreateFlagBits::eSignaled,
     };
 
-    for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    renderFinishedSemaphore.resize(vkDriver.getSwapchainImagesCount());
+    for(size_t i = 0; i < renderFinishedSemaphore.size(); i++) {
         renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
         DebugNameable::nameSingle("Render finished", *renderFinishedSemaphore[i]);
+    }
+
+    for (i32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
 

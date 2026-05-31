@@ -461,6 +461,14 @@ namespace Carrot::Render {
                 }
             }
 
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Total");
+            ImGui::TableNextColumn();
+            ImGui::Text("%.5f ms", totalTime * 1000);
+            ImGui::TableNextColumn();
+            ImGui::ProgressBar(1.0f);
+
             ImGui::EndTable();
         }
     }
@@ -776,14 +784,18 @@ namespace Carrot::Render {
 
         std::string id = "";
         // TODO: multiviewport?
-        const u32 startQueryIndex = static_cast<u64>(data.eye) * data.frameIndex * MaxPassTimingQueries;
+        constexpr u32 EyeCount = static_cast<u32>(Eye::Count);
+        const u32 startQueryIndex = data.frameIndex * MaxPassTimingQueries * EyeCount
+                                    + MaxPassTimingQueries * static_cast<u32>(data.eye);
+        const u32 startReadQueryIndex = data.getPreviousFrameIndex() * MaxPassTimingQueries * EyeCount
+                                    + MaxPassTimingQueries * static_cast<u32>(data.eye);
         u32 queryIndex = startQueryIndex;
 
         DISCARD(driver.getLogicalDevice().getQueryPoolResults(*timingQueryPool,
-            startQueryIndex,
+            startReadQueryIndex,
             MaxPassTimingQueries,
             MaxPassTimingQueries * sizeof(Timestamp),
-            &timingQueries[startQueryIndex],
+            &timingQueries[startReadQueryIndex],
             sizeof(Timestamp),
             vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability));
         cmds.resetQueryPool(*timingQueryPool, startQueryIndex, MaxPassTimingQueries);
@@ -821,9 +833,9 @@ namespace Carrot::Render {
             id += " ";
             ZoneScopedN("Execute pass");
 #endif
-            cmds.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, queryIndex);
+            cmds.writeTimestamp2(vk::PipelineStageFlagBits2::eAllCommands, *timingQueryPool, queryIndex);
             pass->execute(data, cmds);
-            cmds.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, queryIndex+1);
+            cmds.writeTimestamp2(vk::PipelineStageFlagBits2::eAllCommands, *timingQueryPool, queryIndex+1);
 
             if (timingQueries[queryIndex].available && timingQueries[queryIndex+1].available) {
                 u64 diff = timingQueries[queryIndex+1].value - timingQueries[queryIndex].value;

@@ -78,14 +78,14 @@ namespace Carrot::Render {
         lightBufferSize = std::max(lightCount, DefaultLightBufferSize);
         lightBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(Light),
-                vk::BufferUsageFlagBits::eStorageBuffer,
+                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
         );
         dataBytes.resize(lightBuffer->getSize());
 
         activeLightsBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(std::uint32_t),
-                vk::BufferUsageFlagBits::eStorageBuffer,
+                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
         );
         activeLightsDataBytes.resize(activeLightsBuffer->getSize());

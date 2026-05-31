@@ -99,15 +99,13 @@ namespace Carrot {
         vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
         vk::Extent2D swapchainExtent = chooseSwapExtent(swapChainSupportDetails.capabilities);
 
-        uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount +1;
+        verify(swapChainSupportDetails.capabilities.minImageCount >= MAX_FRAMES_IN_FLIGHT, "Device cannot run with less than MAX_FRAMES_IN_FLIGHT images? Expect bugs");
+        uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount;
+
         // maxImageCount == 0 means we can request any number of image
         if(swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount) {
             // ensure we don't ask for more images than the device will be able to provide
             imageCount = swapChainSupportDetails.capabilities.maxImageCount;
-        }
-
-        if(!isMainWindow()) {
-            verify(imageCount == GetEngine().getSwapchainImagesCount(), "All windows are expected to have the same number of swapchain images. This engine does not support other cases in its current state");
         }
 
         vk::SwapchainCreateInfoKHR createInfo{

@@ -474,7 +474,7 @@ namespace Carrot {
         std::uint32_t swapchainImageIndexRightNow = 0;
 
         Render::PerFrame<vk::CommandBuffer> mainCommandBuffers{};
-        Render::PerFrame<vk::UniqueSemaphore> renderFinishedSemaphore{};
+        Carrot::Vector<vk::UniqueSemaphore> renderFinishedSemaphore{}; // one per swapchain image
         vk::UniqueSemaphore renderFinishedTimelineSemaphore{};
         Render::PerFrame<vk::UniqueFence> inFlightFences{};
         Render::PerFrame<Carrot::Vector<Carrot::Pair<vk::PipelineStageFlags, Carrot::Pair<vk::Semaphore, u64>>>> additionalWaitSemaphores{};
