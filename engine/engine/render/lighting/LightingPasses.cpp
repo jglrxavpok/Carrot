@@ -121,8 +121,6 @@ namespace Carrot::Render {
                                                                                                Carrot::Render::GraphBuilder& graph,
                                                                                                const Render::TextureSize& framebufferSize) {
         using namespace Carrot::Render;
-        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-
 
         struct GIData {
             PassData::HashGridResources hashGrid;
@@ -149,8 +147,6 @@ namespace Carrot::Render {
                     .size = HashGrid::SizeOfHashCellWithLastTouchedFrame * HashGridTotalCellCount
                 };
 
-                // FIXME wtf
-//                WaitDeviceIdle();
                 cmds.copyBuffer(lastFrameBuffer.view.getVulkanBuffer(), buffer.view.getVulkanBuffer(), {region});
 
                 cmds.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0),
@@ -820,7 +816,7 @@ namespace Carrot::Render {
         auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
             [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
                 pass.rasterized = false;
-                data.gbuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.gbuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eGeneral);
                 data.gi.hashGrid = HashGrid::write(graph, lastGIPass.getData().gi.hashGrid);
                 data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
                 data.screenProbes = graph.write(lastGIPass.getData().screenProbes, {}, {});
@@ -865,6 +861,9 @@ namespace Carrot::Render {
                 const std::size_t groupY = 1;
                 cmds.dispatch(groupX, groupY, 1);
             });
+        debugGICells.setCondition([](const CompiledPass&, const Render::Context&, const GIDebug&) {
+            return GetRenderer().getDebugRenderType() == DEBUG_GI;
+        });
 
         struct GIFinal {
             PassData::GBuffer gbuffer;
@@ -874,8 +873,8 @@ namespace Carrot::Render {
         auto& getGIResults = graph.addPass<GIFinal>("gi",
             [&](GraphBuilder& graph, Pass<GIFinal>& pass, GIFinal& data) {
                 pass.rasterized = false;
-                data.gbuffer.readFrom(graph, debugGICells.getData().gbuffer, vk::ImageLayout::eGeneral);
-                data.screenProbesInput = graph.read(debugGICells.getData().screenProbes, {});
+                data.gbuffer.readFrom(graph, lastGIPass.getData().gbuffer, vk::ImageLayout::eGeneral);
+                data.screenProbesInput = graph.read(lastGIPass.getData().screenProbes, {});
                 addTemporalDenoisingResources(graph, "gi", vk::Format::eR8G8B8A8Unorm, data.output);
             },
             [preparePushConstant, applyTemporalDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
@@ -968,6 +967,7 @@ namespace Carrot::Render {
         PassData::Lighting data {
             .ambientOcclusion = lightingPass.getData().ambientOcclusionSpatial.pingPong[(lightingPass.getData().ambientOcclusionSpatial.iterationCount+1) % 2],
             .combinedLighting = finalDenoise.getData().denoisedCombinedLighting.pingPong[(finalDenoise.getData().denoisedCombinedLighting.iterationCount+1) % 2],
+            .giDebug = debugGICells.getData().output,
             .gBuffer = lightingPass.getData().gBuffer,
         };
         return data;

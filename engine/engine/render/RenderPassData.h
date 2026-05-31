@@ -200,6 +200,7 @@ namespace Carrot::Render {
         struct Lighting {
             FrameResource ambientOcclusion;
             FrameResource combinedLighting;
+            FrameResource giDebug;
             GBuffer gBuffer;
         };
 

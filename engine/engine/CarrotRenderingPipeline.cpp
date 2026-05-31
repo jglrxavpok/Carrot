@@ -131,6 +131,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Render::FrameResource combinedLighting;
         Render::FrameResource ambientOcclusion;
         Render::FrameResource visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST + 1];
+        Render::FrameResource giDebug;
         Render::FrameResource mergeResult;
     };
 
@@ -141,6 +142,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.gBuffer.readFrom(builder, lightingData.gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.combinedLighting = builder.read(lightingData.combinedLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.ambientOcclusion = builder.read(lightingData.ambientOcclusion, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.giDebug = builder.read(lightingData.giDebug, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
@@ -184,6 +186,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
                     renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.visibilityBufferDebug[debugIndex], frame.frameNumber), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, debugIndex, vk::ImageLayout::eShaderReadOnlyOptimal);
                 }
+
+                pipeline->setSampledImage(frame, "lightingInputs.giDebug", pass.getGraph().getTexture(data.giDebug, frame.frameNumber));
 
                 pipeline->bind(pass, frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

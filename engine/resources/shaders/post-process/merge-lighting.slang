@@ -12,6 +12,7 @@ struct LightingInputs {
     Texture2D lighting;
     Texture2D ao;
     Texture2D visibilityBufferDebugs[MergeLightingOutput::VisibilityBufferLast - MergeLightingOutput::VisibilityBufferFirst + 1];
+    Texture2D giDebug;
 }
 ParameterBlock<LightingInputs> lightingInputs;
 ParameterBlock<DebugParams> debug;
@@ -105,6 +106,8 @@ float4 debugRendering(in PixelInfo pixelInfo, float2 uv, in LightingPassUniforms
         case MergeLightingOutput::Lighting:
             return float4(computeLighting(uv), 1);
 
+        case MergeLightingOutput::GI:
+            return lightingInputs.giDebug.Sample(gBufferInputs.linearSampler, uv);
     }
 
     if(debug.mergeLightingOutput >= MergeLightingOutput::VisibilityBufferFirst && debug.mergeLightingOutput <= MergeLightingOutput::VisibilityBufferLast) {

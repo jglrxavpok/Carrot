@@ -1047,6 +1047,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Cluster rendering (clusters)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_CLUSTERS);
                 ImGui::RadioButton("Cluster rendering (LOD)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_LODS);
                 ImGui::RadioButton("Cluster rendering (screen space error)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_SCREEN_ERROR);
+                ImGui::RadioButton("GI Debug", &renderDebugType, DEBUG_GI);
 
                 obj.gBufferType = renderDebugType;
             }

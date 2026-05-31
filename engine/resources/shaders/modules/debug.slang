@@ -28,6 +28,8 @@ public enum MergeLightingOutput: uint {
     VisibilityBufferScreenError,
     VisibilityBufferLast = 20,
 
+	GI,
+
     // new values go here
 }
 
