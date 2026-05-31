@@ -367,12 +367,10 @@ struct SampleAccumulation {
     float3 samples[MaxElements];
     float3 directions[MaxElements];
     uint currentIndex = 0;
-    uint sampleCount = 0; // separate from currentIndex because two threads could increment currentIndex at once before checking bounds
 
     [mutating]
     void reset() {
         currentIndex = 0;
-        sampleCount = 0;
     }
 
     [mutating]
@@ -386,11 +384,10 @@ struct SampleAccumulation {
 
         samples[usedIndex] = sample;
         directions[usedIndex] = direction;
-        InterlockedAdd(sampleCount, 1);
     }
 
     uint getSampleCount() {
-        return sampleCount;
+        return min(MaxElements, currentIndex);
     }
 
     /// Uses the accumulated samples to compute a SH representing these samples
@@ -398,6 +395,7 @@ struct SampleAccumulation {
     SHRadiance computeFinalResult() {
         SHRadiance r;
         r.reset();
+        uint sampleCount = getSampleCount();
         for(int index = 0; index < sampleCount; index++) {
             r.integrate(samples[index], directions[index]);
         }

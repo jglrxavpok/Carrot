@@ -634,7 +634,6 @@ namespace Carrot::Render {
             glm::vec3 accumulationSamples[ScreenProbeAccumulationMaxElements];
             glm::vec3 accumulationDirections[ScreenProbeAccumulationMaxElements];
             std::uint32_t accumulationCurrentIndex;
-            /*Atomic*/std::uint32_t accumulationSampleCount;
 
             bool32 isOnReflection;
             u32 pad[3];
