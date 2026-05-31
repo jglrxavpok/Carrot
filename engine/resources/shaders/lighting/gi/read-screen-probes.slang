@@ -102,6 +102,7 @@ void main(
     // bilinear interpolation
     const float3 cameraPosition = (cameras.CurrentFrame().inverseView * float4(0,0,0,1)).xyz;
     const uint2 probePositionCenter = (coords.xy / ScreenProbeSize) * ScreenProbeSize;
+#if 1 // version below a bit faster, but noisier
     float3 average = float3(0.0);
     float totalWeight = 0.0f;
 
@@ -126,6 +127,14 @@ void main(
         average = float3(0);
     }
     data.destination.Store(coords.xy, float4(average, 1));
+#else
+    //float3 average = data.probes.getFromScreenPos(probePositionCenter, push.frameWidth).readRadianceFromCameraPos(cameraPosition);
+    float3 average = float3(0);
+    float weight = 1;
+    average += addProbeInfluence(pixelInfo, probePositionCenter, push.frameWidth, cameraPosition, weight);
+    data.destination.Store(coords.xy, float4(average / weight, 1));
+    
+#endif
 }
 
 [shader("compute")]

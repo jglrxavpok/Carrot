@@ -54,11 +54,6 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     // TODO: make different pipelines based on loaded materials
     opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
 
-/*    if(GetEngine().getCapabilities().supportsRaytracing) {
-        transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-raytracing");
-    } else {
-        transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-noraytracing");
-    }*/
     transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer-transparent");
 
     Carrot::Async::Counter waitMaterialLoads;

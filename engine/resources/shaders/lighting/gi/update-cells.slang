@@ -146,7 +146,6 @@ void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_
         const int2 reprojectedPixelPos = screenTileStart + posInTile;
         const float2 reprojectedUV = (float2(reprojectedPixelPos) + float2(0.5)) / size;
         const GBuffer currentGBuffer = gBufferInputs.read(reprojectedUV);
-        const GBuffer reprojectedGBuffer = previousFrameGBufferInputs.read(reprojectedUV + currentGBuffer.motionVector.xy);
 
         const uint reprojectedProbeIndex = getReprojectedProbeIndex(push.frameDimensions, reprojectedUV, currentGBuffer.motionVector.xy).value;
         const ScreenProbe reprojectedProbe = probeData.previousFrameProbes[reprojectedProbeIndex];

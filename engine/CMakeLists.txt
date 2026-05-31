@@ -254,8 +254,6 @@ set(PIPELINES
         billboards
         blit
         composer-blit
-        forward-noraytracing
-        forward-raytracing
         gBuffer
         gBuffer-transparent
         gBufferBlockout
