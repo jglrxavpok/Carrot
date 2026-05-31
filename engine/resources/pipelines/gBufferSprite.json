@@ -4,11 +4,11 @@
   "cull": false,
   "alphaBlending": true,
   "vertexShader": {
-    "file": "resources/shaders/gBufferSprite.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_gbuffer_sprite.slang",
+    "entry_point": "vertex"
   },
   "fragmentShader": {
-    "file": "resources/shaders/gBufferSprite.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_gbuffer_sprite.slang",
+    "entry_point": "pixel"
   }
 }

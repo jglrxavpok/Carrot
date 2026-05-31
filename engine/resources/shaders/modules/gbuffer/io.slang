@@ -13,7 +13,7 @@ public struct VSGBufferOutput {
     public vec3 N;
     public nointerpolation float bitangentSign;
     public nointerpolation mat4 inModelview;
-    public nointerpolation int inDrawID;
+    public nointerpolation int drawID;
 
     public vec4 svPos: SV_Position;
 }

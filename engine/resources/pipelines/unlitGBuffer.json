@@ -21,8 +21,8 @@
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": {
-    "file": "resources/shaders/gBuffer.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_gbuffer.slang",
+    "entry_point": "vertex"
   },
   "fragmentShader": {
     "file": "resources/shaders/raster/draw_gbuffer.slang",

@@ -9,15 +9,15 @@ public interface IVertex {
     public float2 getUV();
 }
 
-public struct Vertex: IVertex {
+public struct BaseVertex<bool withPadding>: IVertex {
     public float4 pos;
     public float3 color;
-    private float _pad0;
+    private Conditional<float, withPadding> _pad0;
     public float3 normal;
-    private float _pad1;
+    private Conditional<float, withPadding> _pad1;
     public float4 tangent;
     public float2 uv;
-    private float2 _pad2;
+    private Conditional<float2, withPadding> _pad2;
 
     public float4 getPos() {
         return pos;
@@ -39,6 +39,8 @@ public struct Vertex: IVertex {
         return uv;
     }
 }
+
+public typedef BaseVertex<true> Vertex;
 
 public struct PackedVertex: IVertex {
     public float3 pos;

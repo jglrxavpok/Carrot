@@ -4,11 +4,51 @@ import modules.gbuffer;
 import modules.per_object;
 import modules.materials;
 import modules.viewport;
+import modules.vertex_buffers;
 
 ParameterBlock<Camera> camera;
 ParameterBlock<MaterialSystem> materialSystem;
 ParameterBlock<PerObjectDrawBuffers> objects;
 ParameterBlock<Viewport> viewport;
+
+struct Input {
+    BaseVertex<false> vertex; // to remove padding/not padding support, switch to vertex pulling
+    InstanceData instance;
+}
+
+[shader("vertex")]
+VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
+    VSGBufferOutput out;
+
+    BaseVertex<false> vertex = input.vertex;
+    InstanceData instance = input.instance;
+
+    const float4x4 modelview = camera.CurrentFrame().view * instance.transform;
+    const float4x4 previousFrameModelview = camera.PreviousFrame().view * instance.lastFrameTransform;
+    const float4 viewPosition = modelview * vertex.getPos();
+    const float4 previousFrameViewPosition = previousFrameModelview * vertex.getPos();
+    out.svPos = camera.CurrentFrame().jitteredProjection * viewPosition;
+
+    out.vertexColor = float4(vertex.getColor(), 1) * instance.color;
+    out.viewPosition = viewPosition.xyz / viewPosition.w;
+    out.uv = vertex.getUV();
+
+    // TODO: rename
+    out.previousFrameViewPosition = (camera.PreviousFrame().jitteredProjection * float4(previousFrameViewPosition.xyz / previousFrameViewPosition.w, 1)).xyw;
+
+    float3 t = normalize(vertex.getTangent().xyz);
+    float3 n = normalize(vertex.getNormal());
+    float3x3 normalMatrix = transpose(inverse(float3x3(modelview)));
+    out.N = normalize(normalMatrix * n);
+    out.T = normalize(normalMatrix * (t - dot(t, n) * n));
+    out.bitangentSign = vertex.getTangent().w;
+    out.uuid = instance.uuid;
+    out.inModelview = modelview;
+
+    out.drawID = drawID;
+
+    return out;
+}
 
 mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
     vec3 N_ = normalize(input.N);
@@ -22,7 +62,7 @@ mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
 GBuffer defaultGBuffer(VSGBufferOutput input, float4 fragCoords) {
     GBuffer result;
 
-    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.inDrawID));
+    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.drawID));
     const Material material = materialSystem.materials[NonUniformResourceIndex(object.materialIndex)];
     const MaterialOutput output = material.Compute(materialSystem, materialSystem.linearSampler, input.uv);
 
@@ -85,7 +125,7 @@ EncodedGBuffer blockout(in VSGBufferOutput input, float4 fragCoords: SV_Position
 
 [shader("pixel")]
 float4 unlit(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
-    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.inDrawID));
+    const ObjectDrawData object = objects.Load(NonUniformResourceIndex(input.drawID));
     const Material material = materialSystem.materials[NonUniformResourceIndex(object.materialIndex)];
     const MaterialOutput output = material.Compute(materialSystem, materialSystem.linearSampler, input.uv);
     vec4 albedo = output.albedo;
