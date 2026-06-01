@@ -154,7 +154,7 @@ namespace Carrot::Render {
             FrameResource flags;
             FrameResource entityID;
             FrameResource metallicRoughnessVelocityXY;
-            FrameResource emissiveVelocityZ;
+            FrameResource emissive;
             FrameResource depthStencil;
 
             void readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout);

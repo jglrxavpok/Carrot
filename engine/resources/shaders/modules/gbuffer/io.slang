@@ -26,7 +26,7 @@ public struct GBufferInputs {
     public Sampler2D<IntProperties::__Tag> intPropertiesInput;
     public Texture2D<uvec4> entityID;
     public Texture2D metallicRoughnessValuesVelocityXY;
-    public Texture2D emissiveValuesVelocityZ;
+    public Texture2D emissiveValues;
     public Texture2D _unused;
     public Texture2D depth;
     public SamplerCube skybox3D;
@@ -58,9 +58,8 @@ public struct GBufferInputs {
         result.metallicness = metallicRoughnessVelocityXY.x;
         result.roughness = metallicRoughnessVelocityXY.y;
 
-        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
-        result.emissiveColor = emissiveAndVelocityZ.xyz;
-        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in UV space
+        result.emissiveColor = emissiveValues.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).rgb;
+        result.motionVector = metallicRoughnessVelocityXY.zw; // motion vector, in UV space
         return result;
     }
 
@@ -77,7 +76,7 @@ public struct RWGBufferInputs {
     public RWTexture2D<IntProperties::__Tag> intPropertiesInput;
     public RWTexture2D<uvec4> entityID;
     public RWTexture2D metallicRoughnessValuesVelocityXY;
-    public RWTexture2D emissiveValuesVelocityZ;
+    public RWTexture2D emissiveValues;
     public RWTexture2D _unused;
     public Texture2D depth; // depth not writtable
     public SamplerCube skybox3D;
@@ -113,9 +112,8 @@ public struct RWGBufferInputs {
         result.metallicness = metallicRoughnessVelocityXY.x;
         result.roughness = metallicRoughnessVelocityXY.y;
 
-        const float4 emissiveAndVelocityZ = emissiveValuesVelocityZ.Load(coords);
-        result.emissiveColor = emissiveAndVelocityZ.xyz;
-        result.motionVector = float3(metallicRoughnessVelocityXY.zw, emissiveAndVelocityZ.w); // motion vector, in UV space
+        result.emissiveColor = emissiveValues.Load(coords).rgb;
+        result.motionVector = metallicRoughnessVelocityXY.zw; // motion vector, in UV space
         return result;
     }
 

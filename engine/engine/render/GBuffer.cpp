@@ -81,8 +81,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                                            clearColor,
                                                                            vk::ImageLayout::eColorAttachmentOptimal);
 
-               data.emissiveVelocityZ = graph.createRenderTarget("Emissive + Velocity Z",
-                                                                 vk::Format::eR32G32B32A32Sfloat,
+               data.emissive = graph.createRenderTarget("Emissive",
+                                                                 vk::Format::eR32G32B32A32Sfloat /*RGB32Sfloat not supported by RADV*/,
                                                                  framebufferSize,
                                                                  vk::AttachmentLoadOp::eClear,
                                                                  clearColor,
@@ -101,7 +101,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                graph.reuseResourceAcrossFrames(data.viewSpaceNormalTangents, 1);
                graph.reuseResourceAcrossFrames(data.entityID, 1);
                graph.reuseResourceAcrossFrames(data.metallicRoughnessVelocityXY, 1);
-               graph.reuseResourceAcrossFrames(data.emissiveVelocityZ, 1);
+               graph.reuseResourceAcrossFrames(data.emissive, 1);
                graph.reuseResourceAcrossFrames(data.depthStencil, 1);
            },
            [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
@@ -118,7 +118,7 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
     flags = graph.read(other.flags, wantedLayout);
     entityID = graph.read(other.entityID, wantedLayout);
     metallicRoughnessVelocityXY = graph.read(other.metallicRoughnessVelocityXY, wantedLayout);
-    emissiveVelocityZ = graph.read(other.emissiveVelocityZ, wantedLayout);
+    emissive = graph.read(other.emissive, wantedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if (wantedLayout == vk::ImageLayout::eGeneral) {
@@ -138,7 +138,7 @@ void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, con
     flags = graph.write(other.flags, vk::AttachmentLoadOp::eLoad, wantedLayout);
     entityID = graph.write(other.entityID, vk::AttachmentLoadOp::eLoad, wantedLayout);
     metallicRoughnessVelocityXY = graph.write(other.metallicRoughnessVelocityXY, vk::AttachmentLoadOp::eLoad, wantedLayout);
-    emissiveVelocityZ = graph.write(other.emissiveVelocityZ, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    emissive = graph.write(other.emissive, vk::AttachmentLoadOp::eLoad, wantedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     if (wantedLayout == vk::ImageLayout::eGeneral) {
@@ -167,7 +167,7 @@ void Carrot::Render::PassData::GBuffer::bindInputsFromGivenFrame(Carrot::Pipelin
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frameNumber), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if(expectedLayout == vk::ImageLayout::eGeneral) {
@@ -198,7 +198,7 @@ void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(flags, frameNumber), setID, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frameNumber), setID, 6, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 6, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if(expectedLayout == vk::ImageLayout::eGeneral) {

@@ -29,7 +29,7 @@ public struct GBuffer {
     public float roughness;
 
     public vec3 emissiveColor;
-    public vec3 motionVector; // motion vector, in UV space
+    public float2 motionVector; // motion vector, in UV space
 
     public float readDepth; // depth of this pixel, only valid when *reading* from the gbuffer
     public bool readIsSky; // is this pixel a sky pixel, only valid when *reading* from the gbuffer
@@ -48,7 +48,7 @@ public struct GBuffer {
         roughness = 0.0;
 
         emissiveColor = vec3(0.0);
-        motionVector = vec3(0.0);
+        motionVector = float2(0.0);
         readDepth = 0.0f/0.0f;
         readIsSky = false;
     }
@@ -66,7 +66,7 @@ public struct EncodedGBuffer {
     public uint32_t intProperty;
     public uvec4 entityID;
     public vec4 metallicRoughnessVelocityXY;
-    public vec4 emissiveVelocityZ;
+    public float3 emissive;
 
     public __init() {
         color = vec4(0.0);
@@ -75,7 +75,7 @@ public struct EncodedGBuffer {
         intProperty = 0;
         entityID = uvec4(0);
         metallicRoughnessVelocityXY = vec4(0.0);
-        emissiveVelocityZ = vec4(0.0);
+        emissive = float3(0.0);
     }
 
     public __init(GBuffer gbuffer) {
@@ -86,7 +86,7 @@ public struct EncodedGBuffer {
         entityID = gbuffer.entityID;
         metallicRoughnessVelocityXY = vec4(gbuffer.metallicness, gbuffer.roughness, gbuffer.motionVector.xy);
 
-        emissiveVelocityZ = vec4(gbuffer.emissiveColor, gbuffer.motionVector.z);
+        emissive = gbuffer.emissiveColor;
 
         bool nSign = false;
         bool tSign = false;
