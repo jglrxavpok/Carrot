@@ -788,7 +788,7 @@ namespace Carrot::Render {
             // transform given as column-major matrix
             for (int y = 0; y < 4; ++y) {
                 for (int x = 0; x < 4; ++x) {
-                    localTransform[x][y] = node.matrix[x + y * 4];
+                    localTransform[x][y] = node.matrix[y + x * 4];
                 }
             }
         } else {
