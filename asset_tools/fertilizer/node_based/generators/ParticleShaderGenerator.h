@@ -23,11 +23,21 @@ namespace Fertilizer {
         std::unordered_map<std::string, i32> imageIndices;
     };
 
+    struct CompiledParticleShaders {
+        std::vector<u32> fragment;
+        std::vector<u32> computeUpdate;
+    };
+
+    struct ParticleShaderInputs {
+        std::vector<std::shared_ptr<Carrot::Expression>> fragment;
+        std::vector<std::shared_ptr<Carrot::Expression>> computeUpdate;
+    };
+
     class ParticleShaderGenerator {
     public:
         explicit ParticleShaderGenerator(const std::string& projectName);
 
-        std::vector<uint32_t> compileToSPIRV(ParticleShaderMode shaderMode, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+        CompiledParticleShaders compileToSPIRV(const ParticleShaderInputs& inputs);
 
         const ParticleShadersMetadata& getMetadata() const;
 
@@ -40,8 +50,6 @@ namespace Fertilizer {
         spv::Id nearestSampler;
 
         friend class SPIRVisitor;
-
-        void generateComputeUpdateParticle(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
-        void generateFragment(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+        friend class SlangVisitor;
     };
 }

@@ -154,6 +154,9 @@ namespace SlangCompiler {
             std::cerr << request->getDiagnosticOutput() << std::endl;
             return result;
         }
+        if (request->getDiagnosticOutput() != nullptr && request->getDiagnosticOutput()[0] != '\0') {
+            std::cout << request->getDiagnosticOutput() << std::endl;
+        }
 
         Slang::ComPtr<IComponentType> programWithEntryPoints;
         result = request->getProgramWithEntryPoints(programWithEntryPoints.writeRef());

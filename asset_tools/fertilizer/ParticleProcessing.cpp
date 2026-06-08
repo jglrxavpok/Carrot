@@ -30,8 +30,10 @@ namespace Fertilizer {
         auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
         ParticleShaderGenerator shaderGenerator(filepathAsString);
 
-        auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
-        auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
+        auto shaders = shaderGenerator.compileToSPIRV(ParticleShaderInputs{
+            .fragment = fragmentExpressions,
+            .computeUpdate = updateExpressions
+        });
         const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
         bool isOpaque = false; // TODO: determine via render graph
 
@@ -39,7 +41,7 @@ namespace Fertilizer {
             return ConversionResult { ConversionResultError::UnsupportedInputType, "Too many different textures used in particle (max 32)" };
         }
 
-        Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
+        Carrot::ParticleBlueprint blueprint(std::move(shaders.computeUpdate), std::move(shaders.fragment), isOpaque, metadata.imageIndices);
 
         Carrot::IO::writeFile(outputFile.string(), [&](std::ostream& out) {
             out << blueprint;

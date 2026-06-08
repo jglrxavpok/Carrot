@@ -55,6 +55,10 @@ namespace Carrot::IO {
         function(file);
     }
 
+    void deleteFile(const std::filesystem::path& filepath) {
+        std::filesystem::remove(filepath);
+    }
+
     std::string getHumanReadableFileSize(std::size_t filesize) {
         const std::size_t kiB = 1024;
         const std::size_t MiB = 1024 * kiB;

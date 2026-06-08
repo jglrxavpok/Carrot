@@ -263,7 +263,8 @@ set(PIPELINES
         imgui
         imgui_tex_inspect
         material-pass
-        particles
+        particles_draw_template # to ensure shaders are compiled
+        particles_update_template # to ensure shaders are validated
         text-rendering
         unlitGBuffer
         unlitGBufferWireframe
@@ -358,3 +359,4 @@ endif()
 file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
 file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
 file(COPY "${EngineRoot}../resources/default-imgui.ini" DESTINATION "${CMAKE_BINARY_DIR}/")
+file(COPY "${EngineRoot}../resources/shaders/" DESTINATION "${CMAKE_BINARY_DIR}/editor/shader_sources/")

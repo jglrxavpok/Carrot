@@ -21,5 +21,7 @@ namespace Carrot::IO {
 
     void writeFile(const std::string& filename, WriteToFileFunction function);
 
+    void deleteFile(const std::filesystem::path& filepath);
+
     std::string getHumanReadableFileSize(std::size_t filesize);
 }

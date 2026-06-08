@@ -15,13 +15,24 @@ public struct Emitter {
 }
 
 public struct Stats {
-    float dt;
-    uint32_t particleCount;
+    public float dt;
+    public uint32_t particleCount;
 }
 
 public struct Particles {
-    public StructuredBuffer<Particle, ScalarDataLayout> list;
+    public RWStructuredBuffer<Particle, ScalarDataLayout> list;
     public StructuredBuffer<Stats, ScalarDataLayout> stats;
     public StructuredBuffer<Emitter, ScalarDataLayout> emitters;
-    
+
+    public ConstantBuffer<Texture2D[]> textures;
+    public SamplerState linearSampler;
+    public SamplerState nearestSampler;
+}
+
+public struct ParticleVSOutput {
+    public float4 hPos : SV_Position;
+    public nointerpolation uint32_t particleIndex;
+    public float3 viewPosition;
+    public float2 offsetFromCenter;
+    public float2 uv;
 }

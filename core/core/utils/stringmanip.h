@@ -5,10 +5,10 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <memory>
 #include <utility>
 #include <span>
 #include <core/utils/Types.h>
+#include <stb_sprintf.h>
 
 namespace Carrot {
     /**
@@ -27,10 +27,12 @@ namespace Carrot {
 
     template<typename... Args>
     inline std::string sprintf(std::string_view format, Args... args) {
-        int size = std::snprintf(nullptr, 0, format.data(), args...) +1;
-        std::unique_ptr<char[]> buffer = std::make_unique<char[]>(size);
-        std::snprintf(buffer.get(), size, format.data(), args...);
-        return std::string(buffer.get());
+        int size = stbsp_snprintf(nullptr, 0, format.data(), args...);
+        assert(size > 0);
+        std::string buffer;
+        buffer.resize(size); // stb sprintf always returns a null terminated string
+        stbsp_snprintf(buffer.data(), size+1, format.data(), args...);
+        return buffer;
     }
 
     /**

@@ -12,15 +12,15 @@ std::unique_ptr<Carrot::ComputePipeline> Carrot::RenderableParticleBlueprint::bu
     // TODO: replace with Carrot::Pipeline
     return ComputePipelineBuilder(engine)
             .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add /*camera*/
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 0, particleBuffer)
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 2, statisticsBuffer)
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 1, statisticsBuffer)
     // TODO: add texture stuff
             .build();
 }
 
 std::unique_ptr<Carrot::Pipeline> Carrot::RenderableParticleBlueprint::buildRenderingPipeline(Carrot::Engine& engine) const {
-    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles.pipeline") };
+    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles_draw_template.pipeline") };
 
     desc.type = PipelineType::Particles;
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});

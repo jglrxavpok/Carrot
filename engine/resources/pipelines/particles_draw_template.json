@@ -1,0 +1,16 @@
+{
+  "_import": "particles.json",
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "Particle",
+  "depthWrite": true,
+  "depthTest": true,
+  "vertexShader": {
+    "file": "resources/shaders/particles_template.slang",
+    "entry_point": "vertex"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/particles_template.slang",
+    "entry_point": "pixel"
+  }
+}

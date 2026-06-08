@@ -139,8 +139,10 @@ void Peeler::ParticleEditor::generateParticleFile(const std::filesystem::path& f
     auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
     ParticleShaderGenerator shaderGenerator(getCurrentProjectName());
 
-    auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
-    auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
+    auto shaders = shaderGenerator.compileToSPIRV(ParticleShaderInputs{
+            .fragment = fragmentExpressions,
+            .computeUpdate = updateExpressions
+        });
     bool isOpaque = false; // TODO: determine via render graph
     const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
     if (metadata.imageIndices.size() >= Carrot::ParticleBlueprint::MaxTexturesPerShader) {
@@ -148,7 +150,7 @@ void Peeler::ParticleEditor::generateParticleFile(const std::filesystem::path& f
         return;
     }
 
-    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
+    Carrot::ParticleBlueprint blueprint(std::move(shaders.computeUpdate), std::move(shaders.fragment), isOpaque, metadata.imageIndices);
 
     Carrot::IO::writeFile(filename.string(), [&](std::ostream& out) {
         out << blueprint;
@@ -275,8 +277,10 @@ void Peeler::ParticleEditor::reloadPreview() {
 
     ParticleShaderGenerator shaderGenerator("ParticleEditor-Preview");
 
-    auto computeShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::ComputeUpdateParticle, updateExpressions);
-    auto fragmentShader = shaderGenerator.compileToSPIRV(ParticleShaderMode::Fragment, fragmentExpressions);
+    auto shaders = shaderGenerator.compileToSPIRV(ParticleShaderInputs{
+            .fragment = fragmentExpressions,
+            .computeUpdate = updateExpressions
+        });
     const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
     bool isOpaque = false; // TODO: determine via render graph
 
@@ -285,7 +289,7 @@ void Peeler::ParticleEditor::reloadPreview() {
         return;
     }
 
-    previewBlueprint = std::make_unique<Carrot::RenderableParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque, metadata.imageIndices);
+    previewBlueprint = std::make_unique<Carrot::RenderableParticleBlueprint>(std::move(shaders.computeUpdate), std::move(shaders.fragment), isOpaque, metadata.imageIndices);
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
 
     auto& emitter = *previewSystem->createEmitter();

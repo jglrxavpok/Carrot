@@ -29,9 +29,10 @@ add_library(fertilizer-lib STATIC
 
 target_include_directories(fertilizer-lib PUBLIC ./)
 target_include_directories(fertilizer-lib PUBLIC ${ProjectRoot}thirdparty/bc7enc_rdo)
+target_include_directories(fertilizer-lib PUBLIC ${ProjectRoot}asset_tools/shadercompiler)
 
 add_core_includes(fertilizer-lib)
-target_link_libraries(fertilizer-lib PUBLIC CarrotCore meshoptimizer)
+target_link_libraries(fertilizer-lib PUBLIC CarrotCore meshoptimizer shadercompiler-lib)
 add_core_precompiled_headers(fertilizer-lib)
 
 add_executable(fertilizer
