@@ -285,6 +285,11 @@ void Fertilizer::EditorGraph::draw() {
         if (ImGui::MenuItem("Duplicate")) {
             issueDuplicateCommand();
         }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Recenter")) {
+            ed::NavigateToContent();
+        }
         ImGui::EndPopup();
     }
 
