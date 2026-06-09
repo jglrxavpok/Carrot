@@ -167,10 +167,11 @@ namespace Carrot::Physics {
         CustomLayerFilter objectLayerFilter { settings.collideAgainstLayer };
 
         struct CustomBodyFilter: public BodyFilter {
+            bool ignoreSensors = true;
             std::function<bool(const RigidBody&)> collideAgainstBody;
             std::function<bool(const Character&)> collideAgainstCharacter;
 
-            CustomBodyFilter(const function<bool(const RigidBody&)> b, const function<bool(const Character&)> c): collideAgainstBody(b), collideAgainstCharacter(c) {};
+            CustomBodyFilter(bool ignoreSensors, const function<bool(const RigidBody&)> b, const function<bool(const Character&)> c): ignoreSensors(ignoreSensors), collideAgainstBody(b), collideAgainstCharacter(c) {};
 
             struct BodyHandle {
                 BodyHandle(const BodyID& inBodyID) {
@@ -191,11 +192,17 @@ namespace Carrot::Physics {
                 verify(bodyUserData != nullptr, "No body user data attached to this body??");
 
                 switch(bodyUserData->type) {
-                    case BodyUserData::Type::Rigidbody:
-                        return collideAgainstBody(*(RigidBody*)bodyUserData->ptr);
+                    case BodyUserData::Type::Rigidbody: {
+                        RigidBody* pRigidbody = (RigidBody*)bodyUserData->ptr;
+                        if (pRigidbody->isSensor() && ignoreSensors) {
+                            return false;
+                        }
+                        return collideAgainstBody(*pRigidbody);
+                    }
 
-                    case BodyUserData::Type::Character:
+                    case BodyUserData::Type::Character: {
                         return collideAgainstCharacter(*(Character*)bodyUserData->ptr);
+                    }
                 }
                 return false;
             }
@@ -210,7 +217,7 @@ namespace Carrot::Physics {
             }
         };
 
-        CustomBodyFilter bodyFilter { settings.collideAgainstBody, settings.collideAgainstCharacter };
+        CustomBodyFilter bodyFilter { settings.ignoreSensors, settings.collideAgainstBody, settings.collideAgainstCharacter };
         bool intersected = jolt->GetNarrowPhaseQuery().CastRay(ray, rayResult, *broadphaseLayerFilter, objectLayerFilter, bodyFilter);
         if(intersected) {
             raycastInfo.t = rayResult.mFraction;

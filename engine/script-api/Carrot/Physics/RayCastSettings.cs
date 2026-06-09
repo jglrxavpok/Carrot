@@ -9,6 +9,8 @@
         public Vec3 Dir;
         public float MaxLength = 0.0f;
 
+        public bool IgnoreSensors = true;
+
         /**
          * RigidBodies to ignore while doing raycast, can be null
          */

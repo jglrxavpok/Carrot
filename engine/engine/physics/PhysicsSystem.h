@@ -106,6 +106,8 @@ namespace Carrot::Physics {
             glm::vec3 direction {1.0f}; // must be normalized
             float maxLength {0.0f};
 
+            bool ignoreSensors = true;
+
             RayCastLayers allowedLayers { RayCastLayers::All };
             /// Should we report collisions against the given layer? By default yes
             std::function<bool(const CollisionLayerID&)> collideAgainstLayer = [](const CollisionLayerID&) { return true; };

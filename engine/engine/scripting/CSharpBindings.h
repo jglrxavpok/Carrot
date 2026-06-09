@@ -82,6 +82,7 @@ namespace Carrot::Scripting {
         CSField* RayCastSettingsIgnoreCharactersField = nullptr;
         CSField* RayCastSettingsIgnoreBodiesField = nullptr;
         CSField* RayCastSettingsIgnoreLayersField = nullptr;
+        CSField* RayCastSettingsIgnoreSensorsField = nullptr;
 
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;

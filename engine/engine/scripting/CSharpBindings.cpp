@@ -571,6 +571,7 @@ namespace Carrot::Scripting {
             LOAD_FIELD(RayCastSettings, IgnoreBodies);
             LOAD_FIELD(RayCastSettings, IgnoreCharacters);
             LOAD_FIELD(RayCastSettings, IgnoreLayers);
+            LOAD_FIELD(RayCastSettings, IgnoreSensors);
         }
 
         addPrefabBindingTypes();
@@ -1173,6 +1174,7 @@ namespace Carrot::Scripting {
         raycastSettings.origin = instance().RayCastSettingsOriginField->get(csRaycastSettings).unbox<glm::vec3>();
         raycastSettings.direction = instance().RayCastSettingsDirField->get(csRaycastSettings).unbox<glm::vec3>();
         raycastSettings.maxLength = instance().RayCastSettingsMaxLengthField->get(csRaycastSettings).unbox<float>();
+        raycastSettings.ignoreSensors = instance().RayCastSettingsIgnoreSensorsField->get(csRaycastSettings).unbox<bool>();
 
         std::unordered_set<const Physics::RigidBody*> bodiesToIgnore;
         std::unordered_set<const Physics::Character*> charactersToIgnore;
