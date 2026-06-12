@@ -199,6 +199,7 @@ namespace Carrot::Scripting {
         static void ShowEntity(MonoObject* entityMonoObj, bool recursive);
 
         static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
+        static MonoObject* _GetLogicSystemByName(MonoObject* systemObj, MonoString* entityName);
 
     public: // input API
         static MonoObject* CreateActionSet(MonoString* nameObj);

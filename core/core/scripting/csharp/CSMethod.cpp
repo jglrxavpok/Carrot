@@ -19,7 +19,6 @@ namespace Carrot::Scripting {
         // TODO: throw C++ exception
         if(exception) {
             mono_print_unhandled_exception(exception);
-            verify(false, "C# exception");
         }
         return result;
     }

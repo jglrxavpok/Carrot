@@ -96,6 +96,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.System::LoadEntities", (void*)LoadEntities);
         mono_add_internal_call("Carrot.System::_Query", (void*)_QueryECS);
         mono_add_internal_call("Carrot.System::FindEntityByName", (void*)FindEntityByName);
+        mono_add_internal_call("Carrot.System::_GetLogicSystemByName", (void*)_GetLogicSystemByName);
         mono_add_internal_call("Carrot.Entity::GetComponent", (void*)GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", (void*)GetName);
         mono_add_internal_call("Carrot.Entity::Remove", (void*)Remove);
@@ -1379,6 +1380,21 @@ namespace Carrot::Scripting {
         auto potentialEntity = systemPtr->getWorld().findEntityByName(entityNameStr);
         if(potentialEntity.has_value()) {
             return (MonoObject*) (*entityToCSObject(potentialEntity.value()));
+        }
+        return nullptr;
+    }
+
+    MonoObject* CSharpBindings::_GetLogicSystemByName(MonoObject* systemObj, MonoString* systemName) {
+        char* systemNameStr = mono_string_to_utf8(systemName);
+        CLEANUP(mono_free(systemNameStr));
+
+        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(systemObj));
+        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
+        auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
+
+        auto* logicSystem = systemPtr->getWorld().getLogicSystem(systemNameStr);
+        if (ECS::CSharpLogicSystem* pScriptLogicSystem = dynamic_cast<ECS::CSharpLogicSystem*>(logicSystem)) {
+            return pScriptLogicSystem->getCSObject();
         }
         return nullptr;
     }

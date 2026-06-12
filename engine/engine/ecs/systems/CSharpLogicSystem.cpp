@@ -167,6 +167,7 @@ namespace Carrot::ECS {
         if(!foundInAssemblies) {
             return;
         }
+        recreateEntityList();
         if (*csSystem && csFirstTickOfEntitiesMethod) {
             std::vector<EntityWithComponents> addedEntities;
             std::vector<Entity> entitiesWrappers;
@@ -188,7 +189,6 @@ namespace Carrot::ECS {
                 csFirstTickOfEntitiesMethod->invoke(*csSystem, args);
             }
         }
-        recreateEntityList();
     }
 
     void CSharpLogicSystem::onEntitiesRemoved(const std::vector<EntityID>& entities) {
@@ -205,6 +205,7 @@ namespace Carrot::ECS {
         if(!foundInAssemblies) {
             return;
         }
+        recreateEntityList();
         if (*csSystem && csFirstTickOfEntitiesMethod) {
             std::vector<EntityWithComponents> addedEntities;
             std::vector<Entity> entitiesWrappers;

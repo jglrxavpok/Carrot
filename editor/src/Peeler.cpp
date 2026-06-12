@@ -1647,6 +1647,7 @@ namespace Peeler {
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 
+        GetPhysics().pause();
         pushLayer<GizmosLayer>();
 
         {

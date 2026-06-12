@@ -10,6 +10,9 @@ namespace Carrot {
     
     /**
      * Represents the list of components available to a System
+     * Each component type has a global index, and a Signature index (both deterministic, but not guaranteed to be stable across game launches).
+     * The global index is mainly used internally, but the Signature index is used to interface with EntityWithComponents:
+     *  the component of Signature index 'i' will be inside EntityWithComponents.Components[i]
      */
     public class Signature {
         private readonly BitArray _components = new BitArray(GetMaxComponentCount());
@@ -92,6 +95,13 @@ namespace Carrot {
         
         public void AddComponent<T>() where T: IComponent {
             _signature.AddComponent<T>();
+        }
+
+        /**
+         * Gets the Signature index of the component T for this system (see doc of Signature)
+         */
+        public int GetComponentIndex<T>() where T : IComponent {
+            return _signature.GetIndex<T>();
         }
         
         public abstract void Tick(double deltaTime);
@@ -303,6 +313,18 @@ namespace Carrot {
         }
         #endregion
 
+        private string GetSystemName<T>() where T : System {
+            return typeof(T).FullName + " (C#)";
+        }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern LogicSystem _GetLogicSystemByName(string name);
+        
+        public T GetLogicSystem<T>() where T : LogicSystem
+        {
+            return (T)_GetLogicSystemByName(GetSystemName<T>());
+        }
+        
         /**
          * Ask the engine to find an entity with a matching name.
          * Can get quite slow if there are many entities.
