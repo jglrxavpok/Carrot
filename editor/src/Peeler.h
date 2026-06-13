@@ -262,11 +262,11 @@ namespace Peeler {
             return viewportEditionPanel;
         }
 
+        bool isGameViewportFocused() const;
+
     private:
         Carrot::Render::Texture playButtonIcon;
-        Carrot::Render::Texture playActiveButtonIcon;
         Carrot::Render::Texture pauseButtonIcon;
-        Carrot::Render::Texture pauseActiveButtonIcon;
         Carrot::Render::Texture stepButtonIcon;
         Carrot::Render::Texture stopButtonIcon;
 

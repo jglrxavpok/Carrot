@@ -1559,6 +1559,10 @@ namespace Peeler {
     }
 
     void Application::UIPlayBar(const Carrot::Render::Context& renderContext) {
+        const ImColor tintColor = ImGuiUtils::getCarrotColor();
+        const ImVec2 uv0 {0,0};
+        const ImVec2 uv1 {1,1};
+
         float smallestDimension = std::min(ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y);
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
@@ -1583,8 +1587,11 @@ namespace Peeler {
         const float spacing = ImGui::GetStyle().ItemSpacing.x;
         const bool isEditing = !isPlaying;
 
+        auto playBarButton = [&](const char* id, Carrot::Render::Texture& texture, bool active) {
+            return ImGui::ImageButton(id, texture.getImguiID(), ImVec2(smallestDimension, smallestDimension), uv0, uv1, ImVec4(0,0,0,0), active ? tintColor.Value : ImVec4(1,1,1,1));
+        };
         ImGui::SameLine((ImGui::GetContentRegionMax().x - smallestDimension * 4.0f + spacing * 3.0f) / 2.0f );
-        if(ImGui::ImageButton("play", (isPlaying && !isPaused ? playActiveButtonIcon : playButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(playBarButton("play", playButtonIcon, isPlaying && !isPaused)) {
             if(!isPlaying) {
                 startSimulation();
             } else if(isPaused) {
@@ -1593,7 +1600,7 @@ namespace Peeler {
         }
 
         ImGui::SameLine();
-        if(ImGui::ImageButton("step", stepButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(playBarButton("step", stepButtonIcon, false)) {
             if(!isPlaying) {
                 startSimulation();
             }
@@ -1603,7 +1610,7 @@ namespace Peeler {
 
         ImGui::SameLine();
         ImGui::BeginDisabled(isEditing);
-        if(ImGui::ImageButton("pause", (isPaused ? pauseActiveButtonIcon : pauseButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(playBarButton("pause", pauseButtonIcon, isPaused)) {
             if(!isPaused) {
                 pauseSimulation();
             }
@@ -1612,7 +1619,7 @@ namespace Peeler {
 
         ImGui::SameLine();
         ImGui::BeginDisabled(isEditing);
-        if(ImGui::ImageButton("stop", stopButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+        if(playBarButton("stop", stopButtonIcon, false)) {
             stopSimulation();
         }
         ImGui::EndDisabled();
@@ -1626,9 +1633,7 @@ namespace Peeler {
         settings("peeler"),
         gameViewport(engine.createViewport(GetEngine().getMainWindow(), GameViewportID)),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
-        playActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button_playing.png"),
         pauseButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button.png"),
-        pauseActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button_paused.png"),
         stepButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/step_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         resourcePanel(*this),
@@ -2469,5 +2474,7 @@ namespace Peeler {
         return world.getLogicSystem(name);
     }
 
-
+    bool Application::isGameViewportFocused() const {
+        return gameViewportFocused;
+    }
 }

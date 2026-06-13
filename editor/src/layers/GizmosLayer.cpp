@@ -11,14 +11,31 @@
 #include <engine/ecs/components/TransformComponent.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <core/utils/ImGuiUtils.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include "../Peeler.h"
 
 namespace Peeler {
     GizmosLayer::GizmosLayer(Application& editor): ISceneViewLayer(editor),
                                                    translateIcon(GetVulkanDriver(), "resources/textures/ui/translate.png"),
                                                    rotateIcon(GetVulkanDriver(), "resources/textures/ui/rotate.png"),
-                                                   scaleIcon(GetVulkanDriver(), "resources/textures/ui/scale.png")
-    {}
+                                                   scaleIcon(GetVulkanDriver(), "resources/textures/ui/scale.png"),
+                                                   scaleBoundsIcon(GetVulkanDriver(), "resources/textures/ui/scale_bounds.png") {
+
+        // Blender shortcuts by default
+        translateMode.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_G));
+        rotateMode.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_R));
+        scaleMode.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_S));
+        nextMovementMode.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_TAB));
+
+        shortcuts.add(translateMode);
+        shortcuts.add(scaleMode);
+        shortcuts.add(rotateMode);
+        shortcuts.add(nextMovementMode);
+        shortcuts.activate();
+
+        gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
+    }
 
     bool GizmosLayer::allowCameraMovement() const {
         return !usingGizmo;
@@ -29,6 +46,9 @@ namespace Peeler {
     }
 
     void GizmosLayer::draw(const Carrot::Render::Context& renderContext, float startX, float startY) {
+        const ImColor tintColor = ImGuiUtils::getCarrotColor();
+        const ImVec2 uv0 {0,0};
+        const ImVec2 uv1 {1,1};
         auto& camera = editor.gameViewport.getCamera();
         glm::mat4 identityMatrix = glm::identity<glm::mat4>();
         glm::mat4 cameraView = camera.computeViewMatrix();
@@ -42,8 +62,6 @@ namespace Peeler {
 
         float *cameraViewImGuizmo = glm::value_ptr(cameraView);
         float *cameraProjectionImGuizmo = glm::value_ptr(cameraProjection);
-
-        static ImGuizmo::OPERATION gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
 
         // setup window with the buttons to switch gizmos
         ImVec2 selectionWindowPos = ImVec2(startX, startY);
@@ -63,6 +81,8 @@ namespace Peeler {
                                        | ImGuiWindowFlags_NoScrollbar
                                        | ImGuiWindowFlags_AlwaysAutoResize;
 
+        const bool useBounds = gizmoOperation == ImGuizmo::OPERATION::BOUNDS;
+
         if (ImGui::Begin("##gizmo operation select window", nullptr, windowFlags)) {
             auto setupSelectedBg = [](bool selected) {
                 if (selected) {
@@ -78,25 +98,44 @@ namespace Peeler {
 
             const float iconSize = 32.0f;
 
-            setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::TRANSLATE);
-            if (ImGui::ImageButton("translate", translateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
+            {
+                const bool selected = gizmoOperation == ImGuizmo::OPERATION::TRANSLATE;
+                setupSelectedBg(selected);
+                if (ImGui::ImageButton("translate", translateIcon.getImguiID(), ImVec2(iconSize, iconSize), uv0, uv1, ImVec4(0,0,0,0), selected ? tintColor.Value : ImVec4(1,1,1,1))) {
+                    gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
+                }
+                ImGui::PopStyleColor(3);
             }
-            ImGui::PopStyleColor(3);
 
             ImGui::SameLine();
-            setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::ROTATE);
-            if (ImGui::ImageButton("rotate", rotateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                gizmoOperation = ImGuizmo::OPERATION::ROTATE;
+            {
+                const bool selected = gizmoOperation == ImGuizmo::OPERATION::ROTATE;
+                setupSelectedBg(selected);
+                if (ImGui::ImageButton("rotate", rotateIcon.getImguiID(), ImVec2(iconSize, iconSize), uv0, uv1, ImVec4(0,0,0,0), selected ? tintColor.Value : ImVec4(1,1,1,1))) {
+                    gizmoOperation = ImGuizmo::OPERATION::ROTATE;
+                }
+                ImGui::PopStyleColor(3);
             }
-            ImGui::PopStyleColor(3);
 
             ImGui::SameLine();
-            setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::SCALE);
-            if (ImGui::ImageButton("scale", scaleIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                gizmoOperation = ImGuizmo::OPERATION::SCALE;
+            {
+                const bool selected = gizmoOperation == ImGuizmo::OPERATION::SCALE;
+                setupSelectedBg(selected);
+                if (ImGui::ImageButton("scale", scaleIcon.getImguiID(), ImVec2(iconSize, iconSize), uv0, uv1, ImVec4(0,0,0,0), selected ? tintColor.Value : ImVec4(1,1,1,1))) {
+                    gizmoOperation = ImGuizmo::OPERATION::SCALE;
+                }
+                ImGui::PopStyleColor(3);
             }
-            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+            {
+                const bool selected = gizmoOperation == ImGuizmo::OPERATION::BOUNDS;
+                setupSelectedBg(selected);
+                if (ImGui::ImageButton("bounds", scaleBoundsIcon.getImguiID(), ImVec2(iconSize, iconSize), uv0, uv1, ImVec4(0,0,0,0), selected ? tintColor.Value : ImVec4(1,1,1,1))) {
+                    gizmoOperation = ImGuizmo::OPERATION::BOUNDS;
+                }
+                ImGui::PopStyleColor(3);
+            }
         }
         ImGui::End();
 
@@ -139,10 +178,11 @@ namespace Peeler {
             bool used = ImGuizmo::Manipulate(
                     cameraViewImGuizmo,
                     cameraProjectionImGuizmo,
-                    gizmoOperation,
+                    (ImGuizmo::OPERATION)gizmoOperation,
                     gizmoMode,
                     glm::value_ptr(transformMatrix),
                     glm::value_ptr(deltaMatrix)
+                    // TODO: support for bounds?
             );
 
             if (used) {
@@ -193,12 +233,30 @@ namespace Peeler {
 
                 glm::mat4 transformMatrix = parentMatrix * transformRef->localTransform.toTransformMatrix();
 
+                glm::vec3 scaling;
+                glm::quat rotation;
+                glm::vec3 translation;
+                glm::vec3 skew;
+                glm::vec4 perspective;
+                glm::decompose(transformMatrix, scaling, rotation, translation, skew, perspective);
+                float bounds[6];
+                bounds[0] = -0.5f;
+                bounds[1] = -0.5f;
+                bounds[2] = -0.5f;
+
+                bounds[3] = +0.5f;
+                bounds[4] = +0.5f;
+                bounds[5] = +0.5f;
+
                 bool used = ImGuizmo::Manipulate(
                         cameraViewImGuizmo,
                         cameraProjectionImGuizmo,
-                        gizmoOperation,
+                        (ImGuizmo::OPERATION)gizmoOperation,
                         gizmoMode,
-                        glm::value_ptr(transformMatrix)
+                        glm::value_ptr(transformMatrix),
+                        nullptr,
+                        nullptr,
+                        useBounds ? bounds : nullptr
                 );
 
                 if (used) {
@@ -229,4 +287,39 @@ namespace Peeler {
     bool GizmosLayer::allowSceneEntityPicking() const {
         return !usingGizmo;
     }
+
+    void GizmosLayer::tick(double dt) {
+        if (!editor.isGameViewportFocused()) {
+            return;
+        }
+
+        if (translateMode.wasJustReleased()) {
+            gizmoOperation = ImGuizmo::TRANSLATE;
+        }
+        if (rotateMode.wasJustReleased()) {
+            gizmoOperation = ImGuizmo::ROTATE;
+        }
+        if (scaleMode.wasJustReleased()) {
+            gizmoOperation = ImGuizmo::SCALE;
+        }
+
+        if (nextMovementMode.wasJustReleased()) {
+            switch (gizmoOperation) {
+                case ImGuizmo::TRANSLATE:
+                    gizmoOperation = ImGuizmo::ROTATE;
+                    break;
+                case ImGuizmo::ROTATE:
+                    gizmoOperation = ImGuizmo::SCALE;
+                    break;
+                case ImGuizmo::SCALE:
+                    gizmoOperation = ImGuizmo::BOUNDS;
+                    break;
+                case ImGuizmo::BOUNDS:
+                    gizmoOperation = ImGuizmo::TRANSLATE;
+                    break;
+                default: /*no op*/ break;
+            }
+        }
+    }
+
 } // Peeler
