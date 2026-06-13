@@ -988,8 +988,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             result = nextImage.result;
 
             if(result == vk::Result::eNotReady) {
-                Carrot::Log::error("Had to cancel rendering for this frame, acquireNextImageKHR returned not ready");
-                //return -1;
+                //Carrot::Log::error("Had to cancel rendering for this frame, acquireNextImageKHR returned not ready");
+                return nextImage.value;
             } else if (result == vk::Result::eErrorOutOfDateKHR) {
                 recreateSwapchain(window);
                 return -1;

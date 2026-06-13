@@ -99,8 +99,18 @@ namespace Carrot {
         vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
         vk::Extent2D swapchainExtent = chooseSwapExtent(swapChainSupportDetails.capabilities);
 
-        verify(swapChainSupportDetails.capabilities.minImageCount >= MAX_FRAMES_IN_FLIGHT, "Device cannot run with less than MAX_FRAMES_IN_FLIGHT images? Expect bugs");
-        uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount;
+        u32 wantedImageCount = MAX_FRAMES_IN_FLIGHT;
+
+        // check if device can support MAX_FRAMES_IN_FLIGHT at once
+        if (wantedImageCount > swapChainSupportDetails.capabilities.minImageCount) {
+            u32 maxImageCount = swapChainSupportDetails.capabilities.maxImageCount;
+            if (maxImageCount < wantedImageCount) {
+                throw std::runtime_error(Carrot::sprintf("Graphics device does not support enough images at once (wanted %u, got %u at max)", MAX_FRAMES_IN_FLIGHT, maxImageCount));
+            }
+        } else {
+            wantedImageCount = swapChainSupportDetails.capabilities.minImageCount;
+        }
+        uint32_t imageCount = wantedImageCount;
 
         // maxImageCount == 0 means we can request any number of image
         if(swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount) {
