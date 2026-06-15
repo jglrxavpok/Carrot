@@ -48,6 +48,7 @@
 
 #include "ecs/components/PrefabInstanceComponent.h"
 #include "ecs/systems/SystemParticles.h"
+#include "ecs/systems/UIRenderSystem.h"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -254,6 +255,24 @@ void Carrot::Engine::init() {
 
     initConsole();
     initInputStructures();
+
+    const u64 totalMemorySize = Clay_MinMemorySize();
+    clayArenaMemory.resize(totalMemorySize);
+    clayArena = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, clayArenaMemory.data());
+    i32 w, h;
+    mainWindow.getWindowSize(w, h);
+
+    auto handleClayError = [](Clay_ErrorData errorData) {
+        Carrot::Log::error("%s", errorData.errorText.chars);
+    };
+    Clay_Initialize(clayArena, Clay_Dimensions{.width = static_cast<float>(w), .height = static_cast<float>(h)}, static_cast<Clay_ErrorHandler>(handleClayError));
+
+    Clay_SetMeasureTextFunction(+[](Clay_StringSlice text, Clay_TextElementConfig* config, void* userData) {
+        return Clay_Dimensions {
+            .width = static_cast<float>(text.length * config->fontSize),
+            .height = static_cast<float>(config->fontSize)
+        };
+    }, nullptr);
 }
 
 void Carrot::Engine::initConsole() {
@@ -694,6 +713,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SoundListenerSystem>();
         systems.addUniquePtrBased<Carrot::ECS::BillboardSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemParticles>();
+        systems.addUniquePtrBased<Carrot::ECS::UIRenderSystem>();
     }
 }
 

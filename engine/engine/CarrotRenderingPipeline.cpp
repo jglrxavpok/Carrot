@@ -248,7 +248,35 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
     auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, mergeLighting.getData().gBuffer,  mergeLighting.getData().gBuffer.positions, framebufferSize);
 
-    return finalTAA.getData().denoisedResult;
+    struct UIPassData {
+        Render::FrameResource input;
+        Render::FrameResource output;
+    };
+    auto& addUI = mainGraph.addPass<UIPassData>(
+            "ui",
+
+            [this, finalTAA, framebufferSize](Render::GraphBuilder& builder, Render::Pass<UIPassData>& pass, UIPassData& data) {
+                builder.read(finalTAA.getData().gBufferInput.depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                data.input = builder.read(finalTAA.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.output = builder.createRenderTarget("Post-UI output",
+                                                                vk::Format::eR8G8B8A8Unorm,
+                                                                framebufferSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                vk::ImageLayout::eColorAttachmentOptimal
+                );
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const UIPassData& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph UI");
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "UI");
+                Carrot::Render::Texture& input = pass.getGraph().getTexture(data.input, frame.frameNumber);
+                Carrot::Render::Texture& output = pass.getGraph().getTexture(data.output, frame.frameNumber);
+                renderer.blit(input, output, buffer);
+                renderer.recordPassPackets(Render::PassEnum::UI, pass, frame, buffer);
+            }
+    );
+
+    return addUI.getData().output;
 }
 
 const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {

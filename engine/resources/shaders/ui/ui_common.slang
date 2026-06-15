@@ -1,0 +1,33 @@
+import modules.viewport;
+
+public struct Vertex {
+    public float2 position;
+    public float2 uv;
+    public uint color;
+}
+
+public struct VSOutput {
+    public float4 position : SV_POSITION;
+    public float2 uv : UV0;
+    public float4 color : COLOR0;
+}
+
+public struct DisplayRect {
+    public uint textureIndex;
+}
+
+[vk::binding(0, 0)]
+ParameterBlock<Viewport> viewport;
+
+[shader("vertex")]
+VSOutput vertex(Vertex v) {
+    VSOutput o;
+    float alpha = ((v.color >> 24) & 0xFFu) / 255.0f;
+    float blue = ((v.color >> 16) & 0xFFu) / 255.0f;
+    float green = ((v.color >> 8) & 0xFFu) / 255.0f;
+    float red = ((v.color >> 0) & 0xFFu) / 255.0f;
+    o.position = float4((v.position / viewport.frameDimensions) * 2.0 - 1, 0, 1);
+    o.uv = v.uv;
+    o.color = float4(red, green, blue, alpha);
+    return o;
+}

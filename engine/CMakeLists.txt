@@ -82,6 +82,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
         ${EngineRoot}ecs/systems/SystemTransformSwapBuffers.cpp
         ${EngineRoot}ecs/systems/TextRenderSystem.cpp
+        ${EngineRoot}ecs/systems/UIRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
         ${EngineRoot}ecs/EntityTypes.cpp
@@ -251,6 +252,9 @@ set(PIPELINES
         post-process/taa
         post-process/tone-mapping
 
+        ui/image
+        ui/rectangle
+
         billboards
         blit
         composer-blit
@@ -290,6 +294,8 @@ set(ALL_BASE_LIBS
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
         fertilizer-lib
+        harfbuzz
+        harfbuzz-gpu
         ${ADDITIONAL_LIBS})
 
 add_dependencies(CarrotCore

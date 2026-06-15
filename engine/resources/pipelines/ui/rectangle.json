@@ -1,0 +1,23 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "ImGuiVertex",
+  "depthWrite": false,
+  "depthTest": false,
+  "cull": false,
+  "alphaBlending": true,
+  "vertexShader": {
+    "file": "resources/shaders/ui/ui_common.slang",
+    "entry_point": "vertex"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/ui/shapes.slang",
+    "entry_point": "rectangle"
+  },
+  "descriptorSets": [
+    {
+      "type": "viewport",
+      "setID": 0
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 21/11/2020.
 //
 #pragma once
+#include <clay.h>
 #include <memory>
 #include <vector>
 #include <set>
@@ -629,6 +630,10 @@ namespace Carrot {
     private:
         Audio::AudioManager audioManager;
         SceneManager sceneManager;
+
+    private:
+        Clay_Arena clayArena;
+        Carrot::Vector<u8> clayArenaMemory;
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;

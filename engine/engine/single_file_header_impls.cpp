@@ -23,3 +23,6 @@ printf("\n"); \
 #endif
 
 #include <vk_mem_alloc.h>
+
+#define CLAY_IMPLEMENTATION
+#include <clay.h>

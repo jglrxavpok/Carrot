@@ -118,3 +118,6 @@
 [submodule "thirdparty/imgui_tex_inspect"]
 	path = thirdparty/imgui_tex_inspect
 	url = https://github.com/jglrxavpok/imgui_tex_inspect
+[submodule "thirdparty/harfbuzz"]
+	path = thirdparty/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz
