@@ -9,10 +9,15 @@
 #include <engine/Engine.h>
 #include <engine/render/InstanceData.h>
 #include <engine/render/resources/ResourceAllocator.h>
-#include <stb_image_write.h>
 #include <engine/render/resources/Mesh.h>
 #include <glm/matrix.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <hb-raster.h>
+#include <hb.h>
+#include <hb-raster-image.hh>
+#include <core/io/IO.h>
+
+#include <hb-blob.hh>
 
 namespace Carrot::Render {
 
@@ -23,63 +28,91 @@ namespace Carrot::Render {
                renderer(renderer)
     {
         data = ttfFile.readAll();
-        if(!stbtt_InitFont(&fontInfo, reinterpret_cast<const unsigned char*>(data.get()), 0)) {
-            std::string msg = "Failed to initialize font: ";
-            msg += ttfFile.getName();
-            throw std::runtime_error(msg);
-        }
+        hbFontFileBlob = hb_blob_create(reinterpret_cast<const char*>(data.get()), ttfFile.getSize(), hb_memory_mode_t::HB_MEMORY_MODE_READONLY, nullptr, [](void*){});
+        hbFace = hb_face_create(hbFontFileBlob, 0);
+        hbFont = hb_font_create(hbFace);
+        hbBuffer = hb_buffer_create();
+        hbDrawer = hb_raster_draw_create_or_fail();
     }
+
+    Font::~Font() {
+        hb_raster_draw_destroy(hbDrawer);
+        hb_buffer_destroy(hbBuffer);
+        hb_font_destroy(hbFont);
+        hb_face_destroy(hbFace);
+        hb_blob_destroy(hbFontFileBlob);
+    }
+
 
     RenderableText Font::bake(std::u32string_view text, float pixelSize, TextAlignment horizontalAlignment) {
         if(text.empty()) {
             return RenderableText {};
         }
-        // TODO: this does not take newlines into account, nor any other control character
-        std::uint32_t w = 0;
-        std::uint32_t h = 0;
-        float scale = stbtt_ScaleForPixelHeight(&fontInfo, pixelSize);
-        int ascent;
-        stbtt_GetFontVMetrics(&fontInfo, &ascent,0,0);
-        int baseline = (int) (ascent*scale);
+        hb_buffer_reset(hbBuffer);
+        hb_buffer_add_utf32(hbBuffer, reinterpret_cast<const uint32_t*>(text.data()), text.size(), 0, -1);
+        hb_buffer_guess_segment_properties(hbBuffer);
 
-        float xpos = 0.0f;
-        for(const auto& c : text) {
-            int x0, x1, y0, y1;
-            int glyph = stbtt_FindGlyphIndex(&fontInfo, c);
-            stbtt_GetGlyphBitmapBox(&fontInfo, glyph, scale, scale, &x0, &y0, &x1, &y1);
+        hb_shape(hbFont, hbBuffer, nullptr, 0);
 
-            h = std::max(h, static_cast<std::uint32_t>(y1-y0+baseline));
+        // TODO: implement line breaks
+        u32 glyphCount;
+        const hb_glyph_info_t* glyphInfo = hb_buffer_get_glyph_infos(hbBuffer, &glyphCount);
+        const hb_glyph_position_t* glyphPositions = hb_buffer_get_glyph_positions(hbBuffer, &glyphCount);
 
-            int advance, lsb;
-            stbtt_GetGlyphHMetrics(&fontInfo, glyph, &advance, &lsb);
 
-            xpos += advance * scale;
-            // todo: kerning
-        }
-        w = static_cast<std::uint32_t>(xpos);
-        auto bitmap = std::make_shared<Carrot::Render::Texture>(renderer.getVulkanDriver(), vk::Extent3D { w, h, 1 }, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8Unorm);
-        std::vector<unsigned char> pixels;
-        pixels.resize(w*h);
+        int fontHeight;
+        hb_font_get_scale(hbFont, nullptr, &fontHeight);
 
-        xpos = 0.0f;
-        for(const auto& c : text) {
-            int x0, x1, y0, y1;
-            int xCursor = static_cast<std::uint32_t>(xpos);
-            int glyph = stbtt_FindGlyphIndex(&fontInfo, c);
-            stbtt_GetGlyphBitmapBox(&fontInfo, glyph, scale, scale, &x0, &y0, &x1, &y1);
-            if(y0+baseline < 0) { // FIXME: this hack should probably be looked into. For the moment, avoid out-of-bounds accesses
-                int charHeight = y1-y0;
-                y0 = -baseline;
-                y1 = charHeight+y0;
+        const float scale = pixelSize / fontHeight;
+
+        hb_raster_draw_clear(hbDrawer);
+        hb_raster_draw_set_scale_factor(hbDrawer, 1.0f/scale, 1.0f/scale);
+        hb_raster_draw_set_transform(hbDrawer, 1, 0, 0, 1, 0, 0);
+
+        u32 width = 0;
+        u32 height = 0;
+        {
+            hb_position_t cursorX = 0;
+            hb_position_t cursorY = 0;
+            for (u32 glyphIndex = 0; glyphIndex < glyphCount; glyphIndex++) {
+                hb_codepoint_t glyphID = glyphInfo[glyphIndex].codepoint;
+                hb_position_t xAdvance = glyphPositions[glyphIndex].x_advance;
+                hb_position_t yAdvance = glyphPositions[glyphIndex].y_advance;
+                hb_position_t xOffset = glyphPositions[glyphIndex].x_offset;
+                hb_position_t yOffset = glyphPositions[glyphIndex].y_offset;
+
+                hb_glyph_extents_t glyphExtents;
+                hb_font_get_glyph_extents(hbFont, glyphID, &glyphExtents);
+                hb_raster_draw_set_transform(hbDrawer, 1, 0, 0, 1, cursorX+xOffset, cursorY+yOffset);
+                hb_raster_draw_glyph(hbDrawer, hbFont, glyphID);
+
+                cursorX += xAdvance;
+                cursorY += yAdvance;
             }
-            stbtt_MakeGlyphBitmap(&fontInfo, &pixels[(y0+baseline)*w+x0+xCursor], x1-x0, y1-y0, w, scale, scale, glyph);
-
-            int advance, lsb;
-            stbtt_GetGlyphHMetrics(&fontInfo, glyph, &advance, &lsb);
-
-            xpos += advance * scale;
         }
-        bitmap->getImage().stageUpload({pixels.data(), pixels.size()});
+        // Raster glyphs to image
+        // TODO: use Slug algorithm
+        hb_raster_image_t* mask = hb_raster_draw_render(hbDrawer);
+        hb_raster_draw_recycle_image(hbDrawer, mask);
+
+        width = mask->extents.width;
+        height = mask->extents.height-mask->extents.y_origin;
+
+        Carrot::Vector<u8> pixels;
+        pixels.resize(width * height);
+        pixels.fill(0);
+
+        float baseline = mask->extents.y_origin;
+        for (u32 y = 0; y < mask->extents.height; y++) {
+            for (u32 x = 0; x < mask->extents.width; x++) {
+                // same computation as hb_raster_image_t::serialize_to_png_or_fail
+                pixels[x + y * width] = mask->buffer.arrayZ[x + (mask->extents.height - 1 - y) * mask->extents.stride];
+            }
+        }
+
+        // create texture and pixel storage
+        std::shared_ptr<Texture> bitmap = std::make_shared<Carrot::Render::Texture>(renderer.getVulkanDriver(), vk::Extent3D { width, height, 1 }, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8Unorm);
+        bitmap->getImage().stageUpload({pixels.data(), static_cast<std::size_t>(pixels.bytes_size())});
 
         auto material = GetRenderer().getMaterialSystem().createMaterialHandle();
         auto textureHandle = GetRenderer().getMaterialSystem().createTextureHandle(bitmap);
@@ -97,13 +130,15 @@ namespace Carrot::Render {
         instanceData.color = glm::vec4{1.0f};
         float xOffset = 0.0f;
         if (horizontalAlignment == TextAlignment::Center) {
-            xOffset = -static_cast<float>(w) / 2.0f;
+            xOffset = -static_cast<float>(width) / 2.0f;
         }
-        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { xOffset, static_cast<float>(h) / 2.0f, 0.0f})
-                * glm::scale(glm::mat4{1.0f}, glm::vec3{static_cast<float>(w), -static_cast<float>(h), 1.0f});
+        xOffset += mask->extents.x_origin;
+
+        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { xOffset, static_cast<float>(height) / 2.0f + baseline, 0.0f})
+                * glm::scale(glm::mat4{1.0f}, glm::vec3{static_cast<float>(width), -static_cast<float>(height), 1.0f});
         TextMetrics metrics {
-            .width = static_cast<float>(w),
-            .height = static_cast<float>(h),
+            .width = static_cast<float>(width),
+            .height = static_cast<float>(height),
             .baseline = static_cast<float>(baseline),
             .basePixelSize = pixelSize,
         };

@@ -185,7 +185,7 @@ set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/SPIRV-Reflect)
 
-
+set(BUILD_SHARED_LIBS ON)
 add_subdirectory(thirdparty/harfbuzz)
 
 function(make_asan_target Target)

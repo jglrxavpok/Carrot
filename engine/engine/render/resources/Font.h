@@ -7,10 +7,15 @@
 #include <core/io/Resource.h>
 #include <engine/render/resources/Mesh.h>
 #include <glm/glm.hpp>
-#include <stb_truetype.h>
-#include <engine/render/resources/BufferView.h>
 #include "engine/render/InstanceData.h"
 #include "engine/render/MaterialSystem.h"
+
+// Harbuzz forward declarations
+struct hb_blob_t;
+struct hb_face_t;
+struct hb_font_t;
+struct hb_buffer_t;
+struct hb_raster_draw_t;
 
 namespace Carrot::Render {
     class MaterialHandle;
@@ -71,6 +76,7 @@ namespace Carrot::Render {
 
         // TODO: Support font fallback
         explicit Font(Carrot::VulkanRenderer& renderer, const Carrot::IO::Resource& ttfFile, const std::vector<std::uint64_t>& renderableCodepoints = getAsciiCodepoints());
+        ~Font();
 
     public:
         RenderableText bake(std::u32string_view text, float pixelSize = DefaultPixelSize, TextAlignment horizontalAlignment = TextAlignment::Center);
@@ -80,9 +86,13 @@ namespace Carrot::Render {
         static std::vector<std::uint64_t>& getAsciiCodepoints();
 
     private:
-        std::unique_ptr<std::uint8_t[]> data = nullptr; // must be kept alive for stb_truetype to work
+        std::unique_ptr<std::uint8_t[]> data = nullptr; // must be kept alive for harfbuzz to work
+        hb_blob_t* hbFontFileBlob = nullptr;
+        hb_face_t* hbFace = nullptr;
+        hb_font_t* hbFont = nullptr;
+        hb_buffer_t* hbBuffer = nullptr;
+        hb_raster_draw_t* hbDrawer = nullptr;
         Carrot::VulkanRenderer& renderer;
-        stbtt_fontinfo fontInfo;
     };
 
 }

@@ -294,8 +294,9 @@ set(ALL_BASE_LIBS
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
         fertilizer-lib
-        harfbuzz
+        harfbuzz-raster
         harfbuzz-gpu
+        harfbuzz
         ${ADDITIONAL_LIBS})
 
 add_dependencies(CarrotCore

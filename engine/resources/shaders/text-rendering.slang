@@ -56,7 +56,7 @@ EncodedGBuffer pixel(VSOutput input) {
     const Material material = materialSystem.materials[NonUniformResourceIndex(instanceDrawData.materialIndex)];
 
     float color = materialSystem.SampleAlbedo(material, materialSystem.linearSampler, input.uv).r;
-    if (color < 0.01) {
+    if (color < 0.5f) {
         discard;
     }
 
