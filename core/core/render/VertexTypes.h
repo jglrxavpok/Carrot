@@ -88,6 +88,15 @@ namespace Carrot {
         std::uint32_t color {0};
     };
 
+    struct TextVertex {
+        alignas(16) glm::vec2 position;
+        alignas(16) glm::vec2 normal;
+        alignas(16) glm::vec2 texcoord;
+
+        alignas(16) float emPerPos;
+        alignas(16) u32 glyphLoc;
+    };
+
 }
 
 

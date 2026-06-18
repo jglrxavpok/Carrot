@@ -485,3 +485,90 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getInstanceDataOnlyBindin
             },
     };
 }
+
+std::vector<vk::VertexInputAttributeDescription> Carrot::getTextVertexAttributeDescriptions() {
+    std::vector<vk::VertexInputAttributeDescription> descriptions{15};
+
+    descriptions[0] = {
+            .location = 0,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(TextVertex, position)),
+    };
+
+    descriptions[1] = {
+            .location = 1,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(TextVertex, normal)),
+    };
+
+    descriptions[2] = {
+            .location = 2,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(TextVertex, texcoord)),
+    };
+
+    descriptions[3] = {
+            .location = 3,
+            .binding = 0,
+            .format = vk::Format::eR32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(TextVertex, emPerPos)),
+    };
+
+    descriptions[4] = {
+            .location = 4,
+            .binding = 0,
+            .format = vk::Format::eR32Uint,
+            .offset = static_cast<uint32_t>(offsetof(TextVertex, glyphLoc)),
+    };
+
+    descriptions[5] = {
+            .location = 5,
+            .binding = 1,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
+    };
+
+    descriptions[6] = {
+            .location = 6,
+            .binding = 1,
+            .format = vk::Format::eR32G32B32A32Uint,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, uuid)),
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[7+i] = {
+                .location = static_cast<uint32_t>(7+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[11+i] = {
+                .location = static_cast<uint32_t>(11+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    return descriptions;
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::getTextVertexBindingDescription() {
+        return {vk::VertexInputBindingDescription {
+                .binding = 0,
+                .stride = sizeof(TextVertex),
+                .inputRate = vk::VertexInputRate::eVertex,
+        },
+        vk::VertexInputBindingDescription {
+                .binding = 1,
+                .stride = sizeof(InstanceData),
+                .inputRate = vk::VertexInputRate::eInstance,
+        },
+};
+}

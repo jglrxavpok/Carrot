@@ -16,6 +16,8 @@ struct hb_face_t;
 struct hb_font_t;
 struct hb_buffer_t;
 struct hb_raster_draw_t;
+struct hb_gpu_draw_t;
+struct hb_gpu_paint_t;
 
 namespace Carrot::Render {
     class MaterialHandle;
@@ -54,15 +56,17 @@ namespace Carrot::Render {
                 Carrot::InstanceData&& instanceData,
                 glm::mat4 localOffset,
                 std::unique_ptr<Carrot::Mesh>&& mesh,
-                std::shared_ptr<Carrot::Render::MaterialHandle> material
+                std::shared_ptr<Carrot::Render::MaterialHandle> material,
+                Carrot::BufferAllocation atlas
                 ):
-            metrics(metrics), localOffset(localOffset), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)) {};
+            metrics(metrics), localOffset(localOffset), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)), atlas(std::move(atlas)) {};
         glm::mat4 localOffset {1.0f};
         Carrot::InstanceData instance;
         std::unique_ptr<Carrot::Mesh> mesh = nullptr; // TODO: use generic square mesh
 
         std::shared_ptr<Carrot::Render::MaterialHandle> material = nullptr;
         TextMetrics metrics;
+        Carrot::BufferAllocation atlas;
 
         friend class Font;
     };
@@ -92,6 +96,7 @@ namespace Carrot::Render {
         hb_font_t* hbFont = nullptr;
         hb_buffer_t* hbBuffer = nullptr;
         hb_raster_draw_t* hbDrawer = nullptr;
+        hb_gpu_paint_t* hbGpuDraw = nullptr;
         Carrot::VulkanRenderer& renderer;
     };
 

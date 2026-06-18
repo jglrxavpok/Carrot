@@ -14,6 +14,8 @@ namespace Carrot {
     public:
         template<typename VertexType>
         explicit SingleMesh(const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
+        template<typename VertexType>
+        explicit SingleMesh(const Carrot::Vector<VertexType>& vertices, const Carrot::Vector<uint32_t>& indices);
         ~SingleMesh();
 
         Carrot::Buffer& getBackingBuffer();

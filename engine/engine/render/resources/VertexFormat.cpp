@@ -25,6 +25,8 @@ Carrot::VertexFormat Carrot::getVertexFormat(const std::string& name) {
         return VertexFormat::ImGuiVertex;
     } else if(name == "InstanceDataOnly") {
         return VertexFormat::InstanceDataOnly;
+    } else if(name == "TextVertex") {
+        return VertexFormat::TextVertex;
     }
     return Carrot::VertexFormat::Invalid;
 }
@@ -56,6 +58,8 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getBindingDescriptions(Ca
 
         case VertexFormat::InstanceDataOnly:
             return Carrot::getInstanceDataOnlyBindingDescription();
+        case VertexFormat::TextVertex:
+            return Carrot::getTextVertexBindingDescription();
 
         default:
             throw std::runtime_error("Invalid vertex format!");
@@ -90,6 +94,9 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getAttributeDescription
 
         case VertexFormat::InstanceDataOnly:
             return Carrot::getInstanceDataOnlyAttributeDescriptions();
+
+        case VertexFormat::TextVertex:
+            return Carrot::getTextVertexAttributeDescriptions();
 
         default:
             throw std::runtime_error("Invalid vertex format!");

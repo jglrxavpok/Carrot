@@ -1,7 +1,7 @@
 {
   "type": "gbuffer",
   "subpassIndex": 0,
-  "vertexFormat": "SimpleVertexWithInstanceData",
+  "vertexFormat": "TextVertex",
   "depthWrite": true,
   "depthTest": true,
   "cull": false,
@@ -12,11 +12,11 @@
   },
   "vertexShader": {
       "file": "resources/shaders/text-rendering.slang",
-      "entry_point": "vertex"
+      "entry_point": "vertex2"
   },
   "fragmentShader": {
     "file": "resources/shaders/text-rendering.slang",
-    "entry_point": "pixel"
+    "entry_point": "pixel2"
   },
   "descriptorSets": [
     {
