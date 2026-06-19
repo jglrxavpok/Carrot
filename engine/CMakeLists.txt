@@ -270,7 +270,6 @@ set(PIPELINES
         particles_draw_template # to ensure shaders are compiled
         particles_update_template # to ensure shaders are validated
         text-rendering
-        text-rendering-2
         unlitGBuffer
         unlitGBufferWireframe
         visibility-buffer
@@ -295,7 +294,6 @@ set(ALL_BASE_LIBS
         OpenXR::openxr_loader
         OpenEXR::OpenEXR
         fertilizer-lib
-        harfbuzz-raster
         harfbuzz-gpu
         harfbuzz
         ${ADDITIONAL_LIBS})

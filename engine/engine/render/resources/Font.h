@@ -56,15 +56,13 @@ namespace Carrot::Render {
                 Carrot::InstanceData&& instanceData,
                 glm::mat4 localOffset,
                 std::unique_ptr<Carrot::Mesh>&& mesh,
-                std::shared_ptr<Carrot::Render::MaterialHandle> material,
                 Carrot::BufferAllocation atlas
                 ):
-            metrics(metrics), localOffset(localOffset), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)), atlas(std::move(atlas)) {};
+            metrics(metrics), localOffset(localOffset), mesh(std::move(mesh)), instance(std::move(instanceData)), atlas(std::move(atlas)) {};
         glm::mat4 localOffset {1.0f};
         Carrot::InstanceData instance;
-        std::unique_ptr<Carrot::Mesh> mesh = nullptr; // TODO: use generic square mesh
+        std::unique_ptr<Carrot::Mesh> mesh = nullptr;
 
-        std::shared_ptr<Carrot::Render::MaterialHandle> material = nullptr;
         TextMetrics metrics;
         Carrot::BufferAllocation atlas;
 
@@ -79,15 +77,12 @@ namespace Carrot::Render {
         static constexpr float DefaultPixelSize = 64.0f;
 
         // TODO: Support font fallback
-        explicit Font(Carrot::VulkanRenderer& renderer, const Carrot::IO::Resource& ttfFile, const std::vector<std::uint64_t>& renderableCodepoints = getAsciiCodepoints());
+        explicit Font(Carrot::VulkanRenderer& renderer, const Carrot::IO::Resource& ttfFile);
         ~Font();
 
     public:
         RenderableText bake(std::u32string_view text, float pixelSize = DefaultPixelSize, TextAlignment horizontalAlignment = TextAlignment::Center);
         void immediateRender(std::u32string_view text, glm::mat4 transform);
-
-    public:
-        static std::vector<std::uint64_t>& getAsciiCodepoints();
 
     private:
         std::unique_ptr<std::uint8_t[]> data = nullptr; // must be kept alive for harfbuzz to work
@@ -95,7 +90,6 @@ namespace Carrot::Render {
         hb_face_t* hbFace = nullptr;
         hb_font_t* hbFont = nullptr;
         hb_buffer_t* hbBuffer = nullptr;
-        hb_raster_draw_t* hbDrawer = nullptr;
         hb_gpu_paint_t* hbGpuDraw = nullptr;
         Carrot::VulkanRenderer& renderer;
     };

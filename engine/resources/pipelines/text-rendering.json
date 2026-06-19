@@ -1,7 +1,7 @@
 {
   "type": "gbuffer",
   "subpassIndex": 0,
-  "vertexFormat": "SimpleVertexWithInstanceData",
+  "vertexFormat": "TextVertex",
   "depthWrite": true,
   "depthTest": true,
   "cull": false,
@@ -20,24 +20,12 @@
   },
   "descriptorSets": [
     {
-      "type": "materials",
+      "type": "camera",
       "setID": 0
     },
     {
-      "type": "camera",
-      "setID": 1
-    },
-    {
-      "type": "per_draw",
-      "setID": 2
-    },
-    {
       "type": "viewport",
-      "setID": 3
-    },
-    {
-      "type": "manual",
-      "setID": 4
+      "setID": 1
     }
   ]
 }
