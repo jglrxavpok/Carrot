@@ -271,7 +271,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "UI");
                 Carrot::Render::Texture& input = pass.getGraph().getTexture(data.input, frame.frameNumber);
                 Carrot::Render::Texture& output = pass.getGraph().getTexture(data.output, frame.frameNumber);
-                renderer.blit(input, output, buffer);
+                renderer.fullscreenBlit(pass, frame, input, output, buffer);
                 renderer.recordPassPackets(Render::PassEnum::UI, pass, frame, buffer);
             }
     );

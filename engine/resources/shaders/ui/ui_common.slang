@@ -1,4 +1,7 @@
+import modules.base;
 import modules.viewport;
+import modules.camera;
+
 
 public struct Vertex {
     public float2 position;
@@ -19,6 +22,9 @@ public struct DisplayRect {
 [vk::binding(0, 0)]
 ParameterBlock<Viewport> viewport;
 
+[vk::binding(0, 1)]
+ParameterBlock<Camera> camera;
+
 [shader("vertex")]
 VSOutput vertex(Vertex v) {
     VSOutput o;
@@ -26,7 +32,8 @@ VSOutput vertex(Vertex v) {
     float blue = ((v.color >> 16) & 0xFFu) / 255.0f;
     float green = ((v.color >> 8) & 0xFFu) / 255.0f;
     float red = ((v.color >> 0) & 0xFFu) / 255.0f;
-    o.position = float4((v.position / viewport.frameDimensions) * 2.0 - 1, 0, 1);
+    const float4x4 projview = camera.CurrentFrame().jitteredProjection * camera.CurrentFrame().view;
+    o.position = projview * float4((v.position / viewport.frameDimensions) * 2.0 - 1, 0, 1);
     o.uv = v.uv;
     o.color = float4(red, green, blue, alpha);
     return o;

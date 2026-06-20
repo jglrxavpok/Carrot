@@ -20,8 +20,12 @@
       "setID": 0
     },
     {
-      "type": "materials",
+      "type": "camera",
       "setID": 1
+    },
+    {
+      "type": "materials",
+      "setID": 2
     }
   ]
 }

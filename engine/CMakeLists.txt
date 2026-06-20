@@ -254,6 +254,7 @@ set(PIPELINES
 
         ui/image
         ui/rectangle
+        ui/ui_common
 
         billboards
         blit
