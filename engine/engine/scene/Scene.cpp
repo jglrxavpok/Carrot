@@ -525,7 +525,7 @@ namespace Carrot {
     }
 
     void Scene::unbindFromViewport(Carrot::Render::Viewport& viewport) {
-        viewport.setScene(nullptr);
+        viewport.removeScene();
         std::erase(viewports, &viewport);
     }
 

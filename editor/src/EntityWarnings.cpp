@@ -21,20 +21,20 @@ namespace Peeler {
 
         const Carrot::Vector<std::string>& errors = iter->second;
         ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0000FF);
-        if(ImGui::SmallButton(icon)) {
-            ImGui::OpenPopup(popupID);
-        }
+        ImGui::SmallButton(icon);
         ImGui::PopStyleColor(1);
+        if (ImGui::IsItemHovered()) {
+            if (ImGui::BeginTooltip()) {
+                for (i32 errorIndex = 0; errorIndex < errors.size(); ++errorIndex) {
+                    if (errorIndex != 0) {
+                        ImGui::Separator();
+                    }
 
-        if (ImGui::BeginPopup(popupID)) {
-            for (i32 errorIndex = 0; errorIndex < errors.size(); ++errorIndex) {
-                if (errorIndex != 0) {
-                    ImGui::Separator();
+                    ImGui::TextUnformatted(errors[errorIndex].c_str());
                 }
 
-                ImGui::TextUnformatted(errors[errorIndex].c_str());
+                ImGui::EndTooltip();
             }
-            ImGui::EndPopup();
         }
     }
 

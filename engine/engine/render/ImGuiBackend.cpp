@@ -204,6 +204,9 @@ namespace Carrot::Render {
         }
         delete pImpl;
         pImpl = nullptr;
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.BackendRendererUserData = nullptr;
     }
 
     void ImGuiBackend::render(const Carrot::Render::Context& renderContext, WindowID windowID, ImDrawData* pDrawData) {

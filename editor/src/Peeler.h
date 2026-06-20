@@ -297,6 +297,8 @@ namespace Peeler {
 
     public:
         Carrot::Scene& currentScene;
+
+        Carrot::StackAllocator entityListAllocator{ Carrot::Allocator::getDefault() }; // to avoid reallocating each frame, reuse memory
         ErrorReport errorReport;
 
     private:

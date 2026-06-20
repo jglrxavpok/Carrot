@@ -328,7 +328,7 @@ namespace Peeler {
             }
         }
 
-        //checkErrors();
+        checkErrors();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -1903,19 +1903,19 @@ namespace Peeler {
         return !errorMessagesPerEntity.empty();
     }
 
-    static Carrot::StackAllocator entityListAllocator{ Carrot::Allocator::getDefault() }; // to avoid reallocating each frame, reuse memory
-
     void Application::checkErrors() {
         errorReport.errorMessagesPerEntity.clear();
         entityListAllocator.clear();
 
         struct EntityList: Carrot::Vector<Carrot::ECS::EntityID> {
-            EntityList(): Vector(entityListAllocator) {}
+            EntityList(Carrot::Allocator& allocator): Vector(allocator) {}
         };
 
         struct DuplicateNameChecker {
+            DuplicateNameChecker(Carrot::Allocator& allocator): allocator(allocator) {}
+
             void addName(const Carrot::ECS::EntityID& entityID, const std::string& name) {
-                name2entities[Carrot::toLowerCase(name)].pushBack(entityID);
+                name2entities.try_emplace(Carrot::toLowerCase(name), allocator).first->second.pushBack(entityID);
             }
 
             void finalise(ErrorReport& report) {
@@ -1930,13 +1930,14 @@ namespace Peeler {
                 }
             }
 
+            Carrot::Allocator& allocator;
             std::unordered_map<std::string, EntityList> name2entities;
         };
 
         // check that there are no two entities with the same name at the same hierarchy level
         std::function<void(Carrot::ECS::Entity)> recursiveCheck = [&](Carrot::ECS::Entity entity) {
             auto directChildren = entity.getChildren(Carrot::ShouldRecurse::NoRecursion);
-            DuplicateNameChecker checker;
+            DuplicateNameChecker checker{entityListAllocator};
             for (Carrot::ECS::Entity& child : directChildren) {
                 checker.addName(child.getID(), child.getName());
                 recursiveCheck(child);
@@ -1944,7 +1945,7 @@ namespace Peeler {
             checker.finalise(errorReport);
         };
 
-        DuplicateNameChecker rootChecker;
+        DuplicateNameChecker rootChecker{entityListAllocator};
         for (auto& entity : currentScene.world.getAllEntities()) {
             if (entity.getParent().has_value()) {
                 continue;

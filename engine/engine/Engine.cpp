@@ -538,6 +538,7 @@ void Carrot::Engine::run() {
     glfwHideWindow(mainWindow.getGLFWPointer());
 
     WaitDeviceIdle();
+    renderer.waitForRenderToComplete();
 }
 
 void Carrot::Engine::stop() {
@@ -720,6 +721,7 @@ void Carrot::Engine::initECS() {
 Carrot::Engine::~Engine() {
     shuttingDown = true;
     Carrot::Render::Sprite::cleanup();
+    renderer.shutdownImGui();
     ImGui::DestroyPlatformWindows();
     ImGui_ImplGlfw_Shutdown();
     ImGuiTexInspect::Shutdown();
