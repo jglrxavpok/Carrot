@@ -15,6 +15,7 @@ set(EditorSources
         ${EditorRoot}commands/RenameEntities.cpp
         ${EditorRoot}commands/UndoStack.cpp
 
+        ${EditorRoot}layers/CameraTypeLayer.cpp
         ${EditorRoot}layers/GizmosLayer.cpp
         ${EditorRoot}layers/ISceneViewLayer.cpp
 

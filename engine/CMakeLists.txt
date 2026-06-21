@@ -172,6 +172,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/EditorSettings.cpp
         ${EngineRoot}edition/FreeCameraController.cpp
         ${EngineRoot}edition/ProjectMenuHolder.cpp
+        ${EngineRoot}edition/UICameraController.cpp
         ${EngineRoot}edition/Widgets.cpp
 
         ${EngineRoot}pathfinding/AStar.cpp

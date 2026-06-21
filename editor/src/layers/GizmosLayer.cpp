@@ -55,7 +55,7 @@ namespace Peeler {
         glm::mat4 cameraProjection = camera.getProjectionMatrix();
         cameraProjection[1][1] *= -1;
 
-        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetOrthographic(editor.currentCameraType == Application::CameraType::UI);
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(startX, startY, ImGui::GetWindowContentRegionMax().x,
                           ImGui::GetWindowContentRegionMax().y);

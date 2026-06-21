@@ -44,6 +44,7 @@
 #include <engine/scripting/CSharpBindings.h>
 
 #include "layers/GizmosLayer.h"
+#include "layers/CameraTypeLayer.h"
 #include <IconsFontAwesome6.h>
 #include <ImGuiNotify.hpp>
 #include <commands/DeleteEntitiesCommand.h>
@@ -69,13 +70,29 @@ namespace Peeler {
 
     void Application::setupCamera(const Carrot::Render::Context& renderContext) {
         /*if(renderContext.pViewport->getViewportID() == GameViewportID) */{
-            cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+            switch (currentCameraType) {
+                case CameraType::FreeCam:
+                    freeCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                break;
+                case CameraType::UI:
+                    uiCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                break;
+                default: TODO;
+            }
 
             currentScene.setupCamera(renderContext);
 
+            // override any primary camera the game might have
             if(!isPlaying) {
-                // override any primary camera the game might have
-                cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                switch (currentCameraType) {
+                    case CameraType::FreeCam:
+                        freeCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        break;
+                    case CameraType::UI:
+                        uiCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        break;
+                    default: TODO;
+                }
             }
         }
     }
@@ -124,7 +141,15 @@ namespace Peeler {
 
             if(!isPlaying) {
                 // override any primary camera the game might have
-                cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+                switch (currentCameraType) {
+                    case CameraType::FreeCam:
+                        freeCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        break;
+                    case CameraType::UI:
+                        uiCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        break;
+                    default: TODO;
+                }
 
                 float gridSize = 100.0f;
                 float cellSize = 1.0f;
@@ -1654,6 +1679,7 @@ namespace Peeler {
 
         GetPhysics().pause();
         pushLayer<GizmosLayer>();
+        pushLayer<CameraTypeLayer>();
 
         {
             moveCameraGamepad.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -1802,9 +1828,18 @@ namespace Peeler {
             glm::vec2 turnCamera = turnCameraGamepad.getValue() + turnCameraKBM.getValue();
             float moveCameraUp = moveCameraUpGamepad.getValue() + moveCameraUpKBM.getValue();
             float moveCameraDown = moveCameraDownGamepad.getValue() + moveCameraDownKBM.getValue();
-            cameraController.move(moveCamera.x * cameraSpeedMultiplier, moveCamera.y * cameraSpeedMultiplier, (moveCameraUp - moveCameraDown) * cameraSpeedMultiplier,
-                turnCamera.x, turnCamera.y,
-                frameTime*5);
+
+            switch (currentCameraType) {
+                case CameraType::FreeCam:
+                    freeCameraController.move(moveCamera.x * cameraSpeedMultiplier, moveCamera.y * cameraSpeedMultiplier, (moveCameraUp - moveCameraDown) * cameraSpeedMultiplier,
+                        turnCamera.x, turnCamera.y,
+                        frameTime*5);
+                    break;
+                case CameraType::UI:
+                    // TODO
+                    break;
+                default: TODO;
+            }
         }
     }
 
@@ -2069,7 +2104,10 @@ namespace Peeler {
         }
 
         if(description.HasMember("camera")) {
-            cameraController.deserialise(description["camera"].GetObject());
+            freeCameraController.deserialise(description["camera"].GetObject());
+        }
+        if(description.HasMember("ui_camera")) {
+            uiCameraController.deserialise(description["ui_camera"].GetObject());
         }
 
         if(description.HasMember("window")) {
@@ -2164,7 +2202,8 @@ namespace Peeler {
         }
 
         {
-            document.AddMember("camera", cameraController.serialise(document), document.GetAllocator());
+            document.AddMember("camera", freeCameraController.serialise(document), document.GetAllocator());
+            document.AddMember("ui_camera", uiCameraController.serialise(document), document.GetAllocator());
         }
 
         {

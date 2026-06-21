@@ -21,6 +21,7 @@
 #include "panels/ViewportEditionPanel.h"
 #include "layers/ISceneViewLayer.h"
 #include <commands/UndoStack.h>
+#include <engine/edition/UICameraController.h>
 #include <particle_editor/ParticleEditor.h>
 
 namespace Peeler {
@@ -281,6 +282,8 @@ namespace Peeler {
         NavMeshPanel navMeshPanel;
         ViewportEditionPanel viewportEditionPanel;
         friend class ViewportEditionPanel;
+        friend class CameraTypeLayer;
+        friend class GizmosLayer;
 
     private:
         Carrot::UniquePtr<Peeler::ParticleEditor> pParticleEditor;
@@ -317,7 +320,13 @@ namespace Peeler {
         Carrot::IO::FloatInputAction moveCameraDownGamepad { "move_camera_down" };
         Carrot::IO::Vec2InputAction turnCameraGamepad { "turn_camera" };
 
-        Carrot::Edition::FreeCameraController cameraController;
+        enum class CameraType {
+            FreeCam,
+            UI,
+        };
+        CameraType currentCameraType = CameraType::FreeCam;
+        Carrot::Edition::FreeCameraController freeCameraController;
+        Carrot::Edition::UICameraController uiCameraController;
 
     private:
         // don't actually start/stop the simulation mid-frame! We might have live objects that need to still be alive at the end of the frame
