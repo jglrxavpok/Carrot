@@ -3,13 +3,15 @@
 //
 
 #pragma once
+#include <clay.h>
 #include <engine/ecs/components/TransformComponent.h>
+#include <engine/ecs/components/ui/UICanvasComponent.h>
 #include <engine/render/AsyncResource.hpp>
 
 #include "System.h"
 
 namespace Carrot::ECS {
-    class UIRenderSystem final : public RenderSystem<TransformComponent/*TODO*/>, public Identifiable<UIRenderSystem> {
+    class UIRenderSystem final : public RenderSystem<TransformComponent, Carrot::UI::UICanvasComponent>, public Identifiable<UIRenderSystem> {
     public:
         explicit UIRenderSystem(World& world);
 
@@ -28,6 +30,15 @@ namespace Carrot::ECS {
         }
 
     private:
+        struct LayoutResult {
+            Clay_RenderCommandArray clayCommands;
+            glm::mat4 transform; // transform of UI canvas. Unused if inWorld = false
+            bool inWorld = false;
+        };
+
+        /// Transforms Carrot hierarchy to Clay, and performs layout
+        Carrot::Vector<LayoutResult> translateToClay(const Render::Context& renderContext, float dt);
+
         AsyncResource<Carrot::Pipeline, false> rectanglePipelineResource;
         AsyncResource<Carrot::Pipeline, false> imagePipelineResource;
         AsyncResource<Carrot::Render::Texture, false> testImage;

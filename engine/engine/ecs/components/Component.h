@@ -102,3 +102,27 @@ namespace Carrot::ECS {
 
     ComponentLibrary& getComponentLibrary();
 }
+
+// Macros to quickly define a new component
+#define BEGIN_COMPONENT(ComponentName) \
+        struct ComponentName ## Component : public Carrot::ECS::IdentifiableComponent<ComponentName ## Component> {                               \
+            explicit ComponentName ## Component(Carrot::ECS::Entity entity): IdentifiableComponent<ComponentName ## Component>(std::move(entity)) {};          \
+                                                                                                                                                  \
+            explicit ComponentName ## Component(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity);                                              \
+                                                                                                                                                  \
+            Carrot::DocumentElement serialise() const override;                                                                                   \
+                                                                                                                                                  \
+            const char *const getName() const override {                                                                                          \
+                return #ComponentName;                                                                                                            \
+            }                                                                                                                                     \
+                                                                                                                                                  \
+            std::unique_ptr<Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
+
+#define END_COMPONENT }/*struct*/;
+#define ADD_COMPONENT_ID(Namespace, ComponentName) \
+    template<> \
+    inline const char* ::Carrot::Identifiable<Namespace :: ComponentName ## Component>::getStringRepresentation() { \
+        return #ComponentName; \
+    }
+
+// TODO: macro to add to component library automatically

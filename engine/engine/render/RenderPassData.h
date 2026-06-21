@@ -20,9 +20,9 @@ namespace Carrot::Render {
 
     struct TextureSize {
         enum class Type {
-            SwapchainProportional,
+            ViewportProportional,
             Fixed,
-        } type = Type::SwapchainProportional;
+        } type = Type::ViewportProportional;
 
         double width = 1.0;
         double height = 1.0;

@@ -169,7 +169,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
-                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                if(framebufferSize.type == Render::TextureSize::Type::ViewportProportional) {
                     block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
                     block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
                 } else {

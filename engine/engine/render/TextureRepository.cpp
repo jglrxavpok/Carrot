@@ -81,7 +81,7 @@ namespace Carrot::Render {
         for (int i = 0; i < bufferCount; ++i) {
             vk::Extent3D size;
             switch(resource.size.type) {
-                case TextureSize::Type::SwapchainProportional: {
+                case TextureSize::Type::ViewportProportional: {
                     size.width = static_cast<std::uint32_t>(resource.size.width * viewportSize.width);
                     size.height = static_cast<std::uint32_t>(resource.size.height * viewportSize.height);
                     size.depth = static_cast<std::uint32_t>(resource.size.depth * 1);

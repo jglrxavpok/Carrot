@@ -67,6 +67,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
+        ${EngineRoot}ecs/components/ui/UICanvasComponent.cpp
+
         ${EngineRoot}ecs/systems/AnimatedModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/BillboardSystem.cpp
         ${EngineRoot}ecs/systems/CameraSystem.cpp

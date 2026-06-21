@@ -680,6 +680,7 @@ void Carrot::Engine::initECS() {
     auto& components = Carrot::ECS::getComponentLibrary();
     auto& systems = Carrot::ECS::getSystemLibrary();
 
+    // TODO: automatise?
     {
         components.add<Carrot::ECS::TransformComponent>();
         components.add<Carrot::ECS::Kinematics>();
@@ -697,6 +698,8 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::BillboardComponent>();
         components.add<Carrot::ECS::PrefabInstanceComponent>();
         components.add<Carrot::ECS::ParticleEmitterComponent>();
+
+        components.add<Carrot::UI::UICanvasComponent>();
     }
 
     {

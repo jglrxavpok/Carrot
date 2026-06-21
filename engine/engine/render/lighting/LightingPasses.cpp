@@ -228,7 +228,7 @@ namespace Carrot::Render {
             } block;
 
             block.frameCount = renderer.getFrameCount();
-            if (framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+            if (framebufferSize.type == Render::TextureSize::Type::ViewportProportional) {
                 block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
                 block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
             } else {
@@ -319,7 +319,7 @@ namespace Carrot::Render {
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
-                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                if(framebufferSize.type == Render::TextureSize::Type::ViewportProportional) {
                     block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
                     block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
                 } else {
@@ -438,7 +438,7 @@ namespace Carrot::Render {
                    } block;
 
                    block.frameCount = renderer.getFrameCount();
-                   if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                   if(framebufferSize.type == Render::TextureSize::Type::ViewportProportional) {
                        block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
                        block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
                    } else {
@@ -586,7 +586,7 @@ namespace Carrot::Render {
 
         auto preparePushConstant = [framebufferSize](PushConstantNoRT& block, const Carrot::Render::Context& frame) {
             block.frameCount = GetRenderer().getFrameCount();
-            if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+            if(framebufferSize.type == Render::TextureSize::Type::ViewportProportional) {
                 block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
                 block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
             } else {

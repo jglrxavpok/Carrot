@@ -24,6 +24,7 @@ set(EditorSources
         ${EditorRoot}panels/inspector/ModelEdition.cpp
         ${EditorRoot}panels/inspector/ParticleEdition.cpp
         ${EditorRoot}panels/inspector/RigidBodyEdition.cpp
+        ${EditorRoot}panels/inspector/UIEdition.cpp
 
         ${EditorRoot}panels/InspectorPanel.cpp
         ${EditorRoot}panels/NavMeshPanel.cpp
