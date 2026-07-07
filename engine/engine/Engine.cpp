@@ -47,6 +47,7 @@
 #include <engine/ecs/systems/SoundListenerSystem.h>
 
 #include "ecs/components/PrefabInstanceComponent.h"
+#include "ecs/components/ui/UIBoxComponent.h"
 #include "ecs/systems/SystemParticles.h"
 #include "ecs/systems/UIRenderSystem.h"
 #include "engine/io/actions/ActionDebug.h"
@@ -700,6 +701,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::ParticleEmitterComponent>();
 
         components.add<Carrot::UI::UICanvasComponent>();
+        components.add<Carrot::UI::UIBoxComponent>();
     }
 
     {

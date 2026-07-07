@@ -14,12 +14,18 @@ namespace Carrot::DocumentHelpers {
         for (glm::length_t i = 0; i < len; ++i) {
             if constexpr(std::is_same_v<Elem, float>) {
                 v[i] = array[i].getAsDouble();
-            } else if constexpr(std::is_same_v<Elem, double>){
+            } else if constexpr(std::is_same_v<Elem, double>) {
                 v[i] = array[i].getAsDouble();
-            } else if constexpr(std::is_same_v<Elem, bool>){
+            } else if constexpr(std::is_same_v<Elem, bool>) {
                 v[i] = array[i].getAsBool();
+            } else if constexpr(std::is_same_v<Elem, i64>) {
+                v[i] = array[i].getAsInt64();
+            } else if constexpr(std::is_same_v<Elem, u32>) {
+                v[i] = static_cast<u32>(array[i].getAsInt64());
+            } else if constexpr(std::is_same_v<Elem, i32>) {
+                v[i] = static_cast<i32>(array[i].getAsInt64());
             } else {
-                static_assert(!std::is_same_v<Elem, double> && !std::is_same_v<Elem, float>, "Unknown type");
+                TODO;
             }
         }
         return v;

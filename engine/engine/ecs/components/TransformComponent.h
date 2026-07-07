@@ -75,7 +75,7 @@ namespace Carrot::ECS {
         Carrot::Math::Transform computeGlobalPhysicsTransform() const;
 
         /// Sets up the transform of the entity to match with the given transform, even when parent transforms are taken into account
-        void setGlobalTransform(const Carrot::Math::Transform& transform);
+        void setGlobalTransform(const Carrot::Math::Transform& transform, bool applyScale = false /*legacy, sorry*/);
     };
 }
 

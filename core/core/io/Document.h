@@ -72,6 +72,12 @@ namespace Carrot {
         /// Changes the type of this element to Int64, and sets its value
         DocumentElement& operator=(i64);
 
+        /// Changes the type of this element to Int64, and sets its value
+        DocumentElement& operator=(u32);
+
+        /// Changes the type of this element to Int64, and sets its value
+        DocumentElement& operator=(i32);
+
         /// Changes the type of this element to Double, and sets its value
         DocumentElement& operator=(double);
 
@@ -96,6 +102,10 @@ namespace Carrot {
 
         /// Adds an element with the type Int64 at the end of this array. Throws if this element is not an array
         DocumentElement& pushBack(i64 i);
+        /// Adds an element with the type Int64 at the end of this array. Throws if this element is not an array
+        DocumentElement& pushBack(u32 i);
+        /// Adds an element with the type Int64 at the end of this array. Throws if this element is not an array
+        DocumentElement& pushBack(i32 i);
 
         /// Adds an element with the type Double at the end of this array. Throws if this element is not an array
         DocumentElement& pushBack(double d);

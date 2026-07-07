@@ -44,6 +44,8 @@ namespace Carrot::ECS {
         AsyncResource<Carrot::Render::Texture, false> testImage;
         std::shared_ptr<Render::TextureHandle> testImageHandle;
         double lastTime = 0.0;
+
+        Signature rectangleComponentSignature;
     };
 }
 

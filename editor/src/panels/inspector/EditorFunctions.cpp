@@ -26,6 +26,7 @@
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/ParticleEmitterComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
+#include <engine/ecs/components/ui/UIBoxComponent.h>
 #include <engine/ecs/components/ui/UICanvasComponent.h>
 
 namespace Peeler {
@@ -267,6 +268,7 @@ namespace Peeler {
     void editPhysicsCharacterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PhysicsCharacterComponent*>& components);
     void editParticleEmitterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ParticleEmitterComponent*>& components);
     void editUICanvasComponent(EditContext& edition, const Carrot::Vector<Carrot::UI::UICanvasComponent*>& components);
+    void editUIBoxComponent(EditContext& edition, const Carrot::Vector<Carrot::UI::UIBoxComponent*>& components);
 
     void editPrefabComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PrefabInstanceComponent*>& components) {
         auto getPath = [&](std::int64_t index) -> Carrot::IO::VFS::Path {
@@ -340,6 +342,7 @@ namespace Peeler {
         registerFunction(inspector, editPrefabComponent);
         registerFunction(inspector, editParticleEmitterComponent);
         registerFunction(inspector, editUICanvasComponent);
+        registerFunction(inspector, editUIBoxComponent);
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
@@ -357,5 +360,6 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::PrefabInstanceComponent::getID(), ICON_FA_TOOLBOX "  PrefabInstance");
         inspector.registerComponentDisplayName(Carrot::ECS::ParticleEmitterComponent::getID(), ICON_FA_STAR "  ParticleEmitter");
         inspector.registerComponentDisplayName(Carrot::UI::UICanvasComponent::getID(), ICON_FA_IMAGE_PORTRAIT "  UICanvas");
+        inspector.registerComponentDisplayName(Carrot::UI::UIBoxComponent::getID(), ICON_FA_RECTANGLE_AD "  UIBox");
     }
 }

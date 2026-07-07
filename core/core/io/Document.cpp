@@ -65,6 +65,14 @@ namespace Carrot {
         return *this;
     }
 
+    DocumentElement& DocumentElement::operator=(u32 i) {
+        return *this = static_cast<i64>(i);
+    }
+
+    DocumentElement& DocumentElement::operator=(i32 i) {
+        return *this = static_cast<i64>(i);
+    }
+
     DocumentElement& DocumentElement::operator=(double d) {
         reset(DocumentType::Double);
         primitive.d = d;
@@ -109,6 +117,16 @@ namespace Carrot {
     DocumentElement& DocumentElement::pushBack(i64 i) {
         verify(type == DocumentType::Array, "wrong type!");
         return pushBack() = i;
+    }
+
+    DocumentElement& DocumentElement::pushBack(u32 i) {
+        verify(type == DocumentType::Array, "wrong type!");
+        return pushBack() = static_cast<i64>(i);
+    }
+
+    DocumentElement& DocumentElement::pushBack(i32 i) {
+        verify(type == DocumentType::Array, "wrong type!");
+        return pushBack() = static_cast<i64>(i);
     }
 
     DocumentElement& DocumentElement::pushBack(double d) {

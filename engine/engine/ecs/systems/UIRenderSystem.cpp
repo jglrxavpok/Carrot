@@ -6,15 +6,23 @@
 
 #include <clay.h>
 #include <engine/Engine.h>
+#include <engine/ecs/components/ui/UIBoxComponent.h>
 #include <engine/ecs/components/ui/UICanvasComponent.h>
 #include <engine/render/resources/ResourceAllocator.h>
 
+// UIRenderSystem ignores transform propagation for scale:
+// Because a parent container can have "fit" as its sizing policy, changing the size of a child changes the size of the parent,
+//  leading to a feedback loop that does not run away, but makes it hard to understand what is being resized and how.
+// Therefore scales are always taken from the local transform which seems to work well enough and intuitively inside the editor
 namespace Carrot::ECS {
     UIRenderSystem::UIRenderSystem(World& world)
                 : RenderSystem<TransformComponent, Carrot::UI::UICanvasComponent>(world) {
         rectanglePipelineResource = AsyncResource<Pipeline, false>(GetAssetServer().loadPipelineTask("resources/pipelines/ui/rectangle.pipeline"));
         imagePipelineResource = AsyncResource<Pipeline, false>(GetAssetServer().loadPipelineTask("resources/pipelines/ui/image.pipeline"));
         testImage = AsyncResource<Render::Texture, false>(GetAssetServer().loadTextureTask("resources/icon128.ktx2"));
+
+        rectangleComponentSignature.addComponent<TransformComponent>();
+        rectangleComponentSignature.addComponent<UI::UIBoxComponent>();
     }
 
     // returns index of first index of geometry
@@ -50,12 +58,87 @@ namespace Carrot::ECS {
         return indexOffset;
     }
 
+    static glm::vec2 convertPositionToClay(const glm::vec2& carrotPosition, const glm::vec2& canvasSize) {
+        return carrotPosition * canvasSize;
+    }
+
+    static glm::vec2 convertPositionToCarrot(const glm::vec2& clayPosition, const glm::vec2& canvasSize) {
+        return clayPosition / canvasSize;
+    }
+
+    static Clay_ElementDeclaration toElement(const TransformComponent& transform, const UI::UIBoxComponent& box, const glm::vec2& viewportSize) {
+        Clay_ElementDeclaration decl{};
+        // TODO: layout
+
+        decl.layout.childGap = box.childGap;
+        decl.layout.padding.left = box.padding[0];
+        decl.layout.padding.right = box.padding[1];
+        decl.layout.padding.bottom = box.padding[2];
+        decl.layout.padding.top = box.padding[3];
+        using namespace UI;
+        auto toClay = [&](const UI::SizeType& size, int axisIndex) {
+            if (const Fit* pFit = std::get_if<Fit>(&size)) {
+                return CLAY_SIZING_FIT(pFit->range.min, pFit->range.max);
+            } else if (const Grow* pGrow = std::get_if<Grow>(&size)) {
+                return CLAY_SIZING_GROW(pGrow->range.min, pGrow->range.max);
+            } else if (const Percent* pPercent = std::get_if<Percent>(&size)) {
+                return CLAY_SIZING_PERCENT(pPercent->ratio);
+            } else if (const Fixed* pFixed = std::get_if<Fixed>(&size)) {
+                return CLAY_SIZING_FIXED(convertPositionToClay(transform.localTransform.scale.xy(), viewportSize)[axisIndex]);
+            } else {
+                TODO;
+            }
+        };
+        decl.layout.sizing.width = toClay(box.width, 0);
+        decl.layout.sizing.height = toClay(box.height, 1);
+
+        // x255 to match with Clay convention, even if it is divided by 255 before sending to shader
+        decl.backgroundColor.r = box.color.r*255;
+        decl.backgroundColor.g = box.color.g*255;
+        decl.backgroundColor.b = box.color.b*255;
+        decl.backgroundColor.a = box.color.a*255;
+
+        return decl;
+    }
+
+    static Clay_String toClayString(std::string_view view) {
+        return Clay_String {
+            .isStaticallyAllocated = false,
+            .length = static_cast<i32>(view.size()),
+            .chars = view.data(),
+        };
+    }
+
     Carrot::Vector<UIRenderSystem::LayoutResult> UIRenderSystem::translateToClay(const Render::Context& renderContext, float dt) {
         Carrot::Render::Texture* pTestImage = testImage.get().get();
 
         Carrot::Vector<LayoutResult> results;
+        std::unordered_map<Carrot::UUID, std::string> id2stringStorage; // needs to outlive clay layout
+        // a bit awkward because the ECS is not meant for hierarchy traversal
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::UI::UICanvasComponent& canvas) {
             Clay_BeginLayout();
+
+            // TODO: make it work in 3D space
+            const glm::vec2 viewportSize = renderContext.pViewport->getSizef();
+            std::function<void(Carrot::ECS::Entity& potentialUIElement)> recurse = [&](Carrot::ECS::Entity& potentialUIElement) {
+                auto pTransform = potentialUIElement.getComponent<TransformComponent>();
+
+                if (Memory::OptionalRef<UI::UIBoxComponent> boxComp = potentialUIElement.getComponent<UI::UIBoxComponent>(); boxComp && pTransform && potentialUIElement.isVisible()) {
+                    const Carrot::UUID& uuid = potentialUIElement.getID();
+                    auto [iter, wasNew] = id2stringStorage.emplace(uuid, uuid.toString());
+                    CLAY(CLAY_SID(toClayString(iter->second)), toElement(pTransform, boxComp, viewportSize)) {
+                        for (auto& child : potentialUIElement.getChildren(ShouldRecurse::NoRecursion)) {
+                            recurse(child);
+                        }
+                    }
+                } else {
+                    for (auto& child : potentialUIElement.getChildren(ShouldRecurse::NoRecursion)) {
+                        recurse(child);
+                    }
+                }
+            };
+
+            recurse(entity);
 
             CLAY(CLAY_ID("OuterContainer"), { .layout = { .sizing = {CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0)}, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = Clay_Color{250,250,255,255} }) {
                 CLAY(CLAY_ID("SideBar"), {
@@ -76,6 +159,47 @@ namespace Carrot::ECS {
                 .transform = transform.toTransformMatrix(),
                 .inWorld = canvas.inWorld,
             });
+
+            std::function<void(Carrot::ECS::Entity& potentialUIElement, glm::vec2 accumulatedTranslation)> recurseUpdateTransform = [&](Carrot::ECS::Entity& potentialUIElement, glm::vec2 accumulatedTranslation) {
+                auto pTransform = potentialUIElement.getComponent<TransformComponent>();
+
+                if (Memory::OptionalRef<UI::UIBoxComponent> boxComp = potentialUIElement.getComponent<UI::UIBoxComponent>(); boxComp && pTransform && potentialUIElement.isVisible()) {
+                    const Carrot::UUID& uuid = potentialUIElement.getID();
+                    auto iter = id2stringStorage.find(uuid);
+                    verify(iter != id2stringStorage.end(), "Logic error: uuid was not in id2stringStorage but the item is in the hierarchy?");
+
+                    const Clay_ElementData data = Clay_GetElementData(CLAY_SID(toClayString(iter->second)));
+                    verify(data.found, "Logic error: item not found in Clay hierarchy, but was inside Carrot hierarchy");
+                    Carrot::Math::Transform newTransform{};
+
+                    glm::vec2 position = convertPositionToCarrot(glm::vec2{data.boundingBox.x, data.boundingBox.y}, viewportSize);
+                    glm::vec2 size = convertPositionToCarrot(glm::vec2{data.boundingBox.width, data.boundingBox.height}, viewportSize);
+
+                    //size /= 2.0f;
+                    position += size/2.0f; // center
+                    //position += 0.5f;
+                    position.y *= -1.0f;
+
+                    newTransform.position.x = -accumulatedTranslation.x + position.x;
+                    newTransform.position.y = -accumulatedTranslation.y + position.y;
+                    accumulatedTranslation += position;
+                    newTransform.position.z = 0.0f;
+                    newTransform.scale.x = size.x;
+                    newTransform.scale.y = size.y;
+                    newTransform.scale.z = 0.01f;
+                    pTransform->localTransform = newTransform;
+
+                    for (auto& child : potentialUIElement.getChildren(ShouldRecurse::NoRecursion)) {
+                        recurseUpdateTransform(child, accumulatedTranslation);
+                    }
+                } else {
+                    for (auto& child : potentialUIElement.getChildren(ShouldRecurse::NoRecursion)) {
+                        recurseUpdateTransform(child, accumulatedTranslation);
+                    }
+                }
+            };
+
+            recurseUpdateTransform(entity, {0,0});
         });
 
         return results;

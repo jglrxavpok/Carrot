@@ -26,7 +26,7 @@ namespace Carrot::ECS {
         return localTransform.serialise();
     }
 
-    void TransformComponent::setGlobalTransform(const Carrot::Math::Transform& newTransform) {
+    void TransformComponent::setGlobalTransform(const Carrot::Math::Transform& newTransform, bool applyScale) {
         auto parent = getEntity().getParent();
         if(parent) {
             if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {
@@ -44,15 +44,16 @@ namespace Carrot::ECS {
                 glm::decompose(inverseParent, parentInverseScale, parentRotationFromMatrix, translation, skew,perspective);
 
                 localTransform.position = localTranslation;
-                //localTransform.scale = parentInverseScale * newTransform.scale;
+                if (applyScale)
+                    localTransform.scale = parentInverseScale * newTransform.scale;
                 localTransform.rotation = localRotation;
                 return;
             }
         }
 
-        //localTransform = newTransform;
         localTransform.position = newTransform.position;
-        //localTransform.scale = newTransform.scale;
+        if (applyScale)
+            localTransform.scale = newTransform.scale;
         localTransform.rotation = newTransform.rotation;
     }
 

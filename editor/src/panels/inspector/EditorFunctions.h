@@ -98,9 +98,27 @@ namespace Peeler {
         };
 
         template<>
-        struct Limits<std::int32_t> {
-            std::int32_t min = std::numeric_limits<std::int32_t>::min();
-            std::int32_t max = std::numeric_limits<std::int32_t>::max();
+        struct Limits<i32> {
+            i32 min = std::numeric_limits<i32>::min();
+            i32 max = std::numeric_limits<i32>::max();
+        };
+
+        template<>
+        struct Limits<u32> {
+            u32 min = std::numeric_limits<u32>::min();
+            u32 max = std::numeric_limits<u32>::max();
+        };
+
+        template<>
+        struct Limits<u16> {
+            u16 min = std::numeric_limits<u16>::min();
+            u16 max = std::numeric_limits<u16>::max();
+        };
+
+        template<>
+        struct Limits<u8> {
+            u8 min = std::numeric_limits<u8>::min();
+            u8 max = std::numeric_limits<u8>::max();
         };
 
         template<>
@@ -252,22 +270,6 @@ namespace Peeler {
     }
 
     template<>
-    inline bool editMultiple<Carrot::Render::bool32>(const char* id, std::span<Carrot::Render::bool32> values, const Helpers::Limits<Carrot::Render::bool32>& limits) {
-        Carrot::Vector<bool> asBools;
-        asBools.resize(values.size());
-        for(std::int64_t i = 0; i < asBools.size(); i++) {
-            asBools[i] = values[i];
-        }
-        if(editMultiple(id, std::span<bool>(asBools))) {
-            for(auto& v : values) {
-                v = asBools[0];
-            }
-            return true;
-        }
-        return false;
-    }
-
-    template<>
     inline bool editMultiple<float>(const char* id, std::span<float> values, const Helpers::Limits<float>& limits) {
         float sameValue = values[0];
         bool areSame = true;
@@ -314,8 +316,8 @@ namespace Peeler {
         return false;
     }
 
-    template<>
-    inline bool editMultiple<std::int32_t>(const char* id, std::span<std::int32_t> values, const Helpers::Limits<std::int32_t>& limits) {
+    template<std::integral IntegralType>
+    inline bool editMultipleIntLike(const char* id, std::span<IntegralType> values, const Helpers::Limits<IntegralType>& limits) {
         int sameValue = values[0]; // ImGui uses int
         bool areSame = true;
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -328,18 +330,18 @@ namespace Peeler {
         const char* format = areSame ? "%d" : "<VARIOUS>";
 
         bool changed = false;
-        if(limits.min != std::numeric_limits<std::int32_t>::min() && limits.max != std::numeric_limits<std::int32_t>::max()) {
-            std::int32_t min = std::min(limits.min, limits.max);
-            std::int32_t max = std::max(limits.min, limits.max);
+        if(limits.min != std::numeric_limits<IntegralType>::min() && limits.max != std::numeric_limits<IntegralType>::max()) {
+            IntegralType min = std::min(limits.min, limits.max);
+            IntegralType max = std::max(limits.min, limits.max);
 
             // ImGui limits
             bool useSlider = true;
-            if(min < std::numeric_limits<std::int32_t>::min()) {
-                min = std::numeric_limits<std::int32_t>::min();
+            if(min < std::numeric_limits<IntegralType>::min()) {
+                min = std::numeric_limits<IntegralType>::min();
                 useSlider = false;
             }
-            if(max > std::numeric_limits<std::int32_t>::max()) {
-                max = std::numeric_limits<std::int32_t>::max();
+            if(max > std::numeric_limits<IntegralType>::max()) {
+                max = std::numeric_limits<IntegralType>::max();
                 useSlider = false;
             }
 
@@ -352,13 +354,33 @@ namespace Peeler {
             changed |= ImGui::DragInt(id, &sameValue, 1/*TODO: speed attribute*/, 0.0f, 0.0f, format);
         }
         if(changed) {
-            for(std::int32_t& v : values) {
+            for(IntegralType& v : values) {
                 v = sameValue;
             }
             return true;
         }
 
         return false;
+    }
+
+    template<>
+    inline bool editMultiple<i32>(const char* id, std::span<i32> values, const Helpers::Limits<i32>& limits) {
+        return editMultipleIntLike(id, values, limits);
+    }
+
+    template<>
+    inline bool editMultiple<u32>(const char* id, std::span<u32> values, const Helpers::Limits<u32>& limits) {
+        return editMultipleIntLike(id, values, limits);
+    }
+
+    template<>
+    inline bool editMultiple<u16>(const char* id, std::span<u16> values, const Helpers::Limits<u16>& limits) {
+        return editMultipleIntLike(id, values, limits);
+    }
+
+    template<>
+    inline bool editMultiple<u8>(const char* id, std::span<u8> values, const Helpers::Limits<u8>& limits) {
+        return editMultipleIntLike(id, values, limits);
     }
 
     template<>
