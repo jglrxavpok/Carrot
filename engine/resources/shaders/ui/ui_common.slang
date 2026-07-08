@@ -15,10 +15,21 @@ public struct VSOutput {
     public float4 color : COLOR0;
 }
 
+[Flags]
+public enum DrawFlags {
+    InWorld,
+    HasScissor,
+}
+
 public struct DisplayRect {
     public float4x4 transform;
     public uint textureIndex;
-    public uint32_t inWorld;
+    public DrawFlags drawFlags;
+
+    public float2 scissorOffset;
+    public float2 scissorExtent;
+
+    public float4 overlayColor;
 }
 
 [vk::binding(0, 0)]
@@ -36,7 +47,7 @@ VSOutput vertex(Vertex v, uniform DisplayRect pushData) {
     float red = ((v.color >> 0) & 0xFFu) / 255.0f;
     const float4x4 projview = camera.CurrentFrame().jitteredProjection * camera.CurrentFrame().view;
     float4 vertexPos = float4((v.position / viewport.frameDimensions) * 2.0 - 1, 0, 1);
-    if (pushData.inWorld) {
+    if (pushData.drawFlags & DrawFlags::InWorld) {
         vertexPos = projview * pushData.transform * vertexPos;
     }
     o.position = vertexPos;

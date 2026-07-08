@@ -92,6 +92,9 @@ namespace Peeler {
         };
         editSizing(&Carrot::UI::UIBoxComponent::width, "Width");
         editSizing(&Carrot::UI::UIBoxComponent::height, "Height");
+
+        multiEditField(edition, "Image", components,
+            +[](Carrot::UI::UIBoxComponent& c) -> Carrot::Render::Texture::Ref& { return c.image; });
         // TODO
     }
 }

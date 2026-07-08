@@ -92,11 +92,18 @@ namespace Carrot::ECS {
         decl.layout.sizing.width = toClay(box.width, 0);
         decl.layout.sizing.height = toClay(box.height, 1);
 
-        // x255 to match with Clay convention, even if it is divided by 255 before sending to shader
-        decl.backgroundColor.r = box.color.r*255;
-        decl.backgroundColor.g = box.color.g*255;
-        decl.backgroundColor.b = box.color.b*255;
-        decl.backgroundColor.a = box.color.a*255;
+        if (box.image) {
+            decl.image.imageData = box.image.get();
+
+            // x255 to match with Clay convention, even if it is divided by 255 before sending to shader
+            decl.userData = (void*)&box.color;
+        } else {
+            // x255 to match with Clay convention, even if it is divided by 255 before sending to shader
+            decl.backgroundColor.r = box.color.r*255;
+            decl.backgroundColor.g = box.color.g*255;
+            decl.backgroundColor.b = box.color.b*255;
+            decl.backgroundColor.a = box.color.a*255;
+        }
 
         return decl;
     }
@@ -120,13 +127,14 @@ namespace Carrot::ECS {
 
             // TODO: make it work in 3D space
             const glm::vec2 viewportSize = renderContext.pViewport->getSizef();
-            std::function<void(Carrot::ECS::Entity& potentialUIElement)> recurse = [&](Carrot::ECS::Entity& potentialUIElement) {
+            std::function<void(Carrot::ECS::Entity& potentialUIElement)> recurse = [&id2stringStorage, &recurse, &viewportSize](Carrot::ECS::Entity& potentialUIElement) {
                 auto pTransform = potentialUIElement.getComponent<TransformComponent>();
 
                 if (Memory::OptionalRef<UI::UIBoxComponent> boxComp = potentialUIElement.getComponent<UI::UIBoxComponent>(); boxComp && pTransform && potentialUIElement.isVisible()) {
                     const Carrot::UUID& uuid = potentialUIElement.getID();
                     auto [iter, wasNew] = id2stringStorage.emplace(uuid, uuid.toString());
-                    CLAY(CLAY_SID(toClayString(iter->second)), toElement(pTransform, boxComp, viewportSize)) {
+                    Clay_ElementDeclaration config = toElement(pTransform, boxComp, viewportSize);
+                    CLAY(CLAY_SID(toClayString(iter->second)), config) {
                         for (auto& child : potentialUIElement.getChildren(ShouldRecurse::NoRecursion)) {
                             recurse(child);
                         }
@@ -140,7 +148,7 @@ namespace Carrot::ECS {
 
             recurse(entity);
 
-            CLAY(CLAY_ID("OuterContainer"), { .layout = { .sizing = {CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0)}, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = Clay_Color{250,250,255,255} }) {
+            /*CLAY(CLAY_ID("OuterContainer"), { .layout = { .sizing = {CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0)}, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = Clay_Color{250,250,255,255} }) {
                 CLAY(CLAY_ID("SideBar"), {
                     .layout = { .sizing = { .width = CLAY_SIZING_FIXED(300), .height = CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16, .layoutDirection = CLAY_TOP_TO_BOTTOM },
                     .backgroundColor = Clay_Color(255, 240, 20, 255)
@@ -152,7 +160,7 @@ namespace Carrot::ECS {
 
                     CLAY(CLAY_ID("MainContent"), { .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) } }, .backgroundColor = Clay_Color(255, 0, 255, 255) }) {}
                 }
-            }
+            }*/
             Clay_RenderCommandArray renderCommands = Clay_EndLayout(dt);
             results.emplaceBack(LayoutResult {
                 .clayCommands = renderCommands,
@@ -283,12 +291,11 @@ namespace Carrot::ECS {
                     } break;
 
                     case CLAY_RENDER_COMMAND_TYPE_IMAGE: {
-                        const Clay_Color& bgColor = command.renderData.image.backgroundColor;
-                        glm::vec4 color{bgColor.r, bgColor.g, bgColor.b, bgColor.a};
-                        const u32 r = static_cast<u32>(color.r) & 0xFF;
-                        const u32 g = static_cast<u32>(color.g) & 0xFF;
-                        const u32 b = static_cast<u32>(color.b) & 0xFF;
-                        const u32 a = static_cast<u32>(color.a) & 0xFF;
+                        glm::vec4 tintColor = *static_cast<glm::vec4*>(command.userData);
+                        const u32 r = static_cast<u32>(tintColor.r*255) & 0xFF;
+                        const u32 g = static_cast<u32>(tintColor.g*255) & 0xFF;
+                        const u32 b = static_cast<u32>(tintColor.b*255) & 0xFF;
+                        const u32 a = static_cast<u32>(tintColor.a*255) & 0xFF;
                         const u32 u32Color = (a << 24) | (b << 16) | (g << 8) | (r);
 
                         commandData[commandIndex].indexOffset = generateQuadGeometry(x, y, width, height, glm::vec2{0.0f}, glm::vec2{1.0f}, u32Color, vertices, indices);
@@ -310,8 +317,16 @@ namespace Carrot::ECS {
             struct DisplayRect {
                 glm::mat4 transform;
                 u32 textureIndex;
-                vk::Bool32 inWorld;
+                u32 drawFlags;
+
+                glm::vec2 scissorOffset;
+                glm::vec2 scissorExtent;
+
+                glm::vec4 overlayColor;
             };
+
+            glm::vec4 currentOverlayColor{1,1,1,1};
+            std::optional<vk::Rect2D> scissor;
             for (i32 commandIndex = 0; commandIndex < renderCommands.length; commandIndex++) {
                 const Clay_RenderCommand& command = renderCommands.internalArray[commandIndex];
                 const CommandData& dataForThisCommand = commandData[commandIndex];
@@ -326,8 +341,19 @@ namespace Carrot::ECS {
                 DisplayRect rect {
                     .transform = result.transform,
                     .textureIndex = static_cast<u32>(dataForThisCommand.textureIndex),
-                    .inWorld = result.inWorld,
+                    .overlayColor = currentOverlayColor,
                 };
+                rect.drawFlags = 0;
+
+                if (result.inWorld) {
+                    rect.drawFlags |= 1<<0;
+                }
+
+                if (scissor.has_value()) {
+                    rect.drawFlags |= 1<<1;
+                    rect.scissorOffset = glm::vec2{scissor->offset.x, scissor->offset.y};
+                    rect.scissorExtent = glm::vec2{scissor->extent.width, scissor->extent.height};
+                }
 
                 switch (command.commandType) {
                     case CLAY_RENDER_COMMAND_TYPE_RECTANGLE: {
@@ -348,6 +374,28 @@ namespace Carrot::ECS {
                         packetCommand.drawIndexedInstanced.instanceCount = 1;
                     } break;
 
+                    case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
+                        scissor.emplace();
+                        scissor->offset.x = command.boundingBox.x;
+                        scissor->offset.y = command.boundingBox.y;
+                        scissor->extent.width = command.boundingBox.width;
+                        scissor->extent.height = command.boundingBox.height;
+                        continue; // no rendering
+
+                    case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
+                        scissor.reset();
+                        continue; // no rendering
+
+                    case CLAY_RENDER_COMMAND_TYPE_OVERLAY_COLOR_START:
+                        currentOverlayColor.r = command.renderData.overlayColor.color.r/255.0f;
+                        currentOverlayColor.g = command.renderData.overlayColor.color.g/255.0f;
+                        currentOverlayColor.b = command.renderData.overlayColor.color.b/255.0f;
+                        currentOverlayColor.a = command.renderData.overlayColor.color.a/255.0f;
+                        continue;
+
+                    case CLAY_RENDER_COMMAND_TYPE_OVERLAY_COLOR_END:
+                        currentOverlayColor = glm::vec4{1,1,1,1};
+                        continue;
 
                     default:
                         continue; // skip this command

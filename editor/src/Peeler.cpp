@@ -233,6 +233,7 @@ namespace Peeler {
             }
 
             static bool showDemo = false;
+            static bool showClayDebug = false;
 
             if(ImGui::BeginMenu(ICON_FA_VIAL "  Tests")) {
                 bool hasPhysicsDebug = GetPhysics().getDebugViewport() != nullptr;
@@ -246,6 +247,12 @@ namespace Peeler {
 
                 if(ImGui::MenuItem("Show ImGui demo", nullptr, showDemo)) {
                     showDemo = !showDemo;
+                }
+
+                if(ImGui::MenuItem("Show Clay debugger", nullptr, showClayDebug)) {
+                    showClayDebug = !showClayDebug;
+
+                    Clay_SetDebugModeEnabled(showClayDebug);
                 }
 
                 ImGui::EndMenu();
