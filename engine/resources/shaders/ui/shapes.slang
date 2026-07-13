@@ -5,7 +5,7 @@ ParameterBlock<MaterialSystem> materialSystem;
 
 bool checkAgainstScissor(in DisplayRect display, float2 pixelPos) {
     if (display.drawFlags & DrawFlags::HasScissor) {
-        return all(pixelPos >= display.scissorOffset && pixelPos < display.scissorOffset + display.scissorOffset);
+        return true;//all(pixelPos >= display.scissorOffset && pixelPos < display.scissorOffset + display.scissorOffset);
     }
     return true;
 }

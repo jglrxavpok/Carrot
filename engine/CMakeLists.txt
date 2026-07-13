@@ -258,6 +258,7 @@ set(PIPELINES
 
         ui/image
         ui/rectangle
+        ui/text
         ui/ui_common
 
         billboards

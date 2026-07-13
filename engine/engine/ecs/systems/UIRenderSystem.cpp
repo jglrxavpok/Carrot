@@ -23,6 +23,8 @@ namespace Carrot::ECS {
 
         rectangleComponentSignature.addComponent<TransformComponent>();
         rectangleComponentSignature.addComponent<UI::UIBoxComponent>();
+
+        pFont = Carrot::makeUnique<Render::Font>(Allocator::getDefault(), GetRenderer(), "resources/fonts/Roboto-Medium.ttf");
     }
 
     // returns index of first index of geometry
@@ -116,18 +118,26 @@ namespace Carrot::ECS {
         };
     }
 
+    static glm::vec4 convertColor(const Clay_Color& c) {
+        return glm::vec4 {
+            c.r / 255.0f,
+            c.g / 255.0f,
+            c.b / 255.0f,
+            c.a / 255.0f,
+        };
+    }
+
     Carrot::Vector<UIRenderSystem::LayoutResult> UIRenderSystem::translateToClay(const Render::Context& renderContext, float dt) {
         Carrot::Render::Texture* pTestImage = testImage.get().get();
 
         Carrot::Vector<LayoutResult> results;
-        std::unordered_map<Carrot::UUID, std::string> id2stringStorage; // needs to outlive clay layout
         // a bit awkward because the ECS is not meant for hierarchy traversal
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::UI::UICanvasComponent& canvas) {
             Clay_BeginLayout();
 
             // TODO: make it work in 3D space
             const glm::vec2 viewportSize = renderContext.pViewport->getSizef();
-            std::function<void(Carrot::ECS::Entity& potentialUIElement)> recurse = [&id2stringStorage, &recurse, &viewportSize](Carrot::ECS::Entity& potentialUIElement) {
+            std::function<void(Carrot::ECS::Entity& potentialUIElement)> recurse = [this, &recurse, &viewportSize](Carrot::ECS::Entity& potentialUIElement) {
                 auto pTransform = potentialUIElement.getComponent<TransformComponent>();
 
                 if (Memory::OptionalRef<UI::UIBoxComponent> boxComp = potentialUIElement.getComponent<UI::UIBoxComponent>(); boxComp && pTransform && potentialUIElement.isVisible()) {
@@ -164,6 +174,7 @@ namespace Carrot::ECS {
             Clay_RenderCommandArray renderCommands = Clay_EndLayout(dt);
             results.emplaceBack(LayoutResult {
                 .clayCommands = renderCommands,
+                .canvasSize = viewportSize,
                 .transform = transform.toTransformMatrix(),
                 .inWorld = canvas.inWorld,
             });
@@ -214,6 +225,7 @@ namespace Carrot::ECS {
     }
 
     void UIRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
+        id2stringStorage.clear();
         if (!rectanglePipelineResource.isReady()) {
             return;
         }
@@ -264,6 +276,7 @@ namespace Carrot::ECS {
             struct CommandData {
                 u32 indexOffset;
                 i32 textureIndex = -1;
+                Render::RenderableText* pText = nullptr;
             };
 
             Carrot::Vector<CommandData> commandData;
@@ -300,6 +313,20 @@ namespace Carrot::ECS {
 
                         commandData[commandIndex].indexOffset = generateQuadGeometry(x, y, width, height, glm::vec2{0.0f}, glm::vec2{1.0f}, u32Color, vertices, indices);
                         commandData[commandIndex].textureIndex = testImageHandle->getSlot(); // TODO: not hardcoded
+                    } break;
+
+                    case CLAY_RENDER_COMMAND_TYPE_TEXT: {
+                        const Clay_StringSlice slice = command.renderData.text.stringContents;
+                        std::string str { slice.chars, static_cast<std::size_t>(slice.length) };
+                        RenderedTextKey key {
+                            .text = str,
+                            .textSize = command.renderData.text.fontSize,
+                        };
+                        auto [iter, wasNew] = texts.try_emplace(key);
+                        if (wasNew) {
+                            iter->second = pFont->bake(Carrot::toU32String(str), command.renderData.text.fontSize, Render::TextAlignment::LeftOrTop, Render::TextAlignment::LeftOrTop);
+                        }
+                        commandData[commandIndex].pText = &iter->second;
                     } break;
 
                     // TODO: others
@@ -374,6 +401,23 @@ namespace Carrot::ECS {
                         packetCommand.drawIndexedInstanced.instanceCount = 1;
                     } break;
 
+                    case CLAY_RENDER_COMMAND_TYPE_TEXT: {
+                        verify(dataForThisCommand.pText, "Missing rendered text");
+                        dataForThisCommand.pText->getColor() = convertColor(command.renderData.text.textColor);
+                        Math::Transform transform;
+                        glm::vec2 pos = convertPositionToCarrot(glm::vec2{command.boundingBox.x, command.boundingBox.y+command.boundingBox.height}, result.canvasSize);
+                        transform.position.x = pos.x*2-1;
+                        transform.position.y = pos.y*2-1;
+                        transform.position.z = 0;
+
+                        transform.scale.x = 1;
+                        transform.scale.y = -1;
+                        transform.scale.z = 1;
+                        dataForThisCommand.pText->getTransform() = result.transform * transform.toTransformMatrix();
+
+                        dataForThisCommand.pText->renderInUI(renderContext, commandIndex);
+                    } continue;
+
                     case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
                         scissor.emplace();
                         scissor->offset.x = command.boundingBox.x;
@@ -387,10 +431,7 @@ namespace Carrot::ECS {
                         continue; // no rendering
 
                     case CLAY_RENDER_COMMAND_TYPE_OVERLAY_COLOR_START:
-                        currentOverlayColor.r = command.renderData.overlayColor.color.r/255.0f;
-                        currentOverlayColor.g = command.renderData.overlayColor.color.g/255.0f;
-                        currentOverlayColor.b = command.renderData.overlayColor.color.b/255.0f;
-                        currentOverlayColor.a = command.renderData.overlayColor.color.a/255.0f;
+                        currentOverlayColor = convertColor(command.renderData.overlayColor.color);
                         continue;
 
                     case CLAY_RENDER_COMMAND_TYPE_OVERLAY_COLOR_END:

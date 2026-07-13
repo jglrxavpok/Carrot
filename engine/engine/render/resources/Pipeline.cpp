@@ -328,7 +328,7 @@ void Carrot::Pipeline::createGraphicsTemplate() {
         } else if(description.type == PipelineType::UnlitGBuffer) {
             // no op
         }
-    } else {
+    } else if (description.type != PipelineType::Blit) {
         graphicsPipelineTemplate.colorBlendAttachments = {
                 static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 7 : 1),
                 vk::PipelineColorBlendAttachmentState {

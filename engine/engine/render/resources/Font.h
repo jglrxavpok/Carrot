@@ -30,8 +30,9 @@ namespace Carrot::Render {
     };
 
     enum class TextAlignment {
-        Left,
-        Center
+        LeftOrTop,
+        Center,
+        RightOrBottom
     };
 
     class RenderableText {
@@ -39,7 +40,8 @@ namespace Carrot::Render {
         RenderableText(RenderableText&& text) = default;
         explicit RenderableText() = default;
 
-        void render(Carrot::Render::Context renderContext);
+        void renderInScene(const Carrot::Render::Context& renderContext);
+        void renderInUI(const Carrot::Render::Context& renderContext, float zOrder);
 
         glm::mat4& getTransform();
         const glm::mat4& getTransform() const;
@@ -81,7 +83,7 @@ namespace Carrot::Render {
         ~Font();
 
     public:
-        RenderableText bake(std::u32string_view text, float pixelSize = DefaultPixelSize, TextAlignment horizontalAlignment = TextAlignment::Center);
+        RenderableText bake(std::u32string_view text, float pixelSize = DefaultPixelSize, TextAlignment horizontalAlignment = TextAlignment::Center, TextAlignment verticalAlignment = TextAlignment::Center);
         void immediateRender(std::u32string_view text, glm::mat4 transform);
 
     private:

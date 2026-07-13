@@ -235,16 +235,36 @@ namespace Peeler {
             +[](Carrot::ECS::TextComponent& c, const Carrot::Render::TextAlignment& v) { c.setHorizontalAlignment(v); },
             +[](const Carrot::Render::TextAlignment& c) {
                 switch (c) {
-                    case Carrot::Render::TextAlignment::Left:
+                    case Carrot::Render::TextAlignment::LeftOrTop:
                         return "Left";
                     case Carrot::Render::TextAlignment::Center:
                         return "Center";
+                    case Carrot::Render::TextAlignment::RightOrBottom:
+                        return "Right";
                     default:
                         TODO;
                 }
                 return "";
             },
-            {Carrot::Render::TextAlignment::Left, Carrot::Render::TextAlignment::Center});
+            {Carrot::Render::TextAlignment::LeftOrTop, Carrot::Render::TextAlignment::Center, Carrot::Render::TextAlignment::RightOrBottom});
+
+        multiEditEnumField(edition, "Horizontal Alignment", components,
+            +[](Carrot::ECS::TextComponent& c) { return c.getHorizontalAlignment(); },
+            +[](Carrot::ECS::TextComponent& c, const Carrot::Render::TextAlignment& v) { c.setHorizontalAlignment(v); },
+            +[](const Carrot::Render::TextAlignment& c) {
+                switch (c) {
+                    case Carrot::Render::TextAlignment::LeftOrTop:
+                        return "Left";
+                    case Carrot::Render::TextAlignment::Center:
+                        return "Center";
+                    case Carrot::Render::TextAlignment::RightOrBottom:
+                        return "Right";
+                    default:
+                        TODO;
+                }
+                return "";
+            },
+            {Carrot::Render::TextAlignment::LeftOrTop, Carrot::Render::TextAlignment::Center, Carrot::Render::TextAlignment::RightOrBottom});
 
         multiEditField(edition, "Color", components,
             +[](Carrot::ECS::TextComponent& c) { return Helpers::RGBAColorWrapper(c.getColor()); },

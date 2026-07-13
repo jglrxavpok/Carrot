@@ -7,10 +7,10 @@ import modules.per_object;
 import modules.harfbuzz;
 
 [vk::binding(0, 0)]
-ParameterBlock<Camera> camera;
+ParameterBlock<Viewport> viewport;
 
 [vk::binding(0, 1)]
-ParameterBlock<Viewport> viewport;
+ParameterBlock<Camera> camera;
 
 struct TextInputVertex {
     float2 position;
@@ -40,6 +40,8 @@ struct VSOutput {
 
 struct PushData {
     int16_t4 *gpuAtlas;
+
+    uint8_t is2D;
 };
 
 static int16_t4 *gpuAtlas;
@@ -48,17 +50,29 @@ export int4 hb_gpu_fetch(int offset) {
 }
 
 [shader("vertex")]
-VSOutput vertex(TextInputVertex input) {
+VSOutput vertex(TextInputVertex input, uniform PushData pushData) {
     VSOutput o;
 
     const CameraBufferObject cbo = camera.CurrentFrame();
-    const mat4 modelview = cbo.view * input.instanceTransform;
-    const mat4 modelviewproj = cbo.jitteredProjection * modelview;
+    mat4 modelview = cbo.view * input.instanceTransform;
+    mat4 proj = cbo.jitteredProjection;
+    mat4 modelviewproj = proj * modelview;
+
+    float3 inputPosition = float3(input.position.x, 0, input.position.y);
+    if (pushData.is2D) {
+        proj = IdentityMatrix;
+        modelview = input.instanceTransform;
+        modelviewproj = input.instanceTransform;
+
+        inputPosition = float3((input.position / viewport.frameDimensions)*2, 0);
+        //inputPosition.y /= 2;
+        //inputPosition.y =  - inputPosition.y;
+    }
 
     float4 jac = vec4(input.emPerPos, 0.0, 0.0, -input.emPerPos);
-    //harfbuzzDilateVertex(input.position, input.texcoord, input.normal, jac, modelviewproj, viewport.frameDimensions);
-    float4 viewPos = modelview * float4(input.position.x, 0, input.position.y, 1);
-    o.hPos = cbo.jitteredProjection * viewPos;
+    float4 viewPos = modelview * float4(inputPosition, 1);
+    // harfbuzzDilateVertex(input.position, input.texcoord, input.normal, jac, modelviewproj, viewport.frameDimensions);
+    o.hPos = proj * viewPos;
     o.uv = input.texcoord;
     o.viewPos = viewPos.xyz;
     o.glyphLoc = input.glyphLoc;
@@ -68,8 +82,8 @@ VSOutput vertex(TextInputVertex input) {
 }
 
 [shader("pixel")]
-EncodedGBuffer pixel(VSOutput input, uniform int16_t4 *gpuAtlasAddress) {
-    gpuAtlas = gpuAtlasAddress;
+EncodedGBuffer gBufferPixel(VSOutput input, uniform PushData pushData) {
+    gpuAtlas = pushData.gpuAtlas;
     GBuffer gbuffer;
 
     float coverage = 0;
@@ -82,4 +96,13 @@ EncodedGBuffer pixel(VSOutput input, uniform int16_t4 *gpuAtlasAddress) {
     gbuffer.intProperty = IntProperties::RayTracedLighting;
 
     return EncodedGBuffer(gbuffer);
+}
+
+[shader("pixel")]
+float4 uiPixel(VSOutput input, uniform PushData pushData) {
+    gpuAtlas = pushData.gpuAtlas;
+
+    float coverage = 0;
+    float4 albedo = harfbuzzPaint(input.uv, input.glyphLoc, input.instanceColor, coverage);
+    return float4(albedo.rgb, albedo.a * coverage);
 }

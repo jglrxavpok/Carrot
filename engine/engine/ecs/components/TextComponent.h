@@ -25,6 +25,9 @@ namespace Carrot::ECS {
         Render::TextAlignment getHorizontalAlignment() const;
         void setHorizontalAlignment(Render::TextAlignment newAlignment);
 
+        Render::TextAlignment getVerticalAlignment() const;
+        void setVerticalAlignment(Render::TextAlignment newAlignment);
+
     public:
         Carrot::DocumentElement serialise() const override;
 
@@ -55,6 +58,7 @@ namespace Carrot::ECS {
         std::shared_ptr<Carrot::Render::Font> font;
         Render::PerFrame<Carrot::Render::RenderableText> renderableTexts;
         Render::TextAlignment horizontalAlignment = Render::TextAlignment::Center;
+        Render::TextAlignment verticalAlignment = Render::TextAlignment::Center;
 
         friend class TextRenderSystem;
     };

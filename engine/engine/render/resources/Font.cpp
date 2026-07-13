@@ -40,7 +40,7 @@ namespace Carrot::Render {
         hb_blob_destroy(hbFontFileBlob);
     }
 
-    RenderableText Font::bake(std::u32string_view text, float pixelSize, TextAlignment horizontalAlignment) {
+    RenderableText Font::bake(std::u32string_view text, float pixelSize, TextAlignment horizontalAlignment, TextAlignment verticalAlignment) {
         if(text.empty()) {
             return RenderableText {};
         }
@@ -155,15 +155,22 @@ namespace Carrot::Render {
         instanceData.color = glm::vec4{1.0f};
         float xOffset = 0.0f;
         if (horizontalAlignment == TextAlignment::Center) {
-            xOffset = -static_cast<float>(width) / 2.0f;
+            xOffset = -width / 2.0f;
+        } else if (horizontalAlignment == TextAlignment::RightOrBottom) {
+            xOffset = -width;
         }
 
-        float baseline = 0;
-        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { xOffset, static_cast<float>(height) / 2.0f + baseline, 0.0f});
+        float yOffset = 0.0f;
+        if (verticalAlignment == TextAlignment::Center) {
+            yOffset = height / 2.0f;
+        } else if (verticalAlignment == TextAlignment::RightOrBottom) {
+            yOffset = height;
+        }
+
+        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { xOffset, yOffset, 0.0f});
         TextMetrics metrics {
             .width = static_cast<float>(width),
             .height = static_cast<float>(height),
-            .baseline = static_cast<float>(baseline),
             .basePixelSize = pixelSize,
         };
 
@@ -174,7 +181,7 @@ namespace Carrot::Render {
         TODO
     }
 
-    void RenderableText::render(Carrot::Render::Context renderContext) {
+    void RenderableText::renderInScene(const Carrot::Render::Context& renderContext) {
         if(!mesh)
             return;
 
@@ -189,9 +196,44 @@ namespace Carrot::Render {
         renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering", (std::uint64_t)&renderContext.pViewport);
         renderPacket.useMesh(*mesh);
 
-        auto& pushData = renderPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eFragment);
-        pushData.setData(atlas.view.getDeviceAddress());
+        auto& pushData = renderPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
+        struct PushData {
+            vk::DeviceAddress gpuAtlas;
+            u8 is2D;
+        } pushDataContents;
+        pushDataContents.gpuAtlas = atlas.view.getDeviceAddress();
+        pushDataContents.is2D = false;
+        pushData.setData(pushDataContents);
 
+
+        GetRenderer().render(renderPacket);
+    }
+
+    void RenderableText::renderInUI(const Carrot::Render::Context& renderContext, float zOrder) {
+        if(!mesh)
+            return;
+
+        auto& renderPacket = GetRenderer().makeRenderPacket(Render::PassEnum::UI, Render::PacketType::DrawIndexedInstanced, renderContext);
+        renderPacket.instanceCount = 1;
+
+        Carrot::InstanceData instanceData = instance;
+        instanceData.transform = instance.transform * localOffset;
+        instanceData.lastFrameTransform = instance.lastFrameTransform * localOffset;
+        renderPacket.useInstance(instanceData);
+
+        renderPacket.pipeline = renderContext.renderer.getOrCreatePipelineFullPath("resources/pipelines/ui/text.pipeline", (std::uint64_t)&renderContext.pViewport);
+        renderPacket.useMesh(*mesh);
+
+        auto& pushData = renderPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
+        struct PushData {
+            vk::DeviceAddress gpuAtlas;
+            u8 is2D;
+        } pushDataContents;
+        pushDataContents.gpuAtlas = atlas.view.getDeviceAddress();
+        pushDataContents.is2D = true;
+        pushData.setData(pushDataContents);
+
+        renderPacket.transparentGBuffer.zOrder = zOrder;
         GetRenderer().render(renderPacket);
     }
 

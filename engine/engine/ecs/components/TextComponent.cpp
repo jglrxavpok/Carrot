@@ -25,9 +25,23 @@ namespace Carrot::ECS {
         if (auto horizontalAlignmentIter = doc.getAsObject().find("horizontal_alignment"); horizontalAlignmentIter.isValid()) {
             std::string_view valueStr = horizontalAlignmentIter->second.getAsString();
             if (valueStr == "left") {
-                setHorizontalAlignment(Render::TextAlignment::Left);
+                setHorizontalAlignment(Render::TextAlignment::LeftOrTop);
             } else if (valueStr == "center") {
                 setHorizontalAlignment(Render::TextAlignment::Center);
+            } else if (valueStr == "right") {
+                setHorizontalAlignment(Render::TextAlignment::RightOrBottom);
+            } else {
+                TODO; // missing case
+            }
+        }
+        if (auto verticalAlignmentIter = doc.getAsObject().find("vertical_alignment"); verticalAlignmentIter.isValid()) {
+            std::string_view valueStr = verticalAlignmentIter->second.getAsString();
+            if (valueStr == "left") {
+                setVerticalAlignment(Render::TextAlignment::LeftOrTop);
+            } else if (valueStr == "center") {
+                setVerticalAlignment(Render::TextAlignment::Center);
+            } else if (valueStr == "right") {
+                setVerticalAlignment(Render::TextAlignment::RightOrBottom);
             } else {
                 TODO; // missing case
             }
@@ -41,12 +55,33 @@ namespace Carrot::ECS {
         obj["color"] = DocumentHelpers::write<4, float>(color);
         
         switch (horizontalAlignment) {
-            case Render::TextAlignment::Left:
+            case Render::TextAlignment::LeftOrTop:
                 obj["horizontal_alignment"] = "left";
                 break;
 
             case Render::TextAlignment::Center:
                 obj["horizontal_alignment"] = "center";
+                break;
+
+            case Render::TextAlignment::RightOrBottom:
+                obj["horizontal_alignment"] = "right";
+                break;
+
+            default:
+                TODO;
+        }
+
+        switch (verticalAlignment) {
+            case Render::TextAlignment::LeftOrTop:
+                obj["vertical_alignment"] = "top";
+                break;
+
+            case Render::TextAlignment::Center:
+                obj["vertical_alignment"] = "center";
+                break;
+
+            case Render::TextAlignment::RightOrBottom:
+                obj["vertical_alignment"] = "bottom";
                 break;
 
             default:
@@ -78,6 +113,17 @@ namespace Carrot::ECS {
         horizontalAlignment = newAlignment;
     }
 
+    Render::TextAlignment TextComponent::getVerticalAlignment() const {
+        return verticalAlignment;
+    }
+
+    void TextComponent::setVerticalAlignment(Render::TextAlignment newAlignment) {
+        for (auto& needsRefresh : needsRefreshs) {
+            needsRefresh = needsRefresh || verticalAlignment != newAlignment;
+        }
+        verticalAlignment = newAlignment;
+    }
+
     std::string_view TextComponent::getText() const {
         return text;
     }
@@ -94,7 +140,7 @@ namespace Carrot::ECS {
             if(text.empty()) {
                 renderableText = std::move(Render::RenderableText{});
             } else {
-                renderableText = font->bake(Carrot::toU32String(text), Render::Font::DefaultPixelSize, horizontalAlignment);
+                renderableText = font->bake(Carrot::toU32String(text), Render::Font::DefaultPixelSize, horizontalAlignment, verticalAlignment);
             }
             renderableText.getColor() = color;
             needsRefreshs[currentFrame.frameIndex] = false;

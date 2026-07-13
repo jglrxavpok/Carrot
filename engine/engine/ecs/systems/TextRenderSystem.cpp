@@ -17,7 +17,7 @@ namespace Carrot::ECS {
             textComponent.refreshRenderable(renderContext);
             Carrot::Render::RenderableText& renderableText = textComponent.getRenderableText(renderContext);
             renderableText.getTransform() = transform.toTransformMatrix();
-            renderableText.render(renderContext);
+            renderableText.renderInScene(renderContext);
         });
     }
 

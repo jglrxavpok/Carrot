@@ -1,31 +1,27 @@
 {
-  "type": "gbuffer",
+  "type": "blit",
   "subpassIndex": 0,
   "vertexFormat": "TextVertex",
-  "depthWrite": true,
-  "depthTest": true,
+  "depthWrite": false,
+  "depthTest": false,
   "cull": false,
   "alphaBlending": true,
-  "constants": {
-    "MAX_TEXTURES": 1,
-    "MAX_MATERIALS": 1
-  },
   "vertexShader": {
       "file": "resources/shaders/text-rendering.slang",
       "entry_point": "vertex"
   },
   "fragmentShader": {
     "file": "resources/shaders/text-rendering.slang",
-    "entry_point": "gBufferPixel"
+    "entry_point": "uiPixel"
   },
   "descriptorSets": [
     {
       "type": "viewport",
-      "setID": 1
+      "setID": 0
     },
     {
       "type": "camera",
-      "setID": 0
+      "setID": 1
     }
   ]
 }
