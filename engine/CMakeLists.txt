@@ -217,6 +217,7 @@ set(PIPELINES
         compute/copy-variance
         compute/debug-buffer-viewer
         compute/debug-texture-viewer
+        compute/remove-alpha
 
         lighting/gi/accumulate-radiance
         lighting/gi/accumulate-probes-per-ray

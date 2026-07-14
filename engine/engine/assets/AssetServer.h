@@ -6,7 +6,6 @@
 
 #include <core/data/Hashes.h>
 #include <core/io/vfs/VirtualFileSystem.h>
-#include <engine/render/AsyncResource.hpp>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/task/TaskScheduler.h>
 #include <engine/render/animation/AnimatedModel.h>

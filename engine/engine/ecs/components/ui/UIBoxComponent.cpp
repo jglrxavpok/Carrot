@@ -32,6 +32,8 @@ namespace Carrot::UI {
         };
         width = readSize(json["width"]);
         height = readSize(json["height"]);
+
+        image.optionalStartLoad(json, "image");
     }
 
     Carrot::DocumentElement UIBoxComponent::serialise() const {
@@ -69,6 +71,8 @@ namespace Carrot::UI {
 
         result["width"] = writeSize(width);
         result["height"] = writeSize(height);
+
+        result["image"] = image.serialise();
         return result;
     }
 
@@ -79,6 +83,7 @@ namespace Carrot::UI {
         clone->color = color;
         clone->padding = padding;
         clone->childGap = childGap;
+        clone->image = image;
         return clone;
     }
 

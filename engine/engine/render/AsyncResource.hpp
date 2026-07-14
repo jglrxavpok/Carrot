@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <thread>
+#include <engine/assets/AssetServer.h>
 #include <engine/utils/Macros.h>
 #include <engine/task/TaskScheduler.h>
 #include <engine/render/Model.h>
@@ -15,17 +16,31 @@ namespace Carrot {
 }
 
 namespace Carrot {
+    template<typename TElement>
+    struct AsyncResourceTraits;
+
+    template<typename TElement>
+    using AsyncTaskType = std::function<std::shared_ptr<TElement>(TaskHandle& taskHandle)>;
+
+    template<typename TElement>
+    concept IsResourceSerialisable = requires(TElement resource, AsyncResourceTraits<TElement> traits, const Carrot::IO::VFS::Path& resourcePath) {
+        { resource.getOriginatingResource() } -> std::convertible_to<const Carrot::IO::Resource&>;
+        { traits.makeLoadingTask(resourcePath) } -> std::convertible_to<AsyncTaskType<TElement>>;
+    };
+
     template<typename T, bool WaitOnAccess>
     class AsyncResource {
     public:
-        using TaskType = std::function<std::shared_ptr<T>(TaskHandle& taskHandle)>;
 
     public:
         AsyncResource() {
             storage = std::make_shared<Storage>();
         };
 
-        AsyncResource(const AsyncResource& toCopy) = delete;
+        AsyncResource(const AsyncResource& toCopy) {
+            *this = toCopy;
+        }
+
         AsyncResource(AsyncResource&& toMove) = default;
 
         //! Creates an already-loaded async resource
@@ -36,7 +51,7 @@ namespace Carrot {
             storage->running = false;
         }
 
-        explicit AsyncResource(TaskType&& loadingTask) {
+        explicit AsyncResource(AsyncTaskType<T>&& loadingTask) {
             storage = std::make_shared<Storage>();
             storage->initializer = std::move(loadingTask);
             TaskDescription desc {
@@ -51,6 +66,7 @@ namespace Carrot {
             return !storage->initializer && !storage->initialized;
         }
 
+        // Not empty and finished loading
         bool isReady() const {
             return storage->initialized && !!storage->value;
         }
@@ -88,8 +104,17 @@ namespace Carrot {
             return storage->value;
         }
 
+        std::shared_ptr<T> get() const {
+            throwOrWait();
+            return storage->value;
+        }
+
     public:
-        AsyncResource& operator=(const AsyncResource&) = delete;
+        AsyncResource& operator=(const AsyncResource& toCopy) {
+            storage = toCopy.storage;
+            return *this;
+        }
+
         AsyncResource& operator=(AsyncResource&& toMove) {
             storage = toMove.storage;
 
@@ -97,12 +122,54 @@ namespace Carrot {
             return *this;
         }
 
+        void startLoadFromPath(const Carrot::IO::VFS::Path& path) requires IsResourceSerialisable<T> {
+            *this = AsyncResource<T, WaitOnAccess>(AsyncResourceTraits<T>::makeLoadingTask(path));
+        }
+
+    public: // interface with Carrot::DocumentElement
+
+        // Returns a DocumentElement representing this resource.
+        // This will block if resource is still loading
+        Carrot::DocumentElement serialise() const requires IsResourceSerialisable<T> {
+            Carrot::DocumentElement result;
+            result = "";
+            if (isEmpty()) {
+                return result;
+            }
+
+            forceWait();
+            const Carrot::IO::Resource& resource = storage->value->getOriginatingResource();
+            if(resource.isFile()) {
+                result = resource.getName();
+            }
+            return result;
+        }
+
+        // Starts loading the resource from the given DocumentElement (as generated from serialise)
+        void startLoad(const Carrot::DocumentElement& resourceDocument) requires IsResourceSerialisable<T> {
+            const Carrot::IO::VFS::Path path{ resourceDocument.getAsString() };
+            startLoadFromPath(path);
+        }
+
+        // Checks if parent has a member named 'name', and if so, calls startLoad on this member
+        bool optionalStartLoad(const Carrot::DocumentElement& parent, const std::string& name) requires IsResourceSerialisable<T> {
+            auto view = parent.getAsObject();
+            if (auto iter = view.find(name); iter.isValid()) {
+                if (iter->second.getAsString().empty()) {
+                    return false;
+                }
+                startLoad(iter->second);
+                return true;
+            }
+            return false;
+        }
+
     private:
         struct Storage {
             std::shared_ptr<T> value;
             std::atomic<bool> initialized = false;
             std::atomic<bool> running = false;
-            TaskType initializer;
+            AsyncTaskType<T> initializer;
         };
 
         void throwOrWait() const {
@@ -134,5 +201,13 @@ namespace Carrot {
     };
 
     using AsyncModelResource = AsyncResource<Carrot::Model, false>;
+    using AsyncTextureResource = AsyncResource<Carrot::Render::Texture, false>;
     using AsyncParticleBlueprint = AsyncResource<Carrot::RenderableParticleBlueprint, false>;
+
+    template<>
+    struct AsyncResourceTraits<Carrot::Render::Texture> {
+        static AsyncTaskType<Carrot::Render::Texture> makeLoadingTask(const Carrot::IO::VFS::Path& path) {
+            return GetAssetServer().loadTextureTask(path);
+        }
+    };
 }

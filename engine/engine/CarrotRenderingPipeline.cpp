@@ -276,7 +276,42 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             }
     );
 
-    return addUI.getData().output;
+    struct Transition {
+        Render::FrameResource resource;
+    };
+    // For a reason I don't understand, alpha of render target is modified by UI pass (even if alpha blending is set to add src=one dst=zero ?)
+    //  So add a pass to set alpha to 1 for entire UI image
+    auto& removeAlpha = mainGraph.addPass<Transition>(
+            "remove-alpha",
+
+            [this, addUI, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Transition>& pass, Transition& data) {
+                data.resource = builder.write(addUI.getData().output, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eGeneral);
+                pass.rasterized = false;
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Transition& data, vk::CommandBuffer& buffer) {
+                auto pRemoveAlpha = frame.renderer.getOrCreatePipeline("compute/remove-alpha", (u64)&pass);
+                auto& textureToModify = pass.getGraph().getTexture(data.resource, frame.frameNumber);
+                pRemoveAlpha->setStorageImage(frame, "entryPointParams.image", textureToModify, vk::ImageLayout::eGeneral);
+                pRemoveAlpha->bind(pass, frame, buffer, vk::PipelineBindPoint::eCompute);
+
+                const u32 groupX = Math::alignUp(textureToModify.getSize().width, static_cast<u32>(32));
+                const u32 groupY = Math::alignUp(textureToModify.getSize().height, static_cast<u32>(32));
+                buffer.dispatch(groupX, groupY, 1);
+            }
+    );
+    auto& transitionUI = mainGraph.addPass<Transition>(
+            "transition-ui-for-imgui",
+
+            [this, removeAlpha, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Transition>& pass, Transition& data) {
+                data.resource = builder.read(removeAlpha.getData().resource, vk::ImageLayout::eShaderReadOnlyOptimal);
+                pass.rasterized = false;
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Transition& data, vk::CommandBuffer& buffer) {
+
+            }
+    );
+
+    return transitionUI.getData().resource;
 }
 
 const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {

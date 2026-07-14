@@ -503,7 +503,7 @@ namespace Carrot::Render {
     std::shared_ptr<TextureHandle> MaterialSystem::createTextureHandle(Texture::Ref texture) {
         Async::LockGuard l { accessLock };
         auto ptr = textureHandles.create(std::ref(*this));
-        ptr->texture = texture;
+        ptr->texture = std::move(texture);
         return ptr;
     }
 

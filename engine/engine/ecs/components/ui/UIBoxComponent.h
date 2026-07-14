@@ -5,6 +5,7 @@
 #pragma once
 
 #include <engine/ecs/components/Component.h>
+#include <engine/render/AsyncResource.hpp>
 #include <engine/render/resources/Texture.h>
 
 namespace Carrot::UI {
@@ -48,7 +49,7 @@ namespace Carrot::UI {
         glm::vec4 color = {1,1,1,1};
         glm::uvec4 padding = {0,0,0,0};
         u16 childGap = 0;
-        Carrot::Render::Texture::Ref image;
+        AsyncTextureResource image;
 
     // TODO: rounding
     END_COMPONENT

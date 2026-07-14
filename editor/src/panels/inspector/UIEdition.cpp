@@ -94,7 +94,19 @@ namespace Peeler {
         editSizing(&Carrot::UI::UIBoxComponent::height, "Height");
 
         multiEditField(edition, "Image", components,
-            +[](Carrot::UI::UIBoxComponent& c) -> Carrot::Render::Texture::Ref& { return c.image; });
-        // TODO
+            +[](Carrot::UI::UIBoxComponent& c) {
+                return Carrot::IO::VFS::Path { c.image.isEmpty() ? "" : !c.image.isReady() ? "" : c.image->getOriginatingResource().getName() };
+            },
+            +[](Carrot::UI::UIBoxComponent& c, const Carrot::IO::VFS::Path& path) {
+                if (path.isEmpty()) {
+                    c.image = {};
+                } else {
+                    c.image.startLoadFromPath(path);
+                }
+            },
+            Helpers::Limits<Carrot::IO::VFS::Path> {
+                .validityChecker = [](const auto& path) { return path.isEmpty() || Carrot::IO::isImageFormat(path.toString().c_str()); }
+            }
+        );
     }
 }

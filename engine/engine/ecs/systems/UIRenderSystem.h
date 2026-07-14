@@ -4,12 +4,18 @@
 
 #pragma once
 #include <clay.h>
+#include <core/allocators/StackAllocator.h>
+#include <core/allocators/TrackingAllocator.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/ui/UICanvasComponent.h>
 #include <engine/render/AsyncResource.hpp>
 #include <engine/render/resources/Font.h>
 
 #include "System.h"
+
+namespace Carrot::UI {
+    struct UIBoxComponent;
+}
 
 namespace Carrot::ECS {
     struct RenderedTextKey {
@@ -59,20 +65,26 @@ namespace Carrot::ECS {
             bool inWorld = false;
         };
 
+        Clay_ElementDeclaration toElement(const TransformComponent& transform, const UI::UIBoxComponent& box, const glm::vec2& viewportSize);
+
         /// Transforms Carrot hierarchy to Clay, and performs layout
         Carrot::Vector<LayoutResult> translateToClay(const Render::Context& renderContext, float dt);
 
         AsyncResource<Carrot::Pipeline, false> rectanglePipelineResource;
         AsyncResource<Carrot::Pipeline, false> imagePipelineResource;
-        AsyncResource<Carrot::Render::Texture, false> testImage;
         Carrot::UniquePtr<Render::Font> pFont;
-        std::shared_ptr<Render::TextureHandle> testImageHandle;
 
         std::unordered_map<Carrot::UUID, std::string> id2stringStorage; // needs to outlive clay layout
+
+        // TODO: cleanup these maps when unused
         std::unordered_map<RenderedTextKey, Render::RenderableText> texts;
+        std::unordered_map<Carrot::Render::Texture::Ref, std::shared_ptr<Render::TextureHandle>> imageHandles;
         double lastTime = 0.0;
 
         Signature rectangleComponentSignature;
+
+        // used to pass data to Clay
+        Carrot::Vector<Render::Texture::Ref> usedTextureRefs;
     };
 }
 

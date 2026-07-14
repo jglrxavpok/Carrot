@@ -5,6 +5,7 @@
 #include "UIRenderSystem.h"
 
 #include <clay.h>
+#include <core/allocators/TrackingAllocator.h>
 #include <engine/Engine.h>
 #include <engine/ecs/components/ui/UIBoxComponent.h>
 #include <engine/ecs/components/ui/UICanvasComponent.h>
@@ -16,10 +17,9 @@
 // Therefore scales are always taken from the local transform which seems to work well enough and intuitively inside the editor
 namespace Carrot::ECS {
     UIRenderSystem::UIRenderSystem(World& world)
-                : RenderSystem<TransformComponent, Carrot::UI::UICanvasComponent>(world) {
+                : RenderSystem(world) {
         rectanglePipelineResource = AsyncResource<Pipeline, false>(GetAssetServer().loadPipelineTask("resources/pipelines/ui/rectangle.pipeline"));
         imagePipelineResource = AsyncResource<Pipeline, false>(GetAssetServer().loadPipelineTask("resources/pipelines/ui/image.pipeline"));
-        testImage = AsyncResource<Render::Texture, false>(GetAssetServer().loadTextureTask("resources/icon128.ktx2"));
 
         rectangleComponentSignature.addComponent<TransformComponent>();
         rectangleComponentSignature.addComponent<UI::UIBoxComponent>();
@@ -68,7 +68,7 @@ namespace Carrot::ECS {
         return clayPosition / canvasSize;
     }
 
-    static Clay_ElementDeclaration toElement(const TransformComponent& transform, const UI::UIBoxComponent& box, const glm::vec2& viewportSize) {
+    Clay_ElementDeclaration UIRenderSystem::toElement(const TransformComponent& transform, const UI::UIBoxComponent& box, const glm::vec2& viewportSize) {
         Clay_ElementDeclaration decl{};
         // TODO: layout
 
@@ -94,8 +94,9 @@ namespace Carrot::ECS {
         decl.layout.sizing.width = toClay(box.width, 0);
         decl.layout.sizing.height = toClay(box.height, 1);
 
-        if (box.image) {
-            decl.image.imageData = box.image.get();
+        if (box.image.isReady()) {
+            usedTextureRefs.emplaceBack(box.image.get());
+            decl.image.imageData = reinterpret_cast<void*>(usedTextureRefs.size() - 1);
 
             // x255 to match with Clay convention, even if it is divided by 255 before sending to shader
             decl.userData = (void*)&box.color;
@@ -128,8 +129,7 @@ namespace Carrot::ECS {
     }
 
     Carrot::Vector<UIRenderSystem::LayoutResult> UIRenderSystem::translateToClay(const Render::Context& renderContext, float dt) {
-        Carrot::Render::Texture* pTestImage = testImage.get().get();
-
+        usedTextureRefs.clear();
         Carrot::Vector<LayoutResult> results;
         // a bit awkward because the ECS is not meant for hierarchy traversal
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::UI::UICanvasComponent& canvas) {
@@ -158,19 +158,6 @@ namespace Carrot::ECS {
 
             recurse(entity);
 
-            /*CLAY(CLAY_ID("OuterContainer"), { .layout = { .sizing = {CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0)}, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = Clay_Color{250,250,255,255} }) {
-                CLAY(CLAY_ID("SideBar"), {
-                    .layout = { .sizing = { .width = CLAY_SIZING_FIXED(300), .height = CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16, .layoutDirection = CLAY_TOP_TO_BOTTOM },
-                    .backgroundColor = Clay_Color(255, 240, 20, 255)
-                }) {
-                    CLAY(CLAY_ID("ProfilePictureOuter"), { .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16, .childAlignment = { .y = CLAY_ALIGN_Y_CENTER } }, .backgroundColor = Clay_Color(255, 0, 0, 255) }) {
-                        CLAY(CLAY_ID("ProfilePicture"), { .layout = { .sizing = { .width = CLAY_SIZING_FIXED(60), .height = CLAY_SIZING_FIXED(60) }}, .image = { .imageData = pTestImage } }) {}
-                        CLAY_TEXT(CLAY_STRING("Clay - UI Library"), { .textColor = {255, 255, 255, 255}, .fontSize = 24 });
-                    }
-
-                    CLAY(CLAY_ID("MainContent"), { .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) } }, .backgroundColor = Clay_Color(255, 0, 255, 255) }) {}
-                }
-            }*/
             Clay_RenderCommandArray renderCommands = Clay_EndLayout(dt);
             results.emplaceBack(LayoutResult {
                 .clayCommands = renderCommands,
@@ -232,14 +219,8 @@ namespace Carrot::ECS {
         if (!imagePipelineResource.isReady()) {
             return;
         }
-        if (!testImage.isReady()) {
-            return;
-        }
 
         VulkanRenderer& renderer = renderContext.renderer;
-        if (!testImageHandle) {
-            testImageHandle = renderer.getMaterialSystem().createTextureHandle(testImage.get());
-        }
 
         Clay_SetLayoutDimensions(Clay_Dimensions{.width = static_cast<float>(renderContext.pViewport->getWidth()), .height = static_cast<float>(renderContext.pViewport->getHeight())});
 
@@ -312,7 +293,14 @@ namespace Carrot::ECS {
                         const u32 u32Color = (a << 24) | (b << 16) | (g << 8) | (r);
 
                         commandData[commandIndex].indexOffset = generateQuadGeometry(x, y, width, height, glm::vec2{0.0f}, glm::vec2{1.0f}, u32Color, vertices, indices);
-                        commandData[commandIndex].textureIndex = testImageHandle->getSlot(); // TODO: not hardcoded
+
+                        const u64 index = reinterpret_cast<u64>(command.renderData.image.imageData);
+                        Render::Texture::Ref pTexture = usedTextureRefs[index];
+                        auto [iter, wasNew] = imageHandles.try_emplace(pTexture);
+                        if (wasNew) {
+                            iter->second = renderContext.renderer.getMaterialSystem().createTextureHandle(pTexture);
+                        }
+                        commandData[commandIndex].textureIndex = iter->second->getSlot();
                     } break;
 
                     case CLAY_RENDER_COMMAND_TYPE_TEXT: {
