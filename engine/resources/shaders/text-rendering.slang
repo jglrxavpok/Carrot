@@ -65,8 +65,8 @@ VSOutput vertex(TextInputVertex input, uniform PushData pushData) {
         modelviewproj = input.instanceTransform;
 
         inputPosition = float3((input.position / viewport.frameDimensions)*2, 0);
-        //inputPosition.y /= 2;
-        //inputPosition.y =  - inputPosition.y;
+    } else {
+        inputPosition = inputPosition.xzy;
     }
 
     float4 jac = vec4(input.emPerPos, 0.0, 0.0, -input.emPerPos);

@@ -202,7 +202,7 @@ namespace Carrot::Render {
             u8 is2D;
         } pushDataContents;
         pushDataContents.gpuAtlas = atlas.view.getDeviceAddress();
-        pushDataContents.is2D = false;
+        pushDataContents.is2D = 0;
         pushData.setData(pushDataContents);
 
 

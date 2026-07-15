@@ -21,11 +21,11 @@
   "descriptorSets": [
     {
       "type": "viewport",
-      "setID": 1
+      "setID": 0
     },
     {
       "type": "camera",
-      "setID": 0
+      "setID": 1
     }
   ]
 }
