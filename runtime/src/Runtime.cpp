@@ -110,9 +110,7 @@ public:
             GetCSharpBindings().loadGameAssembly(gameDll);
         }
 
-        {
-            openScene(description["scene"].GetString());
-        }
+        sceneToOpen = description["scene"].GetString();
     }
 
     void openScene(const std::string& sceneName) {
@@ -144,11 +142,19 @@ public:
     }
 
     void onFrame(const Carrot::Render::Context& renderContext) override {
-        scene.onFrame(renderContext);
+        if (firstFrame) {
+            firstFrame = false;
+        } else {
+            scene.onFrame(renderContext);
+        }
     }
 
     void tick(double frameTime) override {
-        scene.tick(frameTime);
+        if (firstFrame) {
+            openScene(sceneToOpen);
+        } else {
+            scene.tick(frameTime);
+        }
     }
 
     std::string getCurrentProjectName() {
@@ -157,6 +163,8 @@ public:
 
 private:
     Carrot::Scene& scene;
+    std::string sceneToOpen;
+    bool firstFrame = true;
 };
 
 void Carrot::Engine::initGame() {

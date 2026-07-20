@@ -382,7 +382,7 @@ void Carrot::Engine::run() {
     size_t currentFrame = 0;
 
     auto previous = std::chrono::steady_clock::now();
-    auto lag = std::chrono::duration<float>(0.0f);
+    auto lag = std::chrono::duration<float>(timeBetweenUpdates) + std::chrono::duration<float>(10e-5f); // force at least one tick before rendering for the first time
     bool ticked = false;
     while(running) {
         ScopedMarker("Frame");
