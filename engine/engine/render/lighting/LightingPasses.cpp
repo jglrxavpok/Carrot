@@ -618,7 +618,7 @@ namespace Carrot::Render {
         };
 
         static constexpr i32 ScreenProbeSize = 1; // how many pixels a screen probe covers in one direction
-        static constexpr i32 MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*4;
+        static constexpr i32 MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize;
         static constexpr i32 ScreenProbeAccumulationMaxElements = 2 * MaxRaysPerProbe;
         struct ScreenProbe {
             float radianceR[9];
@@ -891,9 +891,10 @@ namespace Carrot::Render {
                     data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral);
                     pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                    const std::size_t localSize = 32;
-                    const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
-                    const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;
+                    const std::size_t localSizeX = 32;
+                    const std::size_t localSizeY = 32;
+                    const std::size_t groupX = (outputTexture.getSize().width + localSizeX-1) / localSizeX;
+                    const std::size_t groupY = (outputTexture.getSize().height + localSizeY-1) / localSizeY;
                     cmds.dispatch(groupX, groupY, 1);
                 }
 
@@ -946,6 +947,32 @@ namespace Carrot::Render {
                 cmds.dispatch(blockCountX, blockCountY, 1);
             });
 
+        struct FireflyRejection {
+            FrameResource varianceInput;
+            FrameResource imageFullOfBugs;
+            FrameResource output;
+        };
+        // use variance of final denoised image to reject firefly
+        auto& fireflyRejection = graph.addPass<FireflyRejection>("firefly-rejection",
+            [&](GraphBuilder& graph, Pass<FireflyRejection>& pass, FireflyRejection& data) {
+                data.imageFullOfBugs = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
+                data.output = graph.createStorageTarget("lighting-with-rejected-fireflies", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                pass.rasterized = false;
+            },
+            [](const CompiledPass& pass, const Context& frame, const FireflyRejection& data, vk::CommandBuffer& cmds) {
+                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/firefly-rejection.pipeline", (std::uint64_t)&pass);
+                auto& outputTexture = pass.getGraph().getTexture(data.output, frame.frameNumber);
+                pipeline->setSampledImage(frame,"entryPointParams.input", pass.getGraph().getTexture(data.imageFullOfBugs, frame.frameNumber));
+                pipeline->setStorageImage(frame,"entryPointParams.output", outputTexture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                const auto& extent = outputTexture.getSize();
+                const std::uint8_t localSize = 32;
+                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+
+                pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                cmds.dispatch(dispatchX, dispatchY, 1);
+            });
+
         struct FinalDenoise {
             PassData::SpatialDenoising denoisedCombinedLighting;
             PassData::GBuffer gBuffer;
@@ -954,8 +981,8 @@ namespace Carrot::Render {
         auto& finalDenoise = graph.addPass<FinalDenoise>("lighting-denoise",
             [&](GraphBuilder& graph, Pass<FinalDenoise>& pass, FinalDenoise& data) {
                 addSpatialDenoisingResources(graph, "denoised combined lighting", vk::Format::eR32G32B32A32Sfloat, data.denoisedCombinedLighting);
-                data.denoisedCombinedLighting.iterationCount = 5;
-                data.denoisedCombinedLighting.noisy = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
+                data.denoisedCombinedLighting.iterationCount = 7;
+                data.denoisedCombinedLighting.noisy = graph.read(fireflyRejection.getData().output, vk::ImageLayout::eGeneral);
                 data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
 
                 pass.rasterized = false;

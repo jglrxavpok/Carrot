@@ -284,7 +284,7 @@ namespace HashGrid {
 }
 
 public static const uint ScreenProbeSize = 1;
-public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*4;
+public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*1;
 
 public struct RayData {
     public uint32_t probeIndex;

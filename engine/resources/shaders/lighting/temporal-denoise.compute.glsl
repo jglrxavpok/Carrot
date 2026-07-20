@@ -71,7 +71,7 @@ void main() {
     float reprojectionFactor = reprojectionInBounds ? 1.0f : 0.0f;
     vec4 momentHistoryHistoryLength = imageLoad(lastFrameHistoryLengthImage, ivec2(reprojectedUV * textureDimensions));
     if(reprojectionInBounds) {
-        reprojectionFactor *= exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 1);
+        reprojectionFactor *= exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 5);
     }
 
     bool reprojected = false;
@@ -83,7 +83,7 @@ void main() {
 
     vec4 outColor = vec4(0);
 
-    const int clampRadius = push.isAO ? 5 : 1;
+    const int clampRadius = push.isAO ? 5 : 5;
 
     vec3 minColor = vec3(100000);
     vec3 maxColor = vec3(-100000);

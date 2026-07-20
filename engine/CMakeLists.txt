@@ -217,6 +217,7 @@ set(PIPELINES
         compute/copy-variance
         compute/debug-buffer-viewer
         compute/debug-texture-viewer
+        compute/firefly-rejection
         compute/remove-alpha
 
         lighting/gi/accumulate-radiance

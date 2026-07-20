@@ -34,15 +34,16 @@ void clearRGBAImage(
 }
 
 [shader("compute")]
-[numthreads(32, 32, 1)]
+[numthreads(32, 2, 1)]
 void removeAlphaOfImage(
-    uniform RWTexture2D<float4> image,
+    uniform Texture2D<float4> input,
+    uniform RWTexture2D<float4> output,
     uint3 coords: SV_DispatchThreadID) {
     uint w, h;
-    image.GetDimensions(w, h);
+    input.GetDimensions(w, h);
     if (coords.x >= w || coords.y >= h) {
         return;
     }
 
-    image[coords.xy] = float4(image[coords.xy].rgb, 1);
+    output[coords.xy] = float4(input[coords.xy].rgb, 1);
 }

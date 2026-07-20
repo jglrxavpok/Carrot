@@ -103,7 +103,7 @@ void denoise(
 ) {
     Configuration config;
     const float sigmaPositions = 32.0f;
-    const float sigmaLuminance = 20.0f;
+    const float sigmaLuminance = 5.0f;
 
     uint outputWidth;
     uint outputHeight;

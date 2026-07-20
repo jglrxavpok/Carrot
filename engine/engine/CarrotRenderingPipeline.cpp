@@ -276,34 +276,41 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             }
     );
 
-    struct Transition {
-        Render::FrameResource resource;
+    struct AlphaRemoval {
+        Render::FrameResource input;
+        Render::FrameResource output;
     };
     // For a reason I don't understand, alpha of render target is modified by UI pass (even if alpha blending is set to add src=one dst=zero ?)
     //  So add a pass to set alpha to 1 for entire UI image
-    auto& removeAlpha = mainGraph.addPass<Transition>(
+    auto& removeAlpha = mainGraph.addPass<AlphaRemoval>(
             "remove-alpha",
 
-            [this, addUI, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Transition>& pass, Transition& data) {
-                data.resource = builder.write(addUI.getData().output, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eGeneral);
+            [addUI, framebufferSize](Render::GraphBuilder& builder, Render::Pass<AlphaRemoval>& pass, AlphaRemoval& data) {
+                data.input = builder.read(addUI.getData().output, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.output = builder.createStorageTarget("alpha-removed", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
             },
-            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Transition& data, vk::CommandBuffer& buffer) {
+            [](const Render::CompiledPass& pass, const Render::Context& frame, const AlphaRemoval& data, vk::CommandBuffer& buffer) {
                 auto pRemoveAlpha = frame.renderer.getOrCreatePipeline("compute/remove-alpha", (u64)&pass);
-                auto& textureToModify = pass.getGraph().getTexture(data.resource, frame.frameNumber);
-                pRemoveAlpha->setStorageImage(frame, "entryPointParams.image", textureToModify, vk::ImageLayout::eGeneral);
+                auto& textureToModify = pass.getGraph().getTexture(data.output, frame.frameNumber);
+                pRemoveAlpha->setSampledImage(frame, "entryPointParams.input", pass.getGraph().getTexture(data.input, frame.frameNumber));
+                pRemoveAlpha->setStorageImage(frame, "entryPointParams.output", textureToModify, vk::ImageLayout::eGeneral);
                 pRemoveAlpha->bind(pass, frame, buffer, vk::PipelineBindPoint::eCompute);
 
                 const u32 groupX = Math::alignUp(textureToModify.getSize().width, static_cast<u32>(32));
-                const u32 groupY = Math::alignUp(textureToModify.getSize().height, static_cast<u32>(32));
+                const u32 groupY = Math::alignUp(textureToModify.getSize().height, static_cast<u32>(2));
                 buffer.dispatch(groupX, groupY, 1);
             }
     );
+
+    struct Transition {
+        Render::FrameResource resource;
+    };
     auto& transitionUI = mainGraph.addPass<Transition>(
             "transition-ui-for-imgui",
 
             [this, removeAlpha, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Transition>& pass, Transition& data) {
-                data.resource = builder.read(removeAlpha.getData().resource, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.resource = builder.read(removeAlpha.getData().output, vk::ImageLayout::eShaderReadOnlyOptimal);
                 pass.rasterized = false;
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Transition& data, vk::CommandBuffer& buffer) {

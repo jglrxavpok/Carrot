@@ -49,11 +49,32 @@ uint packHalf(float f) {
     return asuint(half(f));
 }
 
+float2 getVelocity(float2 pixelCenter, uint2 frameDimensions) {
+
+    float closestDepth = 100;
+    float2 closestDepthCoords = 0;
+
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            const float2 neighborPos = (pixelCenter + float2(x, y)) / frameDimensions;
+            const GBuffer neighborGBuffer = gBufferInputs.read(neighborPos);
+
+            if (neighborGBuffer.readDepth < closestDepth) {
+                closestDepth = neighborGBuffer.readDepth;
+                closestDepthCoords = neighborPos;
+            }
+        }
+    }
+
+    return gBufferInputs.read(closestDepthCoords).motionVector.xy;
+}
+
 Optional<uint> getReprojectedProbeIndex(uint2 frameDimensions, vec2 uv, vec2 motionVector) {
     const uint probesPerWidth = (frameDimensions.x+ScreenProbeSize-1) / ScreenProbeSize;
 
     // reproject temporally, and check if pixel is reusable
-    const vec2 reprojectedUV = uv + motionVector;
+    const vec2 reprojectedUV = uv + getVelocity(uv * frameDimensions, frameDimensions);
+    //const vec2 reprojectedUV = uv + motionVector;
     const bool reprojectionInBounds = reprojectedUV.x >= 0.0f && reprojectedUV.x < 1.0f && reprojectedUV.y >= 0.0f && reprojectedUV.y < 1.0f;
     if(reprojectionInBounds) {
         const float2 size = float2(frameDimensions.x, frameDimensions.y);
@@ -328,7 +349,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         return;
     }
 
-    RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, rayIndex + push.frameCount);
+    RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, probeIndex + rayIndex + push.frameCount);
     Raytracing::HardwareCapability capability = Raytracing::HardwareCapability(rtData);
     const float tMax = 50000.0f;
 
@@ -361,7 +382,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
         float3 gi = hashGridData.grids.currentFrame->read(rng, giInputs);
         float3 directLighting = lightData.sampleLights(/*out*/ lightPDF, capability, pbr, 
             intersection.worldPosition, intersection.worldNormal, intersection.worldTangent, intersection.computedMaterial.metallic, intersection.computedMaterial.roughness);
-        radiance += directLighting/*already contains BRDF*/ + brdf * (intersection.computedMaterial.emissive);
+        radiance += directLighting/*already contains BRDF*/ + brdf * (intersection.computedMaterial.emissive*100);
 
         bool wasNew = false;
         HashGrid::Key key;
@@ -390,7 +411,7 @@ void traceRays(uint3 coords : SV_DispatchThreadID, uniform LightingPassUniforms 
 
         const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * direction, float3(0), float3(0)).rgb;
 
-        radiance += brdf * skyboxRGB;
+        radiance += brdf * skyboxRGB*50;
     }
 
     rayData->radiance = radiance;
