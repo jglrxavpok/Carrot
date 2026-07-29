@@ -5,6 +5,7 @@
 #include "GizmosLayer.h"
 #include <engine/Engine.h>
 #include <ImGuizmo.h>
+#include <commands/UpdateComponentCommands.h>
 #include <engine/render/RenderContext.h>
 #include <engine/render/TextureRepository.h>
 #include <engine/ecs/World.h>
@@ -143,6 +144,7 @@ namespace Peeler {
 
         bool wasUsingGizmo = usingGizmo;
         usingGizmo = false;
+        hoveringGizmo = false;
 
         // draw gizmos and move entities
         if(editor.selectedEntityIDs.size() > 1) {
@@ -210,7 +212,8 @@ namespace Peeler {
 
                 editor.markDirty();
             }
-            usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
+            usingGizmo = ImGuizmo::IsUsing();
+            hoveringGizmo = ImGuizmo::IsOver();
 
             if(!usingGizmo && wasUsingGizmo) {
                 // TODO: undo command
@@ -275,17 +278,44 @@ namespace Peeler {
 
                     editor.markDirty();
                 }
-                usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
+                usingGizmo = ImGuizmo::IsUsing();
+                hoveringGizmo = ImGuizmo::IsOver();
+            }
+        }
 
-                if(!usingGizmo && wasUsingGizmo) {
-                    // TODO: undo command
+        if (usingGizmo && !wasUsingGizmo) /* started using: store old state */ {
+            savedLocalTransforms.clear();
+            for (const auto& selectedEntityID : editor.selectedEntityIDs) {
+                Carrot::ECS::Entity entity = editor.currentScene.world.wrap(selectedEntityID);
+                Carrot::Memory::OptionalRef<Carrot::ECS::TransformComponent> pTransform = entity.getComponent<Carrot::ECS::TransformComponent>();
+                if (pTransform.hasValue()) {
+                    savedLocalTransforms[selectedEntityID] = pTransform->localTransform;
                 }
             }
+        } else if(!usingGizmo && wasUsingGizmo) /*stopped using: store new state*/ {
+            Carrot::Vector<Carrot::Math::Transform> oldTransforms;
+            Carrot::Vector<Carrot::Math::Transform> newTransforms;
+            oldTransforms.setCapacity(editor.selectedEntityIDs.size());
+            newTransforms.setCapacity(editor.selectedEntityIDs.size());
+            for (const auto& selectedEntityID : editor.selectedEntityIDs) {
+                Carrot::ECS::Entity entity = editor.currentScene.world.wrap(selectedEntityID);
+                Carrot::Memory::OptionalRef<Carrot::ECS::TransformComponent> pTransform = entity.getComponent<Carrot::ECS::TransformComponent>();
+                if (pTransform.hasValue()) {
+                    oldTransforms.emplaceBack() = savedLocalTransforms.at(selectedEntityID);
+                    newTransforms.emplaceBack() = pTransform->localTransform;
+                }
+            }
+            editor.undoStack.push<UpdateComponentValues<Carrot::ECS::TransformComponent, Carrot::Math::Transform>>("Update transforms", editor.selectedEntityIDs,
+                oldTransforms,
+                newTransforms,
+                [](Carrot::ECS::TransformComponent& c) { return c.localTransform;},
+                [](Carrot::ECS::TransformComponent& c, const Carrot::Math::Transform& v) { c.localTransform = v;},
+                Carrot::ECS::TransformComponent::getID());
         }
     }
 
     bool GizmosLayer::allowSceneEntityPicking() const {
-        return !usingGizmo;
+        return !usingGizmo && !hoveringGizmo;
     }
 
     void GizmosLayer::tick(double dt) {

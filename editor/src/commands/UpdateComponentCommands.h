@@ -43,6 +43,23 @@ namespace Peeler {
             }
         }
 
+        /// Version that lets user give old values. Useful if component has had its component changed since user registered old values
+        UpdateComponentValues(Application &app, const std::string& desc, std::unordered_set<Carrot::ECS::EntityID> _entityList, std::span<TValue> _oldValues, std::span<TValue> _newValues,
+            std::function<TValue(TComponent& comp)> _getter, std::function<void(TComponent& comp, const TValue& value)> _setter,
+            Carrot::ComponentID _componentID)
+            : ICommand(app, desc)
+            , newValues(_newValues)
+            , oldValues(_oldValues)
+            , getter(_getter)
+            , setter(_setter)
+            , componentID(_componentID)
+        {
+            entityList.ensureReserve(_entityList.size());
+            for (auto& ent : _entityList) {
+                entityList.emplaceBack() = ent;
+            }
+        }
+
         void undo() override {
             for(std::size_t i = 0; i < entityList.size(); i++) {
                 setter(reinterpret_cast<TComponent&>(editor.currentScene.world.getComponent(entityList[i], componentID).asRef()), oldValues[i]);

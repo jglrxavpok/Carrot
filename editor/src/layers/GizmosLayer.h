@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include <engine/ecs/EntityTypes.h>
 #include <engine/io/actions/ActionSet.h>
+#include <engine/math/Transform.h>
 
 #include "ISceneViewLayer.h"
 #include <engine/render/resources/Texture.h>
@@ -40,7 +42,10 @@ namespace Peeler {
         Carrot::IO::BoolInputAction scaleMode{"scale"};
         Carrot::IO::BoolInputAction nextMovementMode{"next_tool"};
 
+        // Undo/redo system
+        std::unordered_map<Carrot::ECS::EntityID, Carrot::Math::Transform> savedLocalTransforms;
         bool usingGizmo = false;
+        bool hoveringGizmo = false;
     };
 
 } // Peeler
