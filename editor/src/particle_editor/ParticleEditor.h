@@ -30,6 +30,7 @@ namespace Peeler {
         void saveToFile(std::filesystem::path path) override;
 
         void performLoad(std::filesystem::path path) override;
+        const char* getProjectExtension() override { return "particle"; }
 
     public:
         explicit ParticleEditor(Carrot::Engine& engine);

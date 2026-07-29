@@ -44,6 +44,10 @@ namespace Tools {
         virtual void onUndoShortcut(const Carrot::Render::Context& frame);
         virtual void onRedoShortcut(const Carrot::Render::Context& frame);
 
+        virtual const char* getProjectExtension() {
+            return "json";
+        }
+
         void drawProjectMenu() {
             assert(settings);
             if(ImGui::MenuItem(newItemName.c_str())) {
@@ -53,7 +57,7 @@ namespace Tools {
                 nfdchar_t* outPath;
 
                 // prepare filters for the dialog
-                nfdfilteritem_t filterItem[1] = {{"Project", "json"}};
+                nfdfilteritem_t filterItem[1] = {{"Project", getProjectExtension()}};
 
                 // show the dialog
                 nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 1, nullptr);
@@ -176,10 +180,11 @@ namespace Tools {
             nfdchar_t* savePath;
 
             // prepare filters for the dialog
-            nfdfilteritem_t filterItem[1] = {{"Project", "json"}};
+            nfdfilteritem_t filterItem[1] = {{"Project", getProjectExtension()}};
 
             // show the dialog
-            nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, "Untitled.json");
+            const std::string defaultName = Carrot::sprintf("Untitled.%s", getProjectExtension());
+            nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultName.c_str());
             if (result == NFD_OKAY) {
                 saveToFile(savePath);
                 path = savePath;
