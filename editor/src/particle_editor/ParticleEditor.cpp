@@ -133,30 +133,6 @@ void Peeler::ParticleEditor::saveToFile(std::filesystem::path path) {
     reloadPreview();
 }
 
-void Peeler::ParticleEditor::generateParticleFile(const std::filesystem::path& filename) {
-    std::unordered_set<Carrot::UUID> activeLinks; // not read from during generation (only used for visualisation)
-    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
-    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
-    ParticleShaderGenerator shaderGenerator(getCurrentProjectName());
-
-    auto shaders = shaderGenerator.compileToSPIRV(ParticleShaderInputs{
-            .fragment = fragmentExpressions,
-            .computeUpdate = updateExpressions
-        });
-    bool isOpaque = false; // TODO: determine via render graph
-    const ParticleShadersMetadata& metadata = shaderGenerator.getMetadata();
-    if (metadata.imageIndices.size() >= Carrot::ParticleBlueprint::MaxTexturesPerShader) {
-        ImGui::InsertNotification({ImGuiToastType::Error, 3000, "Too many different textures used in particle (max 32)"});
-        return;
-    }
-
-    Carrot::ParticleBlueprint blueprint(std::move(shaders.computeUpdate), std::move(shaders.fragment), isOpaque, metadata.imageIndices);
-
-    Carrot::IO::writeFile(filename.string(), [&](std::ostream& out) {
-        out << blueprint;
-    });
-}
-
 void Peeler::ParticleEditor::onFrame(const Carrot::Render::Context& renderContext) {
     if(renderContext.pViewport == &previewViewport) {
         if(previewSystem) {
@@ -173,31 +149,6 @@ void Peeler::ParticleEditor::onFrame(const Carrot::Render::Context& renderContex
             handleShortcuts(renderContext);
             if(ImGui::BeginMenu("Project")) {
                 drawProjectMenu();
-
-                if(ImGui::MenuItem("Export...")) {
-                    nfdchar_t* savePath;
-
-                    // prepare filters for the dialog
-                    nfdfilteritem_t filterItem[1] = {{"Particle", "particle"}};
-
-                    // show the dialog
-                    std::string defaultFilename = getCurrentProjectName()+".particle";
-                    nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultFilename.c_str());
-                    if (result == NFD_OKAY) {
-                        saveToFile(savePath);
-                        std::filesystem::path path = savePath;
-                        generateParticleFile(path);
-                        // remember to free the memory (since NFD_OKAY is returned)
-                        NFD_FreePath(savePath);
-                    } else if (result == NFD_CANCEL) {
-                        // no op
-                    } else {
-                        std::string msg = "Error: ";
-                        msg += NFD_GetError();
-                        throw std::runtime_error(msg);
-                    }
-                }
-
                 ImGui::EndMenu();
             }
 

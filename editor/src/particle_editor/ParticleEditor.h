@@ -83,7 +83,5 @@ namespace Peeler {
         void UIParticlePreview(Carrot::Render::Context renderContext);
         void reloadPreview();
 
-        void generateParticleFile(const std::filesystem::path& filename);
-
     };
 }
