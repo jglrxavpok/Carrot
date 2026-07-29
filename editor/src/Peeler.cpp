@@ -2381,15 +2381,14 @@ namespace Peeler {
     }
 
     void Application::convertEntityToPrefab(Carrot::ECS::Entity& entity) {
-        nfdchar_t* savePath;
-
-        // prepare filters for the dialog
-        nfdfilteritem_t filterItem[1] = {{"Carrot Prefab", "cprefab"}};
+        nfdchar_t* parentPath;
 
         // show the dialog
-        std::string defaultName = Carrot::sprintf("%s", std::string(entity.getName()).c_str());
-        nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultName.c_str());
+        auto defaultPath = getCurrentProjectFile().parent_path();
+        nfdresult_t result = NFD_PickFolder(&parentPath, reinterpret_cast<const nfdchar_t*>(defaultPath.u8string().c_str()));
         if (result == NFD_OKAY) {
+            std::filesystem::path savePath = parentPath;
+            savePath /= entity.getName();
             std::optional<Carrot::IO::VFS::Path> vfsPathOpt = GetVFS().represent(savePath);
             if(vfsPathOpt.has_value()) {
                 auto pPrefab = Carrot::ECS::Prefab::makePrefab();
@@ -2404,11 +2403,11 @@ namespace Peeler {
                     Carrot::Log::error("Failed to save prefab at %s :(", vfsPath.toString().c_str());
                 }
             } else {
-                Carrot::Log::error("File %s is not inside VFS, cannot save prefab to it.", savePath);
+                Carrot::Log::error("File %s is not inside VFS, cannot save prefab to it.", savePath.u8string().c_str());
             }
 
             // remember to free the memory (since NFD_OKAY is returned)
-            NFD_FreePath(savePath);
+            NFD_FreePath(parentPath);
         } else if (result == NFD_CANCEL) {
             /* no op */ ;
         } else {
