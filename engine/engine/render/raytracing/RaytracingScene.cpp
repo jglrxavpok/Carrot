@@ -152,10 +152,6 @@ namespace Carrot {
         this->boundSemaphores = boundSemaphores;
     }
 
-    BLASHandle BLAS::getHandle() const {
-        return BLASHandle(self);
-    }
-
     RaytracingScene& BLAS::getBuilder() const {
         return *builder;
     }
@@ -1175,11 +1171,6 @@ Carrot::BufferView Carrot::RaytracingScene::getInstancesBuffer(const Render::Con
     }
     return rtTransform;
 }
-
-void Carrot::BLAS::setHandle(WeakBLASHandle h) {
-    self = h;
-}
-
 
 namespace std {
     template<>

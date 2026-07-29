@@ -142,6 +142,25 @@ namespace Carrot {
         friend class Handle<TObjectType>;
         friend Slot;
     };
+
+    template<typename TSelf>
+    struct HandleBased {
+        using Handle = Carrot::Handle<TSelf>;
+        using WeakHandle = Carrot::HandleDetails::Weak<TSelf>;
+
+        Handle getHandle() const {
+            return Handle(self);
+        }
+
+    private:
+        void setHandle(WeakHandle h) {
+            self = h;
+        }
+
+        WeakHandle self;
+
+        friend class HandleStorage<TSelf>;
+    };
 }
 
 #include <core/containers/HandleStorage.ipp>

@@ -58,7 +58,7 @@ namespace Carrot {
         ClusterCompressed = 1, // Carrot::PackedVertex
     };
 
-    class BLAS {
+    class BLAS: public HandleBased<BLAS> {
     public:
         bool dynamicGeometry = false;
 
@@ -89,14 +89,11 @@ namespace Carrot {
         /// (one semaphore per swapchain image)
         void bindSemaphores(const Render::PerFrame<vk::Semaphore>& semaphores);
 
-        BLASHandle getHandle() const;
         RaytracingScene& getBuilder() const;
 
         virtual ~BLAS() noexcept;
 
     private:
-        void setHandle(WeakBLASHandle h);
-
         void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
 
         /// semaphore to wait for before building this BLAS
@@ -115,11 +112,9 @@ namespace Carrot {
         RaytracingScene* builder = nullptr;
         BLASGeometryFormat geometryFormat = BLASGeometryFormat::Default;
         Render::PerFrame<vk::Semaphore> boundSemaphores;
-        WeakBLASHandle self;
 
         friend class RaytracingScene;
         friend class InstanceHandle;
-        friend class HandleStorage<BLAS>;
     };
 
     class InstanceHandle {
