@@ -75,6 +75,15 @@ namespace Carrot {
          */
         operator bool() const;
 
+        /**
+         * Gets the underlying index of this handle.
+         * Note:
+         * 1. This index is not enough to reconstruct the handle, that's on purpose. If you need to reconstruct a handle, store one.
+         * 2. This is mostly intended to index into buffers related to the storage and to be used with HandleStorage::getMaxIndex
+         * @return Index of this handle
+         */
+        i32 getIndex() const;
+
     public: // pointer access
         TObjectType* get() const;
         TObjectType* operator->() const;
@@ -132,12 +141,20 @@ namespace Carrot {
         Slot* getSlot(i32 index, i32 generationIndex);
         Slot* getSlot(const Handle<TObjectType>& handle);
 
+        /**
+         * Max used index. Can be used to allocate a contiguous buffer that holds all handles of this storage and
+         * use the handle index as the index in the buffer.
+         * @return Max used index of this storage
+         */
+        i32 getMaxIndex() const;
+
     private:
         HandleDetails::Slot<TObjectType>& allocateSlot();
 
         Async::ReadWriteLock storageLock;
         SparseArray<Slot> storage;
         Vector<i32> freeList;
+        i32 maxIndex = 0;
 
         friend class Handle<TObjectType>;
         friend Slot;

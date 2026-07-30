@@ -9,9 +9,9 @@
 
 namespace Carrot::ECS {
     struct LightComponent: public IdentifiableComponent<LightComponent> {
-        std::shared_ptr<Render::LightHandle> lightRef;
+        Render::LightHandle lightRef;
 
-        explicit LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light = nullptr);
+        explicit LightComponent(Entity entity, Render::LightHandle light = {});
 
         explicit LightComponent(const Carrot::DocumentElement& doc, Entity entity);
 
@@ -22,12 +22,12 @@ namespace Carrot::ECS {
         }
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<LightComponent>(newOwner, duplicateLight(newOwner, *lightRef));
+            auto result = std::make_unique<LightComponent>(newOwner, duplicateLight(newOwner, lightRef));
             return result;
         }
 
     private:
-        std::shared_ptr<Render::LightHandle> duplicateLight(const Entity& newOwner, const Render::LightHandle& light) const;
+        Render::LightHandle duplicateLight(const Entity& newOwner, const Render::LightHandle& light) const;
     };
 }
 

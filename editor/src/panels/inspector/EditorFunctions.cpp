@@ -53,22 +53,22 @@ namespace Peeler {
 
     static void editLightComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::LightComponent*>& components) {
         multiEditField(edition, "Enabled", components,
-            +[](Carrot::ECS::LightComponent& c) -> bool { return (c.lightRef->light.flags & Carrot::Render::LightFlags::Enabled) != Carrot::Render::LightFlags::None; },
-            +[](Carrot::ECS::LightComponent& c, const bool& newValue) { c.lightRef->light.flags = newValue ? Carrot::Render::LightFlags::Enabled : Carrot::Render::LightFlags::None; });
+            +[](Carrot::ECS::LightComponent& c) -> bool { return (c.lightRef->flags & Carrot::Render::LightFlags::Enabled) != Carrot::Render::LightFlags::None; },
+            +[](Carrot::ECS::LightComponent& c, const bool& newValue) { c.lightRef->flags = newValue ? Carrot::Render::LightFlags::Enabled : Carrot::Render::LightFlags::None; });
 
         multiEditEnumField(edition, "Light type", components,
-            +[](Carrot::ECS::LightComponent& c) { return c.lightRef->light.type ; },
-            +[](Carrot::ECS::LightComponent& c, const Carrot::Render::LightType& v) { c.lightRef->light.type = v; },
+            +[](Carrot::ECS::LightComponent& c) { return c.lightRef->type ; },
+            +[](Carrot::ECS::LightComponent& c, const Carrot::Render::LightType& v) { c.lightRef->type = v; },
             Carrot::Render::Light::nameOf, { Carrot::Render::LightType::Point, Carrot::Render::LightType::Directional, Carrot::Render::LightType::Spot });
 
         multiEditField(edition, "Intensity", components,
-            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.intensity; });
+            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->intensity; });
 
         if(ImGui::CollapsingHeader("Parameters")) {
             bool allSameType = true;
-            Carrot::Render::LightType lightType = components[0]->lightRef->light.type;
+            Carrot::Render::LightType lightType = components[0]->lightRef->type;
             for(std::size_t i = 1; i < components.size(); i++) {
-                if(lightType != components[i]->lightRef->light.type) {
+                if(lightType != components[i]->lightRef->type) {
                     allSameType = false;
                     break;
                 }
@@ -77,20 +77,20 @@ namespace Peeler {
                 switch (lightType) {
                     case Carrot::Render::LightType::Spot: {
                         multiEditField(edition, "Cutoff angle", components,
-                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.spot.cutoffCosAngle }; },
-                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.spot.cutoffCosAngle = v.cosRadianValue; });
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->spot.cutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->spot.cutoffCosAngle = v.cosRadianValue; });
                         multiEditField(edition, "Outer cutoff angle", components,
-                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.spot.outerCutoffCosAngle }; },
-                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.spot.outerCutoffCosAngle = v.cosRadianValue; });
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->spot.outerCutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->spot.outerCutoffCosAngle = v.cosRadianValue; });
                     } break;
 
                     case Carrot::Render::LightType::Point: {
                         multiEditField(edition, "Constant attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.constantAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->point.constantAttenuation; });
                         multiEditField(edition, "Linear attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.linearAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->point.linearAttenuation; });
                         multiEditField(edition, "Quadratic attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.quadraticAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->point.quadraticAttenuation; });
                     } break;
 
                     default: {
@@ -103,8 +103,8 @@ namespace Peeler {
         }
 
         multiEditField(edition, "Light color", components,
-            +[](Carrot::ECS::LightComponent& c) { return Helpers::RGBColorWrapper { .rgb = c.lightRef->light.color }; },
-            +[](Carrot::ECS::LightComponent& c, const Helpers::RGBColorWrapper& v) { c.lightRef->light.color = v.rgb; });
+            +[](Carrot::ECS::LightComponent& c) { return Helpers::RGBColorWrapper { .rgb = c.lightRef->color }; },
+            +[](Carrot::ECS::LightComponent& c, const Helpers::RGBColorWrapper& v) { c.lightRef->color = v.rgb; });
     }
 
     static void editSpriteComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::SpriteComponent*>& components) {

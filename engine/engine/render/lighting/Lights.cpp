@@ -18,23 +18,11 @@ static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 2;
 
-    Light::Light() {
+    GPULight::GPULight() {
         point.position = glm::vec3{0};
         point.constantAttenuation = 1.0f;
         point.linearAttenuation = 0.09f;
         point.quadraticAttenuation = 0.032f;
-    }
-
-    LightHandle::LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system): WeakPoolHandle::WeakPoolHandle(index, std::move(destructor)), lightingSystem(system) {}
-
-    void LightHandle::updateHandle(const Carrot::Render::Context& renderContext) {
-        auto& data = lightingSystem.getLightData(*this);
-        data = light;
-    }
-
-    LightHandle::~LightHandle() {
-        auto& data = lightingSystem.getLightData(*this);
-        data.flags = LightFlags::None;
     }
 
     Lighting::Lighting() {
@@ -59,25 +47,24 @@ namespace Carrot::Render {
         reallocateDescriptorSets();
     }
 
-    std::shared_ptr<LightHandle> Lighting::create() {
-        auto ptr = lightHandles.create(std::ref(*this));
-        if(lightHandles.getRequiredStorageCount() > lightBufferSize) {
-            reallocateBuffers(Carrot::Math::nextPowerOf2(lightHandles.size()));
+    LightHandle Lighting::create() {
+        auto ptr = lightHandles.emplace();
+        if(lightHandles.getMaxIndex() >= lightBufferSize) {
+            reallocateBuffers(Carrot::Math::nextPowerOf2(lightHandles.getMaxIndex()+1));
         }
         return ptr;
     }
 
-    Light& Lighting::getLightData(LightHandle& handle) {
+    GPULight& Lighting::getLightGPUData(const LightHandle& handle) {
         Data* data = reinterpret_cast<Data*>(dataBytes.data());
         auto* lightPtr = data->lights;
-        return lightPtr[handle.getSlot()];
+        return lightPtr[handle.getIndex()];
     }
-
 
     void Lighting::reallocateBuffers(std::uint32_t lightCount) {
         lightBufferSize = std::max(lightCount, DefaultLightBufferSize);
         lightBuffer = GetResourceAllocator().allocateDedicatedBuffer(
-                sizeof(Data) + lightBufferSize * sizeof(Light),
+                sizeof(Data) + lightBufferSize * sizeof(GPULight),
                 vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                 vk::MemoryPropertyFlagBits::eDeviceLocal
         );
@@ -116,8 +103,13 @@ namespace Carrot::Render {
         }
     }
 
+    void Lighting::writeToGPU(const LightHandle& handle, const Carrot::Render::Context& renderContext) {
+        if (!handle) return;
+        getLightGPUData(handle) = static_cast<GPULight&>(*handle);
+    }
+
     void Lighting::onFrame(const Context& renderContext) {
-        lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto& handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
+        lightHandles.cleanup();
         Data* data = reinterpret_cast<Data*>(dataBytes.data());
         ActiveLightsData* activeLightsData = reinterpret_cast<ActiveLightsData*>(activeLightsDataBytes.data());
         data->lightCount = lightBufferSize;
@@ -127,14 +119,12 @@ namespace Carrot::Render {
         data->fogDistance = fogDistance;
 
         std::uint32_t activeCount = 0;
-        for(auto& [slot, handlePtr] : lightHandles) {
-            if(auto handle = handlePtr.lock()) {
-                if((handle->light.flags & LightFlags::Enabled) != LightFlags::None) {
-                    activeLightsData->indices[activeCount] = slot;
-                    activeCount++;
-                }
+        lightHandles.iterate([&](Light& light) {
+            if((light.flags & LightFlags::Enabled) != LightFlags::None) {
+                activeLightsData->indices[activeCount] = light.getHandle().getIndex();
+                activeCount++;
             }
-        }
+        });
 
         activeLightsData->count = activeCount;
 

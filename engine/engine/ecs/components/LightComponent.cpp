@@ -10,18 +10,18 @@
 #include "core/utils/ImGuiUtils.hpp"
 
 namespace Carrot::ECS {
-    LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(std::move(light)) {
+    LightComponent::LightComponent(Entity entity, Render::LightHandle light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(std::move(light)) {
         if(!lightRef) {
             lightRef = entity.getWorld().getLighting().create();
-            lightRef->light.flags = Render::LightFlags::Enabled;
+            lightRef->flags = Render::LightFlags::Enabled;
         }
     };
 
     LightComponent::LightComponent(const Carrot::DocumentElement& doc, Entity entity): IdentifiableComponent<LightComponent>(std::move(entity)) {
         lightRef = entity.getWorld().getLighting().create();
-        auto& light = lightRef->light;
+        auto& light = *lightRef;
         if(doc.contains("enabled")) {
-            lightRef->light.flags = doc["enabled"].getAsBool() ? Render::LightFlags::Enabled : Render::LightFlags::None;
+            light.flags = doc["enabled"].getAsBool() ? Render::LightFlags::Enabled : Render::LightFlags::None;
             light.color = Carrot::DocumentHelpers::read<3, float>(doc["color"]);
             light.intensity = doc["intensity"].getAsDouble();
 
@@ -45,7 +45,7 @@ namespace Carrot::ECS {
     Carrot::DocumentElement LightComponent::serialise() const {
         Carrot::DocumentElement obj;
         if(lightRef) { // components modified programmatically may not have this ref
-            const auto& light = lightRef->light;
+            const auto& light = *lightRef;
             obj["enabled"] = static_cast<bool>((light.flags & Render::LightFlags::Enabled) != Render::LightFlags::None);
 
             obj["type"] = Render::Light::nameOf(light.type);
@@ -75,10 +75,11 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    std::shared_ptr<Render::LightHandle> LightComponent::duplicateLight(const Entity& newOwner, const Render::LightHandle& light) const {
+    Render::LightHandle LightComponent::duplicateLight(const Entity& newOwner, const Render::LightHandle& light) const {
         Entity newOwnerModifiable = newOwner;
         auto clone = newOwnerModifiable.getWorld().getLighting().create();
-        clone->light = light.light;
+        // TODO: a bit ugly, need a solution for HandleBased objects that are copyable
+        static_cast<Render::GPULight&>(*clone) = static_cast<Render::GPULight&>(*light);
         return clone;
     }
 }

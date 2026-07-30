@@ -910,7 +910,7 @@ namespace Carrot::Scripting {
     {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        Render::Light& light = *entity.getComponent<ECS::LightComponent>()->lightRef;
         return (light.flags & Render::LightFlags::Enabled) != Render::LightFlags::None;
     }
 
@@ -918,7 +918,7 @@ namespace Carrot::Scripting {
     {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        Render::Light& light = *entity.getComponent<ECS::LightComponent>()->lightRef;
 
         // TODO: macro for flag operators?
         using IntType = std::underlying_type_t<Render::LightFlags>;
@@ -934,7 +934,7 @@ namespace Carrot::Scripting {
     {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        Render::Light& light = *entity.getComponent<ECS::LightComponent>()->lightRef;
         return light.intensity;
     }
 
@@ -942,7 +942,7 @@ namespace Carrot::Scripting {
     {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        Render::Light& light = entity.getComponent<ECS::LightComponent>()->lightRef->light;
+        Render::Light& light = *entity.getComponent<ECS::LightComponent>()->lightRef;
         light.intensity = value;
     }
 

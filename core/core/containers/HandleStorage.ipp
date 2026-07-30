@@ -126,6 +126,11 @@ namespace Carrot {
     }
 
     HANDLE_TEMPLATE
+    i32 Handle<TObjectType>::getIndex() const {
+        return index;
+    }
+
+    HANDLE_TEMPLATE
     Handle<TObjectType>& Handle<TObjectType>::operator=(const Handle& toCopy) {
         if (this == &toCopy) {
             return *this;
@@ -188,6 +193,8 @@ namespace Carrot {
         slot.index = freeIndex; // in case slot is new
         slot.generationIndex++;
         slot.pStorage = this;
+
+        this->maxIndex = std::max(this->maxIndex, freeIndex);
         return slot;
     }
 
@@ -223,6 +230,11 @@ namespace Carrot {
                 freeList.pushBack(slot.index);
             }
         });
+    }
+
+    HANDLE_TEMPLATE
+    i32 HandleStorage<TObjectType>::getMaxIndex() const {
+        return maxIndex;
     }
 
 }

@@ -4,6 +4,7 @@
 
 #pragma once
 #include <core/UniquePtr.hpp>
+#include <core/containers/HandleStorage.hpp>
 
 #include "core/utils/WeakPool.hpp"
 #include "engine/render/RenderContext.h"
@@ -11,6 +12,7 @@
 
 namespace Carrot::Render {
     using bool32 = uint32_t;
+    class Lighting;
 
     enum class LightType: std::uint8_t {
         Point,
@@ -23,7 +25,7 @@ namespace Carrot::Render {
         Enabled = 1 << 0,
     };
 
-    struct Light {
+    struct GPULight {
         glm::vec3 color{1.0f};
         LightFlags flags = LightFlags::None;
 
@@ -50,8 +52,10 @@ namespace Carrot::Render {
             } directional;
         };
 
-        Light();
+        GPULight();
+    };
 
+    struct Light: public GPULight, public HandleBased<Light> {
         static LightType fromString(std::string_view str);
         static const char* nameOf(const LightType& type);
     };
@@ -63,20 +67,7 @@ namespace Carrot::Render {
 
     class Lighting;
 
-    class LightHandle: public WeakPoolHandle {
-    public:
-        Light light;
-
-        /*[[deprecated]] */explicit LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system);
-
-        ~LightHandle();
-
-        void updateHandle(const Carrot::Render::Context& renderContext);
-
-    private:
-        Lighting& lightingSystem;
-        friend class Lighting;
-    };
+    using LightHandle = Handle<Light>;
 
     class Lighting: public SwapchainAware {
     public:
@@ -86,12 +77,14 @@ namespace Carrot::Render {
         glm::vec3& getAmbientLight() { return ambientColor; }
         const glm::vec3& getAmbientLight() const { return ambientColor; }
 
-        std::shared_ptr<LightHandle> create();
+        LightHandle create();
 
     public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
         void onFrame(const Carrot::Render::Context& renderContext);
         void drawDebug();
+
+        void writeToGPU(const LightHandle& handle, const Carrot::Render::Context& renderContext);
 
     public:
         static vk::UniqueDescriptorSetLayout makeDescriptorSetLayout();
@@ -102,7 +95,8 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
-        Light& getLightData(LightHandle& handle);
+        /// Reference to data on GPU
+        GPULight& getLightGPUData(const LightHandle& handle);
 
         void reallocateBuffers(std::uint32_t lightCount);
         void reallocateDescriptorSets();
@@ -115,7 +109,7 @@ namespace Carrot::Render {
     private:
         constexpr static std::uint32_t DefaultLightBufferSize = 16;
 
-        WeakPool<LightHandle> lightHandles;
+        HandleStorage<Light> lightHandles;
         glm::vec3 ambientColor {1.0f};
 
         struct Data {
@@ -129,7 +123,7 @@ namespace Carrot::Render {
             // Distance over which fog fades out
             float fogDepth = 1.0f;
 
-            Light lights[];
+            GPULight lights[];
         };
 
         struct ActiveLightsData {
@@ -152,8 +146,5 @@ namespace Carrot::Render {
 
         // Color of fog
         glm::vec3 fogColor { 0.0 };
-
-
-        friend class LightHandle;
     };
 }
