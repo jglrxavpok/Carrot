@@ -229,7 +229,7 @@ namespace Carrot::Render {
             vk::DeviceAddress address; // address to a vk::TransformMatrixKHR
         };
 
-        void queryVisibleGroupsAndActivateRTInstances(std::size_t lastFrameIndex);
+        void queryVisibleGroupsAndActivateRTInstances(u64 frameNumber);
         std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(
             Carrot::TaskHandle& task,
             std::span<const ClusterInstance> clusterInstances,

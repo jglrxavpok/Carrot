@@ -37,7 +37,7 @@ ParameterBlock<IO> io;
 ParameterBlock<Camera> cameras;
 ParameterBlock<Viewport> viewport;
 
-enum LodSelectionMode {
+enum LodSelectionMode: uint32_t {
     ScreenSize,
     Forced,
 }

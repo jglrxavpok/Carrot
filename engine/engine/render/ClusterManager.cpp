@@ -370,7 +370,7 @@ namespace Carrot::Render {
             if(isFirstFrame) {
                 isFirstFrame = false; // TODO: per viewport?
             } else {
-                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.getPreviousFrameNumber());
+                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.frameNumber);
             }
         }
     }
@@ -526,7 +526,7 @@ namespace Carrot::Render {
         const Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.frameIndex]->view;
         const Carrot::BufferView instanceRefs = instancesPerFrame[renderContext.frameIndex]->view;
         const Carrot::BufferView instanceDataRefs = instanceDataPerFrame[renderContext.frameIndex]->view;
-        const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.frameIndex)->getWholeView();
+        const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.frameNumber)->getWholeView();
         if(clusterRefs) {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
 
@@ -720,7 +720,7 @@ namespace Carrot::Render {
         // there are a LOT of data to process, and each group is independent from one another, so do everything in parallel
         Async::Counter sync;
         std::size_t parallelJobs = 32;
-        std::size_t granularity = count / parallelJobs;
+        std::size_t granularity = (count+parallelJobs-1) / parallelJobs;
         auto processRange = [&](std::size_t jobIndex) {
             GetTaskScheduler().schedule(TaskDescription {
                 .name = "processSingleClusterReadbackData",
@@ -744,7 +744,7 @@ namespace Carrot::Render {
     }
 
     /// Readbacks culled instances from the GPU, and prepares acceleration structures for raytracing, based on which groups are culled or not
-    void ClusterManager::queryVisibleGroupsAndActivateRTInstances(std::size_t lastFrameIndex) {
+    void ClusterManager::queryVisibleGroupsAndActivateRTInstances(u64 frameNumber) {
         // reset state
         for(auto& [slot, pModel] : models) {
             if(auto pLockedModel = pModel.lock()) {
@@ -754,7 +754,7 @@ namespace Carrot::Render {
         }
 
         for(auto& [pViewport, _] : perViewport) {
-            auto ref = getReadbackBuffer(pViewport, lastFrameIndex);
+            auto ref = getReadbackBuffer(pViewport, frameNumber);
             if(!ref.hasValue()) {
                 continue;
             }
