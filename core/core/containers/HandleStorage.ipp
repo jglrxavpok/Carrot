@@ -114,7 +114,6 @@ namespace Carrot {
 
         HandleDetails::Slot<TObjectType>* pSlot = pStorage->getSlot(index, generationIndex);
         if (pSlot) {
-            pSlot->increaseRef(); // TODO: multithreading?
             return &pSlot->pObject.value();
         }
         return nullptr;
