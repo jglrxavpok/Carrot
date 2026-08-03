@@ -113,7 +113,7 @@ namespace Carrot {
         }
 
         HandleDetails::Slot<TObjectType>* pSlot = pStorage->getSlot(index, generationIndex);
-        if (pSlot) {
+        if (pSlot && pSlot->pObject.has_value() /* slot may be allocated, but contained element was deleted via cleanup() */) {
             return &pSlot->pObject.value();
         }
         return nullptr;
@@ -156,7 +156,7 @@ namespace Carrot {
         pStorage = toMove.pStorage;
 
         // no need to mess with references as we are moving the value
-        toMove.index = 0;
+        toMove.index = -1;
         toMove.generationIndex = 0;
         toMove.pStorage = nullptr;
         return *this;

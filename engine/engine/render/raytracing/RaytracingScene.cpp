@@ -330,7 +330,7 @@ void Carrot::RaytracingScene::onFrame(const Carrot::Render::Context& renderConte
     // TODO: find something faster?
     {
         std::lock_guard g { blasStorageMutex };
-        // TODO: blasStorage.cleanup();
+        blasStorage.cleanup();
         blasStorage.iterate([&](BLAS& blas) {
             if(toBuild.size() > 1000) {
                 return;

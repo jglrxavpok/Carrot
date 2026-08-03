@@ -9,6 +9,7 @@
 #include <span>
 #include <core/utils/Types.h>
 #include <stb_sprintf.h>
+#include <cassert>
 
 namespace Carrot {
     /**
