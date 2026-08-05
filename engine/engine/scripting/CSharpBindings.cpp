@@ -612,7 +612,7 @@ namespace Carrot::Scripting {
                     .clazz = CameraComponentClass,
             };
             hardcodedComponents["Carrot.KinematicsComponent"] = {
-                    .id = ECS::Kinematics::getID(),
+                    .id = ECS::KinematicsComponent::getID(),
                     .clazz = KinematicsComponentClass,
             };
             hardcodedComponents["Carrot.Components.AnimatedModelComponent"] = {
@@ -897,13 +897,13 @@ namespace Carrot::Scripting {
     void CSharpBindings::_SetKinematicsLocalVelocity(MonoObject* transformComp, glm::vec3 value) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        entity.getComponent<ECS::Kinematics>()->velocity = value;
+        entity.getComponent<ECS::KinematicsComponent>()->velocity = value;
     }
 
     glm::vec3 CSharpBindings::_GetKinematicsLocalVelocity(MonoObject* transformComp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
-        return entity.getComponent<ECS::Kinematics>()->velocity;
+        return entity.getComponent<ECS::KinematicsComponent>()->velocity;
     }
 
     bool CSharpBindings::_GetLightEnabled(MonoObject* comp)

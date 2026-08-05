@@ -480,4 +480,16 @@ namespace Carrot {
     }
 
 #pragma endregion Serialisation
+
+#pragma region Rewrite rules
+    void DocumentElement::rename(const std::string& from, const std::string& to) {
+        verify(isObject(), "Calling rename on non-object DocumentElement!");
+
+        auto node = elements.extract(from);
+        if (!node)
+            return;
+        node.key() = to;
+        elements.insert(std::move(node));
+    }
+#pragma endregion
 } // Carrot

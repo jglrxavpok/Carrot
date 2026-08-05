@@ -51,9 +51,7 @@ namespace Carrot::ECS {
     private:
         Render::PerFrame<bool> needsRefreshs;
         std::string text;
-        std::string previousText;
         glm::vec4 color{1.0f};
-        glm::vec4 previousColor{1.0f};
         std::filesystem::path fontPath;
         std::shared_ptr<Carrot::Render::Font> font;
         Render::PerFrame<Carrot::Render::RenderableText> renderableTexts;

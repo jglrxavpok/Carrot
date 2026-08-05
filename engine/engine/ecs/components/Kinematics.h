@@ -6,44 +6,45 @@
 
 #include "Component.h"
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <core/utils/JSON.h>
-#include <core/utils/JSON.h>
-#include <imgui.h>
 #include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
-    struct Kinematics: public IdentifiableComponent<Kinematics> {
-        glm::vec3 velocity{};
+    BEGIN_COMPONENT(Kinematics)
+        FIELD(glm::vec3, velocity, "Velocity", {});
 
-        explicit Kinematics(Entity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
+        static void applyRewriteRules(Carrot::DocumentElement& doc) {
+            doc.rename("velocity", "Velocity");
+        }
+    END_COMPONENT
 
-        explicit Kinematics(const Carrot::DocumentElement& doc, Entity entity): Kinematics(std::move(entity)) {
-            velocity = DocumentHelpers::read<3, float>(doc["velocity"]);
-        };
-
-        Carrot::DocumentElement serialise() const override {
-            Carrot::DocumentElement obj;
-
-            obj["velocity"] = DocumentHelpers::write(velocity);
-
-            return obj;
+    inline KinematicsComponent::KinematicsComponent(const Carrot::DocumentElement& doc, Entity entity): KinematicsComponent(std::move(entity)) {
+            Carrot::DocumentElement::ObjectView objectView = doc.getAsObject();
+            for (const BaseComponentPropertyReflection* pReflect : Reflection.getProperties()) {
+                auto iter = objectView.find(pReflect->publicName);
+                if (iter != objectView.end()) {
+                    pReflect->deserialise(*this, iter->second);
+                } else if (pReflect->mandatory) {
+                    verify(false, Carrot::sprintf("Field %s is mandatory, but was not present in document", pReflect->name.c_str()));
+                }
+            }
         }
 
-        const char *const getName() const override {
-            return "Kinematics";
-        }
+    inline Carrot::DocumentElement KinematicsComponent::serialise() const {
+        Carrot::DocumentElement obj;
 
-        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<Kinematics>(newOwner);
-            result->velocity = velocity;
-            return result;
+        for (const BaseComponentPropertyReflection* pReflect : Reflection.getProperties()) {
+            obj[pReflect->publicName] = pReflect->serialise(*this);
         }
-    };
+        return obj;
+    }
+
+    inline std::unique_ptr<Component> KinematicsComponent::duplicate(const Entity& newOwner) const {
+        auto result = std::make_unique<KinematicsComponent>(newOwner);
+        for (const BaseComponentPropertyReflection* pReflect : Reflection.getProperties()) {
+            pReflect->duplicateProperty(*this, *result);
+        }
+        return result;
+    }
 }
 
-template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::Kinematics>::getStringRepresentation() {
-    return "Kinematics";
-}
+ADD_COMPONENT_ID(Carrot::ECS, Kinematics)

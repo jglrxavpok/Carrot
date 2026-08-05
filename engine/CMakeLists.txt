@@ -53,6 +53,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
+        ${EngineRoot}ecs/components/ComponentReflection.cpp
         ${EngineRoot}ecs/components/ErrorComponent.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/MissingComponent.cpp

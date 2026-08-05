@@ -177,9 +177,9 @@ namespace Peeler {
     void editModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ModelComponent*>& components);
     void editAnimatedModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::AnimatedModelComponent*>& components);
 
-    void editKinematicsComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::Kinematics*>& components) {
+    void editKinematicsComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::KinematicsComponent*>& components) {
         multiEditField(edition, "Velocity", components,
-            +[](Carrot::ECS::Kinematics& c) -> glm::vec3& { return c.velocity; });
+            +[](Carrot::ECS::KinematicsComponent& c) -> glm::vec3& { return c.velocity; });
     }
 
     void editForceSinPositionComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ForceSinPosition*>& components) {

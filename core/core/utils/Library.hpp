@@ -11,17 +11,38 @@
 
 namespace Carrot {
 
+    template<typename TElement>
+    concept HasRewriteRules = requires(Carrot::DocumentElement& doc) {
+        { TElement::applyRewriteRules(doc) };
+    };
+
+    /**
+     * Mapping from string ID to functions required to instantiate an object
+     * Mostly used to read systems & components from assets
+     * @tparam ContainedType Base type of the object to be able to instantiate. This type can contain a
+     *  `static void applyRewriteRules(Carrot::Document& doc)` function to allow to modify document before parsing.
+     *  This is the way to go to support backwards compatibility
+     * @tparam Param Types of params required to instantiate object
+     */
     template<typename ContainedType, typename... Param>
     class Library {
     public:
         using ID = std::string;
         using DeserialiseFunction = std::function<ContainedType(const Carrot::DocumentElement& doc, Param&&... params)>;
         using CreateNewFunction = std::function<ContainedType(Param&&... params)>;
+        using RewriteFunction = std::function<void(Carrot::DocumentElement& doc)>;
 
         explicit Library() = default;
 
         ContainedType deserialise(const ID& id, const Carrot::DocumentElement& doc, Param... params) const {
-            return deserialisers.at(id)(doc, std::forward<Param>(params)...);
+            auto rewriterIter = rewriteFunctions.find(id);
+            if (rewriterIter == rewriteFunctions.end()) {
+                return deserialisers.at(id)(doc, std::forward<Param>(params)...);
+            } else {
+                Carrot::DocumentElement rewrittenDoc = doc;
+                rewriterIter->second(rewrittenDoc);
+                return deserialisers.at(id)(rewrittenDoc, std::forward<Param>(params)...);
+            }
         }
 
         ContainedType create(const ID& id, Param... params) const {
@@ -33,6 +54,10 @@ namespace Carrot {
             Type::getID();
             deserialisers[Type::getStringRepresentation()] = deserialise;
             creationFunctions[Type::getStringRepresentation()] = create;
+
+            if constexpr (HasRewriteRules<Type>) {
+                rewriteFunctions[Type::getStringRepresentation()] = Type::applyRewriteRules;
+            }
         }
 
         void add(const ID& id, const DeserialiseFunction& deserialise, const CreateNewFunction& create) {
@@ -71,5 +96,6 @@ namespace Carrot {
     private:
         std::unordered_map<ID, DeserialiseFunction> deserialisers;
         std::unordered_map<ID, CreateNewFunction> creationFunctions;
+        std::unordered_map<ID, RewriteFunction> rewriteFunctions;
     };
 }

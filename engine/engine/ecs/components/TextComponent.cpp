@@ -95,7 +95,7 @@ namespace Carrot::ECS {
     }
 
     void TextComponent::setColor(const glm::vec4& newColor) {
-        previousColor = color;
+        glm::vec4 previousColor = color;
         color = newColor;
         for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = needsRefresh || newColor != previousColor;
@@ -148,7 +148,7 @@ namespace Carrot::ECS {
     }
 
     void TextComponent::setText(std::string_view text) {
-        previousText = this->text;
+        const std::string previousText = this->text;
         for (auto& needsRefresh : needsRefreshs) {
             needsRefresh = needsRefresh || previousText != text;
         }

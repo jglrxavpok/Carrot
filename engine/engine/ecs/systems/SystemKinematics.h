@@ -9,9 +9,9 @@
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemKinematics: public LogicSystem<TransformComponent, Kinematics>, public Identifiable<SystemKinematics> {
+    class SystemKinematics: public LogicSystem<TransformComponent, KinematicsComponent>, public Identifiable<SystemKinematics> {
     public:
-        explicit SystemKinematics(World& world): LogicSystem<TransformComponent, Kinematics>(world) {}
+        explicit SystemKinematics(World& world): LogicSystem<TransformComponent, KinematicsComponent>(world) {}
         explicit SystemKinematics(const Carrot::DocumentElement& doc, World& world): SystemKinematics(world) {}
 
         void tick(double dt) override;

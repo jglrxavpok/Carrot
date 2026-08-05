@@ -8,13 +8,13 @@
 #include <rapidjson/document.h>
 #include <utility>
 #include <core/utils/Library.hpp>
+#include <engine/ecs/components/ComponentReflection.h>
 
 namespace Carrot::Render {
     struct Context;
 }
 
 namespace Carrot::ECS {
-
     class Entity;
 
     struct Component {
@@ -101,11 +101,20 @@ namespace Carrot::ECS {
     };
 
     ComponentLibrary& getComponentLibrary();
+
+    template<typename TComponent>
+    struct ComponentRegistrationHelper {
+        ComponentRegistrationHelper() {
+            getComponentLibrary().add<TComponent>();
+        }
+    };
 }
 
 // Macros to quickly define a new component
 #define BEGIN_COMPONENT(ComponentName) \
         struct ComponentName ## Component : public Carrot::ECS::IdentifiableComponent<ComponentName ## Component> {                               \
+            using TSelf =             ComponentName ## Component; \
+            static inline ::Carrot::ECS::ComponentReflection Reflection{};  \
             explicit ComponentName ## Component(Carrot::ECS::Entity entity): IdentifiableComponent<ComponentName ## Component>(std::move(entity)) {};          \
                                                                                                                                                   \
             explicit ComponentName ## Component(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity);                                              \
@@ -123,6 +132,5 @@ namespace Carrot::ECS {
     template<> \
     inline const char* ::Carrot::Identifiable<Namespace :: ComponentName ## Component>::getStringRepresentation() { \
         return #ComponentName; \
-    }
-
-// TODO: macro to add to component library automatically
+    } \
+    namespace { static inline Carrot::ECS::ComponentRegistrationHelper<Namespace :: ComponentName ## Component> registrationHelper_ ## ComponentName {}; }

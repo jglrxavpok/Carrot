@@ -30,8 +30,8 @@ namespace Carrot {
 
     std::optional<Carrot::ComponentID> getIDFromName(std::string_view name);
 
-    extern Async::ParallelMap<Carrot::ComponentID, std::string> IdentifiableNames;
-    extern Async::ParallelMap<std::string, Carrot::ComponentID> IdentifiableIDs;
+    Carrot::Async::ParallelMap<Carrot::ComponentID, std::string>& GetIdentifiableNames();
+    Carrot::Async::ParallelMap<std::string, Carrot::ComponentID>& GetIdentifiableIDs();
 
     Carrot::ComponentID requestComponentID();
 }

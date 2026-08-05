@@ -256,6 +256,15 @@ namespace Carrot {
             friend class DocumentElement;
         };
 
+    public: // rewrite rules (help version migrations)
+        /**
+         * If present, changes the key of the element pointed by 'from', changing to key to 'to'.
+         * This element must be an object, otherwise this is an error.
+         * @param from the original key
+         * @param to the new key
+         */
+        void rename(const std::string& from, const std::string& to);
+
     private:
         // storage, depends on type
         union {
