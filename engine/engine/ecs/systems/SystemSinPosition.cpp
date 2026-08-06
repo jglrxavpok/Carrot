@@ -8,7 +8,7 @@ namespace Carrot::ECS {
     void SystemSinPosition::tick(double dt) {
         time += dt;
 
-        parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ForceSinPosition& forceSinPosition) {
+        parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ForceSinPositionComponent& forceSinPosition) {
             auto sinArguments =
                     forceSinPosition.angularFrequency * ((float) time) + forceSinPosition.angularOffset;
             transform.localTransform.position =

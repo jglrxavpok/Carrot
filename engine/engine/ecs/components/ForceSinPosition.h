@@ -13,49 +13,19 @@
 #include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
-    // TODO: still interesting??
-    struct ForceSinPosition: public IdentifiableComponent<ForceSinPosition> {
-        glm::vec3 angularFrequency{1.0f};
-        glm::vec3 amplitude{1.0f};
-        glm::vec3 angularOffset{0.0f};
-        glm::vec3 centerPosition{0.0f};
+    BEGIN_COMPONENT(ForceSinPosition)
+        FIELD(glm::vec3, angularFrequency, "Angular Frequency", glm::vec3{1.0f});
+        FIELD(glm::vec3, amplitude, "Amplitude", glm::vec3{1.0f});
+        FIELD(glm::vec3, angularOffset, "Angular Offset", glm::vec3{0.0f});
+        FIELD(glm::vec3, centerPosition, "Center Position", glm::vec3{0.0f});
 
-        explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
-
-        explicit ForceSinPosition(const Carrot::DocumentElement& doc, Entity entity): ForceSinPosition(std::move(entity)) {
-            angularFrequency = DocumentHelpers::read<3, float>(doc["angularFrequency"]);
-            amplitude = DocumentHelpers::read<3, float>(doc["amplitude"]);
-            angularOffset = DocumentHelpers::read<3, float>(doc["angularOffset"]);
-            centerPosition = DocumentHelpers::read<3, float>(doc["centerPosition"]);
-        };
-
-        Carrot::DocumentElement serialise() const override {
-            Carrot::DocumentElement obj;
-
-            obj["angularFrequency"] = DocumentHelpers::write<3, float>(angularFrequency);
-            obj["amplitude"] = DocumentHelpers::write<3, float>(amplitude);
-            obj["angularOffset"] = DocumentHelpers::write<3, float>(angularOffset);
-            obj["centerPosition"] = DocumentHelpers::write<3, float>(centerPosition);
-
-            return obj;
+        static void applyRewriteRules(Carrot::DocumentElement& doc) {
+            doc.rename("angularFrequency", "Angular Frequency");
+            doc.rename("amplitude", "Amplitude");
+            doc.rename("angularOffset", "Angular Offset");
+            doc.rename("centerPosition", "Center Position");
         }
-
-        const char *const getName() const override {
-            return "ForceSinPosition";
-        }
-
-        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<ForceSinPosition>(newOwner);
-            result->angularFrequency = angularFrequency;
-            result->amplitude = amplitude;
-            result->angularOffset = angularOffset;
-            result->centerPosition = centerPosition;
-            return result;
-        }
-    };
+    END_COMPONENT;
 }
 
-template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::ForceSinPosition>::getStringRepresentation() {
-    return "ForceSinPosition";
-}
+ADD_COMPONENT_ID(Carrot::ECS, ForceSinPosition);

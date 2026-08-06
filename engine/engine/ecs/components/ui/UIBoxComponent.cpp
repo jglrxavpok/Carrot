@@ -7,6 +7,7 @@
 #include <core/io/DocumentHelpers.h>
 
 namespace Carrot::UI {
+    /*
     UIBoxComponent::UIBoxComponent(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity): UIBoxComponent(std::move(entity)) {
         padding = Carrot::DocumentHelpers::read<4, u32>(json["padding"]);
         color = Carrot::DocumentHelpers::read<4, float>(json["color"]);
@@ -85,7 +86,7 @@ namespace Carrot::UI {
         clone->childGap = childGap;
         clone->image = image;
         return clone;
-    }
+    }*/
 
 
 } // Carrot::UI

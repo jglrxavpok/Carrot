@@ -5,6 +5,7 @@
 #include "UICanvasComponent.h"
 
 namespace Carrot::UI {
+    /*
     UICanvasComponent::UICanvasComponent(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity): UICanvasComponent(entity) {
         inWorld = json["in_world"].getAsBool();
 
@@ -32,6 +33,6 @@ namespace Carrot::UI {
         clone->inWorld = inWorld;
         return clone;
     }
-
+*/
 }
 

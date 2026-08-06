@@ -83,6 +83,8 @@ namespace Carrot::ECS {
     public:
         ComponentReflection() = default;
         const Carrot::Vector<BaseComponentPropertyReflection*>& getProperties() const;
+        Carrot::DocumentElement serialise(const Carrot::ECS::Component& comp) const;
+        void deserialise(Carrot::ECS::Component& comp, const Carrot::DocumentElement& doc) const;
 
     private:
         Carrot::Vector<BaseComponentPropertyReflection*> properties;

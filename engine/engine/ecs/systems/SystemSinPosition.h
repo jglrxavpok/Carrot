@@ -9,9 +9,9 @@
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemSinPosition: public LogicSystem<TransformComponent, ForceSinPosition>, public Identifiable<SystemSinPosition> {
+    class SystemSinPosition: public LogicSystem<TransformComponent, ForceSinPositionComponent>, public Identifiable<SystemSinPosition> {
     public:
-        explicit SystemSinPosition(World& world): LogicSystem<TransformComponent, ForceSinPosition>(world) {}
+        explicit SystemSinPosition(World& world): LogicSystem<TransformComponent, ForceSinPositionComponent>(world) {}
         explicit SystemSinPosition(const Carrot::DocumentElement& doc, World& world): SystemSinPosition(world) {}
 
         void tick(double dt) override;

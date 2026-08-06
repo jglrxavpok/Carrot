@@ -687,7 +687,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::SpriteComponent>();
         components.add<Carrot::ECS::ModelComponent>();
         components.add<Carrot::ECS::AnimatedModelComponent>();
-        components.add<Carrot::ECS::ForceSinPosition>();
+        components.add<Carrot::ECS::ForceSinPositionComponent>();
         components.add<Carrot::ECS::LightComponent>();
         components.add<Carrot::ECS::RigidBodyComponent>();
         components.add<Carrot::ECS::TextComponent>();
@@ -697,6 +697,10 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::BillboardComponent>();
         components.add<Carrot::ECS::PrefabInstanceComponent>();
         components.add<Carrot::ECS::ParticleEmitterComponent>();
+
+        components.add<Carrot::ECS::CameraComponent>();
+        components.add<Carrot::UI::UIBoxComponent>();
+        components.add<Carrot::UI::UICanvasComponent>();
     }
 
     {
