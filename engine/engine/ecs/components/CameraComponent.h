@@ -11,8 +11,12 @@
 #include "engine/render/Viewport.h"
 #include <imgui.h>
 
+#include "ComponentReflection.h"
+
 namespace Carrot::ECS {
-    BEGIN_COMPONENT(Camera)
+    struct CameraComponent: public ReflectionComponent<CameraComponent> {
+        using ReflectionComponent::ReflectionComponent;
+
         /// Is this the primary camera? Having multiple cameras with this flag will only apply the camera from the newest entity
         FIELD(bool, isPrimary, "Primary", false);
         FIELD(bool, isOrthographic, "Orthographic", false);
@@ -31,7 +35,7 @@ namespace Carrot::ECS {
         glm::mat4 makeProjectionMatrix(const Carrot::Render::Viewport& viewport) const;
 
         static void applyRewriteRules(Carrot::DocumentElement& doc);
-    END_COMPONENT
+    };
 }
 
 ADD_COMPONENT_ID(Carrot::ECS, Camera)

@@ -10,30 +10,21 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "ComponentReflection.h"
+
 namespace Carrot::ECS {
-    struct TransformComponent: public IdentifiableComponent<TransformComponent> {
-        Carrot::Math::Transform localTransform;
+    struct TransformComponent: public ReflectionComponent<TransformComponent> {
+        using ReflectionComponent::ReflectionComponent;
+
+        FIELD(Carrot::Math::Transform, localTransform, "Local Transform", {});
+        FIELD_CONFIG(localTransform, [](BaseComponentPropertyReflection& refl) {
+            refl.isInline = true;
+        });
 
         /// used for motion vectors
         glm::mat4 lastFrameGlobalTransform = glm::mat4 {0.0f};
 
-        explicit TransformComponent(Entity entity): IdentifiableComponent<TransformComponent>(std::move(entity)) {};
-
-        explicit TransformComponent(const Carrot::DocumentElement& doc, Entity entity);
-
-        Carrot::DocumentElement serialise() const override;
-
         [[nodiscard]] glm::mat4 toTransformMatrix() const;
-
-        const char *const getName() const override {
-            return "Transform";
-        }
-
-        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<TransformComponent>(newOwner);
-            result->localTransform = localTransform;
-            return result;
-        }
 
         /**
          * Computes the final position of the entity based on the parent orientation & position and this entity's local transform.
@@ -79,7 +70,4 @@ namespace Carrot::ECS {
     };
 }
 
-template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::TransformComponent>::getStringRepresentation() {
-    return "Transform";
-}
+ADD_COMPONENT_ID(Carrot::ECS, Transform);

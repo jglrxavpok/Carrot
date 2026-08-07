@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <engine/ecs/components/Component.h>
+#include <engine/ecs/components/ComponentReflection.h>
 #include <engine/render/AsyncResource.hpp>
 #include <engine/render/resources/Texture.h>
 
@@ -43,7 +43,7 @@ namespace Carrot::UI {
     static_assert(std::is_same_v<std::remove_reference_t<decltype(std::get<static_cast<std::size_t>(SizeTypeEnum::Fixed)>(std::declval<SizeType>()))>, Fixed>);
     static_assert(std::is_same_v<std::remove_reference_t<decltype(std::get<static_cast<std::size_t>(SizeTypeEnum::Percent)>(std::declval<SizeType>()))>, Percent>);
 
-    BEGIN_COMPONENT(UIBox)
+    struct UIBoxComponent: public ECS::ReflectionComponent<UIBoxComponent> {
         SizeType width = Grow{};
         SizeType height = Grow{};
         glm::vec4 color = {1,1,1,1};
@@ -51,8 +51,13 @@ namespace Carrot::UI {
         u16 childGap = 0;
         AsyncTextureResource image;
 
-    // TODO: rounding
-    END_COMPONENT
+        // TODO: rounding
+
+        using ReflectionComponent::ReflectionComponent;
+        UIBoxComponent(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity);
+        Carrot::DocumentElement serialise() const override;
+        std::unique_ptr<Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
+    };
 } // Carrot::UI
 
 ADD_COMPONENT_ID(Carrot::UI, UIBox)

@@ -250,3 +250,95 @@ TEST(Documents, DeserializeComplexFromTOML) {
         }
     }
 }
+
+TEST(Documents, Merging) {
+    // Objects get their fields merged
+    {
+        Carrot::DocumentElement a;
+        Carrot::DocumentElement b;
+
+        a["a"] = 42;
+        a["b"] = 50;
+
+        b["c"] = "some text";
+        b["a"] = 99;
+
+        a.mergeWith(b);
+        EXPECT_TRUE(a.isObject());
+        EXPECT_EQ(a["a"].getAsInt64(), 99); // overwritten from b
+        EXPECT_EQ(a["b"].getAsInt64(), 50); // kept from a
+        EXPECT_EQ(a["c"].getAsString(), "some text"); // imported from b
+    }
+
+    // Recursive merge
+    {
+        Carrot::DocumentElement a;
+        Carrot::DocumentElement b;
+
+        a["a"]["a"] = 99;
+        a["b"] = 50;
+
+        b["a"]["b"] = "some text";
+
+        a.mergeWith(b);
+        EXPECT_TRUE(a.isObject());
+        EXPECT_EQ(a["a"]["a"].getAsInt64(), 99); // kept from a
+        EXPECT_EQ(a["b"].getAsInt64(), 50); // kept from a
+        EXPECT_EQ(a["a"]["b"].getAsString(), "some text"); // imported from b, nested
+    }
+
+    // Arrays are appended
+    {
+        Carrot::DocumentElement a{Carrot::DocumentType::Array};
+        Carrot::DocumentElement b{Carrot::DocumentType::Array};
+
+        for (int i = 0; i < 10; i++) {
+            a.pushBack(static_cast<i64>(i));
+        }
+        for (int i = 10; i < 20; i++) {
+            b.pushBack(static_cast<i64>(i));
+        }
+
+        a.mergeWith(b);
+        EXPECT_TRUE(a.isArray());
+        auto asArray = a.getAsArray();
+        EXPECT_EQ(asArray.getSize(), 20);
+        for (int i = 0; i < asArray.getSize(); i++) {
+            EXPECT_EQ(asArray[i].getAsInt64(), static_cast<i64>(i));
+        }
+    }
+
+    // other types get replaced
+    {
+        Carrot::DocumentElement a;
+        Carrot::DocumentElement b;
+
+        a = "abc";
+        b = "def";
+        a.mergeWith(b);
+        EXPECT_TRUE(a.isString());
+        EXPECT_EQ(a.getAsString(), "def");
+    }
+    {
+        Carrot::DocumentElement a;
+        Carrot::DocumentElement b;
+
+        a = static_cast<i64>(42);
+        b = static_cast<i64>(50);
+        a.mergeWith(b);
+        EXPECT_TRUE(a.isInt64());
+        EXPECT_EQ(a.getAsInt64(), 50);
+    }
+
+    // Incompatible types are rejected
+    {
+        Carrot::DocumentElement a;
+        Carrot::DocumentElement b;
+
+        a = static_cast<i64>(42);
+        b = "text";
+        EXPECT_THROW(a.mergeWith(b), std::invalid_argument);
+        EXPECT_TRUE(a.isInt64());
+        EXPECT_EQ(a.getAsInt64(), 42);
+    }
+}

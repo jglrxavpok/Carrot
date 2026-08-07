@@ -4,11 +4,12 @@
 #include <core/io/DocumentHelpers.h>
 #include <engine/ecs/components/ComponentReflection.h>
 #include <core/utils/Identifier.h>
+#include <engine/math/Transform.h>
 
 #include "Component.h"
 
 namespace Carrot::ECS {
-    BaseComponentPropertyReflection::BaseComponentPropertyReflection(std::string name, std::string publicName, bool mandatory, ComponentReflection* pReflect)
+    BaseComponentPropertyReflection::BaseComponentPropertyReflection(std::string name, std::string publicName, bool mandatory, ComponentReflectionData* pReflect)
     : name(std::move(name))
     , publicName(std::move(publicName))
     , mandatory(mandatory)
@@ -16,26 +17,34 @@ namespace Carrot::ECS {
         pReflect->properties.pushBack(this);
     }
 
-    const Carrot::Vector<BaseComponentPropertyReflection*>& ComponentReflection::getProperties() const {
+    const Carrot::Vector<BaseComponentPropertyReflection*>& ComponentReflectionData::getProperties() const {
         return properties;
     }
 
-    Carrot::DocumentElement ComponentReflection::serialise(const Carrot::ECS::Component& comp) const {
+    Carrot::DocumentElement ComponentReflectionData::serialise(const Carrot::ECS::Component& comp) const {
         Carrot::DocumentElement doc;
         for (const auto& pProperty : properties) {
-            doc[pProperty->publicName] = pProperty->serialise(comp);
+            if (pProperty->isInline) {
+                doc.mergeWith(pProperty->serialise(comp));
+            } else {
+                doc[pProperty->publicName] = pProperty->serialise(comp);
+            }
         }
         return doc;
     }
 
-    void ComponentReflection::deserialise(Carrot::ECS::Component& comp, const Carrot::DocumentElement& doc) const {
+    void ComponentReflectionData::deserialise(Carrot::ECS::Component& comp, const Carrot::DocumentElement& doc) const {
         Carrot::DocumentElement::ObjectView objectView = doc.getAsObject();
         for (const BaseComponentPropertyReflection* pReflect : getProperties()) {
-            auto iter = objectView.find(pReflect->publicName);
-            if (iter != objectView.end()) {
-                pReflect->deserialise(comp, iter->second);
-            } else if (pReflect->mandatory) {
-                verify(false, Carrot::sprintf("Field %s is mandatory, but was not present in document", pReflect->name.c_str()));
+            if (pReflect->isInline) {
+                pReflect->deserialise(comp, doc);
+            } else {
+                auto iter = objectView.find(pReflect->publicName);
+                if (iter != objectView.end()) {
+                    pReflect->deserialise(comp, iter->second);
+                } else if (pReflect->mandatory) {
+                    verify(false, Carrot::sprintf("Field %s is mandatory, but was not present in document", pReflect->name.c_str()));
+                }
             }
         }
     }
@@ -79,5 +88,13 @@ namespace Carrot::ECS {
         Carrot::DocumentElement elem;
         elem = std::string{input};
         return elem;
+    }
+
+    template<> void deserialiseElement<Carrot::Math::Transform>(Carrot::Math::Transform& out, const Carrot::DocumentElement& doc) {
+        out.deserialise(doc);
+    }
+
+    template<> Carrot::DocumentElement serialiseElement<Carrot::Math::Transform>(const Carrot::Math::Transform& input) {
+        return input.serialise();
     }
 }

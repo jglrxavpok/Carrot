@@ -18,14 +18,6 @@ namespace Carrot::ECS {
         return localTransform.toTransformMatrix();
     }
 
-    TransformComponent::TransformComponent(const Carrot::DocumentElement& doc, Entity entity): TransformComponent(std::move(entity)) {
-        localTransform.deserialise(doc);
-    };
-
-    Carrot::DocumentElement TransformComponent::serialise() const {
-        return localTransform.serialise();
-    }
-
     void TransformComponent::setGlobalTransform(const Carrot::Math::Transform& newTransform, bool applyScale) {
         auto parent = getEntity().getParent();
         if(parent) {

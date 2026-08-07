@@ -81,6 +81,12 @@ namespace Carrot {
         /// Changes the type of this element to Double, and sets its value
         DocumentElement& operator=(double);
 
+        /// Takes all elements of 'other' and inserts them inside this document.
+        /// For objects, overwrites elements if they have the same key. If an element is also an object, mergeWith is called recursively
+        /// For arrays, appends to the array
+        /// For other types, replaces the content
+        void mergeWith(const Carrot::DocumentElement& other);
+
     public: // vector like methods
         /// Sets the reserved size of this element. If this element is not an Array, throws
         /// See Carrot::Vector::ensureReserve

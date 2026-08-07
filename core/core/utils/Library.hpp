@@ -74,6 +74,17 @@ namespace Carrot {
             });
         }
 
+        template<typename Type> requires IsIdentifiable<Type>
+        void addUniquePtrBasedV2() {
+            return add<Type>([](const Carrot::DocumentElement& doc, Param... params) {
+                std::unique_ptr<Type> pElement = std::make_unique<Type>(std::forward<Param>(params)...);
+                pElement->deserialise(doc);
+                return pElement;
+            }, [](Param... params) {
+                return std::make_unique<Type>(std::forward<Param>(params)...);
+            });
+        }
+
         std::vector<ID> getAllIDs() const {
             std::vector<ID> ids;
             for(const auto& [id, _] : deserialisers) {

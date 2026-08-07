@@ -4,16 +4,14 @@
 
 #pragma once
 
-#include "Component.h"
+#include <engine/ecs/components/ComponentReflection.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <core/utils/JSON.h>
-#include <imgui.h>
-#include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
-    BEGIN_COMPONENT(ForceSinPosition)
+    struct ForceSinPositionComponent: public ReflectionComponent<ForceSinPositionComponent> {
+        using ReflectionComponent::ReflectionComponent;
+
         FIELD(glm::vec3, angularFrequency, "Angular Frequency", glm::vec3{1.0f});
         FIELD(glm::vec3, amplitude, "Amplitude", glm::vec3{1.0f});
         FIELD(glm::vec3, angularOffset, "Angular Offset", glm::vec3{0.0f});
@@ -25,7 +23,7 @@ namespace Carrot::ECS {
             doc.rename("angularOffset", "Angular Offset");
             doc.rename("centerPosition", "Center Position");
         }
-    END_COMPONENT;
+    };
 }
 
 ADD_COMPONENT_ID(Carrot::ECS, ForceSinPosition);

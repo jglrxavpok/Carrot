@@ -182,15 +182,15 @@ namespace Peeler {
             +[](Carrot::ECS::KinematicsComponent& c) -> glm::vec3& { return c.velocity; });
     }
 
-    void editForceSinPositionComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ForceSinPosition*>& components) {
+    void editForceSinPositionComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ForceSinPositionComponent*>& components) {
         multiEditField(edition, "Angular Frequency", components,
-            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.angularFrequency; });
+            +[](Carrot::ECS::ForceSinPositionComponent& c) -> glm::vec3& { return c.angularFrequency; });
         multiEditField(edition, "Amplitude", components,
-            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.amplitude; });
+            +[](Carrot::ECS::ForceSinPositionComponent& c) -> glm::vec3& { return c.amplitude; });
         multiEditField(edition, "Angular Offset", components,
-            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.angularOffset; });
+            +[](Carrot::ECS::ForceSinPositionComponent& c) -> glm::vec3& { return c.angularOffset; });
         multiEditField(edition, "Center Position", components,
-            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.centerPosition; });
+            +[](Carrot::ECS::ForceSinPositionComponent& c) -> glm::vec3& { return c.centerPosition; });
     }
 
     void editCameraComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CameraComponent*>& components) {

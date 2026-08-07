@@ -683,24 +683,25 @@ void Carrot::Engine::initECS() {
 
     // TODO: automatise?
     {
-        components.add<Carrot::ECS::TransformComponent>();
+        components.addV2<Carrot::ECS::TransformComponent>();
         components.add<Carrot::ECS::SpriteComponent>();
         components.add<Carrot::ECS::ModelComponent>();
         components.add<Carrot::ECS::AnimatedModelComponent>();
-        components.add<Carrot::ECS::ForceSinPositionComponent>();
+        components.addV2<Carrot::ECS::ForceSinPositionComponent>();
+        components.addV2<Carrot::ECS::KinematicsComponent>();
         components.add<Carrot::ECS::LightComponent>();
         components.add<Carrot::ECS::RigidBodyComponent>();
         components.add<Carrot::ECS::TextComponent>();
         components.add<Carrot::ECS::PhysicsCharacterComponent>();
         components.add<Carrot::ECS::NavMeshComponent>();
-        components.add<Carrot::ECS::SoundListenerComponent>();
-        components.add<Carrot::ECS::BillboardComponent>();
+        components.addV2<Carrot::ECS::SoundListenerComponent>();
+        components.addV2<Carrot::ECS::BillboardComponent>();
         components.add<Carrot::ECS::PrefabInstanceComponent>();
         components.add<Carrot::ECS::ParticleEmitterComponent>();
 
-        components.add<Carrot::ECS::CameraComponent>();
-        components.add<Carrot::UI::UIBoxComponent>();
-        components.add<Carrot::UI::UICanvasComponent>();
+        components.addV2<Carrot::ECS::CameraComponent>();
+        components.addV2<Carrot::UI::UIBoxComponent>();
+        components.addV2<Carrot::UI::UICanvasComponent>();
     }
 
     {

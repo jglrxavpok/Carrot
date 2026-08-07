@@ -49,7 +49,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
         ${EngineRoot}ecs/components/AnimatedModelComponent.cpp
-        ${EngineRoot}ecs/components/BillboardComponent.cpp
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
@@ -63,7 +62,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
         ${EngineRoot}ecs/components/PrefabInstanceComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
-        ${EngineRoot}ecs/components/SoundListenerComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
         ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp

@@ -78,6 +78,42 @@ namespace Carrot {
         primitive.d = d;
         return *this;
     }
+
+    void DocumentElement::mergeWith(const Carrot::DocumentElement& other) {
+        if (other.getType() != getType()) {
+            throw std::invalid_argument("Mismatched types!");
+        }
+
+        switch (getType()) {
+            // Objects are merged
+            case DocumentType::Object: {
+                for (const auto& [name, value] : other.getAsObject()) {
+                    auto [iter, wasNew] = elements.try_emplace(name);
+                    if (wasNew) {
+                        iter->second = value;
+                    } else {
+                        // recursively
+                        iter->second.mergeWith(value);
+                    }
+                }
+
+            } break;
+
+                // Arrays are appended
+            case DocumentType::Array: {
+                auto otherAsArray = other.getAsArray();
+                setReserve(array.size() + otherAsArray.getSize());
+                for (const Carrot::DocumentElement& elem : otherAsArray) {
+                    pushBack() = elem;
+                }
+            } break;
+
+                // Otherwise, overwrites
+            default:
+                *this = other;
+                break;
+        }
+    }
 #pragma endregion SetContent
 
 #pragma region VectorLike

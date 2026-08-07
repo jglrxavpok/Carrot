@@ -8,7 +8,6 @@
 #include <rapidjson/document.h>
 #include <utility>
 #include <core/utils/Library.hpp>
-#include <engine/ecs/components/ComponentReflection.h>
 
 namespace Carrot::Render {
     struct Context;
@@ -33,6 +32,9 @@ namespace Carrot::ECS {
         virtual Carrot::DocumentElement serialise() const {
             return Carrot::DocumentElement{};
         };
+
+        // Separated from constructor: parent class may need to access child members (see ReflectionComponent)
+        virtual void deserialise(const Carrot::DocumentElement& doc) {}
 
         /**
          * Called when (re)loading a scene or loading a prefab, should be used for components that register themselves to other systems (Physics, Audio, etc.)
@@ -86,6 +88,11 @@ namespace Carrot::ECS {
             storage.addUniquePtrBased<T>();
         }
 
+        template<typename T> requires std::is_base_of_v<Component, T>
+        void addV2() {
+            storage.addUniquePtrBasedV2<T>();
+        }
+
         void add(const Storage::ID& id, const Storage::DeserialiseFunction& deserialiseFunc, const Storage::CreateNewFunction& createNewFunc);
 
         [[nodiscard]] std::unique_ptr<Component> deserialise(const Storage::ID& id, const Carrot::DocumentElement& doc, const Entity& entity) const;
@@ -102,31 +109,6 @@ namespace Carrot::ECS {
 
     ComponentLibrary& getComponentLibrary();
 }
-
-// Macros to quickly define a new component
-#define BEGIN_COMPONENT(ComponentName) \
-        struct ComponentName ## Component : public Carrot::ECS::IdentifiableComponent<ComponentName ## Component> {                               \
-            using TSelf =             ComponentName ## Component; \
-            static inline ::Carrot::ECS::ComponentReflection Reflection{};  \
-            explicit ComponentName ## Component(Carrot::ECS::Entity entity): IdentifiableComponent<ComponentName ## Component>(std::move(entity)) {};          \
-                                                                                                                                                  \
-            explicit ComponentName ## Component(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity): ComponentName ## Component(std::move(entity)) { Reflection.deserialise(*this, doc); } \
-                                                                                                                                                  \
-            Carrot::DocumentElement serialise() const override { return Reflection.serialise(*this); }                                            \
-                                                                                                                                                  \
-            const char *const getName() const override {                                                                                          \
-                return #ComponentName;                                                                                                            \
-            }                                                                                                                                     \
-                                                                                                                                                  \
-            std::unique_ptr<Component> duplicate(const Carrot::ECS::Entity& newOwner) const override {\
-                auto result = std::make_unique<ComponentName ## Component>(newOwner);\
-                for (const ::Carrot::ECS::BaseComponentPropertyReflection* pReflect : Reflection.getProperties()) {\
-                    pReflect->duplicateProperty(*this, *result);\
-                }\
-                return result;\
-            }
-
-#define END_COMPONENT }/*struct*/;
 
 /// Does not register the component: there needs to be at least one translation unit which refers to the component to generate the code
 /// Some components are only a single .h, so without forcing explicit initialisation, no translation unit will contain it
