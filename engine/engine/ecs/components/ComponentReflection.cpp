@@ -97,4 +97,14 @@ namespace Carrot::ECS {
     template<> Carrot::DocumentElement serialiseElement<Carrot::Math::Transform>(const Carrot::Math::Transform& input) {
         return input.serialise();
     }
+
+    template<> void deserialiseElement<Carrot::UUID>(Carrot::UUID& out, const Carrot::DocumentElement& doc) {
+        out = Carrot::UUID::fromString(doc.getAsString());
+    }
+
+    template<> Carrot::DocumentElement serialiseElement<Carrot::UUID>(const Carrot::UUID& input) {
+        Carrot::DocumentElement doc;
+        doc = input.toString();
+        return doc;
+    }
 }

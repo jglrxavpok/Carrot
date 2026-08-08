@@ -696,7 +696,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::NavMeshComponent>();
         components.addV2<Carrot::ECS::SoundListenerComponent>();
         components.addV2<Carrot::ECS::BillboardComponent>();
-        components.add<Carrot::ECS::PrefabInstanceComponent>();
+        components.addV2<Carrot::ECS::PrefabInstanceComponent>();
         components.add<Carrot::ECS::ParticleEmitterComponent>();
 
         components.addV2<Carrot::ECS::CameraComponent>();

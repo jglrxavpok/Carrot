@@ -4,7 +4,9 @@
 
 #pragma once
 #include <core/io/Document.h>
+#include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/Component.h>
+#include <engine/render/AsyncResource.hpp>
 
 namespace Carrot {
     namespace Math {
@@ -53,6 +55,14 @@ namespace Carrot::ECS {
     DECLARE_PROPERTY_TYPE(glm::vec3);
     DECLARE_PROPERTY_TYPE(Carrot::Identifier);
     DECLARE_PROPERTY_TYPE(Carrot::Math::Transform);
+    DECLARE_PROPERTY_TYPE(Carrot::UUID);
+
+    // Required? due to partial specialization not being allowed by C++
+    #define DECLARE_ASYNC_RESOURCE_PROPERTY_TYPE(AsyncResourceType) \
+        template<> inline void deserialiseElement<AsyncResourceType>(AsyncResourceType& out, const Carrot::DocumentElement& doc) { out.startLoad(doc); }\
+        template<> inline Carrot::DocumentElement serialiseElement<AsyncResourceType>(const AsyncResourceType& input) { return input.serialise(); }
+
+    DECLARE_ASYNC_RESOURCE_PROPERTY_TYPE(AsyncPrefabResource)
 
     /**
      * Templated version of BaseComponentPropertyReflection which has a pointer-to-member to the property inside the component

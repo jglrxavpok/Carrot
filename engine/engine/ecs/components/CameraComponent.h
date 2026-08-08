@@ -6,10 +6,7 @@
 
 #include "Component.h"
 #include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <core/utils/JSON.h>
 #include "engine/render/Viewport.h"
-#include <imgui.h>
 
 #include "ComponentReflection.h"
 

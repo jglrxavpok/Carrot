@@ -30,6 +30,7 @@ namespace Carrot {
     template<typename T, bool WaitOnAccess, typename ValueContainer = std::shared_ptr<T>>
     class AsyncResource {
     public:
+        constexpr static bool IsSerializable = IsResourceSerialisable<T, ValueContainer>;
 
     public:
         AsyncResource() {

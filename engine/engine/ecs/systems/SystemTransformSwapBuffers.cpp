@@ -5,7 +5,7 @@
 
 namespace Carrot::ECS {
     void SystemTransformSwapBuffers::swapBuffers() {
-        forEachEntity([&](Entity& entity, TransformComponent& transformComponent) {
+        parallelForEachEntity([&](Entity& entity, TransformComponent& transformComponent) {
             transformComponent.lastFrameGlobalTransform = transformComponent.toTransformMatrix();
         });
     }
