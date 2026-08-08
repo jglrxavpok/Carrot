@@ -267,20 +267,26 @@ namespace Carrot {
         });
     }
 
-    std::shared_ptr<ECS::Prefab> AssetServer::loadPrefab(const Carrot::IO::VFS::Path& path) {
-        // not on a fiber because this seems to deadlock/crash Mono and I can't figure it out -> TODO: continue research or replace Mono
-        return prefabs.getOrCompute(path.toString(), [&]() {
-            auto pPrefab = ECS::Prefab::makePrefab();
-            pPrefab->load(path);
-            return pPrefab;
-        });
+    Handle<ECS::Prefab> AssetServer::newPrefab(const Carrot::IO::VFS::Path& path) {
+        bool wasNew = false;
+        Handle<ECS::Prefab> prefab = Handle<ECS::Prefab>(prefabs.getOrCompute(path.toString(), [&, path]() {
+            auto hPrefab = prefabStorage.emplace(path);
+            wasNew = true;
+            return hPrefab.asWeak();
+        }));
+
+        if (wasNew) {
+            return prefab;
+        }
+        return {};
     }
 
-    void AssetServer::storePrefab(ECS::Prefab& prefab) {
-        prefabs.remove(prefab.getVFSPath().toString());
-        DISCARD(prefabs.getOrCompute(prefab.getVFSPath().toString(), [&]() {
-            // if it does not already exist, replace with the input prefab
-            return prefab.shared_from_this();
+    Handle<ECS::Prefab> AssetServer::loadPrefab(const Carrot::IO::VFS::Path& path) {
+        // not on a fiber because this seems to deadlock/crash Mono and I can't figure it out -> TODO: continue research or replace Mono
+        return Handle(prefabs.getOrCompute(path.toString(), [&, path]() {
+            auto pPrefab = prefabStorage.emplace(path);
+            pPrefab->load();
+            return pPrefab.asWeak();
         }));
     }
 

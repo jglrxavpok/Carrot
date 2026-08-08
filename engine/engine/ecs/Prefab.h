@@ -8,6 +8,7 @@
 #include <core/io/Resource.h>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/ecs/components/Component.h>
+#include <engine/render/AsyncResource.hpp>
 #include <engine/scene/Scene.h>
 #include <engine/task/TaskScheduler.h>
 
@@ -35,10 +36,11 @@ namespace Carrot::ECS {
 ///
 /// When stored, entities can reference a prefab, and default values will be omitted from their serialized version when saving.
 /// These default values will be used to fill the entity's component upon load.
-class Prefab: public std::enable_shared_from_this<Prefab> {
+class Prefab: public HandleBased<Prefab> {
 public:
     inline static UUID PrefabRootUUID = UUID::null();
-    static std::shared_ptr<Prefab> makePrefab();
+
+    Prefab(const Carrot::IO::VFS::Path& path);
 
     /// IDs of children of given part of the hierarchy (not recursive)
     /// 'childID' is the UUID of the entity inside the scene/prefab that you want to reference
@@ -75,7 +77,7 @@ public:
     Entity instantiate(World& world) const;
 
     /// VFS path used to create or save this prefab
-    const Carrot::IO::VFS::Path& getVFSPath() const;
+    const Carrot::IO::VFS::Path& getFilePath() const;
 
 private: // runtime edition and application of changes
 
@@ -96,7 +98,7 @@ private:
     Prefab() = default;
 
     /// Loads this prefab from the given VFS path
-    void load(const Carrot::IO::VFS::Path& prefabAsset);
+    void load();
 
     /// Instantiate a copy of this prefab, EXCLUDING its children.
     /// This is repeatively used to recursively create all instances of the hierarchy, and *then* link everything (see instantiate)
@@ -111,3 +113,12 @@ private:
 };
 
 } // Carrot::ECS
+
+namespace Carrot {
+    using AsyncPrefabResource = AsyncResource<ECS::Prefab, true /*TODO: use false, and make scene deserialisation wait for prefab loading*/, ECS::Prefab::Handle>;
+
+    template<>
+    struct AsyncResourceTraits<Carrot::ECS::Prefab> {
+        static AsyncTaskType<Carrot::ECS::Prefab, Handle<ECS::Prefab>> makeLoadingTask(const Carrot::IO::VFS::Path& path);
+    };
+}

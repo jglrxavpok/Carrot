@@ -130,6 +130,11 @@ namespace Carrot {
     }
 
     HANDLE_TEMPLATE
+    HandleDetails::Weak<TObjectType> Handle<TObjectType>::asWeak() const {
+        return HandleDetails::Weak<TObjectType>{pStorage, index, generationIndex};
+    }
+
+    HANDLE_TEMPLATE
     Handle<TObjectType>& Handle<TObjectType>::operator=(const Handle& toCopy) {
         if (this == &toCopy) {
             return *this;

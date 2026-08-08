@@ -40,6 +40,7 @@ namespace Carrot::ECS {
             result->setColor(getColor());
             result->setText(getText());
             result->setHorizontalAlignment(getHorizontalAlignment());
+            result->setVerticalAlignment(getVerticalAlignment());
             return result;
         }
 

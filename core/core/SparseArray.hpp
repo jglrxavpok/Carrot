@@ -30,7 +30,7 @@ namespace Carrot {
 
         void iterate(const std::function<void(T&)>& forEach) {
             for(auto& bank : banks) {
-                for(auto& optValue : bank.data) {
+                for(auto& optValue : bank.pStorage->data) {
                     if(optValue.has_value()) {
                         forEach(optValue.value());
                     }
@@ -51,7 +51,7 @@ namespace Carrot {
                 return false;
             }
 
-            return bank->data[index % Granularity].has_value();
+            return bank->pStorage->data[index % Granularity].has_value();
         }
 
         /**
@@ -75,9 +75,15 @@ namespace Carrot {
                 elementCount = newSize;
             } else { // newSize < elementCount
                 std::size_t maxBankIndex = newSize - (newSize % Granularity);
-                std::erase_if(banks, [&](const Bank& b) {
-                    return b.startIndex > maxBankIndex;
-                });
+
+                i64 indexOfBankWithStartBelowLimit = banks.size()-1;
+                for (; indexOfBankWithStartBelowLimit >= 0; indexOfBankWithStartBelowLimit--) {
+                    if (banks[indexOfBankWithStartBelowLimit].startIndex <= maxBankIndex) {
+                        break;
+                    }
+                }
+
+                banks.resize(indexOfBankWithStartBelowLimit+1);
 
                 // in case last bank already existed
                 Bank* lastBank = getBank(maxBankIndex);
@@ -85,8 +91,8 @@ namespace Carrot {
                     for(std::size_t i = 0; i < Granularity; i++) {
                         std::size_t index = i + maxBankIndex;
                         if(index >= newSize) {
-                            if(lastBank->data[i].has_value()) {
-                                lastBank->data[i].reset();
+                            if(lastBank->pStorage->data[i].has_value()) {
+                                lastBank->pStorage->data[i].reset();
                                 lastBank->allocatedCount--;
                             }
                         }
@@ -141,7 +147,7 @@ namespace Carrot {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }
 
-            auto& opt = bank->data[index % Granularity];
+            auto& opt = bank->pStorage->data[index % Granularity];
             if(!opt.has_value()) {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }
@@ -161,7 +167,7 @@ namespace Carrot {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }
 
-            auto& opt = bank->data[index % Granularity];
+            auto& opt = bank->pStorage->data[index % Granularity];
             if(!opt.has_value()) {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }
@@ -170,17 +176,21 @@ namespace Carrot {
 
     private:
         struct Bank {
+            struct Storage {
+                std::optional<T> data[Granularity];
+            };
+
             std::size_t startIndex = 0;
             std::size_t allocatedCount = 0;
-            std::optional<T> data[Granularity];
+            std::unique_ptr<Storage> pStorage = std::make_unique<Storage>();
 
             T& getOrCreate(std::size_t globalIndex) {
                 verify(globalIndex >= startIndex && globalIndex < startIndex + Granularity, "Out of bounds!");
 
                 std::size_t localIndex = (globalIndex - startIndex) % Granularity;
-                auto& opt = data[localIndex];
+                auto& opt = pStorage->data[localIndex];
                 if(!opt.has_value()) {
-                    opt = std::move(T{});
+                    opt.emplace();
                     allocatedCount++;
                 }
                 return opt.value();

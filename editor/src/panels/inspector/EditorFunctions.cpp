@@ -292,7 +292,7 @@ namespace Peeler {
 
     void editPrefabComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PrefabInstanceComponent*>& components) {
         auto getPath = [&](std::int64_t index) -> Carrot::IO::VFS::Path {
-            return components[index]->prefab ? components[index]->prefab->getVFSPath() : "";
+            return components[index]->prefab.get() ? components[index]->prefab->getFilePath() : "";
         };
         Carrot::IO::VFS::Path pathToDisplay = getPath(0);
         bool samePath = true;

@@ -7,7 +7,7 @@
 #include <Peeler.h>
 
 namespace Peeler {
-    AddSystemsCommand::AddSystemsCommand(Application& app, Carrot::Vector<std::string> systemNames, bool areRenderSystems): ICommand(app, Carrot::sprintf("Add systems")), systemNames(std::move(systemNames)), areRenderSystems(areRenderSystems) {}
+    AddSystemsCommand::AddSystemsCommand(Application& app, Carrot::Vector<std::string> systemNames, bool areRenderSystems): ICommand(app, "Add systems"), systemNames(std::move(systemNames)), areRenderSystems(areRenderSystems) {}
 
     void AddSystemsCommand::redo() {
         for (const auto& systemName : systemNames) {

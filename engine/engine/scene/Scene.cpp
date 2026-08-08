@@ -167,7 +167,7 @@ namespace Carrot {
             }
 
             auto prefabInstanceComponent = entity.getComponent<ECS::PrefabInstanceComponent>();
-            std::shared_ptr<const ECS::Prefab> pPrefab = prefabInstanceComponent.hasValue() ? prefabInstanceComponent.asPtr()->prefab : nullptr;
+            Handle<ECS::Prefab> pPrefab = prefabInstanceComponent.hasValue() ? prefabInstanceComponent.asPtr()->prefab.get() : Handle<ECS::Prefab>{};
 
             // TODO: check if prefab entity
             for (const auto& pComp : entity.getAllComponents()) {
@@ -177,7 +177,7 @@ namespace Carrot {
 
                 toml::table tomlComp;
 
-                if(pPrefab != nullptr && pComp->getComponentTypeID() != ECS::PrefabInstanceComponent::getID()) {
+                if(pPrefab && pComp->getComponentTypeID() != ECS::PrefabInstanceComponent::getID()) {
                     auto optComponentRef = pPrefab->getComponent(prefabInstanceComponent->childID, pComp->getComponentTypeID());
                     if (optComponentRef.hasValue()) {
                         ECS::Component& prefabComponent = optComponentRef;
@@ -266,7 +266,7 @@ namespace Carrot {
     }
 
     void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder, bool loadSystems) {
-        try { // TODO: remove try catch
+        //try { // TODO: remove try catch
             auto& vfs = GetVFS();
             auto& componentLib = Carrot::ECS::getComponentLibrary();
             auto& systemLib = Carrot::ECS::getSystemLibrary();
@@ -331,7 +331,7 @@ namespace Carrot {
                     }
 
                     // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
-                    std::shared_ptr<const ECS::Prefab> pPrefab;
+                    Handle<ECS::Prefab> pPrefab;
                     Carrot::UUID prefabChildID = Carrot::UUID::null();
                     std::string prefabInstanceFilename { ECS::PrefabInstanceComponent::getStringRepresentation() };
                     prefabInstanceFilename += ".toml";
@@ -343,7 +343,7 @@ namespace Carrot {
                         self.addComponent(std::move(component));
 
                         auto prefabInstanceComp = self.getComponent<ECS::PrefabInstanceComponent>();
-                        pPrefab = prefabInstanceComp->prefab;
+                        pPrefab = prefabInstanceComp->prefab.get();
                         prefabChildID = prefabInstanceComp->childID;
 
                         if(pPrefab) {
@@ -386,10 +386,10 @@ namespace Carrot {
                                 self.addComponent(std::make_unique<ECS::MissingComponent>(self, componentName, doc));
                                 continue;
                             }
-                            if(pPrefab != nullptr) {
+                            if(pPrefab) {
                                 if (!pPrefab->hasChildWithID(prefabChildID)) {
                                     auto pErrorComponent = std::make_unique<ECS::ErrorComponent>(self);
-                                    pErrorComponent->message = Carrot::sprintf("Prefab '%s' has no child with UUID %s", pPrefab->getVFSPath().toString().c_str(), prefabChildID.toString().c_str());
+                                    pErrorComponent->message = Carrot::sprintf("Prefab '%s' has no child with UUID %s", pPrefab->getFilePath().toString().c_str(), prefabChildID.toString().c_str());
                                     self.addComponent(std::move(pErrorComponent));
                                 } else {
                                     Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
@@ -471,13 +471,13 @@ namespace Carrot {
                     }
                 }
             }
-        } catch (std::exception& e) {
+        /*} catch (std::exception& e) {
             Carrot::Log::error("Failed to deserialise scene: %s", e.what());
             throw;
         } catch (...) {
             Carrot::Log::error("Failed to deserialise scene!!");
             throw;
-        }
+        }*/
 #if 0
 
             for(const auto& [componentNameKey, componentDataKey] : data) {

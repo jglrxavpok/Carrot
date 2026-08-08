@@ -84,6 +84,8 @@ namespace Carrot {
          */
         i32 getIndex() const;
 
+        HandleDetails::Weak<TObjectType> asWeak() const;
+
     public: // pointer access
         TObjectType* get() const;
         TObjectType* operator->() const;

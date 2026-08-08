@@ -154,4 +154,18 @@ namespace Carrot::Render {
         vectype result = *reinterpret_cast<vectype*>(pixels.data());
         return result;
     }
+
+    Carrot::IO::VFS::Path Texture::getFilePath() const {
+        const auto& originResource = getOriginatingResource();
+        if (originResource.isFile()) {
+            return VFS::Path{originResource.getName()};
+        }
+        return "";
+    }
+}
+
+namespace Carrot {
+    AsyncTaskType<Carrot::Render::Texture> AsyncResourceTraits<Render::Texture>::makeLoadingTask(const Carrot::IO::VFS::Path& path) {
+        return GetAssetServer().loadTextureTask(path);
+    }
 }

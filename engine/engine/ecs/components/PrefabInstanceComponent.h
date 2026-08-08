@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/io/vfs/VirtualFileSystem.h>
+#include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/Component.h>
 
 namespace Carrot::ECS {
@@ -16,7 +17,7 @@ namespace Carrot::ECS {
 
     class PrefabInstanceComponent: public Carrot::ECS::IdentifiableComponent<PrefabInstanceComponent> {
     public:
-        std::shared_ptr<const Carrot::ECS::Prefab> prefab;
+        AsyncPrefabResource prefab;
         Carrot::UUID childID = Carrot::UUID::null(); //< null UUID if represents root of prefab
 
         explicit PrefabInstanceComponent(Carrot::ECS::Entity entity);

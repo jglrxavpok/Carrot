@@ -13,8 +13,8 @@
 #include "components/TransformComponent.h"
 
 namespace Carrot::ECS {
-    /*static*/ std::shared_ptr<Prefab> Prefab::makePrefab() {
-        return std::shared_ptr<Prefab>(new Prefab);
+    Prefab::Prefab(const Carrot::IO::VFS::Path& path): path(path) {
+
     }
 
     std::unordered_set<Carrot::ECS::EntityID> Prefab::getChildrenIDs(const EntityID& prefabChildID) const {
@@ -37,9 +37,8 @@ namespace Carrot::ECS {
         return result;
     }
 
-    void Prefab::load(const Carrot::IO::VFS::Path& prefabAsset) {
-        path = prefabAsset;
-        internalScene.deserialise(prefabAsset, false);
+    void Prefab::load() {
+        internalScene.deserialise(path, false);
         internalScene.world.flushEntityCreationAndRemoval(); // ensure entities are properly added
         internalScene.unload(); // deactivate default-active elements (like animated model handles)
     }
@@ -90,8 +89,6 @@ namespace Carrot::ECS {
     bool Prefab::save(const Carrot::IO::VFS::Path& prefabAsset) {
         this->path = prefabAsset;
         internalScene.serialise(GetVFS().resolve(prefabAsset));
-
-        GetAssetServer().storePrefab(*this);
         return true;
     }
 
@@ -162,7 +159,7 @@ namespace Carrot::ECS {
 
         cloned.addComponent<PrefabInstanceComponent>();
         PrefabInstanceComponent& component = cloned.getComponent<PrefabInstanceComponent>();
-        component.prefab = shared_from_this();
+        component.prefab = getHandle();
         component.childID = startEntity.getID();
 
         for (const auto& child : startEntity.getChildren(ShouldRecurse::NoRecursion)) {
@@ -181,7 +178,7 @@ namespace Carrot::ECS {
         rootEntity.addComponent<PrefabInstanceComponent>();
         rootEntity.addComponent<TransformComponent>();
         PrefabInstanceComponent& component = rootEntity.getComponent<PrefabInstanceComponent>();
-        component.prefab = shared_from_this();
+        component.prefab = getHandle();
         component.childID = PrefabRootUUID;
 
         for (const auto& e : internalScene.world.getAllEntities()) {
@@ -199,7 +196,7 @@ namespace Carrot::ECS {
 
             cloned.addComponent<PrefabInstanceComponent>();
             PrefabInstanceComponent& component = cloned.getComponent<PrefabInstanceComponent>();
-            component.prefab = shared_from_this();
+            component.prefab = getHandle();
             component.childID = e.getID();
         }
         for (const auto& e : internalScene.world.getAllEntities()) {
@@ -215,7 +212,7 @@ namespace Carrot::ECS {
         return rootEntity;
     }
 
-    const Carrot::IO::VFS::Path& Prefab::getVFSPath() const {
+    const Carrot::IO::VFS::Path& Prefab::getFilePath() const {
         return path;
     }
 
@@ -229,7 +226,7 @@ namespace Carrot::ECS {
         for(auto& [entity, pComponents] : currentScene.queryEntities<PrefabInstanceComponent>()) {
             // first ensure we only modify instances of this prefab
             PrefabInstanceComponent& prefabInstanceComp = *reinterpret_cast<PrefabInstanceComponent*>(pComponents[0]);
-            if(prefabInstanceComp.prefab.get() != this) {
+            if(&(*prefabInstanceComp.prefab.get()) != this) {
                 continue;
             }
 
@@ -238,3 +235,13 @@ namespace Carrot::ECS {
     }
 
 } // Carrot::ECS
+
+namespace Carrot {
+    AsyncTaskType<Carrot::ECS::Prefab, Handle<ECS::Prefab>> AsyncResourceTraits<ECS::Prefab>::makeLoadingTask(const Carrot::IO::VFS::Path& path) {
+        // not using fibers, *yet*
+        auto result = GetAssetServer().loadPrefab(path);
+        return [result](TaskHandle& task) {
+            return result;
+        };
+    }
+}

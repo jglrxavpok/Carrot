@@ -9,6 +9,7 @@
 #include <engine/ecs/EntityTypes.h>
 #include <engine/task/TaskScheduler.h>
 #include <engine/render/animation/AnimatedModel.h>
+#include <engine/ecs/Prefab.h>
 
 namespace Carrot {
     class RenderableParticleBlueprint;
@@ -19,10 +20,6 @@ namespace Carrot {
         struct Context;
         struct Font;
         class Texture;
-    }
-
-    namespace ECS {
-        class Prefab;
     }
 
     /**
@@ -76,12 +73,10 @@ namespace Carrot {
         LoadTaskProc<Carrot::RenderableParticleBlueprint> loadParticleBlueprintTask(const Carrot::IO::VFS::Path& path);
         std::shared_ptr<Carrot::RenderableParticleBlueprint> loadParticleBlueprintTask(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
-        std::shared_ptr<ECS::Prefab> loadPrefab(const Carrot::IO::VFS::Path& path);
+        /// Creates a new prefab at the given location. Returns a null handle if the location is already used
+        Handle<ECS::Prefab> newPrefab(const Carrot::IO::VFS::Path& path);
+        Handle<ECS::Prefab> loadPrefab(const Carrot::IO::VFS::Path& path);
 
-        /// Intended for use by Prefab only: next call to loadPrefab with the VFS path will return the input prefab.
-        /// This is meant to populate the asset server when a new prefab is created from the editor, so that further calls to loadPrefab find the new prefab.
-        /// If a prefab already existed with the VFS path of the prefab, it will be overriden inside the asset server
-        void storePrefab(ECS::Prefab& prefab);
         void removePrefab(const Carrot::IO::VFS::Path& path);
 
     public:
@@ -108,7 +103,9 @@ namespace Carrot {
         Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
         Async::ParallelMap<std::string, std::shared_ptr<Render::AnimatedModel>> animatedModels{};
         Async::ParallelMap<std::string, std::shared_ptr<RenderableParticleBlueprint>> particleBlueprints{};
-        Async::ParallelMap<std::string, std::shared_ptr<ECS::Prefab>> prefabs{};
+
+        HandleStorage<ECS::Prefab> prefabStorage{};
+        Async::ParallelMap<std::string, ECS::Prefab::WeakHandle> prefabs{};
 
     private: // migration stuff
         bool hasReloadedShadersThisFrame = false;

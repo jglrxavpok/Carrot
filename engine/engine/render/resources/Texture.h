@@ -91,6 +91,7 @@ namespace Carrot::Render {
 
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
+        Carrot::IO::VFS::Path getFilePath() const;
 
     public:
         glm::vec<4, std::uint32_t> sampleUVec4(float u, float v) const;

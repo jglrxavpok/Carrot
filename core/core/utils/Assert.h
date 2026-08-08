@@ -11,7 +11,7 @@ namespace Carrot::Assertions {
     class Error: public std::exception {
     public:
         explicit Error(std::string condition, std::string message, std::string file, std::string function, int line) {
-            whatMessage = condition + ", " + message + " in " + file + " " + function + " L" + std::to_string(line);
+            whatMessage = condition + ", " + message + " in " + file + ":"+ std::to_string(line) + " (" + function + ")";
         }
 
         const char *what() const noexcept override {

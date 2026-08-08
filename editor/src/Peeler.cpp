@@ -62,6 +62,9 @@
 
 namespace fs = std::filesystem;
 
+// Use to debug throws while deserialisation scenes
+#define DISABLE_DESERIALISATION_CATCH
+
 namespace Peeler {
     static constexpr const char* ExportPopupID = "Exporting wizard";
     static const Carrot::Identifier GameViewportID{"Peeler-Preview"};
@@ -1908,15 +1911,19 @@ namespace Peeler {
             scenePath = path;
             openScenes.insert(path);
 
+#ifndef DISABLE_DESERIALISATION_CATCH
             try {
+#endif
                 currentScene.clear();
                 currentScene.deserialise(scenePath);
                 undoStack.clear();
+#ifndef DISABLE_DESERIALISATION_CATCH
             } catch (std::exception& e) {
                 ImGui::InsertNotification({ImGuiToastType::Error, "Failed to open scene: %s", e.what()});
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();
             }
+#endif
 
             addEditingSystems();
             currentScene.world.freezeLogic();
@@ -2391,8 +2398,8 @@ namespace Peeler {
             savePath /= entity.getName();
             std::optional<Carrot::IO::VFS::Path> vfsPathOpt = GetVFS().represent(savePath);
             if(vfsPathOpt.has_value()) {
-                auto pPrefab = Carrot::ECS::Prefab::makePrefab();
                 const Carrot::IO::VFS::Path& vfsPath = vfsPathOpt.value();
+                auto pPrefab = GetAssetServer().newPrefab(vfsPath);
                 pPrefab->createFromEntity(entity);
                 bool success = pPrefab->save(vfsPath);
                 if(success) {
