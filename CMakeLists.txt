@@ -1,10 +1,18 @@
 # If using Ninja, use -d keepdepfile to ensure JetLive works properly!
 
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.29)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # required for JetLive
+
+find_program(MOLD_PROGRAM mold)
+if (MOLD_PROGRAM)
+    set(CMAKE_LINKER_TYPE MOLD)
+    message(STATUS "mold found: ${MOLD_PROGRAM}")
+else ()
+    message(STATUS "mold not found")
+endif ()
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 install(CODE "set(CMAKE_INSTALL_LOCAL_ONLY TRUE)")
