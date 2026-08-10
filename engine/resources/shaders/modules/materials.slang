@@ -1,5 +1,6 @@
 module materials;
 import base;
+import hash; // for r2Sequence
 
 /**
     Values for a given material, after sampling, blending, etc.
@@ -80,8 +81,10 @@ public struct MaterialSystem {
 
     public float Dither(uvec2 coords) {
         const uint DitherSize = 8;
-        const vec2 ditherUV = vec2(coords % DitherSize) / DitherSize;
-        return textures[globalTextures.dithering].SampleGrad(nearestSampler, ditherUV, float2(0), float2(0)).r;
+        const uvec2 coordsInsideDither = coords % DitherSize;
+        const float2 offset = r2Sequence(frameCount);
+        const vec2 ditherUV = vec2(coordsInsideDither) / DitherSize;
+        return textures[globalTextures.dithering].SampleGrad(nearestSampler, ditherUV+offset, float2(0), float2(0)).r;
     }
 }
 

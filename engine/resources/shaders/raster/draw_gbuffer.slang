@@ -74,7 +74,7 @@ GBuffer defaultGBuffer(VSGBufferOutput input, float4 fragCoords) {
 
     if (albedo.a < 1.0) {
         // TODO: animate dithering? -> need smarter AA
-        if (materialSystem.Dither(uvec2(fragCoords.xy)) >= albedo.a) {
+        if (materialSystem.Dither(uvec2(fragCoords.xy), viewport.frameCount) >= albedo.a) {
             discard;
         }
     }
@@ -136,7 +136,7 @@ float4 unlit(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
 
     if (albedo.a < 1.0) {
         // TODO: animate dithering? -> need smarter AA
-        if (materialSystem.Dither(uvec2(fragCoords.xy)) >= albedo.a) {
+        if (materialSystem.Dither(uvec2(fragCoords.xy), viewport.frameCount) >= albedo.a) {
             discard;
         }
     }
