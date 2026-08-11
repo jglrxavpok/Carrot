@@ -4,7 +4,7 @@ import modules.gi;
 import modules.raytracing_capabilities;
 
 [shader("compute")]
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void main(uniform LightingPassUniforms push,
     uint3 coords: SV_DispatchThreadID
 ) {

@@ -5,7 +5,7 @@ import modules.lighting;
 [[vk::binding(0, 6)]] ParameterBlock<Raytracing::Data> rt;
 
 [shader("compute")]
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void main(uniform LightingPassUniforms push,
     uint3 coords: SV_DispatchThreadID
 ) {

@@ -1,5 +1,5 @@
-static const int LocalSizeX = 32;
-static const int LocalSizeY = 32;
+static const int LocalSizeX = 8;
+static const int LocalSizeY = 8;
 groupshared float3[LocalSizeY][LocalSizeX] neighbors;
 
 float3 readColor(Texture2D<float4> input, uint2 globalCoords, uint2 localCoords, int2 offset) {

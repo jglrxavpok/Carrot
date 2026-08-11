@@ -488,8 +488,8 @@ namespace Carrot::Render {
 
                    {
                        GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "RT passes");
-                       const std::uint8_t localSizeX = 32;
-                       const std::uint8_t localSizeY = 32;
+                       const std::uint8_t localSizeX = 8;
+                       const std::uint8_t localSizeY = 8;
                        std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                        std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
                        setupPipeline(data.directLighting.noisy, *directLightingPipeline, false, false, "entryPointParams");
@@ -569,7 +569,7 @@ namespace Carrot::Render {
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                const std::size_t localSize = 256;
+                const std::size_t localSize = 32;
                 const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
                 cmds.dispatch(groupX, 1, 1);
             });
@@ -739,8 +739,8 @@ namespace Carrot::Render {
                 bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                const std::size_t groupX = (block.frameWidth+ScreenProbeSize-1)/ScreenProbeSize;
-                const std::size_t groupY = (block.frameHeight+ScreenProbeSize-1)/ScreenProbeSize;
+                const std::size_t groupX = (block.frameWidth+8-1)/8;
+                const std::size_t groupY = (block.frameHeight+8-1)/8;
                 cmds.dispatch(groupX, groupY, 1);
             });
 
@@ -965,7 +965,7 @@ namespace Carrot::Render {
                 pipeline->setSampledImage(frame,"entryPointParams.input", pass.getGraph().getTexture(data.imageFullOfBugs, frame.frameNumber));
                 pipeline->setStorageImage(frame,"entryPointParams.output", outputTexture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 const auto& extent = outputTexture.getSize();
-                const std::uint8_t localSize = 32;
+                const std::uint8_t localSize = 8;
                 std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
                 std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
 

@@ -93,7 +93,7 @@ struct DecayPushConstant {
 }
 
 [shader("compute")]
-[numthreads(256, 1, 1)]
+[numthreads(32, 1, 1)]
 void decayCells(uint3 coords: SV_DispatchThreadID, uniform DecayPushConstant push) {
     uint cellIndex = coords.x;
 
@@ -107,7 +107,7 @@ void decayCells(uint3 coords: SV_DispatchThreadID, uniform DecayPushConstant pus
 }
 
 [shader("compute")]
-[numthreads(ScreenProbeSize, ScreenProbeSize, 1)]
+[numthreads(8, 8, 1)]
 void spawnScreenProbes(uint3 coords : SV_DispatchThreadID, uint localIndex : SV_GroupIndex, uint3 groupID : SV_GroupID, uniform LightingPassUniforms push) {
     // this will store the best matching pixel for this workgroup
     reprojectionScore = packHalf(65504.0f) << 16/*score*/ | 0xFFFFu /*lane*/;

@@ -63,7 +63,7 @@ static const float KERNEL_WEIGHTS[3] = {
 };
 
 [shader("compute")]
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void main(
     uniform PushConstants push,
 
