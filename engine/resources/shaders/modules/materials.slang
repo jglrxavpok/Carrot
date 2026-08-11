@@ -79,7 +79,7 @@ public struct MaterialSystem {
         return textures[NonUniformResourceIndex(textureIndex)].SampleGrad(sampler, uv, float2(0), float2(0));
     }
 
-    public float Dither(uvec2 coords) {
+    public float Dither(uvec2 coords, uint frameCount) {
         const uint DitherSize = 8;
         const uvec2 coordsInsideDither = coords % DitherSize;
         const float2 offset = r2Sequence(frameCount);
