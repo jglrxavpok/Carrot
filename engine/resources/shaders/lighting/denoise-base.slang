@@ -103,7 +103,7 @@ void denoise(
 ) {
     Configuration config;
     const float sigmaPositions = 32.0f;
-    const float sigmaLuminance = 5.0f;
+    const float sigmaLuminance = 1.0f;
 
     uint outputWidth;
     uint outputHeight;
@@ -164,8 +164,8 @@ void denoise(
 
             const float3 filterPosition = filterGBuffer.viewPosition;
             const float dPosition = filterPosition.z - currentPosition.z;
-            const float distanceSquared = dot(dPosition, dPosition);
-            const float positionWeight = min(1, exp(-distanceSquared * sigmaPositions));
+            const float distanceSquared = abs(dPosition);
+            const float positionWeight = 1;//min(1, exp(-distanceSquared * sigmaPositions));
             const float luminanceDistanceSquared = abs(currentLuminance - luminance(filterPixel.rgb));
             const float luminanceWeight = min(1, exp(-luminanceDistanceSquared * sigmaLuminance));
 

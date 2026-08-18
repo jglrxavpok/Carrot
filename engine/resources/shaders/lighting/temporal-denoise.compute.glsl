@@ -8,6 +8,7 @@ layout (local_size_y = LOCAL_SIZE_Y) in;
 #include "includes/sampling.glsl"
 #include <includes/gbuffer.glsl>
 #include "includes/gbuffer_input.glsl"
+#extension GL_EXT_shader_explicit_arithmetic_types_int8: require
 
 DEFINE_GBUFFER_INPUTS(0)
 DEFINE_CAMERA_SET(1)
@@ -23,7 +24,7 @@ layout(rgba32f, set = 2, binding = 4) uniform readonly image2D lastFrameHistoryL
 layout(set = 2, binding = 5) uniform texture2D previousViewPos;
 
 layout(push_constant) uniform PushConstant {
-    bool isAO;
+    uint8_t clampingType; // 0= none, 1= 5x5
 } push;
 
 vec4 AdjustHDRColor(vec4 color)
@@ -83,21 +84,27 @@ void main() {
 
     vec4 outColor = vec4(0);
 
-    const int clampRadius = push.isAO ? 5 : 5;
+    int clampRadius = 0;
+    switch(int(push.clampingType)) {
+        case 1:
+            clampRadius = 5;
+            break;
+    }
 
     vec3 minColor = vec3(100000);
     vec3 maxColor = vec3(-100000);
 
-    for(int x = -clampRadius; x <= clampRadius; x++) {
-        for(int y = -clampRadius; y <= clampRadius; y++) {
-            vec4 color = AdjustHDRColor(imageLoad(noisyInputImage, coords + ivec2(x, y)));
-            minColor = min(minColor, color.rgb);
-            maxColor = max(maxColor, color.rgb);
+    if(clampRadius > 0) {
+        for(int x = -clampRadius; x <= clampRadius; x++) {
+            for(int y = -clampRadius; y <= clampRadius; y++) {
+                vec4 color = AdjustHDRColor(imageLoad(noisyInputImage, coords + ivec2(x, y)));
+                minColor = min(minColor, color.rgb);
+                maxColor = max(maxColor, color.rgb);
+            }
         }
     }
     vec4 previousFrameColor = AdjustHDRColor(imageLoad(lastFrameSuperSamplesImage, ivec2(reprojectedUV * textureDimensions)));
-    vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
-    //vec3 previousFrameColorClamped = previousFrameColor.rgb;
+    vec3 previousFrameColorClamped = clampRadius > 0 ? clamp(previousFrameColor.rgb, minColor, maxColor) : previousFrameColor.rgb;
     // TODO: downsample and/or variance?
 
     float historyLength = momentHistoryHistoryLength.b * (reprojected ? 1 : 0) + 1.0;

@@ -220,16 +220,9 @@ set(PIPELINES
         compute/remove-alpha
 
         lighting/gi/accumulate-radiance
-        lighting/gi/accumulate-probes-per-ray
-        lighting/gi/accumulate-probes-per-probe
-        lighting/gi/apply-gi
-        lighting/gi/debug-gi
-        lighting/gi/decay-cells
-        lighting/gi/gi-template
-        lighting/gi/reorder-rays
-        lighting/gi/spawn-rays
-        lighting/gi/spawn-screen-probes
-        lighting/gi/trace-rays
+        lighting/gi/compute-gi
+        lighting/gi/fill-surface-cache
+
 
         lighting/ao
         lighting/ao-noraytracing

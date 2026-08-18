@@ -11,17 +11,17 @@ import modules.materials;
 */
 namespace HashGrid {
     // keep in sync with LightingPasses.cpp
-    public static const uint CellsPerBucket = 16;
-    public static const uint BucketCount = 1024*4;
+    public static const uint CellsPerBucket = 64;
+    public static const uint BucketCount = 1024*256;
     public static const uint TotalCellCount = BucketCount * CellsPerBucket;
 
     // loosely based on https://gpuopen.com/download/publications/SA2021_WorldSpace_ReSTIR.pdf
-    static const float cellSizeFactor = 32.0f;
-    static const float minCellSize = 0.1f;
+    static const float cellSizeFactor = 0.1f;
+    static const float minCellSize = 0.15f;
 
     uint giGetCellSizeStep(float3 hitPosition, float3 cameraPosition) {
         float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
-        return uint(floor(log2(cellSizeStep / minCellSize )));
+        return 0;//uint(floor(log2(cellSizeStep / minCellSize )));
     }
 
     public float giGetCellSize(float3 hitPosition, float3 cameraPosition) {
@@ -36,11 +36,11 @@ namespace HashGrid {
         return vec3(posQuantized) * cellSize;
     }
 
-    static const float thetaQuantum = 0.05f;
-    static const float phiQuantum = 0.05f;
+    static const float thetaQuantum = 0.01f;
+    static const float phiQuantum = 0.01f;
 
     uint3 quantizeNormal(float3 normal) {
-        return asuint(int3(floor((normal * 0.5f + 0.5f) * 4 +0.5f)));
+        return asuint(int3(floor((normal * 0.5f + 0.5f) * 32 +0.5f)));
     }
 
     public struct Key {
@@ -51,8 +51,13 @@ namespace HashGrid {
 
         public Descriptor toDescriptor() {
             Descriptor desc;
+            #if 0
             uint cellSizeStep = giGetCellSizeStep(hitPosition, cameraPosition);
             float cellSize = minCellSize * exp2(cellSizeStep);
+#else
+            uint cellSizeStep = 0;
+            float cellSize = minCellSize;
+#endif
             int3 posQuantized = quantizePosition(hitPosition, cellSize);
             uint3 dirQuantized = quantizeNormal(direction);
             int lightLeakFix = rayLength < cellSize ? 1 : 0;
@@ -103,7 +108,7 @@ namespace HashGrid {
 
         [ForceInline]
         public bool isOutdated(uint cellIndex, uint currentFrame) {
-            const uint decayTime = 100;
+            const uint decayTime = 20;
             return lastTouchedFrames[cellIndex]+decayTime < currentFrame;
         }
 
@@ -182,7 +187,16 @@ namespace HashGrid {
         }
 
         [mutating]
-        private float3 readRadiance(uint cellIndex) {
+        public void accumulate2(uint cellIndex, float3 radianceToAdd) {
+            const int3 quantizedRadiance = packRadiance(radianceToAdd);
+            InterlockedAdd(radianceAccumulation[cellIndex].x, quantizedRadiance.x);
+            InterlockedAdd(radianceAccumulation[cellIndex].y, quantizedRadiance.y);
+            InterlockedAdd(radianceAccumulation[cellIndex].z, quantizedRadiance.z);
+            InterlockedAdd(sampleCountAccumulation[cellIndex], 1);
+        }
+
+        [mutating]
+        public float3 readRadiance(uint cellIndex) {
             return unpackRadiance(radiance[cellIndex]) / sampleCounts[cellIndex];
         }
 
@@ -238,18 +252,24 @@ namespace HashGrid {
             giInputs.hitPosition += jitterAmount;
         }
 
+        public Key giInputsToKey(in GIInputs giInputs) {
+            Key key;
+
+            key.cameraPosition = giInputs.cameraPosition;
+            key.hitPosition = giInputs.hitPosition;
+
+            const float3 dRay = giInputs.hitPosition - giInputs.startOfRay;
+            key.rayLength = length(dRay);
+            key.direction = giInputs.surfaceNormal; // dRay / key.rayLength;
+            return key;
+        }
+
+        // TODO: remove unused 'rng' parameter
         [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
         public float3 read(inout RandomSampler rng, in GIInputs giInputs) {
-            Key cellDesc;
+            Key key = giInputsToKey(giInputs);
 
-            cellDesc.cameraPosition = giInputs.cameraPosition;
-            cellDesc.hitPosition = giInputs.hitPosition;
-            
-            const float3 dRay = giInputs.hitPosition - giInputs.startOfRay;
-            cellDesc.rayLength = length(dRay);
-            cellDesc.direction = dRay / cellDesc.rayLength;
-
-            if(let cellIndex = find(cellDesc)) {
+            if (let cellIndex = find(key)) {
                 const uint sampleCount = sampleCounts[cellIndex];
                 if(sampleCount == 0) {
                     return float3(0.0);
@@ -257,7 +277,7 @@ namespace HashGrid {
 
                 return readRadiance(cellIndex);
             }
-            return float3(0,0,0);
+            return float3(0, 0, 0);
         }
     }
 
@@ -282,248 +302,6 @@ namespace HashGrid {
         public GLSLShaderStorageBuffer<Grids, ScalarDataLayout> grids;
     }
 }
-
-public static const uint ScreenProbeSize = 1;
-public static const uint MaxRaysPerProbe = ScreenProbeSize*ScreenProbeSize*1;
-
-public struct RayData {
-    public uint32_t probeIndex;
-    public float3 radiance;
-    public float3 direction;
-    public float3 from;
-}
-
-struct SHRadiance {
-    SH3 r;
-    SH3 g;
-    SH3 b;
-
-    [mutating]
-    void integrate(float3 value, float3 direction) {
-        r.integrate(value.r, direction);
-        g.integrate(value.g, direction);
-        b.integrate(value.b, direction);
-    }
-
-    [mutating]
-    void add(const in SHRadiance other) {
-        r += other.r;
-        g += other.g;
-        b += other.b;
-    }
-
-    [mutating]
-    void reset() {
-        r.reset();
-        g.reset();
-        b.reset();
-    }
-
-    SHRadiance scale(float f) {
-        SHRadiance result;
-        result.r = r.scale(f);
-        result.g = g.scale(f);
-        result.b = b.scale(f);
-        return result;
-    }
-
-    float3 evalutateCosineLobe(float3 direction) {
-        return float3(
-            r.evaluateCosineLobe(direction),
-            g.evaluateCosineLobe(direction),
-            b.evaluateCosineLobe(direction),
-        );
-    }
-}
-
-SHRadiance operator*(const in SHRadiance a, float f) {
-    SHRadiance r = a;
-    r.r *= f;
-    r.g *= f;
-    r.b *= f;
-    return r;
-}
-
-SHRadiance operator/(const in SHRadiance a, float f) {
-    SHRadiance r = a;
-    r.r /= f;
-    r.g /= f;
-    r.b /= f;
-    return r;
-}
-
-SHRadiance lerp(const in SHRadiance a, const in SHRadiance b, float t) {
-    SHRadiance result = a.scale(1.0f - t);
-    SHRadiance tmp = b.scale(t);
-    result.add(tmp);
-    return result;
-}
-
-/// Accumulates samples for a given probe, with a maximum number of rays per probe.
-///  Any additional ray will be dropped
-struct SampleAccumulation {
-    static const uint MaxElements = 2*MaxRaysPerProbe; // keep in sync with LightingPasses.cpp
-
-    float3 samples[MaxElements];
-    float3 directions[MaxElements];
-    uint currentIndex = 0;
-
-    [mutating]
-    void reset() {
-        currentIndex = 0;
-    }
-
-    [mutating]
-    void accumulate(float3 sample, float3 direction) {
-        uint usedIndex;
-        InterlockedAdd(currentIndex, 1, usedIndex);
-
-        if(usedIndex >= MaxElements) {
-            return;
-        }
-
-        samples[usedIndex] = sample;
-        directions[usedIndex] = direction;
-    }
-
-    uint getSampleCount() {
-        return min(MaxElements, currentIndex);
-    }
-
-    /// Uses the accumulated samples to compute a SH representing these samples
-    [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
-    SHRadiance computeFinalResult() {
-        SHRadiance r;
-        r.reset();
-        uint sampleCount = getSampleCount();
-        for(int index = 0; index < sampleCount; index++) {
-            r.integrate(samples[index], directions[index]);
-        }
-        return r;
-    }
-}
-
-public struct ScreenProbe {
-    SHRadiance radiance;
-    public float3 worldPos;
-    public float3 normal;
-    public int2 bestPixel;
-    uint sampleCount;
-
-    SampleAccumulation accumulatedRadiance;
-    public bool isOnReflection;
-    public int pad[3];
-
-
-    public float3 readRadianceFromCameraPos(float3 cameraPos) {
-        if(sampleCount > 0) {
-            const float3 direction = normalize(cameraPos - worldPos);
-            if(dot(direction, direction) > 0.01) {
-                return radiance.evalutateCosineLobe(direction) / sampleCount;
-            }
-        }
-        return 0;
-    }
-
-    public float3 evaluateCosineLobe(float3 dir) {
-        if(sampleCount > 0) {
-            return radiance.evalutateCosineLobe(dir) / sampleCount;
-        } else {
-            return 0;
-        }
-    }
-
-    public uint getSampleCount() {
-        return sampleCount;
-    }
-
-    [mutating]
-    public void reset(float3 worldPos, float3 normal, int2 bestPixel, bool isOnReflection) {
-        this.worldPos = worldPos;
-        this.normal = normal;
-        this.radiance.reset();
-        this.sampleCount = 0;
-        this.bestPixel = bestPixel;
-        this.isOnReflection = isOnReflection;
-
-        this.accumulatedRadiance.reset();
-    }
-
-    [mutating]
-    public void reprojectRadiance(in ScreenProbe other) {
-        this.radiance = other.radiance;
-        this.sampleCount = other.sampleCount;
-        this.accumulatedRadiance.reset();
-        this.isOnReflection = other.isOnReflection;
-    }
-
-    [mutating]
-    public void accumulateSample(const in RayData ray) {
-        accumulatedRadiance.accumulate(ray.radiance, ray.direction);
-    }
-
-    [mutating]
-    public void finishAccumulateSamples() {
-        const uint oldSampleCount = sampleCount;
-        const uint newSampleCount = accumulatedRadiance.getSampleCount();
-        if(newSampleCount == 0) {
-            return; // nothing to do
-        }
-        SHRadiance newRadiance = accumulatedRadiance.computeFinalResult() / newSampleCount;
-
-        // TODO: biased temporal hysteresis
-        // TODO: LRU cache?
-
-        // Temporal accumulation, based on GI 1.0 implementation
-        constexpr uint maxSampleCount = 64;
-        uint totalSampleCount = min(maxSampleCount, newSampleCount + oldSampleCount);
-        if(oldSampleCount == 0) {
-            radiance = newRadiance;
-        } else {
-            SHRadiance oldRadiance = radiance / oldSampleCount;
-            radiance = lerp(oldRadiance, newRadiance, 1.0f / totalSampleCount);
-        }
-        radiance = radiance.scale(totalSampleCount);
-
-        sampleCount = totalSampleCount;
-
-        // clear accumulation buffer
-        accumulatedRadiance.reset();
-    }
-}
-
-public struct ScreenProbeArray {
-    public uint count;
-    public uint[] indices;
-}
-
-public struct ScreenProbes {
-    private StructuredBuffer<ScreenProbe, ScalarDataLayout> probes;
-
-    /**
-        Returns the screen probe covering the given screen position.
-        Assumes all parameters are valid
-    */
-    public ScreenProbe getFromScreenPos(uint2 screenPos, uint frameWidth) {
-        uint2 probePosition = screenPos / ScreenProbeSize;
-        const uint probesPerWidth = (frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
-        uint probeIndex = probePosition.x + probePosition.y * probesPerWidth;
-        return getFromIndex(probeIndex);
-    }
-
-    public uint getCount() {
-        return probes.getCount();
-    }
-
-    public ScreenProbe getFromIndex(uint index) {
-        return probes[NonUniformResourceIndex(index)];
-    }
-}
-
-// position, in screen space of the pixel that will spawn the rays used to fill the GI grid
-public struct SpawnedRay { 
-    public uint probeIndex;
-};
 
 static const float radianceQuantum = 1.0f / 16384.0f;
 static const float invRadianceQuantum = 1.0f / radianceQuantum;

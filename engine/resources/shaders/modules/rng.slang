@@ -61,11 +61,3 @@ public struct RandomSampler {
         return float3(d.x, d.y, z);
     }
 }
-
-// from http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-public float2 r2Sequence(uint n) {
-    const float g = 1.32471795724474602596f;
-    const float a1 = 1.0f / g;
-    const float a2 = 1.0f / (g*g);
-    return fract(float2((0.5f+a1*n), (0.5f+a2*n)));
-}
