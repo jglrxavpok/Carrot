@@ -221,6 +221,8 @@ set(PIPELINES
 
         lighting/gi/accumulate-radiance
         lighting/gi/compute-gi
+        lighting/gi/decay-cells
+        lighting/gi/gi-template
         lighting/gi/fill-surface-cache
 
 

@@ -21,7 +21,7 @@ namespace Carrot::Render {
     };
 
     // keep in sync with gi.slang
-    static constexpr std::uint64_t HashGridCellsPerBucket = 64;
+    static constexpr std::uint64_t HashGridCellsPerBucket = 32;
     static constexpr std::uint64_t HashGridBucketCount = 1024*256;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
