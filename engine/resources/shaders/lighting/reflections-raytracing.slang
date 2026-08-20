@@ -1,3 +1,4 @@
+import glsl;
 import reflections_base;
 import modules.lighting;
 import modules.raytracing;

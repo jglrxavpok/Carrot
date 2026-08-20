@@ -1,3 +1,4 @@
+import glsl;
 import modules.base;
 
 // mostly based on ImGui's Vulkan backend
@@ -9,15 +10,32 @@ struct Vertex {
 }
 
 struct VSOutput {
-    float4 position : SV_POSITION;
-    float2 uv : UV0;
-    float4 color : COLOR0;
+    float4 position : SV_Position;
+    float2 uv;
+    float4 color;
+}
+
+struct InspectParams {
+    float4x4 colorTransform;
+    float4 colorOffset;
+
+    float2 textureSize;
+    float premultiplyAlpha;
+    float disableFinalAlpha;
+
+    float3 backgroundColor;
+    bool forceNearestSampling;
+
+    float4 grid;
+    float2 gridWidth;
 }
 
 struct DisplayRect {
     float2 translation;
     float2 size;
     uint textureIndex;
+
+    InspectParams inspect;
 }
 
 Sampler2D textures[1024];
@@ -40,24 +58,10 @@ float4 pixel(uniform DisplayRect display, VSOutput v) {
     return textures[NonUniformResourceIndex(display.textureIndex)].Sample(v.uv) * v.color;
 }
 
-struct InspectParams {
-    float4x4 colorTransform;
-    float4 colorOffset;
-
-    float2 textureSize;
-    float premultiplyAlpha;
-    float disableFinalAlpha;
-
-    float3 backgroundColor;
-    bool forceNearestSampling;
-
-    float4 grid;
-    float2 gridWidth;
-}
-
 // adapted from tex_inspect_opengl.cpp
 [shader("pixel")]
-float4 imgTexInspect(uniform DisplayRect display, uniform InspectParams params, VSOutput v) {
+float4 imgTexInspect(uniform DisplayRect display, VSOutput v) {
+    InspectParams params = display.inspect;
     float2 texel = v.uv * params.textureSize;
     float2 uv;
     if(params.forceNearestSampling) {

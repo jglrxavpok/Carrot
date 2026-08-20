@@ -1,3 +1,4 @@
+import glsl;
 import denoise_base;
 
 export struct Configuration : IConfiguration {

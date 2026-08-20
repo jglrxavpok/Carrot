@@ -1,4 +1,6 @@
 module debug;
+
+import glsl;
 import modules.base;
 
 // Select what the merge-lighting shader will output

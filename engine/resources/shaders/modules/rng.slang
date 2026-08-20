@@ -1,4 +1,5 @@
 module rng;
+import glsl;
 import modules.materials;
 import modules.base;
 import modules.hash;

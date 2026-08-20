@@ -1,3 +1,4 @@
+import glsl;
 import modules.base;
 import modules.gi;
 import modules.materials;
@@ -33,15 +34,15 @@ struct DecayPushConstant {
 
 [shader("compute")]
 [numthreads(32, 1, 1)]
-void decayCells(uint3 coords: SV_DispatchThreadID, uniform DecayPushConstant push) {
-    uint cellIndex = coords.x;
-
+void decayCells(uint cellIndex: SV_DispatchThreadID, uniform DecayPushConstant push) {
     if(cellIndex >= push.maxCellIndex) {
         return;
     }
 
-    if(hashGridData.grids.currentFrame.isOutdated(cellIndex, push.frameCount)) {
-        hashGridData.grids.currentFrame.clearCell(cellIndex);
+    if (hashGridData.grids.currentFrame.isOutdated(cellIndex, push.frameCount)) {
+        HashGrid::Key key;
+        hashGridData.grids.currentFrame.writeToCell(cellIndex, key, float3(0), 0);
+        //hashGridData.grids.currentFrame.clearCell(cellIndex);
     }
 }
 

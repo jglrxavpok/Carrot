@@ -1,3 +1,5 @@
+import glsl;
+
 static const int LocalSizeX = 8;
 static const int LocalSizeY = 8;
 groupshared float3[LocalSizeY][LocalSizeX] neighbors;

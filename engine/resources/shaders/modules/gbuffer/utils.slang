@@ -1,4 +1,5 @@
 implementing gbuffer;
+import glsl;
 
 void decompressTBN(vec4 compressed, bool negativeNormal, bool negativeTangent, bool negativeBitangent, out mat3 outTBN) {
     vec3 normal = compressed.xyx;

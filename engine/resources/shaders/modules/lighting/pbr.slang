@@ -1,5 +1,6 @@
 implementing lighting;
 
+import glsl;
 
 public struct PbrInputs {
     public float alpha;

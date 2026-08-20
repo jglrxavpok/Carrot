@@ -1,5 +1,6 @@
 module raytracing;
 
+import glsl;
 import modules.base;
 import modules.raytracing_capabilities;
 import modules.vertex_buffers;

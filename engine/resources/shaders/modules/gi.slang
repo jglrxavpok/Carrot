@@ -1,5 +1,6 @@
 module gi;
 
+import glsl;
 import modules.base;
 import modules.hash;
 import modules.rng;

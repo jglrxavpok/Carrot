@@ -8,6 +8,7 @@
 #include <slang-com-ptr.h>
 #include <core/Macros.h>
 #include <slang.h>
+#include <core/io/IO.h>
 #include <core/utils/PortabilityHelper.h>
 
 #include "FileIncluder.h"
@@ -88,15 +89,18 @@ namespace SlangCompiler {
                 .intValue0 = static_cast<int>(globalSession->findCapability("spirv_1_6"))
             }
         });
-        /*compilerOptions.emplace_back(CompilerOptionEntry {
-            .name = CompilerOptionName::DebugInformation,
-            .value = CompilerOptionValue {
-                .kind = CompilerOptionValueKind::Int,
-                .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
-            }
-        });*/
 
-        // TODO: Mesa 26.0.1 crashes on the reflections(or direct lighting?) shader with optimisations on. TODO: find out why
+        bool allowDebugInfo = false; // TODO: fix update-cells allocating too much memory inside slang compiler and hanging build
+        if (allowDebugInfo) {
+            compilerOptions.emplace_back(CompilerOptionEntry {
+                .name = CompilerOptionName::DebugInformation,
+                .value = CompilerOptionValue {
+                    .kind = CompilerOptionValueKind::Int,
+                    .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
+                }
+            });
+        }
+
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::Optimization,
             .value = CompilerOptionValue {

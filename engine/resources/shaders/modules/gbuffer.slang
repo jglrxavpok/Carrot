@@ -1,4 +1,5 @@
 module gbuffer;
+import glsl;
 import base;
 
 __include gbuffer.io;

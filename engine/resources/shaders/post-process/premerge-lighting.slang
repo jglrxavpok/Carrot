@@ -1,5 +1,5 @@
 // Mix reflections with direct lighting and GI in a single texture (which will then get denoised)
-
+import glsl;
 import modules.gbuffer;
 
 struct IO {

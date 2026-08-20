@@ -2,6 +2,8 @@
 
 implementing gbuffer;
 
+import glsl;
+
 // Expected format for the output of vertex shaders that will be passed to a gbuffer type pixel shader
 public struct VSGBufferOutput {
     public vec4 vertexColor;

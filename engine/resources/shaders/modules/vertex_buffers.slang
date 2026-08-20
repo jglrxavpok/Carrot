@@ -1,5 +1,6 @@
 module vertex_buffers;
 
+import glsl;
 // Default format of vertices for Carrot
 public interface IVertex {
     public float4 getPos();

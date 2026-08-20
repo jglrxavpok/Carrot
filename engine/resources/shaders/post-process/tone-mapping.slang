@@ -1,3 +1,5 @@
+import glsl;
+
 Texture2D inputImage;
 SamplerState nearestSampler;
 SamplerState linearSampler;

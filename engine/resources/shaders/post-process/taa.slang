@@ -1,5 +1,5 @@
 // Implementation based on https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-
+import glsl;
 import modules.gbuffer;
 import modules.viewport;
 

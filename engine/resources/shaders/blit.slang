@@ -1,3 +1,5 @@
+import glsl;
+
 [shader("pixel")]
 float4 blit(
     uniform Texture2D<float4> input,

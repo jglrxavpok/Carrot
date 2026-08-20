@@ -1,4 +1,5 @@
 import base;
+import glsl;
 
 public struct Particle {
     public float3 position;

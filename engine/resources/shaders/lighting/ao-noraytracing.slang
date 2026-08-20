@@ -1,3 +1,4 @@
+import glsl;
 import ao_base;
 
 import modules.raytracing_capabilities;

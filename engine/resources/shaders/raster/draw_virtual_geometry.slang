@@ -1,3 +1,4 @@
+import glsl;
 import modules.base;
 import modules.virtual_geometry;
 import modules.viewport;
@@ -195,8 +196,9 @@ void mesh(const in uint workgroupID : SV_GroupID,
 
     // all threads of workgroup will contribute to filling output variables
     for(uint vertexIndex = localIndex; vertexIndex < cluster.vertexCount; vertexIndex += MeshWorkGroupSize) {
-        outVertices[vertexIndex].ndcPosition = viewProj * cluster.vertices[vertexIndex].getPos();
-        outVertices[vertexIndex].pos = outVertices[vertexIndex].ndcPosition;
+        float4 ndcPos = viewProj * cluster.vertices[vertexIndex].getPos();
+        outVertices[vertexIndex].ndcPosition = ndcPos;
+        outVertices[vertexIndex].pos = ndcPos;
         outVertices[vertexIndex].instanceID = instanceID;
     }
 

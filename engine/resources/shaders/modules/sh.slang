@@ -1,4 +1,5 @@
 module sh;
+import glsl;
 import modules.base;
 
 /**

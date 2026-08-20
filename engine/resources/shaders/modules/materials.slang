@@ -1,4 +1,5 @@
 module materials;
+import glsl;
 import base;
 import hash; // for r2Sequence
 

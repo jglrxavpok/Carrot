@@ -1,4 +1,5 @@
 module per_object;
+import glsl;
 import base;
 
 public struct ObjectDrawData {

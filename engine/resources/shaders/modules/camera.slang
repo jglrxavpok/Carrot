@@ -1,5 +1,6 @@
 module camera;
 import base;
+import glsl;
 
 public struct CameraBufferObject {
     public mat4 view;

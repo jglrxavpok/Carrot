@@ -1,3 +1,4 @@
+import glsl;
 import modules.lighting;
 import modules.gbuffer;
 import modules.camera;

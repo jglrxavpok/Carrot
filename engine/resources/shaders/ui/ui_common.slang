@@ -1,3 +1,4 @@
+import glsl;
 import modules.base;
 import modules.viewport;
 import modules.camera;

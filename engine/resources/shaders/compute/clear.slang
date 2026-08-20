@@ -1,3 +1,5 @@
+import glsl;
+
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void clearSingleInt(uniform uint64_t address) {

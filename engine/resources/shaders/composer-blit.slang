@@ -1,3 +1,5 @@
+import glsl;
+
 SamplerState linearSampler;
 Texture2D textures[];
 

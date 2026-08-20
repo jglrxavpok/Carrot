@@ -1,4 +1,5 @@
 module raytracing_capabilities;
+import glsl;
 import modules.materials;
 
 public struct SurfaceIntersection {

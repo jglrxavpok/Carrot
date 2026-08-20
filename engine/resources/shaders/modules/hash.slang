@@ -1,4 +1,5 @@
 module hash;
+import glsl;
 
 // From https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
 public uint pcg_hash(uint i)

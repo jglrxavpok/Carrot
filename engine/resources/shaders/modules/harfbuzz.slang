@@ -1,5 +1,6 @@
 module harfbuzz;
 
+import glsl;
 #include "harfbuzz/hb_gpu_base.slang"
 #include "harfbuzz/hb_gpu_draw.slang"
 #include "harfbuzz/hb_gpu_paint.slang"

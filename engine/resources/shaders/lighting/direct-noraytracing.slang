@@ -1,3 +1,4 @@
+import glsl;
 import direct_base;
 import modules.lighting;
 import modules.gi;

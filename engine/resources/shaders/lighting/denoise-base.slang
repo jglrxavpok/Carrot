@@ -1,3 +1,4 @@
+import glsl;
 // "simple" a-trous edge-stopping gaussian blur
 interface IConfiguration {
     /// Converts the rgba input to the format supported for this configuration

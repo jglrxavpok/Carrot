@@ -1,4 +1,5 @@
 module lighting;
+import glsl;
 import base;
 import raytracing_capabilities;
 
@@ -132,11 +133,11 @@ public struct Light {
                 const float3 factors = getAttenuationFactors();
                 const float attenuation = factors.x + factors.y * distance + factors.z * distance * distance;
                 return max(0, 1.0f / attenuation) * inclinaisonFactor;
-            } break;
+            }
 
             case LightType::Directional: {
                 return max(0, dot(getDirection(), normal));
-            } break;
+            }
 
             case LightType::Spot: {
                 const float3 point2light = normalize(getPosition() - worldPos);
@@ -144,7 +145,7 @@ public struct Light {
                 const float force = dot(point2light, lightDirection);
                 const float cutoffRange = getOuterCutoffCosAngle() - getCutoffCosAngle();
                 return clamp((getOuterCutoffCosAngle() - force) / cutoffRange, 0, 1);
-            } break;
+            }
         }
 
         return shadowing * color * intensity;
@@ -158,11 +159,11 @@ public struct Light {
             case LightType::Spot:
             {
                 return getPosition() - worldPos;
-            } break;
+            }
 
             case LightType::Directional: {
                 return getDirection() * MaxLightDistance;
-            } break;
+            }
         }
     }
 }

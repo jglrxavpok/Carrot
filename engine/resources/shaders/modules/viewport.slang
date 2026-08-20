@@ -1,4 +1,5 @@
 module viewport;
+import glsl;
 import base;
 
 public struct Viewport {
