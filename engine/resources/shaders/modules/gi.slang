@@ -97,15 +97,15 @@ namespace HashGrid {
     }
 
     public struct Storage {
-        Key keys[TotalCellCount];
-        uint hash2[TotalCellCount];
-        int3 radiance[TotalCellCount];
-        uint sampleCounts[TotalCellCount];
-        int3 radianceAccumulation[TotalCellCount];
-        uint sampleCountAccumulation[TotalCellCount];
+        Key* keys;//[TotalCellCount];
+        uint* hash2;//[TotalCellCount];
+        int3* radiance;//[TotalCellCount];
+        uint* sampleCounts;//[TotalCellCount];
+        int3* radianceAccumulation;//[TotalCellCount];
+        uint* sampleCountAccumulation;//[TotalCellCount];
 
         // Used to decay cells which have not been used recently
-        uint lastTouchedFrames[TotalCellCount];
+        uint* lastTouchedFrames;//[TotalCellCount];
 
         [ForceInline]
         public bool isOutdated(uint cellIndex, uint currentFrame) {
@@ -280,27 +280,6 @@ namespace HashGrid {
             }
             return float3(0, 0, 0);
         }
-    }
-
-    public struct Constants {
-        public uint cellsPerBucket;
-        public uint bucketCount;
-
-        public property uint totalCellCount {
-            get {
-                return cellsPerBucket * bucketCount;
-            }
-        }
-    }
-
-    public struct Grids {
-        public Storage* previousFrame;
-        public Storage* currentFrame;
-    }
-
-    public struct Block {
-        public ConstantBuffer<Constants> constants;
-        public GLSLShaderStorageBuffer<Grids, ScalarDataLayout> grids;
     }
 }
 

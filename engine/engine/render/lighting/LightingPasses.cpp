@@ -33,17 +33,15 @@ namespace Carrot::Render {
             float rayLength;
         };
 
-        struct Constants {
-            std::uint32_t cellsPerBucket;
-            std::uint32_t bucketCount;
+        struct StorageHeader {
+            vk::DeviceAddress keys;
+            vk::DeviceAddress hash2;
+            vk::DeviceAddress radiance;
+            vk::DeviceAddress sampleCounts;
+            vk::DeviceAddress radianceAccumulation;
+            vk::DeviceAddress sampleCountAccumulation;
+            vk::DeviceAddress lastTouchedFrames;
         };
-
-        struct Pointers {
-            vk::DeviceAddress grids[2]; // 0: previous frame, 1: current frame
-        };
-
-        // offset into hash grid buffer where hash cells start
-        static constexpr std::uint32_t DataOffset = 0;
 
         // from gi.slang
         static constexpr std::uint32_t SizeOfHashCell =
@@ -55,59 +53,44 @@ namespace Carrot::Render {
             + sizeof(std::uint32_t)
         ;
         static constexpr u32 SizeOfHashCellWithLastTouchedFrame = SizeOfHashCell + sizeof(u32);
-        static constexpr std::uint32_t LastTouchedFrameOffset = DataOffset + SizeOfHashCell * HashGridTotalCellCount;
 
         static Carrot::Render::PassData::HashGridResources createResources(Carrot::Render::GraphBuilder& graph) {
             Carrot::Render::PassData::HashGridResources r;
 
             const std::size_t hashGridSize = computeSizeOf(HashGridBucketCount, HashGridCellsPerBucket);
             r.hashGrid = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc, false/*we want to keep the header*/);
-            r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
-            r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
             return r;
         }
 
         static void prepareBuffers(const Carrot::Render::Graph& graph, const Carrot::Render::PassData::HashGridResources& r) {
-            // only a single one for both frame
-            {
-                Constants constants{};
-                constants.bucketCount = HashGridBucketCount;
-                constants.cellsPerBucket = HashGridCellsPerBucket;
-                graph.getBuffer(r.constants, 0).view.uploadForFrame(&constants, sizeof(constants));
-            }
+            BufferView hashGridBuffer = graph.getBuffer(r.hashGrid, 0).view;
+            StorageHeader header{};
+            header.keys = hashGridBuffer.getDeviceAddress() + sizeof(StorageHeader);
+            header.hash2 = header.keys + sizeof(HashCellKey) * HashGridTotalCellCount;
+            header.radiance = header.hash2 + sizeof(u32) * HashGridTotalCellCount;
+            header.sampleCounts = header.radiance + sizeof(glm::vec3) * HashGridTotalCellCount;
+            header.radianceAccumulation = header.sampleCounts + sizeof(u32) * HashGridTotalCellCount;
+            header.sampleCountAccumulation = header.radianceAccumulation + sizeof(i32) * 3 * HashGridTotalCellCount;
+            header.lastTouchedFrames = header.sampleCountAccumulation + sizeof(u32) * HashGridTotalCellCount;
 
-            Pointers pointers{};
-            // previous frame
-            pointers.grids[0] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
+            assert(header.lastTouchedFrames + sizeof(u32) * HashGridTotalCellCount == hashGridBuffer.getDeviceAddress() + hashGridBuffer.getSize());
 
-            // current frame
-            pointers.grids[1] = graph.getBuffer(r.hashGrid, 0).view.getDeviceAddress();
-            graph.getBuffer(r.gridPointers, 0).view.uploadForFrame(&pointers, sizeof(pointers));
-
-            // previous frame
-            pointers.grids[0] = graph.getBuffer(r.hashGrid, 0).view.getDeviceAddress();
-
-            // current frame
-            pointers.grids[1] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
-            graph.getBuffer(r.gridPointers, 1).view.uploadForFrame(&pointers, sizeof(pointers));
+            hashGridBuffer.uploadForFrame(&header, sizeof(header));
         }
 
         static void bind(const Carrot::Render::PassData::HashGridResources& r, const Carrot::Render::Graph& graph, const Carrot::Render::Context& renderContext, Carrot::Pipeline& pipeline, std::size_t setID) {
-            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.frameNumber).view, setID, 0);
-            renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.frameNumber).view, setID, 1);
+            pipeline.setStorageBuffer(renderContext, "hashGridData", graph.getBuffer(r.hashGrid, renderContext.frameNumber).view);
         }
 
         static Carrot::Render::PassData::HashGridResources write(Carrot::Render::GraphBuilder& graph, const Carrot::Render::PassData::HashGridResources& r) {
             Carrot::Render::PassData::HashGridResources out;
-            out.constants = graph.write(r.constants, {}, {}, {}, {});
-            out.gridPointers = graph.write(r.gridPointers, {}, {}, {}, {});
             out.hashGrid = graph.write(r.hashGrid, {}, {}, {}, {});
             return out;
         }
 
         static std::size_t computeSizeOf(std::size_t bucketCount, std::size_t cellsPerBucket) {
             const std::size_t totalCellCount = bucketCount * cellsPerBucket;
-            return totalCellCount * SizeOfHashCellWithLastTouchedFrame;
+            return totalCellCount * SizeOfHashCellWithLastTouchedFrame + sizeof(StorageHeader);
         }
     };
 
@@ -516,8 +499,6 @@ namespace Carrot::Render {
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
                 const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameNumber);
-                BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
-                BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
                 frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
                     (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameNumber);
 

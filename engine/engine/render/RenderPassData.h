@@ -169,8 +169,6 @@ namespace Carrot::Render {
 
         struct HashGridResources {
             FrameResource hashGrid;
-            FrameResource constants;
-            FrameResource gridPointers;
         };
 
         struct SpatialDenoising {

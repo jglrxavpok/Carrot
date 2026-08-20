@@ -18,7 +18,7 @@ struct IO {
     RWTexture2D<float4> output;
 }
 
-ParameterBlock<HashGrid::Block> hashGridData;
+RWStructuredBuffer<HashGrid::Storage> hashGridData;
 ParameterBlock<IO> io;
 ParameterBlock<MaterialSystem> materialSystem;
 ParameterBlock<Lighting> lightData;
@@ -32,6 +32,8 @@ struct DecayPushConstant {
     uint frameCount;
 }
 
+#define GetHashGrid() hashGridData[0]
+
 [shader("compute")]
 [numthreads(32, 1, 1)]
 void decayCells(uint cellIndex: SV_DispatchThreadID, uniform DecayPushConstant push) {
@@ -39,10 +41,8 @@ void decayCells(uint cellIndex: SV_DispatchThreadID, uniform DecayPushConstant p
         return;
     }
 
-    if (hashGridData.grids.currentFrame.isOutdated(cellIndex, push.frameCount)) {
-        HashGrid::Key key;
-        hashGridData.grids.currentFrame.writeToCell(cellIndex, key, float3(0), 0);
-        //hashGridData.grids.currentFrame.clearCell(cellIndex);
+    if (GetHashGrid().isOutdated(cellIndex, push.frameCount)) {
+        GetHashGrid().clearCell(cellIndex);
     }
 }
 
@@ -101,9 +101,9 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
         key.rayLength = l;
         bool wasNew;
 
-        bounces[bounceIndex].gridCellIndex = hashGridData.grids.currentFrame.insert(key, wasNew);
+        bounces[bounceIndex].gridCellIndex = GetHashGrid().insert(key, wasNew);
         if (wasNew) {
-            hashGridData.grids.currentFrame.writeToCell(bounces[bounceIndex].gridCellIndex.value, key, float3(0), 0);
+            GetHashGrid().writeToCell(bounces[bounceIndex].gridCellIndex.value, key, float3(0), 0);
         }
 
         pbr.alpha = startingRoughness * startingRoughness;
@@ -158,15 +158,14 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
     float3 pathContribution = lightData.lightArray.ambientColor;
     float NdotL = 1; // dot product of normal and direction to previous vertex in path
     for (; bounceIndex >= 0; bounceIndex--) {
-        pathContribution *= lambertianBRDF * NdotL; // TODO: cos theta
+        pathContribution *= lambertianBRDF * NdotL;
         pathContribution += bounces[bounceIndex].directLight;
 
         NdotL = dot(bounces[bounceIndex].normal, bounces[bounceIndex].directionToNext);
 
         if (let cellIndex = bounces[bounceIndex].gridCellIndex) {
-            //pathContribution = float3(10, 0, 0);
-            hashGridData.grids.currentFrame.mark(cellIndex, push.frameCount);
-            hashGridData.grids.currentFrame.accumulate2(cellIndex, pathContribution);
+            GetHashGrid().mark(cellIndex, push.frameCount);
+            GetHashGrid().accumulate2(cellIndex, pathContribution);
         }
     }
 }
@@ -196,9 +195,9 @@ void computeGI(uint3 coords: SV_DispatchThreadID, uniform LightingPassUniforms p
     giInputs.hitPosition = pixelInfo.worldPosition;
     giInputs.surfaceNormal = pixelInfo.worldNormal;
     giInputs.startOfRay = pixelInfo.cameraPos;
-    hashGridData.grids.currentFrame->jitter(rng, materialSystem, giInputs);
+    GetHashGrid().jitter(rng, materialSystem, giInputs);
 
-    float3 radiance = hashGridData.grids.currentFrame.read(rng, giInputs);
+    float3 radiance = GetHashGrid().read(rng, giInputs);
 
     io.output.Store(coords.xy, float4(radiance, 1));
 }
@@ -211,6 +210,5 @@ void accumulateRadiance(uint cellIndex : SV_DispatchThreadID) {
         return;
     }
 
-    HashGrid::Storage* grid = hashGridData.grids.currentFrame;
-    grid->mergeRadiance(cellIndex);
+    GetHashGrid().mergeRadiance(cellIndex);
 }
