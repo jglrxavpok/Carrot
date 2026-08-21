@@ -90,16 +90,13 @@ namespace SlangCompiler {
             }
         });
 
-        bool allowDebugInfo = false; // TODO: fix update-cells allocating too much memory inside slang compiler and hanging build
-        if (allowDebugInfo) {
-            compilerOptions.emplace_back(CompilerOptionEntry {
-                .name = CompilerOptionName::DebugInformation,
-                .value = CompilerOptionValue {
-                    .kind = CompilerOptionValueKind::Int,
-                    .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
-                }
-            });
-        }
+        compilerOptions.emplace_back(CompilerOptionEntry {
+            .name = CompilerOptionName::DebugInformation,
+            .value = CompilerOptionValue {
+                .kind = CompilerOptionValueKind::Int,
+                .intValue0 = SLANG_DEBUG_INFO_LEVEL_MAXIMAL
+            }
+        });
 
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::Optimization,
