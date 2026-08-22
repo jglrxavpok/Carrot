@@ -570,7 +570,7 @@ void Carrot::RaytracingScene::buildBottomLevels(const Carrot::Render::Context& r
                         .vertexBufferAddress = blas.geometries[j].geometry.triangles.vertexData.deviceAddress,
                         .indexBufferAddress = blas.geometries[j].geometry.triangles.indexData.deviceAddress,
                         .transformAddress = blas.geometries[j].geometry.triangles.transformData.deviceAddress,
-                        .materialIndex = blas.materialSlots[j],
+                        .materialIndex = blas.materialSlots[j], // TODO: invalidate BLAS if material override is added
                         .geometryFormat = blas.geometryFormat,
                 });
             }

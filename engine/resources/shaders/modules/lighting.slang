@@ -2,6 +2,9 @@ module lighting;
 import glsl;
 import base;
 import raytracing_capabilities;
+import vertex_buffers;
+import rng;
+import materials;
 
 __include lighting.pbr;
 
@@ -182,10 +185,22 @@ public struct ActiveLights {
     public uint[] indices;
 }
 
+public struct EmissiveMesh {
+    Vertex *vertices;
+    uint32_t *indices;
+    uint32_t triangleCount;
+    float4x4 transform;
+    uint32_t materialIndex;
+}
+
 public struct Lighting {
     public GLSLShaderStorageBuffer<LightArray, ScalarDataLayout> lightArray;
 
     public GLSLShaderStorageBuffer<ActiveLights> activeLights;
+
+    public StructuredBuffer<EmissiveMesh, ScalarDataLayout> emissiveMeshes;
+    public StructuredBuffer<uint, ScalarDataLayout> activeEmissiveMeshes;
+    public StructuredBuffer<uint, ScalarDataLayout> activeEmissiveMeshesCount; // size of 1
 
     public float3 sampleLights(out float lightPDF, in IRaytracingCapabilities config, PbrInputs pbr, float3 worldPos, float3 normal, float3 tangent, float metallic, float roughness) {
         float3 contribution = 0;
@@ -226,5 +241,86 @@ public struct Lighting {
             contribution += brdf * visibility * singleLightContribution;
         }
         return contribution;
+    }
+
+    /**
+    * Samples emissive meshes present in scene to compute how much light 'worldPos' receives
+    */
+    public float3 sampleEmissives(out float pdf, inout RandomSampler rng, in MaterialSystem materials, in IRaytracingCapabilities config, PbrInputs pbr, float3 worldPos, float3 normal) {
+        const uint count = activeEmissiveMeshesCount[0];
+        pdf = 1.0f;
+        if (count == 0)
+            return float3(0,0,0);
+
+        // pick a random mesh and triangle        
+        const uint meshIndex = min(uint(rng.next(materials) * count), count-1);
+        const EmissiveMesh mesh = emissiveMeshes[activeEmissiveMeshes[meshIndex]];
+        const uint triangleIndex = min(uint(rng.next(materials) * mesh.triangleCount), mesh.triangleCount-1);
+
+        // compute emissivity on the triangle
+        const uint indexA = mesh.indices[triangleIndex * 3 + 0];
+        const uint indexB = mesh.indices[triangleIndex * 3 + 1];
+        const uint indexC = mesh.indices[triangleIndex * 3 + 2];
+        const Vertex vA = mesh.vertices[indexA];
+        const Vertex vB = mesh.vertices[indexB];
+        const Vertex vC = mesh.vertices[indexC];
+
+        float u = rng.next(materials);
+        float v = rng.next(materials);
+
+        if (u + v > 1) {
+            u = 1 - u;
+            v = 1 - v;
+        }
+
+        const float w = 1 - u - v;
+        const float3 posA = (mesh.transform * vA.getPos()).xyz;
+        const float3 posB = (mesh.transform * vB.getPos()).xyz;
+        const float3 posC = (mesh.transform * vC.getPos()).xyz;
+        const float3 posOnTriangle = posA * u + posB * v + posC * w;
+        const float2 uv = vA.getUV() * u + vB.getUV() * v + vC.getUV() * w;
+        const float3 normalOnLight = transpose(inverse(float3x3(mesh.transform))) * (vA.getNormal() * u + vB.getNormal() * v + vC.getNormal() * w);
+
+        const Material material = materials.materials[NonUniformResourceIndex(mesh.materialIndex)];
+        const float3 emissiveLight = material.Compute(materials, materials.linearSampler, uv).emissive;
+
+        // compute PDF (importance sampling)
+        const float triangleArea = length(cross((posA - posB).xyz, (posA - posC).xyz)) * 0.5f;
+        pdf = 1.0f / float(count);
+        pdf *= 1.0f / float(mesh.triangleCount);
+        pdf *= 1.0f / float(triangleArea);
+
+        const float3 L = posOnTriangle - worldPos;
+
+        // check visibility
+        const float3 smallOffset = normalize(L) * 0.0001f;
+        const float visibility = float(config.checkVisibility(worldPos + smallOffset, worldPos + L - smallOffset));
+
+        pbr.L = normalize(L);
+        pbr.H = normalize(pbr.L + pbr.V);
+
+        float NdotL = dot(pbr.N, pbr.L);
+        if (NdotL < 0) {
+            return float3(0,0,0);
+        }
+
+        pbr.NdotH = dot(pbr.N, pbr.H);
+        pbr.NdotL = abs(NdotL);
+        pbr.HdotL = dot(pbr.H, pbr.L);
+        pbr.HdotV = dot(pbr.H, pbr.V);
+
+        // TODO: test without this brdf but only G factor
+        /*const float3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
+        if (isnan(brdf.x)) {
+            return float3(0, 0, 0);
+        }*/
+
+        const float brdf = dot(normal, normalize(L)) * dot(-normalize(L), normalOnLight);
+
+        const float d = distance(posOnTriangle, worldPos);
+        if (d > 0.0001f) {
+            return brdf * visibility * emissiveLight / (d * d);
+        }
+        return float3(0,0,0);
     }
 }

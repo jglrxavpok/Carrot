@@ -8,11 +8,17 @@
 
 namespace Carrot {
     struct GraphicsSettings {
-        enum class ToneMappingOption: u32 /*u32: sent as push constant which requires size multiple of 4*/ {
+        enum class ToneMappingType: u32 {
             None,
             Reinhard,
+            ReinhardWithWhitePoint,
             Aces
-        } toneMapping = ToneMappingOption::Aces;
+        };
+
+        struct ToneMappingOption {
+            ToneMappingType type = ToneMappingType::Aces;
+            float whitePoint = 1.0f;
+        } toneMapping;
     };
 
     struct Settings {

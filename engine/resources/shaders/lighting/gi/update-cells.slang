@@ -109,13 +109,17 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
         pbr.alpha = startingRoughness * startingRoughness;
         pbr.metallic = startingMetallic;
         pbr.baseColor = startingAlbedo;
-        pbr.V = -rayDirection;
+        pbr.V = dPos / l;
         pbr.N = startingNormal;
         pbr.NdotV = abs(dot(pbr.N, pbr.V));
 
         float lightPDF = 1;
         float3 directLighting = lightData.sampleLights(lightPDF, capability, pbr, startOfRay, startingNormal, startingTangent, startingMetallic, startingRoughness);
         directLighting /= lightPDF;
+
+        float emissivePDF = 1;
+        float3 emissiveLighting = lightData.sampleEmissives(emissivePDF, rng, materialSystem, capability, pbr, startOfRay, startingNormal);
+        directLighting += emissiveLighting / emissivePDF;
 
         directLighting += startingEmissive * 50;
 

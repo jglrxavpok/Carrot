@@ -1098,13 +1098,16 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         if (showToneMappingSelector) {
             if (ImGui::Begin("Tone mapping selector", &showToneMappingSelector.getValueRef())) {
-                GraphicsSettings::ToneMappingOption& option = settings.graphicsSettings.toneMapping;
+                GraphicsSettings::ToneMappingType& option = settings.graphicsSettings.toneMapping.type;
                 int asInt = static_cast<int>(option);
                 ImGui::RadioButton("None", &asInt, 0);
                 ImGui::RadioButton("Reinhard", &asInt, 1);
-                ImGui::RadioButton("Aces", &asInt, 2);
+                ImGui::RadioButton("ReinhardWithWhitePoint", &asInt, 2);
+                ImGui::RadioButton("Aces", &asInt, 3);
 
-                option = static_cast<GraphicsSettings::ToneMappingOption>(asInt);
+                option = static_cast<GraphicsSettings::ToneMappingType>(asInt);
+
+                ImGui::DragFloat("White point", &settings.graphicsSettings.toneMapping.whitePoint);
             }
             ImGui::End();
         }

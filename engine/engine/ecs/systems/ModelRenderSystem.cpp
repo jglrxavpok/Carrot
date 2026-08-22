@@ -26,6 +26,11 @@ namespace Carrot::ECS {
                 if(modelComp.rendererStorage.tlas) {
                     modelComp.rendererStorage.tlas->enabled = false;
                 }
+                for (auto& hdl : modelComp.rendererStorage.emissiveMeshHandles) {
+                    if (hdl) {
+                        hdl->active = false;
+                    }
+                }
                 return;
             }
 

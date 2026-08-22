@@ -268,9 +268,13 @@ namespace Carrot::Render {
         defaultMetallicRoughnessImage->stageUpload(std::span{defaultMetallicRoughnessPixel, 4});
 
         whiteTexture = std::make_shared<Texture>(std::move(whiteImage));
+        whiteTexture->name("White pixel");
         blackTexture = std::make_shared<Texture>(std::move(blackImage));
+        blackTexture->name("Black pixel");
         flatNormalTexture = std::make_shared<Texture>(std::move(flatNormalImage));
+        flatNormalTexture->name("Default normal map");
         defaultMetallicRoughnessTexture = std::make_shared<Texture>(std::move(defaultMetallicRoughnessImage));
+        defaultMetallicRoughnessTexture->name("Default metallic roughness");
 
         invalidTexture = GetRenderer().getOrCreateTexture("invalid_texture_reference.png");
         invalidTextureHandle = createTextureHandle(invalidTexture);

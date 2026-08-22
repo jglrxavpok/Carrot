@@ -24,6 +24,7 @@ namespace Carrot::Render {
         return meshIndex == other.meshIndex
         && pipeline == other.pipeline
         && virtualizedGeometry == other.virtualizedGeometry
+        && emissiveColor == other.emissiveColor
         && (materialTextures == nullptr) == (other.materialTextures == nullptr)
         && (materialTextures == nullptr || *materialTextures == *other.materialTextures);
     }
@@ -35,6 +36,7 @@ namespace Carrot::Render {
             hash_combine(hash, materialTextures->hash());
         }
         hash_combine(hash, robin_hood::hash_int(virtualizedGeometry ? 1 : 0));
+        hash_combine(hash, robin_hood::hash_bytes(&emissiveColor, sizeof(emissiveColor)));
 
         return hash;
     }
@@ -198,6 +200,9 @@ namespace Carrot::Render {
                 if(const auto& element = texturesObj.find("metallic_roughness_texture"); element != texturesObj.end()) {
                     override.materialTextures->metallicRoughness = loadTexture(element->second);
                 }
+                if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
+                    override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
+                }
             }
             if(overrideObj.contains("virtualized_geometry")) {
                 override.virtualizedGeometry = overrideObj["virtualized_geometry"].getAsBool();
@@ -261,6 +266,7 @@ namespace Carrot::Render {
                 materialObj["metallicness"] = override.materialTextures->metallicFactor;
                 materialObj["roughness"] = override.materialTextures->roughnessFactor;
                 materialObj["transparent"] = override.materialTextures->isTransparent;
+                materialObj["emissive_color"] = Carrot::DocumentHelpers::write(override.materialTextures->emissiveColor);
 
                 overrideObj["material"] = materialObj;
             }
@@ -306,6 +312,21 @@ namespace Carrot::Render {
         if(storage.pCreator != this) {
             storage.resetNonPersistent();
             storage.pCreator = this;
+
+            // create handles with lighting system
+            storage.emissiveMeshHandles.resize(emissiveMeshes.size());
+            Lighting& lighting = renderContext.pViewport->getScene()->world.getLighting();
+            for (i32 emissiveIndex = 0; emissiveIndex < emissiveMeshes.size(); emissiveIndex++) {
+                const GPUEmissiveMesh& fromModelVersion = emissiveMeshes[emissiveIndex];
+                EmissiveMeshHandle& handle = storage.emissiveMeshHandles[emissiveIndex];
+                handle = lighting.createEmissiveMeshHandle();
+                auto& gpuVersion = static_cast<GPUEmissiveMesh&>(*handle);
+                gpuVersion.indices = fromModelVersion.indices;
+                gpuVersion.vertices = fromModelVersion.vertices;
+                gpuVersion.materialIndex = fromModelVersion.materialIndex;
+                gpuVersion.triangleCount = fromModelVersion.triangleCount;
+                // transform is set to model transform later down
+            }
 
             // create clusters instances
             if(hasVirtualizedGeometry) {
@@ -442,6 +463,14 @@ namespace Carrot::Render {
 
             renderContext.renderer.render(renderPacket);
         }
+
+        for (i32 emissiveIndex = 0; emissiveIndex < emissiveMeshes.size(); emissiveIndex++) {
+            const GPUEmissiveMesh& fromModelVersion = emissiveMeshes[emissiveIndex];
+            EmissiveMeshHandle& handle = storage.emissiveMeshHandles[emissiveIndex];
+            auto& mesh = static_cast<EmissiveMesh&>(*handle);
+            mesh.transform = instanceData.transform * fromModelVersion.transform;
+            mesh.active = true;
+        }
     }
 
     void ModelRenderer::addOverride(const MaterialOverride& override) {
@@ -543,6 +572,15 @@ namespace Carrot::Render {
                     drawCommand.vertexOffset = meshInfo.startVertex;
 
                     bucket.meshes.emplace_back(std::move(renderingInfo));
+
+                    if ((pMat->emissive && pMat->emissive->getSlot() != GetRenderer().getMaterialSystem().getBlackTexture()->getSlot())/* || !glm::all(glm::epsilonEqual(pMat->emissiveColor, glm::vec3(0.0f), 10e-6f))*/) {
+                        GPUEmissiveMesh& emissiveMesh = emissiveMeshes.emplaceBack();
+                        emissiveMesh.transform = meshAndTransform.transform;
+                        emissiveMesh.materialIndex = pMat->getSlot();
+                        emissiveMesh.triangleCount = meshInfo.indexCount/3;
+                        emissiveMesh.vertices = meshAndTransform.mesh->getVertexBuffer().getDeviceAddress();
+                        emissiveMesh.indices = meshAndTransform.mesh->getIndexBuffer().getDeviceAddress();
+                    }
                 }
             }
         }
@@ -630,6 +668,7 @@ namespace Carrot::Render {
         resetTLAS();
         pCreator = nullptr;
         clusterModelsPerViewport.clear();
+        emissiveMeshHandles.clear();
     }
 
 

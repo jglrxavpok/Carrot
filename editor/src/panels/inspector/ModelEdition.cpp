@@ -75,6 +75,13 @@ namespace Peeler {
             edition.hasModifications = true;
         }
 
+        const glm::vec3 emissiveColorRef = override.emissiveColor;
+        float col[3] { emissiveColorRef.r, emissiveColorRef.g, emissiveColorRef.b };
+        if(ImGui::ColorEdit3("Emissive color", col)) {
+            modifyTextures()->emissiveColor = glm::vec3{col[0], col[1], col[2]};
+            edition.hasModifications = true;
+        }
+
         std::shared_ptr<Carrot::Pipeline> pipeline = override.pipeline;
         if(edition.inspector.drawPickPipelineWidget("Rendering pipeline##editModelComponent", &pipeline)) {
             auto renderer = cloneIfNeeded();

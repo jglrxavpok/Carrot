@@ -16,7 +16,7 @@
 static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 
 namespace Carrot::Render {
-    static const std::uint32_t BindingCount = 2;
+    static const std::uint32_t BindingCount = 5;
 
     GPULight::GPULight() {
         point.position = glm::vec3{0};
@@ -26,8 +26,21 @@ namespace Carrot::Render {
     }
 
     Lighting::Lighting() {
-        reallocateBuffers(DefaultLightBufferSize);
+        reallocateLightBuffers(DefaultLightBufferSize);
+        reallocateEmissiveBuffers();
         std::array<vk::DescriptorPoolSize, BindingCount> poolSizes = {
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                },
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                },
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+                },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
                         .descriptorCount = MAX_FRAMES_IN_FLIGHT,
@@ -50,7 +63,16 @@ namespace Carrot::Render {
     LightHandle Lighting::create() {
         auto ptr = lightHandles.emplace();
         if(lightHandles.getMaxIndex() >= lightBufferSize) {
-            reallocateBuffers(Carrot::Math::nextPowerOf2(lightHandles.getMaxIndex()+1));
+            reallocateLightBuffers(Carrot::Math::nextPowerOf2(lightHandles.getMaxIndex()+1));
+        }
+        return ptr;
+    }
+
+    EmissiveMeshHandle Lighting::createEmissiveMeshHandle() {
+        auto ptr = emissiveMeshes.emplace();
+        Async::LockGuard g { emissiveMeshesAccess };
+        if (emissiveMeshes.getMaxIndex() >= emissiveMeshesBuffer.view.getSize() / sizeof(GPUEmissiveMesh)) {
+            requestReallocateEmissiveBuffers = true;
         }
         return ptr;
     }
@@ -61,7 +83,7 @@ namespace Carrot::Render {
         return lightPtr[handle.getIndex()];
     }
 
-    void Lighting::reallocateBuffers(std::uint32_t lightCount) {
+    void Lighting::reallocateLightBuffers(std::uint32_t lightCount) {
         lightBufferSize = std::max(lightCount, DefaultLightBufferSize);
         lightBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(GPULight),
@@ -76,6 +98,20 @@ namespace Carrot::Render {
                 vk::MemoryPropertyFlagBits::eDeviceLocal
         );
         activeLightsDataBytes.resize(activeLightsBuffer->getSize());
+
+        descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
+    }
+
+    void Lighting::reallocateEmissiveBuffers() {
+        const u32 emissiveMeshCount = emissiveMeshes.getMaxIndex()+1;
+        emissiveMeshesBuffer = GetResourceAllocator().allocateDeviceBuffer(sizeof(GPUEmissiveMesh) * emissiveMeshCount,
+            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst);
+        activeEmissiveMeshesBuffer = GetResourceAllocator().allocateDeviceBuffer(sizeof(u32) * emissiveMeshCount,
+            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst);
+        activeEmissiveMeshesCountBuffer = GetResourceAllocator().allocateDeviceBuffer(sizeof(u32) * 1,
+            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst);
+        emissiveMeshesBytes.resize(emissiveMeshCount);
+        activeEmissiveMeshes.resize(emissiveMeshCount);
 
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
@@ -131,10 +167,37 @@ namespace Carrot::Render {
         lightBuffer->getWholeView().uploadForFrame(dataBytes.data(), dataBytes.bytes_size());
         activeLightsBuffer->getWholeView().uploadForFrame(activeLightsDataBytes.data(), activeLightsDataBytes.bytes_size());
 
+        {
+            emissiveMeshes.cleanup();
+            Async::LockGuard g {emissiveMeshesAccess};
+            if (requestReallocateEmissiveBuffers) {
+                reallocateEmissiveBuffers();
+                requestReallocateEmissiveBuffers = false;
+            }
+            activeEmissiveMeshesCount = 0;
+            emissiveMeshes.iterate([&](EmissiveMesh& mesh) {
+                const u32 index = mesh.getHandle().getIndex();
+                emissiveMeshesBytes[index] = static_cast<GPUEmissiveMesh&>(mesh);
+
+                if (mesh.active) {
+                    activeEmissiveMeshes[activeEmissiveMeshesCount] = index;
+                    activeEmissiveMeshesCount++;
+                }
+            });
+        }
+
+        emissiveMeshesBuffer.view.uploadForFrame(emissiveMeshesBytes.data(), emissiveMeshesBytes.bytes_size());
+        activeEmissiveMeshesBuffer.view.uploadForFrame(activeEmissiveMeshes.data(), activeEmissiveMeshes.bytes_size());
+
+        activeEmissiveMeshesCountBuffer.view.uploadForFrame(&activeEmissiveMeshesCount, sizeof(u32));
+
         if(descriptorNeedsUpdate[renderContext.frameIndex]) {
             auto& set = descriptorSets[renderContext.frameIndex];
             auto lightBufferInfo = lightBuffer->getWholeView().asBufferInfo();
             auto activeLightsInfo = activeLightsBuffer->getWholeView().asBufferInfo();
+            auto emissiveMeshesBufferInfo = emissiveMeshesBuffer.view.asBufferInfo();
+            auto activeEmissiveMeshesBufferInfo = activeEmissiveMeshesBuffer.view.asBufferInfo();
+            auto activeEmissiveMeshesCountBufferInfo = activeEmissiveMeshesCountBuffer.view.asBufferInfo();
             std::array<vk::WriteDescriptorSet, BindingCount> writes = {
                     // Lights buffer
                     vk::WriteDescriptorSet {
@@ -153,7 +216,32 @@ namespace Carrot::Render {
                             .descriptorType = vk::DescriptorType::eStorageBuffer,
                             .pBufferInfo = &activeLightsInfo,
                     },
+                    // Emissive meshes buffer
+                    vk::WriteDescriptorSet {
+                            .dstSet = set,
+                            .dstBinding = 2,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eStorageBuffer,
+                            .pBufferInfo = &emissiveMeshesBufferInfo,
+                    },
+                    // Active emissive meshes buffer
+                    vk::WriteDescriptorSet {
+                            .dstSet = set,
+                            .dstBinding = 3,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eStorageBuffer,
+                            .pBufferInfo = &activeEmissiveMeshesBufferInfo,
+                    },
+                    // Active emissive meshes count buffer
+                    vk::WriteDescriptorSet {
+                            .dstSet = set,
+                            .dstBinding = 4,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eStorageBuffer,
+                            .pBufferInfo = &activeEmissiveMeshesCountBufferInfo,
+                    },
             };
+
             GetVulkanDevice().updateDescriptorSets(writes, {});
             descriptorNeedsUpdate[renderContext.frameIndex] = false;
         }
@@ -222,6 +310,28 @@ namespace Carrot::Render {
         // Active Lights Buffer
         vk::DescriptorSetLayoutBinding {
             .binding = 1,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = stageFlags
+            },
+
+        // Emissive meshes
+        vk::DescriptorSetLayoutBinding {
+            .binding = 2,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = stageFlags
+            },
+        // Active Emissive meshes
+        vk::DescriptorSetLayoutBinding {
+            .binding = 3,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = stageFlags
+            },
+        // Active Emissive meshes count
+        vk::DescriptorSetLayoutBinding {
+            .binding = 4,
             .descriptorType = vk::DescriptorType::eStorageBuffer,
             .descriptorCount = 1,
             .stageFlags = stageFlags

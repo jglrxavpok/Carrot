@@ -5,6 +5,7 @@
 #pragma once
 #include <core/UniquePtr.hpp>
 #include <core/containers/HandleStorage.hpp>
+#include <engine/render/resources/BufferAllocation.h>
 
 #include "core/utils/WeakPool.hpp"
 #include "engine/render/RenderContext.h"
@@ -55,6 +56,18 @@ namespace Carrot::Render {
         GPULight();
     };
 
+    struct GPUEmissiveMesh {
+        vk::DeviceAddress vertices;
+        vk::DeviceAddress indices;
+        u32 triangleCount = 0;
+        glm::mat4 transform{1.0f};
+        u32 materialIndex = 0;
+    };
+
+    struct EmissiveMesh: public GPUEmissiveMesh, public HandleBased<EmissiveMesh> {
+        bool active = false;
+    };
+
     struct Light: public GPULight, public HandleBased<Light> {
         static LightType fromString(std::string_view str);
         static const char* nameOf(const LightType& type);
@@ -68,6 +81,7 @@ namespace Carrot::Render {
     class Lighting;
 
     using LightHandle = Handle<Light>;
+    using EmissiveMeshHandle = Handle<EmissiveMesh>;
 
     class Lighting: public SwapchainAware {
     public:
@@ -78,6 +92,8 @@ namespace Carrot::Render {
         const glm::vec3& getAmbientLight() const { return ambientColor; }
 
         LightHandle create();
+
+        EmissiveMeshHandle createEmissiveMeshHandle();
 
     public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
@@ -98,7 +114,8 @@ namespace Carrot::Render {
         /// Reference to data on GPU
         GPULight& getLightGPUData(const LightHandle& handle);
 
-        void reallocateBuffers(std::uint32_t lightCount);
+        void reallocateLightBuffers(std::uint32_t lightCount);
+        void reallocateEmissiveBuffers();
         void reallocateDescriptorSets();
 
     private:
@@ -110,6 +127,7 @@ namespace Carrot::Render {
         constexpr static std::uint32_t DefaultLightBufferSize = 16;
 
         HandleStorage<Light> lightHandles;
+        HandleStorage<EmissiveMesh> emissiveMeshes;
         glm::vec3 ambientColor {1.0f};
 
         struct Data {
@@ -137,6 +155,18 @@ namespace Carrot::Render {
         std::size_t lightBufferSize = 0; // in number of lights
         UniquePtr<Carrot::Buffer> lightBuffer = nullptr;
         UniquePtr<Carrot::Buffer> activeLightsBuffer = nullptr;
+
+        Carrot::BufferAllocation emissiveMeshesBuffer;
+        Carrot::Vector<GPUEmissiveMesh> emissiveMeshesBytes;
+        Carrot::Vector<u32> activeEmissiveMeshes;
+
+        Carrot::BufferAllocation activeEmissiveMeshesBuffer;
+
+        u32 activeEmissiveMeshesCount = 0;
+        Carrot::BufferAllocation activeEmissiveMeshesCountBuffer;
+
+        bool requestReallocateEmissiveBuffers = false;
+        Carrot::Async::SpinLock emissiveMeshesAccess;
 
         // Distance at which fog starts
         float fogDistance = std::numeric_limits<float>::infinity();

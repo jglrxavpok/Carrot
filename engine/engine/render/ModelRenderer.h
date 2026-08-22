@@ -15,6 +15,7 @@
 #include <engine/render/MaterialSystem.h>
 
 #include <engine/render/RenderPacket.h>
+#include <engine/render/lighting/Lights.h>
 
 #include "raytracing/RaytracingScene.h"
 
@@ -29,6 +30,7 @@ namespace Carrot::Render {
     struct MaterialOverride {
         std::size_t meshIndex = 0;
 
+        glm::vec3 emissiveColor{0,0,0};
         bool virtualizedGeometry = false;
 
         std::shared_ptr<Carrot::Pipeline> pipeline; // can be null if only textures are changed
@@ -105,6 +107,8 @@ namespace Carrot::Render {
         std::shared_ptr<InstanceHandle> tlas = nullptr;
         bool tlasIsWaitingForModel = true;
 
+        Carrot::Vector<EmissiveMeshHandle> emissiveMeshHandles;
+
         ModelRendererStorage() = default;
         ModelRendererStorage(const ModelRendererStorage& toCopy);
         ModelRendererStorage(ModelRendererStorage&& toMove);
@@ -167,6 +171,9 @@ namespace Carrot::Render {
 
         std::vector<PipelineBucket> buckets;
         bool hasVirtualizedGeometry = false;
+
+        // emissive meshes, without instance transforms
+        Carrot::Vector<GPUEmissiveMesh> emissiveMeshes;
     };
 
 } // Carrot::Render

@@ -4,11 +4,17 @@ Texture2D inputImage;
 SamplerState nearestSampler;
 SamplerState linearSampler;
 
-enum ToneMappingOption: uint8_t {
+enum ToneMappingType : uint32_t {
     None,
     Reinhard,
+    ReinhardWithWhitePoint,
     Aces,
-};
+}
+
+struct ToneMappingOption {
+    ToneMappingType type;
+    float whitePoint;
+}
 
 float luminance(float3 v) {
     return dot(v, float3(0.2126f, 0.7152f, 0.0722f));
@@ -41,6 +47,13 @@ float3 changeLuminance(float3 color, float targetLuminance) {
 float3 reinhard(float3 rgb) {
     float3 v = rgb2xyz(rgb);
     float l = luminance(v);
+    float targetLuminance = l / (1.0f + l);
+    return xyz2rgb(changeLuminance(v, targetLuminance));
+}
+
+float3 reinhardWithWhitePoint(float3 rgb, float whitePoint) {
+    float3 v = rgb2xyz(rgb);
+    float l = luminance(v) / whitePoint;
     float targetLuminance = l / (1.0f + l);
     return xyz2rgb(changeLuminance(v, targetLuminance));
 }
@@ -80,14 +93,17 @@ float3 aces(float3 color) {
 
 float4 ApplyToneMapping(ToneMappingOption option, float2 uv) {
     float4 pixel = inputImage.Sample(nearestSampler, uv);
-    switch (option) {
-    case ToneMappingOption::None:
+    switch (option.type) {
+    case ToneMappingType::None:
         return pixel;
 
-    case ToneMappingOption::Reinhard:
+    case ToneMappingType::Reinhard:
         return float4(reinhard(pixel.rgb), pixel.a);
 
-    case ToneMappingOption::Aces:
+    case ToneMappingType::ReinhardWithWhitePoint:
+        return float4(reinhardWithWhitePoint(pixel.rgb, option.whitePoint), pixel.a);
+
+    case ToneMappingType::Aces:
         return float4(aces(pixel.rgb), pixel.a);
     }
     return pixel;
