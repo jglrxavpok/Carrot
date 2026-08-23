@@ -79,6 +79,10 @@ namespace Carrot::Render {
         StorageBuffer
     };
 
+    inline bool isResourceTypeAnImage(ResourceType type) {
+        return type == ResourceType::RenderTarget || type == ResourceType::StorageImage;
+    }
+
     class FrameResource: public std::enable_shared_from_this<FrameResource> {
     public:
         FrameResource() {

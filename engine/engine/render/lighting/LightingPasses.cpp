@@ -223,7 +223,7 @@ namespace Carrot::Render {
                 {
                     GPUZoneColored(GetEngine().tracyCtx[frame.frameIndex], cmds, "Temporal pass", glm::vec4(0,0,1,1));
                     renderer.pushConstants("push", *temporalDenoisePipeline, frame, vk::ShaderStageFlagBits::eCompute,
-                                           cmds, (u8)neighborClampingType);
+                                           cmds, (u32)neighborClampingType);
                     temporalDenoisePipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds,
                                                   vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(dispatchX, dispatchY, 1);
@@ -725,7 +725,7 @@ namespace Carrot::Render {
         // use variance of final denoised image to reject firefly
         auto& fireflyRejection = graph.addPass<FireflyRejection>("firefly-rejection",
             [&](GraphBuilder& graph, Pass<FireflyRejection>& pass, FireflyRejection& data) {
-                data.imageFullOfBugs = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eGeneral);
+                data.imageFullOfBugs = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.output = graph.createStorageTarget("lighting-with-rejected-fireflies", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
             },
@@ -764,8 +764,8 @@ namespace Carrot::Render {
             .ambientOcclusion = lightingPass.getData().ambientOcclusionSpatial.pingPong[(lightingPass.getData().ambientOcclusionSpatial.iterationCount+1) % 2],
             .combinedLighting = finalDenoise.getData().denoisedCombinedLighting.pingPong[(finalDenoise.getData().denoisedCombinedLighting.iterationCount+1) % 2],
             //.giDebug = debugGICells.getData().output,
-            .giDebug = lightingPass.getData().gBuffer.albedo,
-            .gBuffer = lightingPass.getData().gBuffer,
+            .giDebug = lightingPass.getData().reflections.noisy, // whatever, just can't be empty
+            .gBuffer = finalDenoise.getData().gBuffer,
         };
         return data;
     }

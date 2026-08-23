@@ -241,17 +241,25 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resource.rootID == input.resource.rootID; });
             if(it == prePassTransitions.end()) {
                 prePassTransitions.emplace_back(input.resource, initialLayout, input.expectedLayout, input.aspect);
+            } else {
+                assert(it->from == initialLayout && it->to == input.expectedLayout);
             }
         }
     }
 
     // with dynamic rendering, the layout transition must be done manually
     for (const auto& output : outputs) {
-        auto initialLayout = output.resource.previousLayout;
-        if(initialLayout != output.expectedLayout) {
-            auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resource.rootID == output.resource.rootID; });
-            if(it == prePassTransitions.end()) {
-                prePassTransitions.emplace_back(output.resource, initialLayout, output.expectedLayout, output.aspect);
+        if (output.isCreatedInThisPass && isResourceTypeAnImage(output.resource.type)) {
+            prePassTransitions.emplace_back(output.resource, vk::ImageLayout::eUndefined, output.expectedLayout, output.aspect);
+        } else {
+            auto initialLayout = output.resource.previousLayout;
+            if(initialLayout != output.expectedLayout) {
+                auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resource.rootID == output.resource.rootID; });
+                if(it == prePassTransitions.end()) {
+                    prePassTransitions.emplace_back(output.resource, initialLayout, output.expectedLayout, output.aspect);
+                } else {
+                    assert(it->from == initialLayout && it->to == output.expectedLayout);
+                }
             }
         }
     }

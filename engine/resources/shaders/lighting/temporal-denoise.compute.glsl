@@ -9,6 +9,7 @@ layout (local_size_y = LOCAL_SIZE_Y) in;
 #include <includes/gbuffer.glsl>
 #include "includes/gbuffer_input.glsl"
 #extension GL_EXT_shader_explicit_arithmetic_types_int8: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32: require
 
 DEFINE_GBUFFER_INPUTS(0)
 DEFINE_CAMERA_SET(1)
@@ -24,7 +25,7 @@ layout(rgba32f, set = 2, binding = 4) uniform readonly image2D lastFrameHistoryL
 layout(set = 2, binding = 5) uniform texture2D previousViewPos;
 
 layout(push_constant) uniform PushConstant {
-    uint8_t clampingType; // 0= none, 1= 5x5
+    uint32_t clampingType; // 0= none, 1= 5x5
 } push;
 
 vec4 AdjustHDRColor(vec4 color)
