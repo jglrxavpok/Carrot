@@ -408,13 +408,13 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
     bool newLayoutHandled = true;
     switch(oldLayout) {
         case vk::ImageLayout::eUndefined: {
-            barrier.srcAccessMask = static_cast<vk::AccessFlagBits>(0);
-            sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+            barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // clears must be over
+            sourceStage = vk::PipelineStageFlagBits::eAllCommands;
         } break;
 
         case vk::ImageLayout::eGeneral: {
-            barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
-            sourceStage = vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+            barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite | vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eColorAttachmentWrite;
+            sourceStage = vk::PipelineStageFlagBits::eAllCommands;
         } break;
 
         case vk::ImageLayout::eTransferDstOptimal: {
@@ -434,8 +434,8 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
         case vk::ImageLayout::eShaderReadOnlyOptimal:
         case vk::ImageLayout::eColorAttachmentOptimal: {
-            barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eColorAttachmentWrite; // write must be done
-            sourceStage = vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput;
+            barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite; // write must be done
+            sourceStage = vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests;
         } break;
 
         default:
@@ -459,7 +459,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         } break;
 
         case vk::ImageLayout::eGeneral: {
-            barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
+            barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eTransferRead; // shader must be able to read
             destinationStage = vk::PipelineStageFlagBits::eAllCommands;
         } break;
 
@@ -477,7 +477,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         case vk::ImageLayout::eDepthReadOnlyOptimal:
         case vk::ImageLayout::eDepthStencilAttachmentOptimal:
         case vk::ImageLayout::eDepthStencilReadOnlyOptimal: {
-            barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead; // shader must be able to read
+            barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite; // shader must be able to read and write
             destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
         } break;
 

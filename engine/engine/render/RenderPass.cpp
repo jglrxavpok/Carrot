@@ -279,13 +279,28 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         }
 
         if(!buffersToClear.empty()) {
-            Carrot::Log::debug("clear buffers");
-            Carrot::Log::flush();
             driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 for(std::size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
                     for(const auto& b : buffersToClear) {
                         auto& buffer = graph.getBuffer(b, i);
                         cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+
+                        if (i+1 != MAX_FRAMES_IN_FLIGHT) { // ensure no SYNC-HAZARD-WRITE-AFTER-WRITE (found by Vulkan validation layers)
+                            vk::BufferMemoryBarrier2 barrier {
+                                .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
+                                .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
+                                .dstStageMask = vk::PipelineStageFlagBits2::eTransfer,
+                                .dstAccessMask = vk::AccessFlagBits2::eTransferWrite,
+
+                                .buffer = buffer.view.getVulkanBuffer(),
+                                .offset = buffer.view.getStart(),
+                                .size = buffer.view.getSize(),
+                            };
+                            cmds.pipelineBarrier2(vk::DependencyInfo {
+                                .bufferMemoryBarrierCount = 1,
+                                .pBufferMemoryBarriers = &barrier
+                            });
+                        }
                     }
                 }
             });

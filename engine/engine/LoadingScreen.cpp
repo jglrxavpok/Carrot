@@ -18,6 +18,9 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     vk::UniqueSemaphore imageAvailable = device.createSemaphoreUnique(vk::SemaphoreCreateInfo {
 
     });
+    vk::UniqueSemaphore renderFinished = device.createSemaphoreUnique(vk::SemaphoreCreateInfo {
+
+    });
 
     auto imageIndex = device.acquireNextImageKHR(engine.getMainWindow().getSwapchain(), UINT64_MAX, *imageAvailable, nullptr).value;
 
@@ -117,21 +120,34 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     cmds.end();
     vk::CommandBufferSubmitInfo commandInfo {
-            .commandBuffer = cmds,
+        .commandBuffer = cmds,
+    };
+    vk::SemaphoreSubmitInfo signalInfo {
+        .semaphore = *renderFinished,
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+    vk::SemaphoreSubmitInfo waitForImageInfo {
+        .semaphore = *imageAvailable,
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
     vk::SubmitInfo2 submitInfo {
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = &commandInfo,
+        .waitSemaphoreInfoCount = 1,
+        .pWaitSemaphoreInfos = &waitForImageInfo,
+
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &commandInfo,
+
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signalInfo,
     };
 
     GetVulkanDriver().submitGraphics(submitInfo, nullptr);
-    engine.getGraphicsQueue().waitIdle();
 
     vk::SwapchainKHR swapchains[] = { engine.getMainWindow().getSwapchain() };
 
     vk::PresentInfoKHR presentInfo{
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &(*imageAvailable),
+            .pWaitSemaphores = &(*renderFinished),
 
             .swapchainCount = 1,
             .pSwapchains = swapchains,
