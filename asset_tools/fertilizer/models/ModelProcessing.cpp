@@ -263,6 +263,8 @@ namespace Fertilizer {
                 const glm::vec3& normal = mesh.vertices[i + j].vertex.normal;
                 const glm::vec3 tangent = mesh.vertices[i + j].vertex.tangent.xyz();
                 needsRegeneration |= isCloseToCollinear(normal, tangent);
+                needsRegeneration |= glm::any(glm::isnan(mesh.vertices[i+j].vertex.tangent));
+                needsRegeneration |= glm::any(glm::lessThanEqual(glm::abs(mesh.vertices[i+j].vertex.tangent), glm::vec4(10e-6f)));
             }
 
             if(needsRegeneration) {

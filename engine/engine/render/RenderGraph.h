@@ -149,6 +149,8 @@ namespace Carrot::Render {
         FrameResource& createStorageTarget(std::string name, vk::Format format, TextureSize size, vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(FrameResource& toPresent);
 
+        /// Tells render graph that this resource is reused across frames. Prevents aliasing and allocates the correct number of textures
+        /// 'historyLength' is the number of frames available in the history (does not include the current frame, ie 1 means current frame and previous frame are available)
         void reuseResourceAcrossFrames(const FrameResource& toReuse, std::size_t historyLength);
 
         template<typename Type>

@@ -224,7 +224,10 @@ public struct Lighting {
             pbr.H = normalize(pbr.L + pbr.V);
 
             float NdotL = dot(pbr.N, pbr.L);
-            if(NdotL < 0) {
+            if(NdotL < 0.01f) {
+                continue;
+            }
+            if (pbr.NdotV < 0.01f) {
                 continue;
             }
 
@@ -234,8 +237,8 @@ public struct Lighting {
             pbr.HdotV = dot(pbr.H, pbr.V);
 
             const float3 brdf = glTF_BRDF_WithoutImportanceSampling(pbr);
-            if(isnan(brdf.x)) {
-                return float3(10, 0, 0);
+            if(any(isnan(brdf))) {
+                return float3(0, 0, 0);
             }
 
             contribution += brdf * visibility * singleLightContribution;

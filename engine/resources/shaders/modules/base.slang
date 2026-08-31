@@ -11,6 +11,12 @@ public static const float M_INV_PIf = float(M_INV_PI);
 public static const float M_PI_OVER_2f = float(M_PI_OVER_2);
 public static const float M_PI_OVER_4f = float(M_PI_OVER_4);
 
+public static const float3x3 IdentityMatrix3x3 = float3x3(
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1,
+);
+
 public static const float4x4 IdentityMatrix = float4x4(
     1, 0, 0, 0,
     0, 1, 0, 0,

@@ -1,0 +1,21 @@
+{
+  "type": "compute",
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "manual",
+      "setID": 1
+    },
+    {
+      "type": "manual",
+      "setID": 2
+    },
+    {
+      "type": "manual",
+      "setID": 3
+    }
+  ]
+}

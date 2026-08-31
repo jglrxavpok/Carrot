@@ -56,6 +56,19 @@ public struct RandomSampler {
     }
 
     [mutating]
+    public float3 nextCosineHemisphere(in MaterialSystem materialSystem, float3 normal, float3 wo, out float pdf) {
+        float2 d = nextConcentricDisk(materialSystem);
+        float z = sqrt(max(0, 1 - dot(d, d)));
+
+        float3 tangent;
+        float3 bitangent;
+        computeTangents(normal, tangent, bitangent);
+        float3 r = tangent * d.x + bitangent * d.y + normal * z;
+        pdf = abs(dot(normal, r)) * M_INV_PIf;
+        return r;
+    }
+
+    [mutating]
     public float3 nextCosineHemisphere(in MaterialSystem materialSystem) {
         float2 d = nextConcentricDisk(materialSystem);
         float z = sqrt(max(0, 1 - dot(d, d)));

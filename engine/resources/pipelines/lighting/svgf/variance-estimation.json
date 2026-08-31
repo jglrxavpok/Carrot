@@ -1,0 +1,7 @@
+{
+  "_import": "svgf-template.json",
+  "computeShader": {
+    "file": "resources/shaders/lighting/svgf.slang",
+    "entry_point": "estimateVariance"
+  }
+}

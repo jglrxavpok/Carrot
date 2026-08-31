@@ -23,7 +23,8 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
     uint w, h;
     io.outImage.GetDimensions(w, h);
 
-    if(coords.x >= w || coords.y >= h) {
+    if (coords.x >= w || coords.y >= h) {
+        io.outImage.Store(coords, float4(0,0,0, 1));
         return;
     }
     
@@ -31,6 +32,9 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
     const float2 uv = float2(coords.xy) / float2(w, h);
 
     PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
+    if (pixelInfo.isSky) {
+        return;
+    }
     if(pixelInfo.gBuffer.metallicness < 0.01) {
         return;
     }

@@ -280,6 +280,19 @@ namespace HashGrid {
             }
             return float3(0, 0, 0);
         }
+
+        [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
+        public float3 read2(in Key key) {
+            if (let cellIndex = find(key)) {
+                const uint sampleCount = sampleCounts[cellIndex];
+                if (sampleCount == 0) {
+                    return float3(0.0);
+                }
+
+                return readRadiance(cellIndex);
+            }
+            return float3(0, 0, 0);
+        }
     }
 }
 

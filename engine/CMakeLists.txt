@@ -240,6 +240,11 @@ set(PIPELINES
         lighting/reflections-raytracing
         lighting/temporal-denoise
 
+        lighting/svgf/svgf-template
+        lighting/svgf/variance-estimation
+        lighting/svgf/temporal
+        lighting/svgf/wavelet-filter
+
         post-process/visibility-buffer-debug/_template
         post-process/visibility-buffer-debug/clusters
         post-process/visibility-buffer-debug/lods

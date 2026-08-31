@@ -192,9 +192,9 @@ namespace Carrot::Render {
             GBuffer gBuffer;
 
             // outputs
-            TemporalDenoising reflections;
+            FrameResource reflections;
 
-            TemporalDenoising directLighting; //< also contains shadows
+            FrameResource directLighting; //< also contains shadows
             TemporalDenoising ambientOcclusionTemporal;
             SpatialDenoising ambientOcclusionSpatial;
         };

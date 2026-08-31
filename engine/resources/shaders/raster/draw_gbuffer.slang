@@ -39,6 +39,10 @@ VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
 
     float3 t = normalize(vertex.getTangent().xyz);
     float3 n = normalize(vertex.getNormal());
+    if (any(isnan(t)) || any(isnan(n))) {
+        n = float3(0, 1, 0);
+        t = float3(1, 0, 0);
+    }
     float3x3 normalMatrix = transpose(inverse(float3x3(modelview)));
     out.N = normalize(normalMatrix * n);
     out.T = normalize(normalMatrix * (t - dot(t, n) * n));

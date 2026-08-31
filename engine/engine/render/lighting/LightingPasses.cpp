@@ -4,6 +4,7 @@
 
 #include "LightingPasses.h"
 
+#include <core/math/BasicFunctions.h>
 #include <engine/render/TextureRepository.h>
 
 #include "engine/render/VulkanRenderer.h"
@@ -346,9 +347,8 @@ namespace Carrot::Render {
                     addTemporalDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionTemporal);
                     addSpatialDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionSpatial);
                     resolveData.ambientOcclusionSpatial.noisy = resolveData.ambientOcclusionTemporal.samples;
-
-                    addTemporalDenoisingResources(graph, "Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
-                    addTemporalDenoisingResources(graph, "Reflections", vk::Format::eR32G32B32A32Sfloat, resolveData.reflections);
+                    resolveData.directLighting = graph.createStorageTarget("Direct Lighting", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    resolveData.reflections = graph.createStorageTarget("Reflections", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                },
                [framebufferSize, applyTemporalDenoising, applySpatialDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::LightingResources& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph lighting");
@@ -430,7 +430,7 @@ namespace Carrot::Render {
                        const std::uint8_t localSizeY = 8;
                        std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                        std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
-                       setupPipeline(data.directLighting.noisy, *directLightingPipeline, false, false, "entryPointParams");
+                       setupPipeline(data.directLighting, *directLightingPipeline, false, false, "entryPointParams");
                        directLightingPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
@@ -438,7 +438,7 @@ namespace Carrot::Render {
                        aoPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
 
-                       setupPipeline(data.reflections.noisy, *reflectionsPipeline, true, true, "entryPointParams");
+                       setupPipeline(data.reflections, *reflectionsPipeline, true, true, "entryPointParams");
                        reflectionsPipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
                        cmds.dispatch(dispatchX, dispatchY, 1);
                    }
@@ -460,8 +460,6 @@ namespace Carrot::Render {
 
                    applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionTemporal, 0, vk::ImageLayout::eGeneral, NeighborClampingType::e5x5, cmds);
                    applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionSpatial, 0, cmds);
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.directLighting, 1, vk::ImageLayout::eGeneral, NeighborClampingType::e5x5, cmds);
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.reflections, 2, vk::ImageLayout::eGeneral, NeighborClampingType::e5x5, cmds);
                }
         );
 
@@ -482,7 +480,6 @@ namespace Carrot::Render {
                             });
                     };
                     clear(data.ambientOcclusionTemporal);
-                    clear(data.directLighting);
                 }
             });
 
@@ -637,18 +634,18 @@ namespace Carrot::Render {
         struct GIResult {
             PassData::HashGridResources hashGrid;
             PassData::GBuffer gbuffer;
-            PassData::TemporalDenoising output;
+            FrameResource output;
         };
         auto getGIResults = graph.addPass<GIResult>("compute-gi",
-            [&accumulateSurfaceCache, &addTemporalDenoisingResources](GraphBuilder& graph, Pass<GIResult>& pass, GIResult& data) {
+            [&accumulateSurfaceCache, &framebufferSize](GraphBuilder& graph, Pass<GIResult>& pass, GIResult& data) {
                 pass.rasterized = false;
 
                 data.gbuffer.readFrom(graph, accumulateSurfaceCache.getData().gbuffer, vk::ImageLayout::eGeneral);
                 data.hashGrid = HashGrid::write(graph, accumulateSurfaceCache.getData().gi.hashGrid);
 
-                addTemporalDenoisingResources(graph, "gi", vk::Format::eR32G32B32A32Sfloat, data.output);
+                data.output = graph.createStorageTarget("gi", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
             },
-            [bindBaseGIUpdateInputs, applyTemporalDenoising](const Render::CompiledPass& pass, const Context& frame, const GIResult& data, vk::CommandBuffer& cmds) {
+            [bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Context& frame, const GIResult& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "compute GI");
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/compute-gi", (std::uint64_t)&pass);
@@ -661,17 +658,13 @@ namespace Carrot::Render {
 
                 frame.renderer.pushConstantBlock<PushConstantNoRT>("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
 
-                auto& texture = pass.getGraph().getTexture(data.output.noisy, frame.frameNumber);
+                auto& texture = pass.getGraph().getTexture(data.output, frame.frameNumber);
                 pipeline->setStorageImage(frame, "io.output", texture, vk::ImageLayout::eGeneral);
                 pipeline->bind(RenderingPipelineCreateInfo{}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const i64 groupCountX = (block.frameWidth + 8 - 1) / 8;
                 const i64 groupCountY = (block.frameHeight + 8 - 1) / 8;
                 cmds.dispatch(groupCountX, groupCountY, 1);
-
-                {
-                    applyTemporalDenoising(pass, frame, data.gbuffer, data.gbuffer.positions, data.gbuffer.viewSpaceNormalTangents, data.output, 0, vk::ImageLayout::eGeneral, NeighborClampingType::eNone, cmds);
-                }
             });
 
         struct PremergeData {
@@ -685,9 +678,10 @@ namespace Carrot::Render {
             [&getGIResults, &lightingPass](GraphBuilder& graph, Pass<PremergeData>& pass, PremergeData& data) {
                 pass.rasterized = false;
 
-                data.directLighting = graph.read(lightingPass.getData().directLighting.samples, vk::ImageLayout::eGeneral);
-                data.reflections = graph.read(lightingPass.getData().reflections.samples, vk::ImageLayout::eGeneral);
-                data.gi = graph.read(getGIResults.getData().output.samples, vk::ImageLayout::eGeneral);
+                data.directLighting = graph.read(lightingPass.getData().directLighting, vk::ImageLayout::eGeneral);
+                data.reflections = graph.read(lightingPass.getData().reflections, vk::ImageLayout::eGeneral);
+                data.gi = graph.read(getGIResults.getData().output, vk::ImageLayout::eGeneral);
+
                 data.premergedLighting = graph.createStorageTarget("Premerged lighting", vk::Format::eR32G32B32A32Sfloat, {}, vk::ImageLayout::eGeneral);
 
                 data.gBuffer.readFrom(graph, getGIResults.getData().gbuffer, vk::ImageLayout::eGeneral);
@@ -718,7 +712,6 @@ namespace Carrot::Render {
             });
 
         struct FireflyRejection {
-            FrameResource varianceInput;
             FrameResource imageFullOfBugs;
             FrameResource output;
         };
@@ -743,29 +736,192 @@ namespace Carrot::Render {
                 cmds.dispatch(dispatchX, dispatchY, 1);
             });
 
-        struct FinalDenoise {
-            PassData::SpatialDenoising denoisedCombinedLighting;
+        constexpr static i32 SVGFLocalSize = 8;
+
+        struct SVGFTemporal {
             PassData::GBuffer gBuffer;
+            FrameResource integratedColor; // right after temporal accumulation
+            FrameResource colorHistory; // after first wave of spatial filter
+            FrameResource momentsHistory;
+            FrameResource currentFrameColor;
+        };
+        auto& svgfTemporal = graph.addPass<SVGFTemporal>("svgf-temporal",
+            [&](GraphBuilder& graph, Pass<SVGFTemporal>& pass, SVGFTemporal& data) {
+                data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.integratedColor = graph.createStorageTarget("integrated color", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.colorHistory = graph.createStorageTarget("color history", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.momentsHistory = graph.createStorageTarget("moments history", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.currentFrameColor = graph.read(fireflyRejection.getData().output, vk::ImageLayout::eGeneral);
+
+                graph.reuseResourceAcrossFrames(data.colorHistory, 1);
+                graph.reuseResourceAcrossFrames(data.momentsHistory, 1);
+                graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.colorHistory.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                pass.rasterized = false;
+            },
+            [](const CompiledPass& pass, const Context& frame, const SVGFTemporal& data, vk::CommandBuffer& cmds) {
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/temporal", (u64)&pass);
+                auto& output = pass.getGraph().getTexture(data.integratedColor, frame.frameNumber); // colorHistory is written to by first wave of spatial denoise
+                // 0 is camera
+                data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
+                data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
+
+                pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.currentFrameColor, frame.frameNumber), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "colorHistory", pass.getGraph().getTexture(data.colorHistory, frame.getPreviousFrameNumber()), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "momentsHistory", pass.getGraph().getTexture(data.momentsHistory, frame.getPreviousFrameNumber()), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "momentsOutput", pass.getGraph().getTexture(data.momentsHistory, frame.frameNumber), vk::ImageLayout::eGeneral);
+
+                pipeline->bind(pass, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                const i32 groupCountX = Math::alignUp((i32)output.getSize().width, SVGFLocalSize) / SVGFLocalSize;
+                const i32 groupCountY = Math::alignUp((i32)output.getSize().height, SVGFLocalSize) / SVGFLocalSize;
+                cmds.dispatch(groupCountX, groupCountY, 1);
+            });
+
+        struct SVGFVariance {
+            PassData::GBuffer gBuffer;
+            FrameResource currentFrameColor;
+            FrameResource momentsHistory;
+            FrameResource varianceOutput;
         };
 
-        auto& finalDenoise = graph.addPass<FinalDenoise>("lighting-denoise",
-            [&](GraphBuilder& graph, Pass<FinalDenoise>& pass, FinalDenoise& data) {
-                addSpatialDenoisingResources(graph, "denoised combined lighting", vk::Format::eR32G32B32A32Sfloat, data.denoisedCombinedLighting);
-                data.denoisedCombinedLighting.iterationCount = 5;
-                data.denoisedCombinedLighting.noisy = graph.read(fireflyRejection.getData().output, vk::ImageLayout::eGeneral);
-                data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
-
+        auto& svgfVarianceEstimation = graph.addPass<SVGFVariance>("svgf-variance-estimation",
+            [&](GraphBuilder& graph, Pass<SVGFVariance>& pass, SVGFVariance& data) {
+                data.gBuffer.readFrom(graph, svgfTemporal.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.varianceOutput = graph.createStorageTarget("variance output", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.currentFrameColor = graph.read(svgfTemporal.getData().integratedColor, vk::ImageLayout::eGeneral);
+                data.momentsHistory = graph.read(svgfTemporal.getData().momentsHistory, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
-            }, [applySpatialDenoising](const CompiledPass& pass, const Context& frame, const FinalDenoise& data, vk::CommandBuffer& cmds) {
-                applySpatialDenoising(pass, frame, "lighting/denoise-direct", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.denoisedCombinedLighting, 1, cmds);
+            },
+            [](const CompiledPass& pass, const Context& frame, const SVGFVariance& data, vk::CommandBuffer& cmds) {
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/variance-estimation", (u64)&pass);
+                auto& output = pass.getGraph().getTexture(data.varianceOutput, frame.frameNumber);
+
+                // 0 is camera
+                data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
+                data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current framess
+
+                pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.currentFrameColor, frame.frameNumber), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "momentsHistory", pass.getGraph().getTexture(data.momentsHistory, frame.frameNumber), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "varianceOutput", output, vk::ImageLayout::eGeneral);
+
+                pipeline->bind(pass, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                const i32 groupCountX = Math::alignUp((i32)output.getSize().width, SVGFLocalSize) / SVGFLocalSize;
+                const i32 groupCountY = Math::alignUp((i32)output.getSize().height, SVGFLocalSize) / SVGFLocalSize;
+                cmds.dispatch(groupCountX, groupCountY, 1);
             });
+
+        struct SVGFIteration {
+            PassData::GBuffer gBuffer;
+            FrameResource previousPassColor;
+            FrameResource currentPassColorOutput;
+            FrameResource previousPassVariance;
+            FrameResource updatedVariance;
+        };
+
+        auto& svgfFirstIteration = graph.addPass<SVGFIteration>("svgf-iteration-1",
+            [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
+                data.gBuffer.readFrom(graph, svgfVarianceEstimation.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.previousPassColor = graph.read(svgfVarianceEstimation.getData().currentFrameColor, vk::ImageLayout::eGeneral);
+                data.currentPassColorOutput = graph.createStorageTarget("filtered color 1", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.previousPassVariance = graph.read(svgfVarianceEstimation.getData().varianceOutput, vk::ImageLayout::eGeneral);
+                data.updatedVariance = graph.createStorageTarget("updated variance 1", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                pass.rasterized = false;
+
+                graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.currentPassColorOutput.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+            },
+            [](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+                auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("lighting/svgf/wavelet-filter", pass);
+                auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
+
+                // 0 is camera
+                data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
+                data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
+
+                pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "varianceInput", pass.getGraph().getTexture(data.previousPassVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
+                pipeline->setStorageImage(frame, "varianceOutput", pass.getGraph().getTexture(data.updatedVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
+
+                frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, (u32)0);
+
+                pipeline->bind(pass, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                const i32 groupCountX = Math::alignUp((i32)output.getSize().width, SVGFLocalSize) / SVGFLocalSize;
+                const i32 groupCountY = Math::alignUp((i32)output.getSize().height, SVGFLocalSize) / SVGFLocalSize;
+                cmds.dispatch(groupCountX, groupCountY, 1);
+            });
+
+        struct SVGFCopy {
+            FrameResource input;
+            FrameResource output;
+        };
+        auto& svgfCopyFirstIterationToHistory = graph.addPass<SVGFCopy>("copy first iteration to history",
+            [&](GraphBuilder& graph, Pass<SVGFCopy>& pass, SVGFCopy& data) {
+                data.input = graph.read(svgfFirstIteration.getData().currentPassColorOutput, vk::ImageLayout::eGeneral);
+                data.output = graph.write(svgfTemporal.getData().colorHistory, vk::AttachmentLoadOp::eDontCare, vk::ImageLayout::eGeneral);
+                pass.rasterized = false;
+            }, [](const CompiledPass& pass, const Context& frame, const SVGFCopy& data, vk::CommandBuffer& cmds) {
+                const auto& input = pass.getGraph().getTexture(data.input, frame.frameNumber);
+                const auto& output = pass.getGraph().getTexture(data.output, frame.frameNumber);
+
+                cmds.copyImage(input.getVulkanImage(), vk::ImageLayout::eGeneral, output.getVulkanImage(), vk::ImageLayout::eGeneral, vk::ImageCopy {
+                    .srcSubresource = vk::ImageSubresourceLayers {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .layerCount = 1,
+                    },
+                    .dstSubresource = vk::ImageSubresourceLayers {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .layerCount = 1,
+                    },
+                    .extent = output.getSize(),
+                });
+            });
+
+        auto addWaveletIteration = [&](int iterationIndex, const SVGFIteration& previousPass) -> Pass<SVGFIteration>& {
+            return graph.addPass<SVGFIteration>(Carrot::sprintf("wavelet iteration %d", iterationIndex),
+                [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
+                    data.gBuffer.readFrom(graph, previousPass.gBuffer, vk::ImageLayout::eGeneral);
+                    data.previousPassColor = graph.read(previousPass.currentPassColorOutput, vk::ImageLayout::eGeneral);
+                    data.currentPassColorOutput = graph.createStorageTarget("filtered color", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    data.previousPassVariance = graph.read(previousPass.updatedVariance, vk::ImageLayout::eGeneral);
+                    data.updatedVariance = graph.createStorageTarget("updated variance", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    pass.rasterized = false;
+                },
+                [iterationIndex](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+                    auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/wavelet-filter", (u64)&pass);
+                    auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
+
+                    // 0 is camera
+                    data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
+                    data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
+
+                    pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
+                    pipeline->setStorageImage(frame, "varianceInput", pass.getGraph().getTexture(data.previousPassVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
+                    pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
+                    pipeline->setStorageImage(frame, "varianceOutput", pass.getGraph().getTexture(data.updatedVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
+
+                    frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, (u32)iterationIndex);
+
+                    pipeline->bind(pass, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                    const i32 groupCountX = Math::alignUp((i32)output.getSize().width, SVGFLocalSize) / SVGFLocalSize;
+                    const i32 groupCountY = Math::alignUp((i32)output.getSize().height, SVGFLocalSize) / SVGFLocalSize;
+                    cmds.dispatch(groupCountX, groupCountY, 1);
+                });
+        };
+
+        auto& iteration2 = addWaveletIteration(2, svgfFirstIteration.getData());
+        auto& iteration3 = addWaveletIteration(3, iteration2.getData());
+        auto& iteration4 = addWaveletIteration(4, iteration3.getData());
+        auto& iteration5 = addWaveletIteration(5, iteration4.getData());
 
         PassData::Lighting data {
             .ambientOcclusion = lightingPass.getData().ambientOcclusionSpatial.pingPong[(lightingPass.getData().ambientOcclusionSpatial.iterationCount+1) % 2],
-            .combinedLighting = finalDenoise.getData().denoisedCombinedLighting.pingPong[(finalDenoise.getData().denoisedCombinedLighting.iterationCount+1) % 2],
-            //.giDebug = debugGICells.getData().output,
-            .giDebug = lightingPass.getData().reflections.noisy, // whatever, just can't be empty
-            .gBuffer = finalDenoise.getData().gBuffer,
+            .combinedLighting = iteration5.getData().currentPassColorOutput,
+            .giDebug = lightingPass.getData().reflections, // whatever, just can't be empty TODO: remove
+            .gBuffer = iteration5.getData().gBuffer,
         };
         return data;
     }

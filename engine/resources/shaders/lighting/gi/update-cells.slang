@@ -48,9 +48,9 @@ void decayCells(uint cellIndex: SV_DispatchThreadID, uniform DecayPushConstant p
 
 [shader("compute")]
 [numthreads(8, 4, 1)]
-void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUniforms push) {
+void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUniforms push) {
     const float2 offsetInTile = r2Sequence(push.frameCount) * CacheDownscaleFactor;
-    const float2 uv = float2(coords.xy * CacheDownscaleFactor + offsetInTile + 0.5f) / push.frameDimensions;
+    const float2 uv = float2(coords * CacheDownscaleFactor + offsetInTile + 0.5f) / push.frameDimensions;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
 
     if (pixelInfo.isSky) {
@@ -69,10 +69,12 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
         float3 directLight;
         float3 normal;
         float3 directionToNext;
+        float pdfOfNextDirection = 1;
+        float3 R;
     };
 
     PbrInputs pbr;
-    BounceData bounces[MaxBounces];
+    BounceData bounces[MaxBounces+1];
     int bounceIndex = 0;
 
     float3 startOfRay = pixelInfo.worldPosition;
@@ -86,7 +88,8 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
 
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, push.frameCount);
 
-    float3 rayDirection = inverseNormalView * pixelInfo.gBuffer.viewTBN * rng.nextCosineHemisphere(materialSystem);
+    float directionPDF = 1;
+    float3 rayDirection = rng.nextCosineHemisphere(materialSystem, startingNormal, normalize(startOfRay - pixelInfo.cameraPos), directionPDF);
     float3 previousPos = pixelInfo.cameraPos;
     bool hitSky = false;
 
@@ -123,7 +126,9 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
 
         directLighting += startingEmissive * 50;
 
+        bounces[bounceIndex].R = startingAlbedo;
         bounces[bounceIndex].directLight = directLighting;
+        bounces[bounceIndex].pdfOfNextDirection = directionPDF;
         bounces[bounceIndex].directionToNext = rayDirection;
         bounces[bounceIndex].normal = startingNormal;
 
@@ -132,7 +137,10 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
             float3x3 intersectionTBN = float3x3(intersection.worldTangent, worldBitangent, intersection.worldNormal);
             previousPos = startOfRay;
             startOfRay = intersection.worldPosition;
-            rayDirection = intersectionTBN * rng.nextCosineHemisphere(materialSystem);
+            // compute direction and store pdf of this direction
+
+            float3 wo = -rayDirection;
+            rayDirection = rng.nextCosineHemisphere(materialSystem, intersection.worldNormal, wo, directionPDF);
             startingRoughness = intersection.computedMaterial.roughness;
             startingMetallic = intersection.computedMaterial.metallic;
             startingAlbedo = intersection.computedMaterial.albedo.rgb;
@@ -149,27 +157,61 @@ void fillSurfaceCache(uint3 coords: SV_DispatchThreadID, uniform LightingPassUni
 
             const float3 skyboxRGB = gBufferInputs.skybox3D.SampleGrad(rot * rayDirection, float3(0), float3(0)).rgb;
 
-            bounces[bounceIndex].directLight = skyboxRGB * SkyboxIntensity;
+            bounces[bounceIndex].directLight += skyboxRGB * SkyboxIntensity * dot(startingNormal, rayDirection);
             hitSky = true;
             break;
         }
     }
 
-    if(!hitSky) // if we do hit the sky, we break out of the loop above, meaning we do not increment bounceIndex
+    if (!hitSky) {
+        // if we do hit the sky, we break out of the loop above, meaning we do not increment bounceIndex
+#if 1
         bounceIndex--;
+#else
+        // sample cache for last bounce
+        HashGrid::Key key;
+        key.hitPosition = startOfRay;
+        float3 dPos = previousPos - startOfRay;
+        float l = length(dPos);
+        key.direction = startingNormal; // dPos / l;
+        key.cameraPosition = pixelInfo.cameraPos;
+        key.rayLength = l;
 
-    // backwards trace: distribute indirect lighting to each cell
-    float3 pathContribution = lightData.lightArray.ambientColor;
-    float NdotL = 1; // dot product of normal and direction to previous vertex in path
+    
+        bounces[bounceIndex].directLight = GetHashGrid().read2(key);
+
+        bounces[bounceIndex].R = startingAlbedo;
+        bounces[bounceIndex].pdfOfNextDirection = directionPDF;
+        bounces[bounceIndex].directionToNext = rayDirection;
+        bounces[bounceIndex].normal = startingNormal;
+#endif
+    }
+
+    uint lastBounceIndex = bounceIndex;
     for (; bounceIndex >= 0; bounceIndex--) {
-        pathContribution *= lambertianBRDF * NdotL;
-        pathContribution += bounces[bounceIndex].directLight;
+        // rebuild path forward
+        float3 L = lightData.lightArray.ambientColor;
+        float3 beta = 1;
 
-        NdotL = dot(bounces[bounceIndex].normal, bounces[bounceIndex].directionToNext);
+        for (int innerBounce = bounceIndex; innerBounce <= lastBounceIndex; innerBounce++) {
+            L += beta * bounces[innerBounce].directLight;
+
+            const float3 normal = bounces[innerBounce].normal;
+            const float3 wi = bounces[innerBounce].directionToNext;
+            const float pdf = bounces[innerBounce].pdfOfNextDirection;
+            if (pdf <= 10e-6f) {
+                break;
+            }
+            float3 f = bounces[innerBounce].R * lambertianBRDF; // TODO: proper BRDF?
+            if (dot(f, f) == 0.0f) {
+                break;
+            }
+            beta *= f * abs(dot(wi, normal)) / pdf;
+        }
 
         if (let cellIndex = bounces[bounceIndex].gridCellIndex) {
             GetHashGrid().mark(cellIndex, push.frameCount);
-            GetHashGrid().accumulate2(cellIndex, pathContribution);
+            GetHashGrid().accumulate2(cellIndex, L);
         }
     }
 }
