@@ -102,6 +102,7 @@ void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsum
 
 template<typename CommandBufferConsumer>
 void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore) {
+    // TODO: fix. Actually, unsafe because this command pool is used by main command buffer which gets written to on Render Thread
     performSingleTimeCommands(getThreadGraphicsCommandPool(), [&](const vk::SubmitInfo2& info, const vk::Fence& fence) { submitGraphics(info, fence); }, waitGraphics, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
 }
 

@@ -532,15 +532,41 @@ namespace Carrot::Render {
         struct ImGuiRenderPassData {
             Render::FrameResource targetTexture;
         };
-        renderGraphBuilder.addPass<ImGuiRenderPassData>("ImGui external window",
-                                                        [this](GraphBuilder& graph, Pass<ImGuiRenderPassData>& pass, ImGuiRenderPassData& data) {
-                                                            vk::ClearColorValue clearColor { 0.0, 0.0, 0.0, 1.0f };
-                                                            data.targetTexture = graph.write(graph.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, clearColor);
+        auto& renderPass = renderGraphBuilder.addPass<ImGuiRenderPassData>("ImGui external window",
+                                                                           [this](GraphBuilder& graph,
+                                                                           Pass<ImGuiRenderPassData>& pass,
+                                                                           ImGuiRenderPassData& data) {
+                                                                               vk::ClearColorValue clearColor{
+                                                                                   0.0, 0.0, 0.0, 1.0f
+                                                                               };
+                                                                               data.targetTexture = graph.write(
+                                                                                   graph.getSwapchainImage(),
+                                                                                   vk::AttachmentLoadOp::eClear,
+                                                                                   vk::ImageLayout::eColorAttachmentOptimal,
+                                                                                   clearColor);
+                                                                           },
+                                                                           [this](const CompiledPass& pass,
+                                                                           const Render::Context& renderContext,
+                                                                           ImGuiRenderPassData& data,
+                                                                           vk::CommandBuffer& cmds) {
+                                                                               record(cmds, pass, renderContext);
+                                                                           });
+
+        renderGraphBuilder.addPass<ImGuiRenderPassData>("ImGui external window present",
+                                                        [renderPass](GraphBuilder& graph, Pass<ImGuiRenderPassData>& pass,
+                                                               ImGuiRenderPassData& data) {
+                                                            pass.rasterized = false;
+                                                            vk::ClearColorValue clearColor{0.0, 0.0, 0.0, 1.0f};
+                                                            data.targetTexture = graph.write(
+                                                                renderPass.getData().targetTexture, vk::AttachmentLoadOp::eLoad,
+                                                                vk::ImageLayout::ePresentSrcKHR, clearColor);
                                                             graph.present(data.targetTexture);
-        },
-                                                        [this](const CompiledPass& pass, const Render::Context& renderContext, ImGuiRenderPassData& data, vk::CommandBuffer& cmds) {
-                                                            record(cmds, pass, renderContext);
-        });
+                                                        },
+                                                        [this](const CompiledPass& pass,
+                                                               const Render::Context& renderContext,
+                                                               ImGuiRenderPassData& data,
+                                                               vk::CommandBuffer& cmds) { /*noop*/
+                                                        });
         pRendererUserData->pViewport = &viewport;
         viewport.setRenderGraph(std::move(renderGraphBuilder.compile()));
         pImpl->initPerFrameData(renderer, externalWindow.getWindowID(), &viewport);

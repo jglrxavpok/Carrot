@@ -232,6 +232,7 @@ namespace Carrot {
         Configuration config;
 
         std::mutex deviceMutex;
+        std::mutex swapchainsMutex; // guards against multiple uses of swapchains at same time (for example acquire & present)
 
         const vk::AllocationCallbacks* allocator = nullptr;
         Engine* engine = nullptr;
@@ -316,6 +317,7 @@ namespace Carrot {
         void submitCompute(const vk::SubmitInfo2& info, const vk::Fence& fence = {});
 
         std::mutex& getDeviceMutex();
+        std::mutex& getSwapchainsMutex();
 
         /// Synchronized call to waitIdle of the logical device
         void waitDeviceIdle();

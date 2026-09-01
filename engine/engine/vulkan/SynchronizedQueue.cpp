@@ -125,7 +125,7 @@ namespace Carrot::Vulkan {
     }
 
     void SynchronizedQueue::presentKHR(const vk::PresentInfoKHR& info) {
-        //std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
+        std::lock_guard l0 { GetVulkanDriver().getSwapchainsMutex() };
         std::lock_guard l { mutex };
         DISCARD(queue.presentKHR(&info));
     }

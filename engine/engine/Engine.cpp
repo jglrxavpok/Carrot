@@ -1010,6 +1010,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         auto acquire = [&](Window& window) -> std::int32_t {
             ZoneScopedN("acquireNextImageKHR");
+            std::lock_guard g { vkDriver.getSwapchainsMutex() };
             auto nextImage = getLogicalDevice().acquireNextImageKHR(window.getSwapchain(), UINT64_MAX,
                                                                     window.getImageAvailableSemaphore(currentFrame), nullptr);
             result = nextImage.result;

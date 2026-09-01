@@ -1460,6 +1460,10 @@ std::mutex& Carrot::VulkanDriver::getDeviceMutex() {
     return deviceMutex;
 }
 
+std::mutex& Carrot::VulkanDriver::getSwapchainsMutex() {
+    return swapchainsMutex;
+}
+
 void Carrot::VulkanDriver::breakOnNextVulkanError() {
     breakOnVulkanError = true;
 }
