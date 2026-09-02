@@ -567,7 +567,7 @@ namespace Carrot::Render {
         }
 
         {
-            auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eMeshEXT);
+            auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eTaskEXT);
             data.maxElementCount = gpuInstances.size();
             pushConstant.setData(data);
         }

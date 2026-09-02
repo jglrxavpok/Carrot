@@ -171,6 +171,8 @@ namespace Carrot::Render {
                 const auto& layout = pipeline->getPipelineLayout();
                 const auto& range = pipeline->getPushConstant(pushConstants[index]->id);
                 cmds.pushConstants(layout, pushConstants[index]->stages, range.offset, pushConstants[index]->pushData.size(), pushConstants[index]->pushData.data());
+                // TODO: need to rework push constant handling
+                //cmds.pushConstants(layout, pushConstants[index]->stages, range.offset, range.size - range.offset/*data is assumed to start at 0*/, pushConstants[index]->pushData.data());
             }
         }
 

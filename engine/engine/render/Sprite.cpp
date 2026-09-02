@@ -50,7 +50,7 @@ namespace Carrot::Render {
         packet.addPerDrawData(std::span{ &drawData, 1 });
 
         Render::Packet::PushConstant& region = packet.addPushConstant();
-        region.id = "region";
+        region.id = "entryPointParams";
         region.stages = vk::ShaderStageFlagBits::eVertex;
         region.setData(textureRegion);
 
