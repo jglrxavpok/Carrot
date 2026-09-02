@@ -543,7 +543,7 @@ namespace Carrot::Render {
 
             bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
             Carrot::AccelerationStructure* pTLAS = nullptr;
-            if (pipeline.getPushConstant("entryPointParams").offset != (u32)-1) {
+            if (pipeline.hasPushConstant()) {
                 if(useRaytracingVersion) {
                     pTLAS = frame.renderer.getRaytracingScene().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;

@@ -113,13 +113,10 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
 
     std::vector<vk::PushConstantRange> pushConstants{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addPushConstants(stage, pushConstantMap);
+        module->addPushConstantInfo(stage, pushConstant);
     }
-    for(const auto& [_, range] : pushConstantMap) {
-        if (range.offset != std::numeric_limits<std::uint32_t>::max()) { // if == (u32)-1, this means the push constant exists in the shader source, but is not used at all, don't bind anything
-            pushConstants.push_back(range);
-        }
-    }
+    if (hasPushConstant())
+        pushConstants.push_back(pushConstant);
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
             .setLayoutCount = static_cast<std::uint32_t>(layouts.size()),
@@ -438,8 +435,15 @@ u32 Carrot::Pipeline::getGenerationNumber() const {
     return generationNumber;
 }
 
-const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view name) const {
-    return pushConstantMap[std::string(name)];
+bool Carrot::Pipeline::hasPushConstant() const {
+    return pushConstant.size > 0;
+}
+
+vk::PushConstantRange Carrot::Pipeline::getMatchingPushConstantRange(vk::ShaderStageFlags stages) const {
+    if (pushConstant.stageFlags & stages) {
+        return pushConstant;
+    }
+    return {};
 }
 
 bool Carrot::Pipeline::hasBinding(u32 setID, u32 bindingID) const {

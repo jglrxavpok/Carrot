@@ -352,7 +352,7 @@ namespace Carrot::ECS {
                 packet.instanceCount = 1;
                 packet.transparentGBuffer.zOrder = commandIndex; // to ensure objects are drawn on top of each others
 
-                auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+                auto& pushConstant = packet.addPushConstant(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
                 DisplayRect rect {
                     .transform = result.transform,
                     .textureIndex = static_cast<u32>(dataForThisCommand.textureIndex),

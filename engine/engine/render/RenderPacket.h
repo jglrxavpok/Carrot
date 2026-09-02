@@ -67,9 +67,15 @@ namespace Carrot::Render {
             float zOrder = 0.0f;
         };
 
+        /**
+         * Represents a push constant sent to the GPU.
+         * Expected to represent the entire structure from the shader source.
+         * Cutting down into the proper ranges based on what the shader actually use is the role of the renderer.
+         *
+         * Additionally, a push constant is expected to cover all shader stages of the pipeline (which is more strict than what Vulkan exposes)
+         */
         class PushConstant {
         public:
-            std::string id;
             vk::ShaderStageFlags stages = static_cast<vk::ShaderStageFlags>(0);
             std::span<std::uint8_t> pushData;
 
@@ -149,7 +155,7 @@ namespace Carrot::Render {
         void addPerDrawData(const std::span<const GBufferDrawData>& data);
         void clearPerDrawData();
 
-        PushConstant& addPushConstant(const std::string& id = "", vk::ShaderStageFlags stages = static_cast<vk::ShaderStageFlags>(0));
+        PushConstant& addPushConstant(vk::ShaderStageFlags stages);
 
         bool merge(const Packet& other);
 

@@ -176,38 +176,18 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
     }
 }
 
-void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const {
+void Carrot::ShaderModule::addPushConstantInfo(vk::ShaderStageFlagBits stage, vk::PushConstantRange& pushConstant) const {
     const auto resources = compiler->get_shader_resources();
 
     if(resources.push_constant_buffers.size() == 0)
         return;
-    std::uint32_t offset = std::numeric_limits<std::uint32_t>::max();
-    std::uint32_t size = 0;
-    const auto& pushConstant = resources.push_constant_buffers[0];
-    const auto& ranges = compiler->get_active_buffer_ranges(pushConstant.id);
-    std::string name = pushConstant.name;
-    const auto& resourceType = compiler->get_type(pushConstant.type_id);
-
-    std::size_t realSize = computeTypeSize(*compiler, compiler->get_type(resourceType.parent_type));
-
-    for(const auto& r : ranges) {
-        offset = Carrot::Math::alignDown(std::min(static_cast<std::uint32_t>(r.offset), offset), 4u);
-        size = Carrot::Math::alignUp(std::max(static_cast<std::uint32_t>(r.offset+realSize), size), 4u);
-    }
-
-    if(pushConstants.contains(name)) {
-        auto& existingRange = pushConstants.at(name);
-        existingRange.stageFlags |= stage;
-        existingRange.offset = Carrot::Math::alignDown(std::min(static_cast<std::uint32_t>(offset), existingRange.offset), 4u);
-        existingRange.size = Carrot::Math::alignUp(std::max(static_cast<std::uint32_t>(realSize), existingRange.size), 4u);
-        return;
-    }
-
-    pushConstants[name] = vk::PushConstantRange {
-            .stageFlags = stage,
-            .offset = offset,
-            .size = size,
-    };
+    const auto& spvPushConstant = resources.push_constant_buffers[0];
+    std::string name = spvPushConstant.name;
+    const auto& resourceType = compiler->get_type(spvPushConstant.type_id);
+    const u64 s = computeTypeSize(*compiler, compiler->get_type(resourceType.parent_type));
+    pushConstant.stageFlags |= stage;
+    pushConstant.offset = 0;
+    pushConstant.size = std::max(pushConstant.size, static_cast<u32>(s));
 }
 
 bool Carrot::ShaderModule::canBeHotReloaded() const {

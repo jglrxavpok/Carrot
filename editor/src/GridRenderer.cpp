@@ -42,7 +42,7 @@ namespace Peeler {
         renderPacket.pipeline = renderingPipeline;
         renderPacket.useMesh(gridMesh);
 
-        auto& pushConstant = renderPacket.addPushConstant("grid", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+        auto& pushConstant = renderPacket.addPushConstant(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
         pushConstant.setData(gridData);
 
        // renderContext.renderer.render(renderPacket);

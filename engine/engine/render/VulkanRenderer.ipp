@@ -8,26 +8,17 @@
 namespace Carrot {
     template<typename ConstantBlock>
     void VulkanRenderer::pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block) {
-        const auto& range = pipeline.getPushConstant(pushName);
-        if (range.size == 0) {
-            return; // some push constants no longer exist after compilation and optimisations
-        }
-
         const auto& layout = pipeline.getPipelineLayout();
         auto copy = std::make_unique<std::uint8_t[]>(sizeof(ConstantBlock));
         std::memcpy(copy.get(), &block, sizeof(ConstantBlock));
         pushConstantList.emplace_back(std::move(copy));
-        cmds.pushConstants(layout, stageFlags, range.offset, sizeof(ConstantBlock), pushConstantList.back().get());
+        if(vk::PushConstantRange range = pipeline.getMatchingPushConstantRange(stageFlags); range.size > 0) {
+            cmds.pushConstants(layout, range.stageFlags, range.offset, range.size, pushConstantList.back().get()+range.offset);
+        }
     }
 
     template<typename... ConstantTypes>
     void VulkanRenderer::pushConstants(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, ConstantTypes&&... args) {
-        const auto& range = pipeline.getPushConstant(pushName);
-        if (range.size == 0) {
-            return; // some push constants no longer exist after compilation and optimisations
-        }
-
-        const auto& layout = pipeline.getPipelineLayout();
         const std::size_t totalSize = []() {
             std::size_t s = 0;
             ((s += sizeof(ConstantTypes)), ...);
@@ -41,7 +32,11 @@ namespace Carrot {
             pDest += sizeof(ConstantTypes)
         ), ...);
         pushConstantList.emplace_back(std::move(copy));
-        cmds.pushConstants(layout, stageFlags, range.offset, totalSize, pushConstantList.back().get());
+
+        const auto& layout = pipeline.getPipelineLayout();
+        if(vk::PushConstantRange range = pipeline.getMatchingPushConstantRange(stageFlags); range.size > 0) {
+            cmds.pushConstants(layout, range.stageFlags, range.offset, range.size, pushConstantList.back().get()+range.offset);
+        }
     }
 
 }

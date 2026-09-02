@@ -315,7 +315,7 @@ namespace Carrot::Render {
 
             packet.commands.emplace_back();
 
-            Packet::PushConstant& displayConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+            Packet::PushConstant& displayConstant = packet.addPushConstant(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
             displayConstant.setData(displayConstantData);
 
             return {&packet, &displayConstant};

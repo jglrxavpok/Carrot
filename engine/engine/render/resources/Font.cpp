@@ -196,7 +196,7 @@ namespace Carrot::Render {
         renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering", (std::uint64_t)&renderContext.pViewport);
         renderPacket.useMesh(*mesh);
 
-        auto& pushData = renderPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
+        auto& pushData = renderPacket.addPushConstant(vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
         struct PushData {
             vk::DeviceAddress gpuAtlas;
             u8 is2D;
@@ -224,7 +224,7 @@ namespace Carrot::Render {
         renderPacket.pipeline = renderContext.renderer.getOrCreatePipelineFullPath("resources/pipelines/ui/text.pipeline", (std::uint64_t)&renderContext.pViewport);
         renderPacket.useMesh(*mesh);
 
-        auto& pushData = renderPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
+        auto& pushData = renderPacket.addPushConstant(vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
         struct PushData {
             vk::DeviceAddress gpuAtlas;
             u8 is2D;

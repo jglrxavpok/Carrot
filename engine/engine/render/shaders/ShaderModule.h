@@ -30,7 +30,7 @@ namespace Carrot {
 
         void addBindingsSet(vk::ShaderStageFlagBits stage, std::uint32_t setID, std::vector<NamedBinding>& bindings, const std::map<std::string, uint32_t>& constants);
 
-        void addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const;
+        void addPushConstantInfo(vk::ShaderStageFlagBits stage, vk::PushConstantRange& pushConstant) const;
 
         bool canBeHotReloaded() const;
 

@@ -33,7 +33,7 @@ namespace Carrot::Render {
         packet.pipeline = pipeline;
         packet.useMesh(GetRenderer().getFullscreenQuad());
 
-        auto& billboardPushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+        auto& billboardPushConstant = packet.addPushConstant(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
         billboardPushConstant.setData(pushConstant);
 
         renderContext.renderer.render(std::move(packet));

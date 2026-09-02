@@ -160,7 +160,7 @@ void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
     Carrot::Render::Packet& packet = renderContext.renderer.makeAsyncPacket();
-    auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eCompute);
+    auto& pushConstant = packet.addPushConstant(vk::ShaderStageFlagBits::eCompute);
     struct PushConstantData {
         u32 vertexCount;
         u32 instanceCount;

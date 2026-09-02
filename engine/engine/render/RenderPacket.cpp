@@ -61,12 +61,11 @@ namespace Carrot::Render {
         perDrawData = {};
     }
 
-    Packet::PushConstant& Packet::addPushConstant(const std::string& id, vk::ShaderStageFlags stages) {
+    Packet::PushConstant& Packet::addPushConstant(vk::ShaderStageFlags stages) {
         verify(pushConstantCount < MAX_PUSH_CONSTANTS, "Too many push constants. Lower your usage, or update the engine");
         std::size_t pushConstantIndex = pushConstantCount++;
         pushConstants[pushConstantIndex] = &container.makePushConstant();
         auto& result = pushConstants[pushConstantIndex];
-        result->id = id;
         result->stages = stages;
         return *result;
     }
@@ -167,12 +166,11 @@ namespace Carrot::Render {
         }
         {
             ZoneScopedN("Add push constants");
+            const auto& layout = pipeline->getPipelineLayout();
             for(std::size_t index = 0; index < pushConstantCount; index++) {
-                const auto& layout = pipeline->getPipelineLayout();
-                const auto& range = pipeline->getPushConstant(pushConstants[index]->id);
-                cmds.pushConstants(layout, pushConstants[index]->stages, range.offset, pushConstants[index]->pushData.size(), pushConstants[index]->pushData.data());
-                // TODO: need to rework push constant handling
-                //cmds.pushConstants(layout, pushConstants[index]->stages, range.offset, range.size - range.offset/*data is assumed to start at 0*/, pushConstants[index]->pushData.data());
+                if(vk::PushConstantRange range = pipeline->getMatchingPushConstantRange(pushConstants[index]->stages); range.size > 0) {
+                    cmds.pushConstants(layout, range.stageFlags, range.offset, range.size, pushConstants[index]->pushData.data()+range.offset);
+                }
             }
         }
 
@@ -423,14 +421,12 @@ namespace Carrot::Render {
     }
 
     Packet::PushConstant& Packet::PushConstant::operator=(const Packet::PushConstant& other) {
-        id = other.id;
         stages = other.stages;
         pushData = container.copyGeneric(other.pushData);
         return *this;
     }
 
     Packet::PushConstant& Packet::PushConstant::operator=(Packet::PushConstant&& other) {
-        id = std::move(other.id);
         stages = other.stages;
         pushData = std::move(other.pushData);
         return *this;

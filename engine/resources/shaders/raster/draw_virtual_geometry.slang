@@ -44,7 +44,7 @@ enum LodSelectionMode: uint32_t {
 }
 
 [Flags]
-enum ConfigurationFlags {
+enum ConfigurationFlags: uint32_t {
     None = 0,
     OutputTriangleCount
 }
@@ -56,6 +56,8 @@ struct PushConstant {
     uint forcedLOD;
 
     ConfigurationFlags flags;
+
+    uint32_t _pad;
     ActiveClusterGroup* activeGroupBaseAddress;
 }
 

@@ -545,15 +545,17 @@ namespace Carrot::Render {
             prePassPacket.pipeline->setStorageBuffer(renderContext, "io.readbackVisibleGroups", readbackBufferView.subView(sizeof(std::uint32_t)));
         }
 
-        using Flags = std::uint8_t;
-        constexpr std::uint8_t Flags_None = 0;
-        constexpr std::uint8_t Flags_OutputTriangleCount = 1;
+        using Flags = std::uint32_t;
+        constexpr Flags Flags_None = 0;
+        constexpr Flags Flags_OutputTriangleCount = 1;
         struct PushConstantData {
             std::uint32_t maxElementCount;
             std::uint32_t lodSelectionMode;
             float lodErrorThreshold;
             std::uint32_t forcedLOD;
             Flags flags;
+
+            u32 _pad;
             vk::DeviceAddress activeGroupBaseAddress;
         };
 
@@ -567,12 +569,12 @@ namespace Carrot::Render {
         }
 
         {
-            auto& pushConstant = packet.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eTaskEXT);
+            auto& pushConstant = packet.addPushConstant(vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eTaskEXT);
             data.maxElementCount = gpuInstances.size();
             pushConstant.setData(data);
         }
         {
-            auto& pushConstant = prePassPacket.addPushConstant("entryPointParams", vk::ShaderStageFlagBits::eCompute);
+            auto& pushConstant = prePassPacket.addPushConstant(vk::ShaderStageFlagBits::eCompute);
             data.maxElementCount = activeGroupOffsets.size();
             // the shader will directly reinterpret the bytes of the buffer
             data.activeGroupBaseAddress = activeGroupsBufferView.getDeviceAddress();

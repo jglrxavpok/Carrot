@@ -140,7 +140,8 @@ namespace Carrot {
 
         void recreateDescriptorPool(std::uint32_t imageCount);
 
-        const vk::PushConstantRange& getPushConstant(std::string_view name) const;
+        bool hasPushConstant() const;
+        vk::PushConstantRange getMatchingPushConstantRange(vk::ShaderStageFlags stages) const;
 
         /**
          * Does this pipeline have the given binding slot?
@@ -253,6 +254,6 @@ namespace Carrot {
         PipelineDescription description;
         mutable std::unordered_map<RenderingPipelineCreateInfo, vk::UniquePipeline> vkPipelines{}; // for dynamic rendering
 
-        mutable std::unordered_map<std::string, vk::PushConstantRange> pushConstantMap{};
+        mutable vk::PushConstantRange pushConstant{};
     };
 }
