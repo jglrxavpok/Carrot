@@ -22,7 +22,7 @@ namespace Carrot::Render {
     };
 
     // keep in sync with gi.slang
-    static constexpr std::uint64_t HashGridCellsPerBucket = 32;
+    static constexpr std::uint64_t HashGridCellsPerBucket = 16;
     static constexpr std::uint64_t HashGridBucketCount = 1024*256;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
@@ -117,7 +117,7 @@ namespace Carrot::Render {
                                                              vk::Format::eR32G32B32A32Sfloat,
                                                              framebufferSize,
                                                              vk::ImageLayout::eGeneral);
-             graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.historyLength.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+             GetEngine().getResourceRepository().getTextureUsages(data.historyLength.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
 
             // used in temporal algorithms
              graph.reuseResourceAcrossFrames(data.historyLength, 1);
@@ -347,8 +347,8 @@ namespace Carrot::Render {
                     addTemporalDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionTemporal);
                     addSpatialDenoisingResources(graph, "Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusionSpatial);
                     resolveData.ambientOcclusionSpatial.noisy = resolveData.ambientOcclusionTemporal.samples;
-                    resolveData.directLighting = graph.createStorageTarget("Direct Lighting", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
-                    resolveData.reflections = graph.createStorageTarget("Reflections", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    resolveData.directLighting = graph.createStorageTarget("Direct Lighting", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
+                    resolveData.reflections = graph.createStorageTarget("Reflections", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                },
                [framebufferSize, applyTemporalDenoising, applySpatialDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::LightingResources& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph lighting");
@@ -643,7 +643,7 @@ namespace Carrot::Render {
                 data.gbuffer.readFrom(graph, accumulateSurfaceCache.getData().gbuffer, vk::ImageLayout::eGeneral);
                 data.hashGrid = HashGrid::write(graph, accumulateSurfaceCache.getData().gi.hashGrid);
 
-                data.output = graph.createStorageTarget("gi", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.output = graph.createStorageTarget("gi", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
             },
             [bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Context& frame, const GIResult& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "compute GI");
@@ -682,7 +682,7 @@ namespace Carrot::Render {
                 data.reflections = graph.read(lightingPass.getData().reflections, vk::ImageLayout::eGeneral);
                 data.gi = graph.read(getGIResults.getData().output, vk::ImageLayout::eGeneral);
 
-                data.premergedLighting = graph.createStorageTarget("Premerged lighting", vk::Format::eR32G32B32A32Sfloat, {}, vk::ImageLayout::eGeneral);
+                data.premergedLighting = graph.createStorageTarget("Premerged lighting", GetVulkanDriver().getHDRFormat(), {}, vk::ImageLayout::eGeneral);
 
                 data.gBuffer.readFrom(graph, getGIResults.getData().gbuffer, vk::ImageLayout::eGeneral);
             }, [](const Render::CompiledPass& pass, const Context& frame, const PremergeData& data, vk::CommandBuffer& cmds) {
@@ -719,10 +719,11 @@ namespace Carrot::Render {
         auto& fireflyRejection = graph.addPass<FireflyRejection>("firefly-rejection",
             [&](GraphBuilder& graph, Pass<FireflyRejection>& pass, FireflyRejection& data) {
                 data.imageFullOfBugs = graph.read(premergeLighting.getData().premergedLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.output = graph.createStorageTarget("lighting-with-rejected-fireflies", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.output = graph.createStorageTarget("lighting-with-rejected-fireflies", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
             },
             [](const CompiledPass& pass, const Context& frame, const FireflyRejection& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "Firefly rejection");
                 auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/firefly-rejection.pipeline", (std::uint64_t)&pass);
                 auto& outputTexture = pass.getGraph().getTexture(data.output, frame.frameNumber);
                 pipeline->setSampledImage(frame,"entryPointParams.input", pass.getGraph().getTexture(data.imageFullOfBugs, frame.frameNumber));
@@ -748,17 +749,18 @@ namespace Carrot::Render {
         auto& svgfTemporal = graph.addPass<SVGFTemporal>("svgf-temporal",
             [&](GraphBuilder& graph, Pass<SVGFTemporal>& pass, SVGFTemporal& data) {
                 data.gBuffer.readFrom(graph, premergeLighting.getData().gBuffer, vk::ImageLayout::eGeneral);
-                data.integratedColor = graph.createStorageTarget("integrated color", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
-                data.colorHistory = graph.createStorageTarget("color history", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.integratedColor = graph.createStorageTarget("integrated color", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
+                data.colorHistory = graph.createStorageTarget("color history", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                 data.momentsHistory = graph.createStorageTarget("moments history", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 data.currentFrameColor = graph.read(fireflyRejection.getData().output, vk::ImageLayout::eGeneral);
 
                 graph.reuseResourceAcrossFrames(data.colorHistory, 1);
                 graph.reuseResourceAcrossFrames(data.momentsHistory, 1);
-                graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.colorHistory.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                GetEngine().getResourceRepository().getTextureUsages(data.colorHistory.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
                 pass.rasterized = false;
             },
             [](const CompiledPass& pass, const Context& frame, const SVGFTemporal& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Temporal");
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/temporal", (u64)&pass);
                 auto& output = pass.getGraph().getTexture(data.integratedColor, frame.frameNumber); // colorHistory is written to by first wave of spatial denoise
                 // 0 is camera
@@ -794,6 +796,7 @@ namespace Carrot::Render {
                 pass.rasterized = false;
             },
             [](const CompiledPass& pass, const Context& frame, const SVGFVariance& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Variance estimation");
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/variance-estimation", (u64)&pass);
                 auto& output = pass.getGraph().getTexture(data.varianceOutput, frame.frameNumber);
 
@@ -824,14 +827,15 @@ namespace Carrot::Render {
             [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
                 data.gBuffer.readFrom(graph, svgfVarianceEstimation.getData().gBuffer, vk::ImageLayout::eGeneral);
                 data.previousPassColor = graph.read(svgfVarianceEstimation.getData().currentFrameColor, vk::ImageLayout::eGeneral);
-                data.currentPassColorOutput = graph.createStorageTarget("filtered color 1", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.currentPassColorOutput = graph.createStorageTarget("filtered color 1", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                 data.previousPassVariance = graph.read(svgfVarianceEstimation.getData().varianceOutput, vk::ImageLayout::eGeneral);
                 data.updatedVariance = graph.createStorageTarget("updated variance 1", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
 
-                graph.getVulkanDriver().getEngine().getResourceRepository().getTextureUsages(data.currentPassColorOutput.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+                GetEngine().getResourceRepository().getTextureUsages(data.currentPassColorOutput.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
             },
             [](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Filter 0");
                 auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("lighting/svgf/wavelet-filter", pass);
                 auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
 
@@ -863,6 +867,7 @@ namespace Carrot::Render {
                 data.output = graph.write(svgfTemporal.getData().colorHistory, vk::AttachmentLoadOp::eDontCare, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
             }, [](const CompiledPass& pass, const Context& frame, const SVGFCopy& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Copy to history");
                 const auto& input = pass.getGraph().getTexture(data.input, frame.frameNumber);
                 const auto& output = pass.getGraph().getTexture(data.output, frame.frameNumber);
 
@@ -884,12 +889,13 @@ namespace Carrot::Render {
                 [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
                     data.gBuffer.readFrom(graph, previousPass.gBuffer, vk::ImageLayout::eGeneral);
                     data.previousPassColor = graph.read(previousPass.currentPassColorOutput, vk::ImageLayout::eGeneral);
-                    data.currentPassColorOutput = graph.createStorageTarget("filtered color", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    data.currentPassColorOutput = graph.createStorageTarget("filtered color", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                     data.previousPassVariance = graph.read(previousPass.updatedVariance, vk::ImageLayout::eGeneral);
                     data.updatedVariance = graph.createStorageTarget("updated variance", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                     pass.rasterized = false;
                 },
                 [iterationIndex](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+                    GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Filter iteration");
                     auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/wavelet-filter", (u64)&pass);
                     auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
 

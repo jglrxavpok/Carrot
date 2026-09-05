@@ -246,6 +246,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
                                                                  }, getAllocationCallbacks());
 
     depthFormat = findDepthFormat();
+    hdrFormat = findHDRFormat();
     mainWindow.createSwapChain();
     createUniformBuffers();
 
@@ -843,6 +844,13 @@ const vk::Sampler& Carrot::VulkanDriver::getLinearSampler() const {
 
 const vk::Sampler& Carrot::VulkanDriver::getNearestSampler() const {
     return *nearestRepeatSampler;
+}
+
+vk::Format Carrot::VulkanDriver::findHDRFormat() {
+    return findSupportedFormat(
+            {vk::Format::eB10G11R11UfloatPack32, vk::Format::eR32G32B32A32Sfloat},
+            vk::ImageTiling::eOptimal,
+            vk::FormatFeatureFlagBits::eColorAttachment | vk::FormatFeatureFlagBits::eStorageImage | vk::FormatFeatureFlagBits::eSampledImage);
 }
 
 vk::Format Carrot::VulkanDriver::findDepthFormat() {

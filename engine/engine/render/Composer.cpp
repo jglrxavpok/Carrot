@@ -88,7 +88,7 @@ namespace Carrot::Render {
                                                    vk::ImageLayout::eColorAttachmentOptimal);
 
             data.depthStencil = builder.createRenderTarget("Composed depth stencil",
-                                                           builder.getVulkanDriver().getDepthFormat(),
+                                                           GetVulkanDriver().getDepthFormat(),
                                                            {},
                                                            vk::AttachmentLoadOp::eClear,
                                                            clearDepth,

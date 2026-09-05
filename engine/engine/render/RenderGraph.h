@@ -111,7 +111,7 @@ namespace Carrot::Render {
         template<typename Data>
         Pass<Data>& addPass(const std::string& name, const SetupPassCallback<Data>& setup, const ExecutePassCallback<Data>& execute,
                             const PostCompileCallback<Data>& postCompile = [](CompiledPass&, Data&){}) {
-            auto& pair = passes.emplace_back(name, std::move(std::make_shared<Render::Pass<Data>>(getVulkanDriver(), name, execute, postCompile)));
+            auto& pair = passes.emplace_back(name, std::move(std::make_shared<Render::Pass<Data>>(GetVulkanDriver(), name, execute, postCompile)));
             currentPass = pair.second.get();
             auto* pass = static_cast<Render::Pass<Data>*>(currentPass);
             setup(*this, *pass, pass->data);
@@ -129,9 +129,6 @@ namespace Carrot::Render {
         FrameResource& getSwapchainImage() {
             return swapchainImage;
         }
-
-        // TODO: remove
-        VulkanDriver& getVulkanDriver();
 
     public:
         FrameResource& read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);

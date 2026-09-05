@@ -145,6 +145,9 @@ namespace Carrot {
         /// Find the best available format for the depth texture
         vk::Format findDepthFormat();
 
+        /// Find the best available format for the color textures
+        vk::Format findHDRFormat();
+
         /// Find the best available format in the given candidates
         vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
                                        vk::FormatFeatureFlags features);
@@ -160,6 +163,7 @@ namespace Carrot {
         Window& getMainWindow();
 
         vk::Format getDepthFormat() { return depthFormat; };
+        vk::Format getHDRFormat() { return hdrFormat; };
 
         const Configuration& getConfiguration() { return config; }
 
@@ -269,6 +273,7 @@ namespace Carrot {
         vk::PhysicalDeviceLimits physicalDeviceLimits{};
         vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
         vk::Format depthFormat = vk::Format::eUndefined;
+        vk::Format hdrFormat = vk::Format::eUndefined;
 
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
 

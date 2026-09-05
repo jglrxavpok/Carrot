@@ -150,7 +150,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 }
 
                 data.mergeResult = builder.createRenderTarget("Merged",
-                                                              vk::Format::eR32G32B32A32Sfloat,
+                                                              GetVulkanDriver().getHDRFormat(),
                                                               framebufferSize,
                                                               vk::AttachmentLoadOp::eClear,
                                                               vk::ClearColorValue(std::array{0,0,0,0}),
@@ -220,7 +220,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 builder.read(drawUnlit.getData().depthBuffer, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil); // force a transition (drawUnlit pass changed depth buffer layout)
                 data.postLighting = builder.read(drawUnlit.getData().inout, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget("Tone mapped",
-                                                                vk::Format::eR32G32B32A32Sfloat, // TODO: not sure why RGBA8_UNORM made the temporal blend fail in TAA
+                                                                GetVulkanDriver().getHDRFormat(), // TODO: not sure why RGBA8_UNORM made the temporal blend fail in TAA
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
@@ -287,7 +287,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
             [addUI, framebufferSize](Render::GraphBuilder& builder, Render::Pass<AlphaRemoval>& pass, AlphaRemoval& data) {
                 data.input = builder.read(addUI.getData().output, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.output = builder.createStorageTarget("alpha-removed", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                data.output = builder.createStorageTarget("alpha-removed", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const AlphaRemoval& data, vk::CommandBuffer& buffer) {

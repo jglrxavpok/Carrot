@@ -41,10 +41,6 @@ namespace Carrot::Render {
         resources.emplace_back(&swapchainImage);
     }
 
-    VulkanDriver& GraphBuilder::getVulkanDriver() {
-        return GetVulkanDriver();
-    }
-
     FrameResource& GraphBuilder::read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
         assert(currentPass);
         resources.emplace_back(&toRead);

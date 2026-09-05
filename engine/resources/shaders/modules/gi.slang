@@ -12,7 +12,7 @@ import modules.materials;
 */
 namespace HashGrid {
     // keep in sync with LightingPasses.cpp
-    public static const uint CellsPerBucket = 32;
+    public static const uint CellsPerBucket = 16;
     public static const uint BucketCount = 1024*256;
     public static const uint TotalCellCount = BucketCount * CellsPerBucket;
 
