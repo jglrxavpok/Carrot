@@ -30,7 +30,7 @@ namespace Carrot::ECS {
         const char *const getName() const override;
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override;
 
-        const Carrot::IO::Resource& waitLoadAndGetOriginatingResource() const;
+        const Carrot::IO::VFS::Path& waitLoadAndGetOriginatingResource() const;
     };
 }
 

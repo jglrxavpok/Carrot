@@ -36,7 +36,9 @@ set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 # Hot reloading support
 set(HAS_JETLIVE false)
 set(HAS_LIVEPP false)
+set(IS_MSVC false)
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(IS_MSVC true)
     # Under MSVC, attempt to use Live++
     add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
     if(EXISTS "${ProjectRoot}LivePP/API/x64/LPP_API.h")
@@ -269,6 +271,12 @@ function(add_includes Target)
     set_target_properties(
             "${Target}" PROPERTIES
             VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+    if(IS_MSVC)
+        target_compile_options("${Target}" PRIVATE "/We4172") # returning address of temporary
+    else ()
+        target_compile_options("${Target}" PRIVATE "-Werror=return-local-addr")
+    endif ()
 endfunction()
 
 function(add_core_precompiled_headers Target)

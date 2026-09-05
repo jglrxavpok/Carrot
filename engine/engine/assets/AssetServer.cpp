@@ -93,7 +93,7 @@ namespace Carrot {
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
         }
-        return Carrot::Model::load(task, GetEngine(), std::move(from));
+        return Carrot::Model::load(task, path, from);
     }
 
     std::shared_ptr<Model> AssetServer::blockingLoadModel(const Carrot::IO::VFS::Path& path) {

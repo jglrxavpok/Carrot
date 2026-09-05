@@ -92,7 +92,7 @@ namespace Peeler {
 
         multiEditField(edition, "Filepath", components,
             +[](Carrot::ECS::AnimatedModelComponent& c) {
-                return Carrot::IO::VFS::Path { c.asyncAnimatedModelHandle.isEmpty() ? "" : c.asyncAnimatedModelHandle->getParent().getModel().getOriginatingResource().getName() };
+                return Carrot::IO::VFS::Path { c.asyncAnimatedModelHandle.isEmpty() ? "" : c.asyncAnimatedModelHandle->getParent().getModel().getFilePath() };
             },
             +[](Carrot::ECS::AnimatedModelComponent& c, const Carrot::IO::VFS::Path& path) {
                 c.queueLoad(path);

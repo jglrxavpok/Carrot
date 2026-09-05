@@ -26,7 +26,7 @@ namespace Peeler {
             if(auto transformCompRef = entity.getComponent<Carrot::ECS::TransformComponent>()) {
                 if(auto modelRef = entity.getComponent<Carrot::ECS::ModelComponent>()) {
                     ImGui::Text("Valid entity: %s", entity.getName().c_str());
-                    waitForBaking |= !modelRef->asyncModel.isReady() && !modelRef->asyncModel.isEmpty();
+                    waitForBaking |= !modelRef->modelResource.isReady() && !modelRef->modelResource.isEmpty();
                 }
             }
         }
@@ -50,7 +50,7 @@ namespace Peeler {
                 if(auto transformCompRef = entity.getComponent<Carrot::ECS::TransformComponent>()) {
                     if(auto modelRef = entity.getComponent<Carrot::ECS::ModelComponent>()) {
                         buildEntries.emplace_back(Carrot::AI::NavMeshBuilder::MeshEntry {
-                            .model = modelRef->asyncModel.get(),
+                            .model = modelRef->modelResource.get(),
                             .transform = transformCompRef->toTransformMatrix()
                         });
                     }

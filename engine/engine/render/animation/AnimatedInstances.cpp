@@ -131,7 +131,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     skinningSemaphore = engine.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
         .pNext = &timelineCreateInfo
     });
-    DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphore);
+    DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getFilePath().toString().c_str()), *skinningSemaphore);
 }
 
 void Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {

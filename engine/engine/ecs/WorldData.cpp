@@ -30,12 +30,7 @@ namespace Carrot::ECS {
     }
 
     std::shared_ptr<Carrot::Render::ModelRenderer> WorldData::findMatchingModelRenderer(const Carrot::Model& model, const Render::MaterialOverrides& overrides) const {
-        const auto& source = model.getOriginatingResource();
-        if(!source.isFile()) {
-            return nullptr;
-        }
-
-        Carrot::IO::VFS::Path vfsPath { source.getName() };
+        const auto& vfsPath = model.getFilePath();
         auto matchingModel = modelRendererLookup.find(vfsPath);
         if(matchingModel == modelRendererLookup.end()) {
             return nullptr;
@@ -54,12 +49,7 @@ namespace Carrot::ECS {
         verify(modelRenderers.find(id) == modelRenderers.end(), Carrot::sprintf("A model renderer with the id %s already exists", id.toString().c_str()));
         modelRenderers[id] = value;
 
-        const auto& source = value->getModel().getOriginatingResource();
-        if(!source.isFile()) {
-            return;
-        }
-
-        Carrot::IO::VFS::Path vfsPath { source.getName() };
+        const auto& vfsPath = value->getModel().getFilePath();
         modelRendererLookup[vfsPath][value->getOverrides()] = value;
     }
 
@@ -70,12 +60,7 @@ namespace Carrot::ECS {
         }
         modelRenderers.erase(id);
 
-        const auto& source = renderer->getModel().getOriginatingResource();
-        if(!source.isFile()) {
-            return;
-        }
-
-        Carrot::IO::VFS::Path vfsPath { source.getName() };
+        const auto& vfsPath = renderer->getModel().getFilePath();
         modelRendererLookup[vfsPath].erase(renderer->getOverrides());
     }
 

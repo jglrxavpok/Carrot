@@ -34,7 +34,7 @@ namespace Carrot::ECS {
                 return;
             }
 
-            if (modelComp.asyncModel.isReady()) {
+            if (modelComp.modelResource.isReady()) {
                 Carrot::InstanceData instanceData;
                 instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
                 instanceData.transform = transform.toTransformMatrix();
@@ -45,7 +45,7 @@ namespace Carrot::ECS {
                     modelComp.modelRenderer->render(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
                 } else {
                     // TODO: support for virtualized geometry?
-                    modelComp.asyncModel->renderStatic(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                    modelComp.modelResource->renderStatic(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
                 }
             }
         });

@@ -258,11 +258,11 @@ namespace Carrot::AI {
         // TODO: //-ize?
         for(std::size_t i = 0; i < entries.size(); i++) {
             auto pModel = entries[i].model;
-            debugStep = Carrot::sprintf("Voxelise meshes %llu / %llu - %s", i, entries.size(), pModel->getOriginatingResource().getName().c_str());
+            debugStep = Carrot::sprintf("Voxelise meshes %llu / %llu - %s", i, entries.size(), pModel->getFilePath().toString().c_str());
             // reload original model to have CPU visible meshes. We could copy from GPU but that would be painful to write
 
             Render::SceneLoader loader;
-            Render::LoadedScene& scene = loader.load(pModel->getOriginatingResource());
+            Render::LoadedScene& scene = loader.load(pModel->getFilePath());
 
             std::function<void(const Carrot::Render::SkeletonTreeNode&, glm::mat4)> recursivelyLoadNodes = [&](const Carrot::Render::SkeletonTreeNode& node, const glm::mat4& nodeTransform) {
                 glm::mat4 transform = nodeTransform * node.bone.originalTransform;

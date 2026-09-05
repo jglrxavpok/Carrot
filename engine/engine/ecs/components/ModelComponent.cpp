@@ -4,86 +4,44 @@
 
 #include "ModelComponent.h"
 #include "engine/Engine.h"
-#include "core/utils/ImGuiUtils.hpp"
-#include "imgui.h"
-#include "engine/edition/DragDropTypes.h"
 #include "engine/render/ModelRenderer.h"
-#include "engine/render/ClusterManager.h"
 #include "engine/ecs/World.h"
 #include "engine/ecs/WorldData.h"
-#include "core/utils/JSON.h"
-#include <filesystem>
 #include <string>
 #include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
-
-    ModelComponent::ModelComponent(const Carrot::DocumentElement& doc, Entity entity): ModelComponent::ModelComponent(std::move(entity)) {
-        isTransparent = doc["isTransparent"].getAsBool();
-        color = DocumentHelpers::read<4, float>(doc["color"]);
-        rendererStorage.castsShadows = doc["castsShadows"].getAsBool();
-
-        if(doc.contains("model")) {
-            auto& modelData = doc["model"];
-
-            if(modelData.contains("modelPath")) {
-                std::string modelPath { modelData["modelPath"].getAsString() };
-                setFile(IO::VFS::Path(modelPath));
-            } else {
-                TODO // cannot load non-file models at the moment
-            }
-
-            if(modelData.contains("model_renderer")) {
-                Carrot::UUID rendererID = Carrot::UUID::fromString(modelData["model_renderer"].getAsString());
-                WorldData& worldData = entity.getWorld().getWorldData();
-                std::shared_ptr<Render::ModelRenderer> renderer = worldData.loadModelRenderer(rendererID);
-                if(renderer != nullptr) {
-                    modelRenderer = renderer;
-                }
-            }
+    Carrot::DocumentElement ReflectedSerialisation<std::shared_ptr<Render::ModelRenderer>>::serialiseElement(const ECS::Component& component, const std::shared_ptr<Carrot::Render::ModelRenderer>& input) {
+        Carrot::DocumentElement doc;
+        if (input) {
+            doc = input->uuid.toString();
         } else {
-            TODO // missing model
+            doc = Carrot::UUID::null().toString();
         }
+        return doc;
     }
 
-    Carrot::DocumentElement ModelComponent::serialise() const {
-        asyncModel.forceWait();
-
-        Carrot::DocumentElement obj;
-
-        obj["isTransparent"] = isTransparent;
-        obj["color"] = DocumentHelpers::write(color);
-        obj["castsShadows"] = rendererStorage.castsShadows;
-
-        Carrot::DocumentElement modelData;
-        auto& resource = asyncModel->getOriginatingResource();
-
-        if(resource.isFile()) {
-            modelData["modelPath"] = resource.getName();
+    void ReflectedSerialisation<std::shared_ptr<Render::ModelRenderer>>::deserialiseElement(ECS::Component& component, std::shared_ptr<Carrot::Render::ModelRenderer>& out, const Carrot::DocumentElement& doc) {
+        if (!doc.isString())
+            return;
+        Carrot::UUID rendererID = Carrot::UUID::fromString(doc.getAsString());
+        WorldData& worldData = component.getEntity().getWorld().getWorldData();
+        std::shared_ptr<Render::ModelRenderer> renderer = worldData.loadModelRenderer(rendererID);
+        if(renderer != nullptr) {
+            out = renderer;
         }
-
-        if(modelRenderer) {
-            modelData["model_renderer"] = modelRenderer->uuid.toString();
-        }
-
-        obj["model"] = modelData;
-
-        return obj;
     }
 
     std::unique_ptr<Component> ModelComponent::duplicate(const Entity& newOwner) const {
-        auto result = std::make_unique<ModelComponent>(newOwner);
-        asyncModel.forceWait();
-        result->asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(Carrot::IO::VFS::Path { asyncModel->getOriginatingResource().getName() })));
-        result->isTransparent = isTransparent;
-        result->color = color;
-        result->modelRenderer = modelRenderer;
+        modelResource.forceWait(); // TODO: move inside duplicate of handles
+        std::unique_ptr<Component> pResult = ReflectionComponent<ModelComponent>::duplicate(newOwner);
+        ModelComponent* result = static_cast<ModelComponent*>(pResult.get());
         result->rendererStorage = rendererStorage.clone();
-        return result;
+        return pResult;
     }
 
     void ModelComponent::setFile(const IO::VFS::Path& path) {
-        asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(path)));
+        modelResource = std::move(AsyncModelResource(GetAssetServer().loadModelTask(path)));
         modelRenderer = nullptr;
         if(GetCapabilities().supportsRaytracing) {
             rendererStorage.resetTLAS();
@@ -96,5 +54,24 @@ namespace Carrot::ECS {
 
     void ModelComponent::disableTLAS() {
         rendererStorage.disableTLAS();
+    }
+
+    void ModelComponent::applyRewriteRules(Carrot::DocumentElement& doc) {
+        doc.rename("isTransparent", "Transparent");
+        doc.rename("color", "Color");
+        doc.rename("castsShadows", "CastsShadows");
+
+        if (doc.contains("model")) {
+            auto& modelData = doc["model"];
+            doc["Model"] = modelData["modelPath"];
+
+            auto modelDataAsObj = modelData.getAsObject();
+            if (auto iter = modelDataAsObj.find("model_renderer"); iter != modelDataAsObj.end()) {
+                doc["ModelRendererOverrides"] = modelData["model_renderer"];
+            }
+            doc["ModelRendererOverrides"] = Carrot::UUID::null().toString(); // ensure field is present
+        }
+
+        doc.remove("model");
     }
 }

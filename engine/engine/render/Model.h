@@ -61,7 +61,7 @@ namespace Carrot {
             glm::mat4 transform{1.0f}; // copy of data inside MeshAndTransform
         };
 
-        static std::shared_ptr<Model> load(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+        static std::shared_ptr<Model> load(TaskHandle& task, const Carrot::IO::VFS::Path& filepath, const Carrot::IO::Resource& file);
         ~Model();
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getStaticMeshes() const;
@@ -110,7 +110,7 @@ namespace Carrot {
         void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassName renderPass = Render::PassEnum::OpaqueGBuffer);
 
     public:
-        const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
+        const Carrot::IO::VFS::Path& getFilePath() const { return filepath; }
 
         const Carrot::SingleMesh& getStaticMeshData() const;
 
@@ -118,8 +118,8 @@ namespace Carrot {
         std::span<const std::shared_ptr<Render::MaterialHandle>> getMaterials() const { return materials; }
 
     private:
-        explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
-        void loadInner(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+        explicit Model(const Carrot::IO::VFS::Path& filepath);
+        void loadInner(TaskHandle& task, const Carrot::IO::Resource& file);
 
         /**
          * Generate an image with the bone transforms of the given animation.
@@ -127,7 +127,6 @@ namespace Carrot {
          */
         std::unique_ptr<Carrot::Render::Texture> generateBoneTransformsStorageImage(const Animation& animation);
 
-        Carrot::Engine& engine;
         std::string debugName;
         std::shared_ptr<Carrot::Pipeline> opaqueMeshesPipeline;
         std::shared_ptr<Carrot::Pipeline> transparentMeshesPipeline;
@@ -169,7 +168,7 @@ namespace Carrot {
         vk::UniqueDescriptorSet animationSet{};
         std::vector<vk::DescriptorSet> animationDescriptorSets{};
 
-        Carrot::IO::Resource resource; // resource from which this model comes. Used for serialisation
+        Carrot::IO::VFS::Path filepath; // resource from which this model comes. Used for serialisation
 
         Render::ModelRenderer* defaultRenderer = nullptr;
 

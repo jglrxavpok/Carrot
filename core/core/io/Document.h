@@ -271,6 +271,12 @@ namespace Carrot {
          */
         void rename(const std::string& from, const std::string& to);
 
+        /**
+         * Removes a child via its key. This DocumentElement must be an object for removes(string) to work
+         * @param key the key of the child to remove
+         */
+        void remove(const std::string& key);
+
     private:
         // storage, depends on type
         union {

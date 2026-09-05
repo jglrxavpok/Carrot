@@ -36,9 +36,7 @@ namespace Carrot::ECS {
         Carrot::DocumentElement modelData;
         const auto& resource = waitLoadAndGetOriginatingResource();
 
-        if(resource.isFile()) {
-            modelData["model_path"] = resource.getName();
-        }
+        modelData["model_path"] = resource.toString();
 
         if(!asyncAnimatedModelHandle.isEmpty()) {
             modelData["raytraced"] = raytraced;
@@ -50,12 +48,12 @@ namespace Carrot::ECS {
 
     std::unique_ptr<Component> AnimatedModelComponent::duplicate(const Entity& newOwner) const {
         auto pClone = std::make_unique<AnimatedModelComponent>(newOwner);
-        pClone->asyncAnimatedModelHandle = AsyncHandle(GetAssetServer().loadAnimatedModelInstanceTask(Carrot::IO::VFS::Path{ waitLoadAndGetOriginatingResource().getName() }));
+        pClone->asyncAnimatedModelHandle = AsyncHandle(GetAssetServer().loadAnimatedModelInstanceTask(waitLoadAndGetOriginatingResource()));
         return pClone;
     }
 
-    const Carrot::IO::Resource& AnimatedModelComponent::waitLoadAndGetOriginatingResource() const {
+    const Carrot::IO::VFS::Path& AnimatedModelComponent::waitLoadAndGetOriginatingResource() const {
         asyncAnimatedModelHandle.forceWait();
-        return asyncAnimatedModelHandle->getParent().getModel().getOriginatingResource();
+        return asyncAnimatedModelHandle->getParent().getModel().getFilePath();
     }
 }

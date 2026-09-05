@@ -219,10 +219,7 @@ namespace Carrot::Render {
     Carrot::DocumentElement ModelRenderer::serialise() {
         Carrot::DocumentElement result;
 
-        const Carrot::IO::Resource& source = model.getOriginatingResource();
-        if(!source.isFile()) {
-            return Carrot::DocumentElement{};
-        }
+        const Carrot::IO::VFS::Path& source = model.getFilePath();
 
         Carrot::DocumentElement overridesObj{ Carrot::DocumentType::Array };
 
@@ -275,7 +272,7 @@ namespace Carrot::Render {
             overridesObj.pushBack() = overrideObj;
         }
 
-        result["model"] = source.getName();
+        result["model"] = source.toString();
         result["overrides"] = overridesObj;
         return result;
     }

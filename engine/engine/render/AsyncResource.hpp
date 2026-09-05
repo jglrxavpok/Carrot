@@ -205,4 +205,9 @@ namespace Carrot {
     struct AsyncResourceTraits<Carrot::Render::Texture> {
         static AsyncTaskType<Carrot::Render::Texture> makeLoadingTask(const Carrot::IO::VFS::Path& path);
     };
+
+    template<>
+    struct AsyncResourceTraits<Carrot::Model> {
+        static AsyncTaskType<Carrot::Model> makeLoadingTask(const Carrot::IO::VFS::Path& path);
+    };
 }

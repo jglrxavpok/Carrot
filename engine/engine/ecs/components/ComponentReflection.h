@@ -40,29 +40,106 @@ namespace Carrot::ECS {
         virtual void duplicateProperty(const Carrot::ECS::Component& src, Carrot::ECS::Component& dest) const = 0;
     };
 
-    template<typename TProperty>
-    void deserialiseElement(TProperty& out, const Carrot::DocumentElement& doc) = delete; // "Unsupported property type for reflection"
+    /**
+     * Used to wrap a field with a getter and setter to allow user code to run when modified
+     * Can also be used to reroute read/write to the field to another variable
+     * @tparam T Type of element to wrap
+     */
+    template<typename TOwningType, typename T>
+    struct PropertyWrapper {
+        TOwningType& owner;
+        std::function<T(TOwningType& self)> getter;
+        std::function<void(TOwningType& self, T&& newValue)> setter;
 
-    template<typename TProperty>
-    Carrot::DocumentElement serialiseElement(const TProperty& input) = delete; // "Unsupported property type for reflection"
+        explicit PropertyWrapper(TOwningType& owner, T&& defaultValue, const std::function<T(TOwningType& self)>& getter, const std::function<void(TOwningType& self, T&& newValue)>& setter)
+            : owner(owner)
+            , getter(getter)
+            , setter(setter)
+        {
+            setter(owner, std::move(defaultValue));
+        }
+
+        operator T() const {
+            return getter(owner);
+        }
+
+        T get() const {
+            return getter(owner);
+        }
+
+        void set(const T& v) {
+            *this = v;
+        }
+
+        void set(const T&& v) {
+            *this = std::move(v);
+        }
+
+        PropertyWrapper<TOwningType, T>& operator=(T&& v) {
+            setter(owner, std::move(v));
+            return *this;
+        }
+
+        PropertyWrapper<TOwningType, T>& operator=(const T& v) {
+            T copy = v;
+            setter(owner, std::move(copy));
+            return *this;
+        }
+
+        PropertyWrapper<TOwningType, T>& operator=(const PropertyWrapper<TOwningType, T>& other) {
+            if (&other == this)
+                return *this;
+            setter(owner, other.get());
+            return *this;
+        }
+    };
+
+    template<typename TElement>
+    struct ReflectedSerialisation {
+        static void deserialiseElement(ECS::Component& component, TElement& out, const Carrot::DocumentElement& doc) = delete; // "Unsupported property type for reflection"
+        static Carrot::DocumentElement serialiseElement(const ECS::Component& component, const TElement& input) = delete; // "Unsupported property type for reflection"
+    };
 
 #define DECLARE_PROPERTY_TYPE(Type) \
-    template<> void deserialiseElement<Type>(Type& out, const Carrot::DocumentElement& doc);\
-    template<> Carrot::DocumentElement serialiseElement<Type>(const Type& input)
+    template<> struct ReflectedSerialisation<Type> {\
+        static void deserialiseElement(ECS::Component& component, Type& out, const Carrot::DocumentElement& doc);\
+        static Carrot::DocumentElement serialiseElement(const ECS::Component& component, const Type& input);\
+    }
 
     DECLARE_PROPERTY_TYPE(float);
     DECLARE_PROPERTY_TYPE(bool);
+    DECLARE_PROPERTY_TYPE(glm::vec2);
     DECLARE_PROPERTY_TYPE(glm::vec3);
+    DECLARE_PROPERTY_TYPE(glm::vec4);
     DECLARE_PROPERTY_TYPE(Carrot::Identifier);
     DECLARE_PROPERTY_TYPE(Carrot::Math::Transform);
     DECLARE_PROPERTY_TYPE(Carrot::UUID);
 
-    // Required? due to partial specialization not being allowed by C++
-    #define DECLARE_ASYNC_RESOURCE_PROPERTY_TYPE(AsyncResourceType) \
-        template<> inline void deserialiseElement<AsyncResourceType>(AsyncResourceType& out, const Carrot::DocumentElement& doc) { out.startLoad(doc); }\
-        template<> inline Carrot::DocumentElement serialiseElement<AsyncResourceType>(const AsyncResourceType& input) { return input.serialise(); }
+    template<typename TOwningType, typename TElement>
+    struct ReflectedSerialisation<PropertyWrapper<TOwningType, TElement>> {
+        static void deserialiseElement(ECS::Component& component, PropertyWrapper<TOwningType, TElement>& out, const Carrot::DocumentElement& doc) {
+            TElement tempValue;
+            ReflectedSerialisation<TElement>::deserialiseElement(component, tempValue, doc);
+            out = std::move(tempValue);
+        }
 
-    DECLARE_ASYNC_RESOURCE_PROPERTY_TYPE(AsyncPrefabResource)
+        static Carrot::DocumentElement serialiseElement(const ECS::Component& component, const PropertyWrapper<TOwningType, TElement>& input) {
+            return ReflectedSerialisation<TElement>::serialiseElement(component, input.get());
+        }
+    };
+
+    template<typename T, bool WaitOnAccess, typename ValueContainer>
+    struct ReflectedSerialisation<AsyncResource<T, WaitOnAccess, ValueContainer>> {
+        using ResourceType = AsyncResource<T, WaitOnAccess, ValueContainer>;
+
+        static void deserialiseElement(ECS::Component& component, ResourceType& out, const Carrot::DocumentElement& doc) requires IsResourceSerialisable<T, ValueContainer> {
+            out.startLoad(doc);
+        }
+
+        static Carrot::DocumentElement serialiseElement(const ECS::Component& component, const ResourceType& input) requires IsResourceSerialisable<T, ValueContainer> {
+            return input.serialise();
+        }
+    };
 
     /**
      * Templated version of BaseComponentPropertyReflection which has a pointer-to-member to the property inside the component
@@ -79,12 +156,12 @@ namespace Carrot::ECS {
 
         void deserialise(Carrot::ECS::Component& component, const Carrot::DocumentElement& doc) const override {
             TProperty& ref = static_cast<TComponent&>(component).*propertyPtr;
-            Carrot::ECS::deserialiseElement<TProperty>(ref, doc);
+            Carrot::ECS::ReflectedSerialisation<TProperty>::deserialiseElement(component, ref, doc);
         }
 
         [[nodiscard]] Carrot::DocumentElement serialise(const Carrot::ECS::Component& component) const override {
             const TProperty& ref = static_cast<const TComponent&>(component).*propertyPtr;
-            return Carrot::ECS::serialiseElement<TProperty>(ref);
+            return Carrot::ECS::ReflectedSerialisation<TProperty>::serialiseElement(component, ref);
         }
 
         void duplicateProperty(const Carrot::ECS::Component& src, Carrot::ECS::Component& dest) const override {
@@ -130,6 +207,10 @@ static inline ::Carrot::ECS::ComponentPropertyReflection<TSelf, Type> FIELD_NAME
 /// Adds an optional property (ie can be missing inside serialized version) to a component
 /// See FIELD for more information
 #define OPTIONAL_FIELD(Type, Name, PublicName, DefaultValue) FIELD_IMPL(Type, Name, PublicName, DefaultValue, false)
+
+#define COMMA , // wtf C++
+#define PROPERTY(Type, Name, PublicName, DefaultValue, Getter, Setter) using FIELD_NAME_CONCAT(PropertyWrapperType, Name) = PropertyWrapper<TSelf COMMA Type>;\
+    FIELD(FIELD_NAME_CONCAT(PropertyWrapperType, Name), Name, PublicName, FIELD_NAME_CONCAT(PropertyWrapperType, Name)(*this, DefaultValue, Getter, Setter))
 
 #define FIELD_CONFIG(Name, ConfigLambda) \
     static inline int FIELD_NAME_CONCAT(_field_config, FIELD_NAME_CONCAT(Name, __COUNTER__)) = \

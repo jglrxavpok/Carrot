@@ -685,7 +685,7 @@ void Carrot::Engine::initECS() {
     {
         components.addV2<Carrot::ECS::TransformComponent>();
         components.add<Carrot::ECS::SpriteComponent>();
-        components.add<Carrot::ECS::ModelComponent>();
+        components.addV2<Carrot::ECS::ModelComponent>();
         components.add<Carrot::ECS::AnimatedModelComponent>();
         components.addV2<Carrot::ECS::ForceSinPositionComponent>();
         components.addV2<Carrot::ECS::KinematicsComponent>();

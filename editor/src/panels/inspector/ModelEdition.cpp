@@ -104,7 +104,7 @@ namespace Peeler {
     void editModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ModelComponent*>& components) {
         // check if all components have loaded their models
         for(std::int64_t i = 0; i < components.size(); i++) {
-            auto& asyncModel = components[i]->asyncModel;
+            auto& asyncModel = components[i]->modelResource;
             if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
                 ImGui::Text("Loading model(s)...");
                 return;
@@ -141,7 +141,7 @@ namespace Peeler {
 
         multiEditField(edition, "Filepath", components,
             +[](Carrot::ECS::ModelComponent& c) {
-                return Carrot::IO::VFS::Path { c.asyncModel.isEmpty() ? "" : c.asyncModel->getOriginatingResource().getName() };
+                return Carrot::IO::VFS::Path { c.modelResource.isEmpty() ? "" : c.modelResource->getFilePath() };
             },
             +[](Carrot::ECS::ModelComponent& c, const Carrot::IO::VFS::Path& path) {
                 c.setFile(path);
@@ -153,7 +153,7 @@ namespace Peeler {
 
         if(ImGui::SmallButton("Reload")) {
             for(auto& pComponent : components) {
-                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                const Carrot::IO::VFS::Path vfsPath { pComponent->modelResource.isEmpty() ? "" : pComponent->modelResource->getFilePath() };
                 pComponent->setFile(vfsPath);
             }
             edition.hasModifications = true;
@@ -163,7 +163,7 @@ namespace Peeler {
         if(ImGui::SmallButton("Regenerate")) {
             std::unordered_set<Carrot::IO::VFS::Path> toInvalidate;
             for(auto& pComponent : components) {
-                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                const Carrot::IO::VFS::Path vfsPath { pComponent->modelResource.isEmpty() ? "" : pComponent->modelResource->getFilePath() };
                 toInvalidate.insert(vfsPath);
             }
             for (const auto& path : toInvalidate) {
@@ -171,7 +171,7 @@ namespace Peeler {
                 GetAssetServer().deleteConvertedAsset(path);
             }
             for(auto& pComponent : components) {
-                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                const Carrot::IO::VFS::Path vfsPath { pComponent->modelResource.isEmpty() ? "" : pComponent->modelResource->getFilePath() };
                 pComponent->setFile(vfsPath);
             }
             edition.hasModifications = true;
@@ -187,7 +187,7 @@ namespace Peeler {
             +[](Carrot::ECS::ModelComponent& c, const Helpers::RGBAColorWrapper& v) { c.color = v.rgba; });
 
         for(const auto& pComponent : components) {
-            if(!pComponent->asyncModel.isReady()) {
+            if(!pComponent->modelResource.isReady()) {
                 return;
             }
         }
@@ -205,7 +205,7 @@ namespace Peeler {
                     return pModelRenderer->clone();
                 }
 
-                return std::make_shared<Carrot::Render::ModelRenderer>(*component.asyncModel);
+                return std::make_shared<Carrot::Render::ModelRenderer>(*component.modelResource);
             };
             if(allSame) {
                 // handle rendering overrides (replacing pipeline and/or material textures)
@@ -281,7 +281,7 @@ namespace Peeler {
                     }
                 }
 
-                std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->asyncModel->getStaticMeshes().size();
+                std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->modelResource->getStaticMeshes().size();
                 if(staticMeshCount == virtualGeometryCount) {
                     allWithoutVirtualGeometry = false;
                 } else if(virtualGeometryCount == 0) {
@@ -314,7 +314,7 @@ namespace Peeler {
                 } else if(tristate == 1) {
                     for(const auto& pComponent : components) {
                         pComponent->modelRenderer = cloneRenderer(*pComponent);
-                        std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->asyncModel->getStaticMeshes().size();
+                        std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->modelResource->getStaticMeshes().size();
                         for(std::size_t i = 0; i < staticMeshCount; i++) {
                             Carrot::Render::MaterialOverride* pExistingOverride = pComponent->modelRenderer->getOverrides().findForMesh(i);
                             if(pExistingOverride) {

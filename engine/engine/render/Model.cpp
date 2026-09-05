@@ -4,7 +4,6 @@
 
 #include "Model.h"
 #include "engine/render/resources/Mesh.h"
-#include <iostream>
 #include <core/utils/stringmanip.h>
 #include "engine/render/resources/Pipeline.h"
 #include <glm/gtx/quaternion.hpp>
@@ -19,22 +18,21 @@
 
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/model_loading/SceneLoader.h"
-#include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/LightMesh.h>
 #include <engine/render/ModelRenderer.h>
 #include <engine/render/ClusterManager.h>
 #include <engine/task/TaskScheduler.h>
 #include <engine/Engine.h>
 
-Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {}
+Carrot::Model::Model(const Carrot::IO::VFS::Path& filepath): filepath(filepath) {}
 
-std::shared_ptr<Carrot::Model> Carrot::Model::load(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& file) {
-    std::shared_ptr<Carrot::Model> pNewModel = std::shared_ptr<Carrot::Model>(new Carrot::Model(engine, file));
-    pNewModel->loadInner(task, engine, file);
+std::shared_ptr<Carrot::Model> Carrot::Model::load(TaskHandle& task, const Carrot::IO::VFS::Path& filepath, const Carrot::IO::Resource& file) {
+    std::shared_ptr<Carrot::Model> pNewModel = std::shared_ptr<Carrot::Model>(new Carrot::Model(filepath));
+    pNewModel->loadInner(task, file);
     return pNewModel;
 }
 
-void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& file) {
+void Carrot::Model::loadInner(TaskHandle& task, const Carrot::IO::Resource& file) {
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
     debugName = file.getName();
@@ -52,9 +50,9 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     precomputedBLASes = std::move(scene.precomputedBLASes);
 
     // TODO: make different pipelines based on loaded materials
-    opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
+    opaqueMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer");
 
-    transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer-transparent");
+    transparentMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer-transparent");
 
     Carrot::Async::Counter waitMaterialLoads;
     // TODO: reduce task count
@@ -256,10 +254,10 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                     .stageFlags = vk::ShaderStageFlagBits::eCompute,
                 }
         };
-        animationSetLayout = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
+        animationSetLayout = GetVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
                 .bindingCount = bindings.size(),
                 .pBindings = bindings.data(),
-        }, engine.getAllocator());
+        }, GetVulkanDriver().getAllocationCallbacks());
 
         std::array sizes = {
                 vk::DescriptorPoolSize {
@@ -271,14 +269,14 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                         .descriptorCount = animationCount,
                 }
         };
-        animationSetPool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+        animationSetPool = GetVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
                 .maxSets = 1,
                 .poolSizeCount = sizes.size(),
                 .pPoolSizes = sizes.data(),
-        }, engine.getAllocator());
+        }, GetVulkanDriver().getAllocationCallbacks());
 
         std::vector<vk::DescriptorSetLayout> layouts = {MAX_FRAMES_IN_FLIGHT, *animationSetLayout};
-        animationDescriptorSets = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+        animationDescriptorSets = GetVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *animationSetPool,
                 .descriptorSetCount = 1,
                 .pSetLayouts = layouts.data(),
@@ -317,7 +315,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
             write.pImageInfo = &imageInfo;
         }
 
-        engine.getLogicalDevice().updateDescriptorSets(writes, {});
+        GetVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
     }
 
     if(GetCapabilities().supportsRaytracing) {
@@ -534,4 +532,10 @@ Carrot::Render::Texture& Carrot::Model::getAnimationDataTexture(u32 animationInd
 vk::DescriptorSet Carrot::Model::getAnimationDataDescriptorSet() const {
     verify(animationDescriptorSets.size() > 0, "This model is not animated!");
     return animationDescriptorSets[0];
+}
+
+namespace Carrot {
+    AsyncTaskType<Carrot::Model> AsyncResourceTraits<Model>::makeLoadingTask(const Carrot::IO::VFS::Path& path) {
+        return GetAssetServer().loadModelTask(path);
+    }
 }

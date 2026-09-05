@@ -527,5 +527,10 @@ namespace Carrot {
         node.key() = to;
         elements.insert(std::move(node));
     }
+
+    void DocumentElement::remove(const std::string& key) {
+        verify(isObject(), "Calling remove(string) on non-object DocumentElement!");
+        elements.erase(key);
+    }
 #pragma endregion
 } // Carrot

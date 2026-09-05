@@ -43,66 +43,86 @@ namespace Carrot::ECS {
                 if (iter != objectView.end()) {
                     pReflect->deserialise(comp, iter->second);
                 } else if (pReflect->mandatory) {
-                    verify(false, Carrot::sprintf("Field %s is mandatory, but was not present in document", pReflect->name.c_str()));
+                    verify(false, Carrot::sprintf("Field %s is mandatory, but was not present in document", pReflect->publicName.c_str()));
                 }
             }
         }
     }
 
     // Property types
-    template<> void deserialiseElement<float>(float& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<float>::deserialiseElement(ECS::Component& component, float& out, const Carrot::DocumentElement& doc) {
         out = static_cast<float>(doc.getAsDouble());
     }
 
-    template<> Carrot::DocumentElement serialiseElement<float>(const float& input) {
+    Carrot::DocumentElement ReflectedSerialisation<float>::serialiseElement(const ECS::Component& component, const float& input) {
         Carrot::DocumentElement elem;
         elem = input;
         return elem;
     }
 
-    template<> void deserialiseElement<bool>(bool& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<bool>::deserialiseElement(ECS::Component& component, bool& out, const Carrot::DocumentElement& doc) {
         out = doc.getAsBool();
     }
 
-    template<> Carrot::DocumentElement serialiseElement<bool>(const bool& input) {
+    Carrot::DocumentElement ReflectedSerialisation<bool>::serialiseElement(const ECS::Component& component, const bool& input) {
         Carrot::DocumentElement elem;
         elem = input;
         return elem;
     }
 
-    template<> void deserialiseElement<glm::vec3>(glm::vec3& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<glm::vec2>::deserialiseElement(ECS::Component& component, glm::vec2& out, const Carrot::DocumentElement& doc) {
+        out = DocumentHelpers::read<2, float>(doc);
+    }
+
+    Carrot::DocumentElement ReflectedSerialisation<glm::vec2>::serialiseElement(const ECS::Component& component, const glm::vec2& input) {
+        Carrot::DocumentElement elem;
+        elem = DocumentHelpers::write<2, float>(input);
+        return elem;
+    }
+
+    void ReflectedSerialisation<glm::vec3>::deserialiseElement(ECS::Component& component, glm::vec3& out, const Carrot::DocumentElement& doc) {
         out = DocumentHelpers::read<3, float>(doc);
     }
 
-    template<> Carrot::DocumentElement serialiseElement<glm::vec3>(const glm::vec3& input) {
+    Carrot::DocumentElement ReflectedSerialisation<glm::vec3>::serialiseElement(const ECS::Component& component, const glm::vec3& input) {
         Carrot::DocumentElement elem;
         elem = DocumentHelpers::write<3, float>(input);
         return elem;
     }
 
-    template<> void deserialiseElement<Carrot::Identifier>(Carrot::Identifier& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<glm::vec4>::deserialiseElement(ECS::Component& component, glm::vec4& out, const Carrot::DocumentElement& doc) {
+        out = DocumentHelpers::read<4, float>(doc);
+    }
+
+    Carrot::DocumentElement ReflectedSerialisation<glm::vec4>::serialiseElement(const ECS::Component& component, const glm::vec4& input) {
+        Carrot::DocumentElement elem;
+        elem = DocumentHelpers::write<4, float>(input);
+        return elem;
+    }
+
+    void ReflectedSerialisation<Carrot::Identifier>::deserialiseElement(ECS::Component& component, Carrot::Identifier& out, const Carrot::DocumentElement& doc) {
         out = Carrot::Identifier{doc.getAsString()};
     }
 
-    template<> Carrot::DocumentElement serialiseElement<Carrot::Identifier>(const Carrot::Identifier& input) {
+    Carrot::DocumentElement ReflectedSerialisation<Carrot::Identifier>::serialiseElement(const ECS::Component& component, const Carrot::Identifier& input) {
         Carrot::DocumentElement elem;
         elem = std::string{input};
         return elem;
     }
 
-    template<> void deserialiseElement<Carrot::Math::Transform>(Carrot::Math::Transform& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<Carrot::Math::Transform>::deserialiseElement(ECS::Component& component, Carrot::Math::Transform& out, const Carrot::DocumentElement& doc) {
         out.deserialise(doc);
     }
 
-    template<> Carrot::DocumentElement serialiseElement<Carrot::Math::Transform>(const Carrot::Math::Transform& input) {
+    Carrot::DocumentElement ReflectedSerialisation<Carrot::Math::Transform>::serialiseElement(const ECS::Component& component, const Carrot::Math::Transform& input) {
         return input.serialise();
     }
 
-    template<> void deserialiseElement<Carrot::UUID>(Carrot::UUID& out, const Carrot::DocumentElement& doc) {
+    void ReflectedSerialisation<Carrot::UUID>::deserialiseElement(ECS::Component& component, Carrot::UUID& out, const Carrot::DocumentElement& doc) {
         out = Carrot::UUID::fromString(doc.getAsString());
     }
 
-    template<> Carrot::DocumentElement serialiseElement<Carrot::UUID>(const Carrot::UUID& input) {
+    Carrot::DocumentElement ReflectedSerialisation<Carrot::UUID>::serialiseElement(const ECS::Component& component, const Carrot::UUID& input) {
         Carrot::DocumentElement doc;
         doc = input.toString();
         return doc;
