@@ -148,12 +148,14 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
     verify(sizeMultiplier != 0, "logic error, one value is 0");
     switch(type.basetype) {
         case spirv_cross::SPIRType::Struct: {
-            std::uint32_t size = 0;
+            u32 maxCursor = 0;
+            u32 memberIndex = 0;
             for(const auto& t : type.member_types) {
                 auto& memberType = compiler.get_type(t);
-                size += computeTypeSize(compiler, memberType);
+                u32 endOfMember = compiler.type_struct_member_offset(type, memberIndex++) + computeTypeSize(compiler, memberType);
+                maxCursor = std::max(endOfMember, maxCursor);
             }
-            return size * sizeMultiplier;
+            return maxCursor * sizeMultiplier;
         }
 
         case spirv_cross::SPIRType::Float:
