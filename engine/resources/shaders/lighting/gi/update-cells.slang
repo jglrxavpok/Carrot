@@ -105,9 +105,6 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
         bool wasNew;
 
         bounces[bounceIndex].gridCellIndex = GetHashGrid().insert(key, wasNew);
-        if (wasNew) {
-            GetHashGrid().writeToCell(bounces[bounceIndex].gridCellIndex.value, key, float3(0), 0);
-        }
 
         pbr.alpha = startingRoughness * startingRoughness;
         pbr.metallic = startingMetallic;
@@ -178,7 +175,7 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
         key.rayLength = l;
 
     
-        bounces[bounceIndex].directLight = GetHashGrid().read2(key);
+        bounces[bounceIndex].directLight = GetHashGrid().read(key);
 
         bounces[bounceIndex].R = startingAlbedo;
         bounces[bounceIndex].pdfOfNextDirection = directionPDF;
@@ -211,7 +208,7 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
 
         if (let cellIndex = bounces[bounceIndex].gridCellIndex) {
             GetHashGrid().mark(cellIndex, push.frameCount);
-            GetHashGrid().accumulate2(cellIndex, L);
+            GetHashGrid().accumulate(cellIndex, L);
         }
     }
 }
@@ -243,7 +240,7 @@ void computeGI(uint3 coords: SV_DispatchThreadID, uniform LightingPassUniforms p
     giInputs.startOfRay = pixelInfo.cameraPos;
     GetHashGrid().jitter(rng, materialSystem, giInputs);
 
-    float3 radiance = GetHashGrid().read(rng, giInputs);
+    float3 radiance = GetHashGrid().read(giInputs);
 
     io.output.Store(coords.xy, float4(radiance, 1));
 }

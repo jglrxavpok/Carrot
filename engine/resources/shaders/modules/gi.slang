@@ -137,7 +137,11 @@ namespace HashGrid {
                 InterlockedCompareExchange(hash2[cellIndex], 0, desc.hash2, previousHash);
                 if(previousHash == 0) {
                     wasNew = true;
-                    //hashGridClear(mapIndex, cellIndex);
+
+                    // reset cell
+                    keys[cellIndex] = key;
+                    hash2[cellIndex] = desc.hash2;
+
                     break;
                 }
                 if(previousHash == desc.hash2) {
@@ -170,25 +174,7 @@ namespace HashGrid {
         }
 
         [mutating]
-        public void writeToCell(uint cellIndex, in Key key, float3 radianceValue, uint newSampleCount) {
-            keys[cellIndex] = key;
-            hash2[cellIndex] = key.toDescriptor().hash2;
-            radiance[cellIndex] = packRadiance(radianceValue);
-            sampleCounts[cellIndex] = newSampleCount;
-        }
-
-        [mutating]
-        // TODO: remove Key, not useful
-        public void accumulate(uint cellIndex, in Key key, float3 radianceToAdd) {
-            const int3 quantizedRadiance = packRadiance(radianceToAdd);
-            InterlockedAdd(radianceAccumulation[cellIndex].x, quantizedRadiance.x);
-            InterlockedAdd(radianceAccumulation[cellIndex].y, quantizedRadiance.y);
-            InterlockedAdd(radianceAccumulation[cellIndex].z, quantizedRadiance.z);
-            InterlockedAdd(sampleCountAccumulation[cellIndex], 1);
-        }
-
-        [mutating]
-        public void accumulate2(uint cellIndex, float3 radianceToAdd) {
+        public void accumulate(uint cellIndex, float3 radianceToAdd) {
             const int3 quantizedRadiance = packRadiance(radianceToAdd);
             InterlockedAdd(radianceAccumulation[cellIndex].x, quantizedRadiance.x);
             InterlockedAdd(radianceAccumulation[cellIndex].y, quantizedRadiance.y);
@@ -265,24 +251,14 @@ namespace HashGrid {
             return key;
         }
 
-        // TODO: remove unused 'rng' parameter
         [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
-        public float3 read(inout RandomSampler rng, in GIInputs giInputs) {
+        public float3 read(in GIInputs giInputs) {
             Key key = giInputsToKey(giInputs);
-
-            if (let cellIndex = find(key)) {
-                const uint sampleCount = sampleCounts[cellIndex];
-                if(sampleCount == 0) {
-                    return float3(0.0);
-                }
-
-                return readRadiance(cellIndex);
-            }
-            return float3(0, 0, 0);
+            return read(key);
         }
 
         [mutating] // Mutating: Slang compiler has a bug where non-mutating member functions generate a copy of 'this'...
-        public float3 read2(in Key key) {
+        public float3 read(in Key key) {
             if (let cellIndex = find(key)) {
                 const uint sampleCount = sampleCounts[cellIndex];
                 if (sampleCount == 0) {
