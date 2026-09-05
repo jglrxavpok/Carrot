@@ -291,20 +291,12 @@ namespace Carrot::ImageFormats {
 
     std::uint8_t computeMipCount(std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat) {
         const ImageFormat& format = getFormat(imageFormat);
-        VkExtent3D minSize = format.blockExtent;
-        std::uint8_t mipLevel = 1;
-        while(imageWidth > minSize.width || imageHeight > minSize.height || imageDepth > minSize.depth) {
-            imageWidth = std::max(minSize.width, imageWidth >> 1);
-            imageHeight = std::max(minSize.height, imageHeight >> 1);
-            imageDepth = std::max(minSize.depth, imageDepth >> 1);
-            mipLevel++;
-        }
-        return mipLevel;
+        // "Image Mip Level Sizing" of Vulkan spec
+        return static_cast<u8>(ceil(std::log2(std::max(std::max(imageWidth, imageHeight), imageDepth)))) + 1;
     }
 
     VkExtent3D computeMipDimensions(std::uint32_t mipLevel, std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat) {
-        const ImageFormat& format = getFormat(imageFormat);
-        VkExtent3D minSize = format.blockExtent;
+        VkExtent3D minSize = VkExtent3D{1,1,1};
         while(mipLevel > 0) {
             imageWidth = std::max(minSize.width, imageWidth >> 1);
             imageHeight = std::max(minSize.height, imageHeight >> 1);
