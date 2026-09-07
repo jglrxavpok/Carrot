@@ -4,10 +4,6 @@
 
 #include "ParticleEditor.h"
 #include <node_based/nodes/Arithmetics.hpp>
-#include <node_based/nodes/Constants.hpp>
-#include <node_based/nodes/Logics.hpp>
-#include <node_based/nodes/BuiltinFunctions.h>
-#include <node_based/nodes/Template.h>
 #include <iostream>
 #include <fstream>
 #include <rapidjson/writer.h>
@@ -23,10 +19,7 @@
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
 
-#include <spirv_glsl.hpp>
-#include <nfd.h>
 #include <engine/render/CameraBufferObject.h>
-#include <engine/render/resources/ResourceAllocator.h>
 #include <node_based/nodes/CommentNode.h>
 #include <node_based/nodes/DefaultNodes.h>
 #include <rapidjson/prettywriter.h>

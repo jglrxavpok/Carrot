@@ -4,7 +4,6 @@
 
 #include "GlslCompiler.h"
 #include <SPIRV/Logger.h>
-#include <SPIRV/SpvTools.h>
 #include <SPIRV/GlslangToSpv.h>
 
 #include <array>

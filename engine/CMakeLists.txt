@@ -296,7 +296,7 @@ set(THIRDPARTY-SOURCES
         )
 
 set(ALL_BASE_LIBS
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL Jolt
+        Vulkan::Vulkan spirv-reflect-static glfw glm OpenAL Jolt
         OpenXR::headers
         OpenXR::openxr_loader
         OpenEXR::OpenEXR

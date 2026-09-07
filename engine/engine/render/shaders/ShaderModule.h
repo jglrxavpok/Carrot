@@ -4,10 +4,9 @@
 
 #pragma once
 
-#include <spirv_cross.hpp>
-#include <spirv_parser.hpp>
 #include <string>
 #include <map>
+#include <core/containers/Vector.hpp>
 #include <engine/render/NamedBinding.h>
 #include <core/io/Resource.h>
 #include "engine/render/shaders/ShaderSource.h"
@@ -37,18 +36,10 @@ namespace Carrot {
     private:
         vk::UniqueShaderModule vkModule{};
         std::string entryPoint = "main";
-        spirv_cross::ParsedIR parsedCode{};
-        std::unique_ptr<spirv_cross::Compiler> compiler = nullptr;
-        std::map<std::uint32_t, Binding> bindingMap{};
+        std::unordered_map<u32/*set ID*/, Carrot::Vector<NamedBinding>> usedBindings;
         Render::ShaderSource source;
-
-        void
-        createBindingsSet(vk::ShaderStageFlagBits stage,
-                          std::uint32_t setID,
-                          std::vector<NamedBinding>& bindings,
-                          vk::DescriptorType type,
-                          const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                          const std::map<std::string, uint32_t>& constants);
+        u32 pushConstantRangeStart = 0;
+        u32 pushConstantRangeSize = 0;
 
         void reload();
 

@@ -157,7 +157,6 @@ set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(thirdparty/tinygltf)
 
-add_subdirectory(thirdparty/SPIRV-Cross)
 set(ENABLE_OPT 0)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # for glslang and KTX Software
 add_subdirectory(thirdparty/glslang)

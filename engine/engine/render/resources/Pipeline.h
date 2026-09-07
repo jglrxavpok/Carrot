@@ -3,18 +3,15 @@
 //
 
 #pragma once
+
+#include <unordered_set>
 #include <core/data/ShaderMetadata.h>
-#include <core/render/ImageFormats.h>
-
-#include "engine/vulkan/SwapchainAware.h"
-#include "engine/render/IDTypes.h"
-#include "engine/render/shaders/ShaderStages.h"
-#include "VertexFormat.h"
-#include "engine/render/shaders/ShaderSource.h"
-#include <core/utils/Lookup.hpp>
-
 #include <engine/render/resources/UIDObject.h>
+#include <engine/render/resources/VertexFormat.h>
+#include <engine/render/shaders/ShaderSource.h>
+#include <engine/render/shaders/ShaderStages.h>
 #include <engine/vulkan/DebugNameable.h>
+#include <engine/vulkan/SwapchainAware.h>
 
 namespace Carrot::Render {
     class Texture;

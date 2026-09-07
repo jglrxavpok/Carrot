@@ -2,12 +2,10 @@
 // Created by jglrxavpok on 30/11/2020.
 //
 
-#include <spirv_cross.hpp>
-#include <spirv_glsl.hpp>
-#include <spirv_reflect.hpp>
+#include <spirv_reflect.h>
 #include "ShaderModule.h"
 #include "core/io/IO.h"
-#include <iostream>
+#include <spirv_reflect.h>
 #include <core/math/BasicFunctions.h>
 
 #include "engine/render/NamedBinding.h"
@@ -30,10 +28,6 @@ void Carrot::ShaderModule::reload() {
     std::vector<std::uint32_t> asWords;
     asWords.resize(code.size() / sizeof(std::uint32_t));
     std::memcpy(asWords.data(), code.data(), code.size());
-    spirv_cross::Parser parser(std::move(asWords));
-    parser.parse();
-
-    compiler = std::make_unique<spirv_cross::CompilerReflection>(std::move(parser.get_parsed_ir()));
 
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),
@@ -41,6 +35,47 @@ void Carrot::ShaderModule::reload() {
     }, GetVulkanDriver().getAllocationCallbacks());
 
     source.clearModifyFlag();
+
+    spv_reflect::ShaderModule mod{code};
+    SpvReflectResult result{};
+    const SpvReflectBlockVariable* pBlock = mod.GetEntryPointPushConstantBlock(entryPoint.c_str(), &result);
+    if (result == SPV_REFLECT_RESULT_SUCCESS) {
+        pushConstantRangeStart = pBlock->absolute_offset;
+        pushConstantRangeSize = pBlock->padded_size;
+    } else if (result == SPV_REFLECT_RESULT_ERROR_ELEMENT_NOT_FOUND) {
+        // no push constant, and that's ok
+    } else {
+        verify(false, "Failed to get push constant block");
+    }
+
+    u32 setCount;
+    if (result = mod.EnumerateDescriptorSets(&setCount, nullptr); result != SPV_REFLECT_RESULT_SUCCESS) {
+        verify(false, "Failed to count descriptor sets");
+    }
+
+    Carrot::Vector<SpvReflectDescriptorSet*> sets;
+    sets.resize(setCount);
+    if (result = mod.EnumerateDescriptorSets(&setCount, sets.data()); result != SPV_REFLECT_RESULT_SUCCESS) {
+        verify(false, "Failed to enumerate descriptor sets");
+    }
+
+    usedBindings.clear();
+    for (const SpvReflectDescriptorSet* pSet : sets) {
+        Carrot::Vector<NamedBinding>& bindings = usedBindings[pSet->set];
+
+        const u32 bindingCount = pSet->binding_count;
+        bindings.resize(bindingCount);
+        for (u32 bindingIndex = 0; bindingIndex < bindingCount; bindingIndex++) {
+            const SpvReflectDescriptorBinding* pBinding = pSet->bindings[bindingIndex];
+            bindings[bindingIndex].name = pBinding->name;
+            bindings[bindingIndex].setID = pBinding->set;
+            bindings[bindingIndex].vkBinding = vk::DescriptorSetLayoutBinding{
+                .binding = pBinding->binding,
+                .descriptorType = static_cast<vk::DescriptorType>(pBinding->descriptor_type),
+                .descriptorCount = pBinding->count, // TODO: spec constant for sizes
+            };
+        }
+    }
 }
 
 vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const {
@@ -53,143 +88,33 @@ vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStag
 }
 
 void Carrot::ShaderModule::addBindingsSet(vk::ShaderStageFlagBits stage, std::uint32_t setID, std::vector<NamedBinding>& bindings, const std::map<std::string, std::uint32_t>& constants) {
-    const auto resources = compiler->get_shader_resources();
+    const auto& shaderBindings = usedBindings[setID];
+    if (shaderBindings.empty()) {
+        return;
+    }
 
-    // buffers
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eUniformBuffer, resources.uniform_buffers, constants);
-
-    // samplers
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eSampler, resources.separate_samplers, constants);
-
-    // sampled images
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eCombinedImageSampler, resources.sampled_images, constants);
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eSampledImage, resources.separate_images, constants);
-
-
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eInputAttachment, resources.subpass_inputs, constants);
-
-
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eStorageBuffer, resources.storage_buffers, constants);
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eStorageImage, resources.storage_images, constants);
-
-    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eAccelerationStructureKHR, resources.acceleration_structures, constants);
-    //createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureNV, resources.acceleration_structures, constants);
-
-    // TODO: other types
-}
-
-void Carrot::ShaderModule::createBindingsSet(vk::ShaderStageFlagBits stage,
-                                             std::uint32_t setID,
-                                             std::vector<NamedBinding>& bindings,
-                                             vk::DescriptorType type,
-                                             const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                                             const std::map<std::string, std::uint32_t>& constants) {
-    for(const auto& resource : resources) {
-        const auto bindingID = compiler->get_decoration(resource.id, spv::DecorationBinding);
-        const auto& resourceType = compiler->get_type(resource.type_id);
-        const auto setIndex = compiler->get_decoration(resource.id, spv::DecorationDescriptorSet);
-        if(setIndex != setID) {
-            continue;
-        }
-        uint32_t count = 1;
-        if(!resourceType.array.empty()) {
-            bool isLiteralLength = resourceType.array_size_literal[0];
-            if(isLiteralLength) {
-                count = resourceType.array[0];
-            } else {
-                // resolve specialization constant value
-                uint32_t varId = resourceType.array[0];
-                const auto& constant = compiler->get_constant(varId);
-                const std::string& constantName = compiler->get_name(varId);
-                auto it = constants.find(constantName);
-                if(it != constants.end()) {
-                    count = it->second;
-                } else {
-                    count = constant.scalar(); // default value
-                }
-            }
-        }
-        NamedBinding bindingToAdd = {vk::DescriptorSetLayoutBinding {
-                .binding = bindingID,
-                .descriptorType = type,
-                .descriptorCount = count,
-                .stageFlags = stage,
-        }, setID, resource.name};
-
-        auto existing = std::find_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.setID == bindingToAdd.setID && b.vkBinding.binding == bindingToAdd.vkBinding.binding; });
+    for (const auto& binding : shaderBindings) {
+        auto existing = std::ranges::find_if(bindings, [&](const auto& b) { return b.setID == binding.setID && b.vkBinding.binding == binding.vkBinding.binding; });
         if(existing != bindings.end()) {
-            if(bindingToAdd.areSame(*existing)) {
+            if(binding.areSame(*existing)) {
                 existing->vkBinding.stageFlags |= stage;
             } else {
-                throw std::runtime_error("Mismatched of binding " + std::to_string(bindingID) + " over different stages.");
+                throw std::runtime_error("Mismatched of binding " + std::to_string(binding.vkBinding.binding) + ", set " + std::to_string(binding.setID) +" over different stages.");
             }
         } else {
-            bindings.push_back(bindingToAdd);
-
-            bindingMap[static_cast<std::uint32_t>(bindingID)] = {
-                    bindingID,
-                    type,
-                    count
-            };
+            NamedBinding bindingWithFlags = binding;
+            bindingWithFlags.vkBinding.stageFlags = stage;
+            bindings.push_back(bindingWithFlags);
         }
     }
 }
 
-static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& type) {
-    if (type.pointer) {
-        return sizeof(vk::DeviceAddress);
-    }
-    std::uint32_t sizeMultiplier = 1;
-    sizeMultiplier *= type.vecsize;
-    for (std::uint32_t dimIndex = 0; dimIndex < type.array.size(); dimIndex++) {
-        verify(type.array_size_literal[dimIndex], "non-literal array sizes for push constant block members are not supported yet");
-        sizeMultiplier *= type.array[dimIndex];
-    }
-    verify(sizeMultiplier != 0, "logic error, one value is 0");
-    switch(type.basetype) {
-        case spirv_cross::SPIRType::Struct: {
-            u32 maxCursor = 0;
-            u32 memberIndex = 0;
-            for(const auto& t : type.member_types) {
-                auto& memberType = compiler.get_type(t);
-                u32 endOfMember = compiler.type_struct_member_offset(type, memberIndex++) + computeTypeSize(compiler, memberType);
-                maxCursor = std::max(endOfMember, maxCursor);
-            }
-            return maxCursor * sizeMultiplier;
-        }
-
-        case spirv_cross::SPIRType::Float:
-        case spirv_cross::SPIRType::UInt:
-        case spirv_cross::SPIRType::Int:
-            return 4 * sizeMultiplier;
-
-        case spirv_cross::SPIRType::UInt64:
-        case spirv_cross::SPIRType::Int64:
-        case spirv_cross::SPIRType::Double:
-            return 8 * sizeMultiplier;
-
-        case spirv_cross::SPIRType::UByte:
-            return 1 * sizeMultiplier;
-        case spirv_cross::SPIRType::UShort:
-            return 2 * sizeMultiplier;
-
-        default:
-            TODO
-    }
-}
-
-void Carrot::ShaderModule::addPushConstantInfo(vk::ShaderStageFlagBits stage, vk::PushConstantRange& pushConstant) const {
-    const auto resources = compiler->get_shader_resources();
-
-    if(resources.push_constant_buffers.size() == 0)
+void Carrot::ShaderModule::addPushConstantInfo(vk::ShaderStageFlagBits stage, vk::PushConstantRange& pipelinePushConstant) const {
+    if (pushConstantRangeSize == 0)
         return;
-    const auto& spvPushConstant = resources.push_constant_buffers[0];
-    std::string name = spvPushConstant.name;
-    const auto& resourceType = compiler->get_type(spvPushConstant.type_id);
-    const u64 s = computeTypeSize(*compiler, compiler->get_type(resourceType.parent_type));
-    pushConstant.stageFlags |= stage;
-    pushConstant.offset = 0;
-    pushConstant.size = std::max(pushConstant.size, static_cast<u32>(s));
+    pipelinePushConstant.stageFlags |= stage;
+    pipelinePushConstant.offset = 0;
+    pipelinePushConstant.size = pushConstantRangeStart + pushConstantRangeSize;
 }
 
 bool Carrot::ShaderModule::canBeHotReloaded() const {

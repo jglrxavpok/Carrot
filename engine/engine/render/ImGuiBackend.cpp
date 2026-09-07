@@ -15,6 +15,7 @@
 #include <core/render/VertexTypes.h>
 #include <imgui_tex_inspect.h>
 #include <imgui_tex_inspect_internal.h>
+#include <core/render/ImageFormats.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Carrot::Render {

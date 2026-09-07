@@ -73,9 +73,6 @@
 [submodule "thirdparty/meshoptimizer"]
 	path = thirdparty/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer
-[submodule "thirdparty/SPIRV-Cross"]
-	path = thirdparty/SPIRV-Cross
-	url = https://github.com/KhronosGroup/SPIRV-Cross
 [submodule "thirdparty/mimalloc"]
 	path = thirdparty/mimalloc
 	url = https://github.com/microsoft/mimalloc/
