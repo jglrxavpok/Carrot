@@ -3,10 +3,8 @@
 //
 
 #include "VulkanDriver.h"
-#include "engine/constants.h"
 #include "engine/console/RuntimeOption.hpp"
 #include "engine/render/raytracing/RayTracer.h"
-#include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Texture.h"
 #include "core/io/Logging.hpp"
@@ -16,16 +14,14 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <core/async/OSThreads.h>
 #include <core/containers/Vector.hpp>
 #include <core/io/Serialisation.h>
 
 #include "VulkanDefines.h"
-#include "engine/vulkan/CustomTracyVulkan.h"
 
 #include "engine/Engine.h"
 #include "engine/vr/VRInterface.h"
-
-#include "engine/utils/AftermathIntegration.h"
 
 #ifdef AFTERMATH_ENABLE
 #include <GFSDK_Aftermath_GpuCrashDump.h>
@@ -81,6 +77,9 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME,
         VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
+        VK_KHR_DEVICE_FAULT_EXTENSION_NAME,
+        VK_KHR_SHADER_ABORT_EXTENSION_NAME,
+        VK_KHR_SHADER_CONSTANT_DATA_EXTENSION_NAME, // required for shader abort
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -637,6 +636,12 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
             vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
                     .shaderImageInt64Atomics = true,
+            },
+            vk::PhysicalDeviceShaderAbortFeaturesKHR{
+                .shaderAbort = true,
+            },
+            vk::PhysicalDeviceFaultFeaturesKHR{
+                .deviceFault = true,
             }
     };
 
@@ -1479,6 +1484,129 @@ void Carrot::VulkanDriver::breakOnNextVulkanError() {
 void Carrot::VulkanDriver::onDeviceLost() {
     Carrot::Log::error(">>> GPU has crashed!! <<<");
     Carrot::Log::flush();
+
+    vk::DeviceFaultShaderAbortMessageInfoKHR msgInfo{};
+    vk::DeviceFaultDebugInfoKHR debugInfo{};
+    debugInfo.pNext = &msgInfo;
+    vk::Result getResult = GetVulkanDevice().getFaultDebugInfoKHR(&debugInfo);
+    verify(getResult == vk::Result::eSuccess, "Failed to get debug fault info");
+
+    if (msgInfo.messageDataSize > 0) {
+        Carrot::Vector<u8> messageData;
+        messageData.resize(msgInfo.messageDataSize);
+        msgInfo.pMessageData = messageData.data();
+        getResult = GetVulkanDevice().getFaultDebugInfoKHR(&debugInfo);
+        verify(getResult == vk::Result::eSuccess, "Failed to get debug fault info");
+
+        u32 offset = 0;
+        const u8* pData = messageData.data();
+        while (offset < messageData.size()) {
+            const u64 size = *reinterpret_cast<const u64*>(pData + offset);
+            offset += 8;
+
+            std::string message { std::string_view { reinterpret_cast<const char*>(pData + offset), size } };
+
+            // TODO: Carrot specific format to get source file and line
+            Carrot::Log::error("Shader abort detected: %s", message.c_str());
+            offset += size;
+
+            // align to next 8 byte boundary
+            u32 remainder = offset % 8;
+            if (remainder > 0) {
+                offset += 7 - remainder;
+            }
+        }
+    } else {
+        // not a shader abort, check faults
+
+        std::vector<vk::DeviceFaultInfoKHR> faultReports = device->getFaultReportsKHR(0).value;
+        for (const vk::DeviceFaultInfoKHR& report : faultReports) {
+            std::string flags;
+            bool hasMemoryAddress = false;
+            bool hasInstructionAddress = false;
+            bool hasVendorInfo = false;
+
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagDeviceLost) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "Device lost";
+            }
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagMemoryAddress) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "Memory address";
+                hasMemoryAddress= true;
+            }
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagInstructionAddress) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "Instruction address";
+                hasInstructionAddress = true;
+            }
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagVendor) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "Vendor information";
+                hasVendorInfo = true;
+            }
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagWatchdogTimeout) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "GPU Timeout";
+            }
+            if (report.flags & vk::DeviceFaultFlagBitsKHR::eFlagOverflow) {
+                if (!flags.empty()) {
+                    flags += " | ";
+                }
+
+                flags += "Too many errors :(";
+            }
+
+            Carrot::Log::error("Fault flags: %s", flags.c_str());
+            Carrot::Log::error("Description: %s", report.description.data());
+            if (hasVendorInfo) {
+                Carrot::Log::error("Vendor fault description: %s code %ux data %ux", report.vendorInfo.description, report.vendorInfo.vendorFaultCode, report.vendorInfo.vendorFaultData);
+            }
+            if (hasMemoryAddress) {
+                const char* operation = "Unknown operation";
+                switch (report.faultAddressInfo.addressType) {
+                    case vk::DeviceFaultAddressTypeKHR::eNone:
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eReadInvalid:
+                        operation = "invalid read";
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eWriteInvalid:
+                        operation = "invalid write";
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eExecuteInvalid:
+                        operation = "invalid execute";
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eInstructionPointerUnknown:
+                        operation = "unknown instruction pointer";
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eInstructionPointerInvalid:
+                        operation = "invalid instruction pointer";
+                        break;
+                    case vk::DeviceFaultAddressTypeKHR::eInstructionPointerFault:
+                        operation = "instruction pointer fault";
+                        break;
+                }
+                Carrot::Log::error("Memory access (%s) failed in range 0x%08llx - 0x%08llx", operation, report.faultAddressInfo.reportedAddress, report.faultAddressInfo.reportedAddress + report.faultAddressInfo.addressPrecision - 1);
+            }
+        }
+    }
+    Carrot::Log::flush();
+
 #ifdef AFTERMATH_ENABLE
     Carrot::Log::error("Aftermath is enabled, a .nv-gpudump file will be created inside the working directory.");
     Carrot::Log::flush();
