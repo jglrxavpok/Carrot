@@ -1504,16 +1504,53 @@ void Carrot::VulkanDriver::onDeviceLost() {
             const u64 size = *reinterpret_cast<const u64*>(pData + offset);
             offset += 8;
 
-            std::string message { std::string_view { reinterpret_cast<const char*>(pData + offset), size } };
+            const u32 startOfMessage = offset;
+            std::string messageFormat { std::string_view { reinterpret_cast<const char*>(pData + offset) } };
+            offset += messageFormat.size();
+            std::span<const u8> entireData {pData + offset, size-(offset-startOfMessage)};
 
-            // TODO: Carrot specific format to get source file and line
-            Carrot::Log::error("Shader abort detected: %s", message.c_str());
-            offset += size;
+            // align to 4 byte boundary
+            u32 remainder = offset % 4;
+            if (remainder > 0) {
+                offset += 4 - remainder;
+            }
+
+            std::span<const u8> remainingData {pData + offset, size-(offset-startOfMessage)};
+            const u32 paramNumber = remainingData.size() / sizeof(u32);
+            std::string formattedMessage;
+            std::span<const u32> parameters {reinterpret_cast<const u32*>(remainingData.data()), paramNumber};
+            switch (paramNumber) {
+                case 0:
+                    formattedMessage = messageFormat;
+                    break;
+
+                case 1:
+                    formattedMessage = Carrot::sprintf(messageFormat, parameters[0]);
+                    break;
+
+                case 2:
+                    formattedMessage = Carrot::sprintf(messageFormat, parameters[0], parameters[1]);
+                    break;
+
+                case 3:
+                    formattedMessage = Carrot::sprintf(messageFormat, parameters[0], parameters[1], parameters[2]);
+                    break;
+
+                case 4:
+                    formattedMessage = Carrot::sprintf(messageFormat, parameters[0], parameters[1], parameters[2], parameters[3]);
+                    break;
+
+                default:
+                    formattedMessage = Carrot::sprintf("%s (TOO MANY PARAMETERS)", messageFormat.c_str());
+                    break;
+            }
+
+            Carrot::Log::error("Shader abort detected: %s", formattedMessage.c_str());
 
             // align to next 8 byte boundary
-            u32 remainder = offset % 8;
+            remainder = offset % 8;
             if (remainder > 0) {
-                offset += 7 - remainder;
+                offset += 8 - remainder;
             }
         }
     } else {
