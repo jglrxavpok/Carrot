@@ -149,6 +149,7 @@ namespace Peeler {
     public:
         void selectEntity(const Carrot::ECS::EntityID& entity, bool additive);
         void deselectAllEntities();
+        void focusEntities(const std::unordered_set<Carrot::ECS::EntityID>& entities);
 
     public:
         template<typename LayerType, typename... Args>
@@ -313,6 +314,7 @@ namespace Peeler {
         Carrot::IO::FloatInputAction moveCameraUpKBM { "move_camera_up" };
         Carrot::IO::FloatInputAction moveCameraDownKBM { "move_camera_down" };
         Carrot::IO::Vec2InputAction turnCameraKBM { "turn_camera" };
+        Carrot::IO::BoolInputAction focusCameraOnEntities{"focus_camera_on_entities"};
 
         Carrot::IO::ActionSet editorGamepadActions { "editor_gamepad_actions" };
         Carrot::IO::Vec2InputAction moveCameraGamepad { "strafe_forward_camera" };
@@ -327,6 +329,9 @@ namespace Peeler {
         CameraType currentCameraType = CameraType::FreeCam;
         Carrot::Edition::FreeCameraController freeCameraController;
         Carrot::Edition::UICameraController uiCameraController;
+
+    public:
+        void handleShortcuts(const Carrot::Render::Context& frame) override;
 
     private:
         // don't actually start/stop the simulation mid-frame! We might have live objects that need to still be alive at the end of the frame
@@ -351,6 +356,7 @@ namespace Peeler {
             bool deleteRequested = false;
             bool undoRequested = false;
             bool redoRequested = false;
+            bool focusRequested = false;
         } shortcuts;
     };
 

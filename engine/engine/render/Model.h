@@ -8,6 +8,8 @@
 #include <memory>
 #include <map>
 #include <assimp/scene.h>
+#include <core/math/AABB.h>
+
 #include "engine/render/resources/VertexFormat.h"
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
@@ -117,6 +119,10 @@ namespace Carrot {
         std::span<std::shared_ptr<Render::MaterialHandle>> getMaterials() { return materials; }
         std::span<const std::shared_ptr<Render::MaterialHandle>> getMaterials() const { return materials; }
 
+        const glm::vec3& getBBMin() const;
+        const glm::vec3& getBBMax() const;
+        const Math::AABB& getBoundingBox() const;
+
     private:
         explicit Model(const Carrot::IO::VFS::Path& filepath);
         void loadInner(TaskHandle& task, const Carrot::IO::Resource& file);
@@ -154,6 +160,9 @@ namespace Carrot {
         Async::SpinLock meshletsLoading;
         Async::ParallelMap<std::size_t, std::shared_ptr<Render::ClustersTemplate>> meshletsPerStaticMesh;
         std::unordered_map<Render::NodeKey, Render::LoadedScene::PrecomputedBLASes> precomputedBLASes;
+
+        // very coarse bounding box
+        Math::AABB boundingBox{glm::vec3{INFINITY, INFINITY, INFINITY}, glm::vec3{-INFINITY, -INFINITY, -INFINITY}};
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;

@@ -162,6 +162,11 @@ void Carrot::Model::loadInner(TaskHandle& task, const Carrot::IO::Resource& file
                 Math::Sphere sphere;
                 sphere.loadFromAABB(primitive.minPos, primitive.maxPos);
 
+                Math::AABB box { primitive.minPos, primitive.maxPos };
+                box = box.computeEncompassingBoxAfterTransform(transform);
+                boundingBox.min = glm::min(boundingBox.min, box.min);
+                boundingBox.max = glm::max(boundingBox.max, box.max);
+
                 // TODO: load all skinned primitive data into same buffer?
                 if(primitive.isSkinned) {
                     mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
@@ -532,6 +537,18 @@ Carrot::Render::Texture& Carrot::Model::getAnimationDataTexture(u32 animationInd
 vk::DescriptorSet Carrot::Model::getAnimationDataDescriptorSet() const {
     verify(animationDescriptorSets.size() > 0, "This model is not animated!");
     return animationDescriptorSets[0];
+}
+
+const glm::vec3& Carrot::Model::getBBMin() const {
+    return boundingBox.min;
+}
+
+const glm::vec3& Carrot::Model::getBBMax() const {
+    return boundingBox.max;
+}
+
+const Carrot::Math::AABB& Carrot::Model::getBoundingBox() const {
+    return boundingBox;
 }
 
 namespace Carrot {

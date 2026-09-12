@@ -21,6 +21,8 @@ namespace Carrot::Math {
 
         void computeCenterAndHalfSize(glm::vec3& center, glm::vec3& halfSize);
         bool contains(const glm::vec3& p);
+
+        AABB computeEncompassingBoxAfterTransform(const glm::mat4& transform) const;
     };
 
 } // Carrot::Math

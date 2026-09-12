@@ -27,4 +27,27 @@ namespace Carrot::Math {
             && p.z >= min.z && p.z <= max.z;
     }
 
+    AABB AABB::computeEncompassingBoxAfterTransform(const glm::mat4& transform) const {
+        std::array<glm::vec3, 8> corners = {
+            glm::vec3(min.x, min.y, min.z),
+            glm::vec3(min.x, min.y, max.z),
+            glm::vec3(min.x, max.y, min.z),
+            glm::vec3(min.x, max.y, max.z),
+
+            glm::vec3(max.x, min.y, min.z),
+            glm::vec3(max.x, min.y, max.z),
+            glm::vec3(max.x, max.y, min.z),
+            glm::vec3(max.x, max.y, max.z),
+        };
+
+        glm::vec3 bbMin{INFINITY, INFINITY, INFINITY};
+        glm::vec3 bbMax{-INFINITY, -INFINITY, -INFINITY};
+        for (const glm::vec3& v : corners) {
+            const glm::vec3 transformed = (transform * glm::vec4(v, 1)).xyz();
+            bbMin = glm::min(bbMin, transformed);
+            bbMax = glm::max(bbMax, transformed);
+        }
+
+        return AABB{bbMin, bbMax};
+    }
 } // Carrot::Math

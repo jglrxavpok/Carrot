@@ -189,6 +189,11 @@ namespace Peeler {
         if (shortcuts.redoRequested) {
             undoStack.redo();
         }
+        if (shortcuts.focusRequested) {
+            if (!ImGui::IsAnyItemFocused() && !ImGui::IsAnyItemActive()) {
+                focusEntities(selectedEntityIDs);
+            }
+        }
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -871,6 +876,10 @@ namespace Peeler {
                             convertEntityToPrefab(entity);
                         }
                         ImGui::Separator();
+                    }
+
+                    if (ImGui::MenuItem("Focus on selected entities", "F")) {
+                        focusEntities(selectedEntityIDs);
                     }
 
                     if(ImGui::MenuItem("Apply transform to colliders")) {
@@ -1707,6 +1716,8 @@ namespace Peeler {
             moveCameraGamepad.setDeadzone(0.2f);
             turnCameraGamepad.setDeadzone(0.2f);
 
+            focusCameraOnEntities.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_F));
+
             editorKBMActions.add(moveCameraKBM);
             editorKBMActions.add(moveCameraDownKBM);
             editorKBMActions.add(moveCameraUpKBM);
@@ -1715,6 +1726,7 @@ namespace Peeler {
             editorGamepadActions.add(moveCameraDownGamepad);
             editorGamepadActions.add(moveCameraUpGamepad);
             editorGamepadActions.add(turnCameraGamepad);
+            editorGamepadActions.add(focusCameraOnEntities); // in gamepad actions to always be active
             // Keyboard & mouse actions enabled depending on whether game viewport is grabbed
             editorGamepadActions.activate();
         }
@@ -2387,6 +2399,50 @@ namespace Peeler {
         undoStack.push<DeleteEntitiesCommand>(selectedEntityIDs);
     }
 
+    void Application::focusEntities(const std::unordered_set<Carrot::ECS::EntityID>& entities) {
+        if (isCurrentlyPlaying()) {
+            return;
+        }
+
+        glm::vec3 min{INFINITY, INFINITY, INFINITY};
+        glm::vec3 max{-INFINITY, -INFINITY, -INFINITY};
+        bool atLeastOneValidEntity = false;
+        const glm::vec3 forward = glm::quat(freeCameraController.eulerAngles) * glm::vec3(0,0,1/*not sure why forward is Z for this camera*/);
+
+        for (const auto& entityID : entities) {
+            Carrot::ECS::Entity entity = currentScene.world.wrap(entityID);
+            if (!entity.exists()) {
+                continue;
+            }
+
+            Carrot::Memory::OptionalRef<Carrot::ECS::TransformComponent> optTransform = entity.getComponent<Carrot::ECS::TransformComponent>();
+            if (!optTransform.hasValue()) {
+                continue;
+            }
+
+            Carrot::Memory::OptionalRef<Carrot::ECS::ModelComponent> optModel = entity.getComponent<Carrot::ECS::ModelComponent>();
+            float entityRadius = 1.0f; // default size to allow focus on entities with no model
+            if (optModel.hasValue()) {
+                Carrot::Math::AABB box = optModel->modelResource->getBoundingBox().computeEncompassingBoxAfterTransform(optTransform->toTransformMatrix());
+                entityRadius = glm::compMax(box.max - box.min) / 2.0f;
+            }
+
+            // TODO: smarter algorithm to work better with multiple entities
+            const float radius = entityRadius;
+            glm::vec3 pointForEntity = optTransform->computeFinalPosition() + forward * radius * 1.10f /*add 10% to avoid being on the model*/;
+            atLeastOneValidEntity = true;
+            min = glm::min(min, pointForEntity);
+            max = glm::max(max, pointForEntity);
+        }
+
+        if (!atLeastOneValidEntity) {
+            return;
+        }
+
+        const glm::vec3 center = (min + max) / 2.0f;
+        freeCameraController.position = center;
+    }
+
     void Application::convertEntityToPrefab(Carrot::ECS::Entity& entity) {
         nfdchar_t* parentPath;
 
@@ -2529,5 +2585,12 @@ namespace Peeler {
 
     bool Application::isGameViewportFocused() const {
         return gameViewportFocused;
+    }
+
+    void Application::handleShortcuts(const Carrot::Render::Context& frame) {
+        ProjectMenuHolder::handleShortcuts(frame);
+        if (focusCameraOnEntities.wasJustPressed()) {
+            shortcuts.focusRequested = true;
+        }
     }
 }
