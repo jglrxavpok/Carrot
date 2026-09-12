@@ -28,21 +28,44 @@ namespace Tools {
     }
 
     void ProjectMenuHolder::handleShortcuts(const Carrot::Render::Context& frame) {
-        if (cut.wasJustPressed()) {
-            onCutShortcut(frame);
-        } else if (copy.wasJustPressed()) {
-            onCopyShortcut(frame);
-        } else if (duplicate.wasJustPressed()) {
-            onDuplicateShortcut(frame);
-        } else if (paste.wasJustPressed()) {
-            onPasteShortcut(frame);
-        } else if (deleteShortcut.wasJustPressed()) {
-            onDeleteShortcut(frame);
-        } else if (undoShortcut.wasJustPressed()) {
-            onUndoShortcut(frame);
-        } else if (redoShortcut.wasJustPressed()) {
-            onRedoShortcut(frame);
+        if (cut.isPressed()) {
+            if (!cutWasPressed) {
+                onCutShortcut(frame);
+            }
+        } else if (copy.isPressed()) {
+            if (!copyWasPressed) {
+                onCopyShortcut(frame);
+            }
+        } else if (duplicate.isPressed()) {
+            if (!duplicateWasPressed) {
+                onDuplicateShortcut(frame);
+            }
+        } else if (paste.isPressed()) {
+            if (!pasteWasPressed) {
+                onPasteShortcut(frame);
+            }
+        } else if (deleteShortcut.isPressed()) {
+            if (!deleteWasPressed) {
+                onDeleteShortcut(frame);
+            }
+        } else if (undoShortcut.isPressed()) {
+            if (!undoWasPressed) {
+                onUndoShortcut(frame);
+            }
+        } else if (redoShortcut.isPressed()) {
+            if (!redoWasPressed) {
+                onRedoShortcut(frame);
+            }
         }
+
+        // not using wasJustPressed because we are in a frame render context, which may skip inputs (inputs wasJustPressed is reliable on tick contextes only)
+        cutWasPressed = cut.isPressed();
+        copyWasPressed = copy.isPressed();
+        duplicateWasPressed = duplicate.isPressed();
+        pasteWasPressed = paste.isPressed();
+        deleteWasPressed = deleteShortcut.isPressed();
+        undoWasPressed = undoShortcut.isPressed();
+        redoWasPressed = redoShortcut.isPressed();
     }
 
     void ProjectMenuHolder::onCutShortcut(const Carrot::Render::Context& frame) {}

@@ -2589,8 +2589,12 @@ namespace Peeler {
 
     void Application::handleShortcuts(const Carrot::Render::Context& frame) {
         ProjectMenuHolder::handleShortcuts(frame);
-        if (focusCameraOnEntities.wasJustPressed()) {
-            shortcuts.focusRequested = true;
+        if (focusCameraOnEntities.isPressed()) {
+            if (!focusWasPressed) {
+                shortcuts.focusRequested = true;
+            }
         }
+
+        focusWasPressed =focusCameraOnEntities.isPressed();
     }
 }

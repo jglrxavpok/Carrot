@@ -287,12 +287,19 @@ namespace Tools {
 
         Carrot::IO::ActionSet shortcuts{"editor_shortcuts"};
         Carrot::IO::BoolInputAction duplicate{"duplicate"};
+        bool duplicateWasPressed = false;
         Carrot::IO::BoolInputAction copy{"copy"};
+        bool copyWasPressed = false;
         Carrot::IO::BoolInputAction cut{"cut"};
+        bool cutWasPressed = false;
         Carrot::IO::BoolInputAction paste{"paste"};
+        bool pasteWasPressed = false;
         Carrot::IO::BoolInputAction deleteShortcut{"delete"};
+        bool deleteWasPressed = false;
         Carrot::IO::BoolInputAction undoShortcut{"undo"};
+        bool undoWasPressed = false;
         Carrot::IO::BoolInputAction redoShortcut{"redo"};
+        bool redoWasPressed = false;
 
     private: // popup control
         bool tryingToOpenFile = false;

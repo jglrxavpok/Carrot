@@ -315,6 +315,7 @@ namespace Peeler {
         Carrot::IO::FloatInputAction moveCameraDownKBM { "move_camera_down" };
         Carrot::IO::Vec2InputAction turnCameraKBM { "turn_camera" };
         Carrot::IO::BoolInputAction focusCameraOnEntities{"focus_camera_on_entities"};
+        bool focusWasPressed = false;
 
         Carrot::IO::ActionSet editorGamepadActions { "editor_gamepad_actions" };
         Carrot::IO::Vec2InputAction moveCameraGamepad { "strafe_forward_camera" };
