@@ -266,248 +266,216 @@ namespace Carrot {
     }
 
     void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder, bool loadSystems) {
-        //try { // TODO: remove try catch
-            auto& vfs = GetVFS();
-            auto& componentLib = Carrot::ECS::getComponentLibrary();
-            auto& systemLib = Carrot::ECS::getSystemLibrary();
+        auto& vfs = GetVFS();
+        auto& componentLib = Carrot::ECS::getComponentLibrary();
+        auto& systemLib = Carrot::ECS::getSystemLibrary();
 
-            rapidjson::Document fakeDoc; // for its allocator
+        rapidjson::Document fakeDoc; // for its allocator
 
-            auto loadDocumentFromVFS = [&](const Carrot::IO::VFS::Path& p) {
-                Carrot::DocumentElement doc;
-                Carrot::IO::Resource r { p };
-                toml::table toml = toml::parse(r.readText());
-                toml >> doc;
-                return doc;
-            };
-            auto loadDocument = [&](const char* relativePath) {
-                return loadDocumentFromVFS(sceneFolder / relativePath);
-            };
+        auto loadDocumentFromVFS = [&](const Carrot::IO::VFS::Path& p) {
+            Carrot::DocumentElement doc;
+            Carrot::IO::Resource r { p };
+            toml::table toml = toml::parse(r.readText());
+            toml >> doc;
+            return doc;
+        };
+        auto loadDocument = [&](const char* relativePath) {
+            return loadDocumentFromVFS(sceneFolder / relativePath);
+        };
 
-            // load first, that way entities can refer to shared data
-            if(vfs.exists(sceneFolder / "WorldData.toml")) {
-                ECS::WorldData& worldData = world.getWorldData();
-                worldData.deserialise(loadDocument("WorldData.toml"));
+        // counter used to synchronize async loading of resources in the scene
+        Async::Counter asyncLoadingCounter;
+
+        // load first, that way entities can refer to shared data
+        if(vfs.exists(sceneFolder / "WorldData.toml")) {
+            ECS::WorldData& worldData = world.getWorldData();
+            worldData.deserialiseAndQueueLoading(loadDocument("WorldData.toml"), asyncLoadingCounter);
+        }
+
+        if(vfs.exists(sceneFolder / "Lighting.toml")) {
+            auto src = loadDocument("Lighting.toml");
+            world.getLighting().getAmbientLight() = Carrot::DocumentHelpers::read<3, float>(src["ambient"]);
+        }
+
+        if(vfs.exists(sceneFolder / "Skybox.toml")) {
+            auto src = loadDocument("Skybox.toml");
+            std::string skyboxStr { src["name"].getAsString() };
+            if(!Carrot::Skybox::safeFromName(skyboxStr, skybox)) {
+                Carrot::Log::error("Unknown skybox: %s", skyboxStr.c_str());
+            }
+        }
+
+        // load entities
+        std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
+        for (const auto path : vfs.iterateOverDirectory(sceneFolder)) {
+            if (!vfs.isDirectory(path)) {
+                continue;
             }
 
-            if(vfs.exists(sceneFolder / "Lighting.toml")) {
-                auto src = loadDocument("Lighting.toml");
-                world.getLighting().getAmbientLight() = Carrot::DocumentHelpers::read<3, float>(src["ambient"]);
+            std::string_view entityName = path.getPath().getFilename();
+            if (ECS::isIllegalEntityName(entityName)) {
+                continue;
             }
 
-            if(vfs.exists(sceneFolder / "Skybox.toml")) {
-                auto src = loadDocument("Skybox.toml");
-                std::string skyboxStr { src["name"].getAsString() };
-                if(!Carrot::Skybox::safeFromName(skyboxStr, skybox)) {
-                    Carrot::Log::error("Unknown skybox: %s", skyboxStr.c_str());
-                }
-            }
-
-            // load entities
-            std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
-            for (const auto path : vfs.iterateOverDirectory(sceneFolder)) {
-                if (!vfs.isDirectory(path)) {
-                    continue;
+            std::function<ECS::Entity(const IO::VFS::Path& entityFolder)> loadEntity = [&](const IO::VFS::Path& entityFolder) -> ECS::Entity {
+                std::string_view selfName = entityFolder.getPath().getFilename();
+                if (!vfs.exists(entityFolder / ".uuid")) {
+                    Log::error("Folder '%s' has no .uuid file, not a valid entity", entityFolder.toString().c_str());
+                    return {};
                 }
 
-                std::string_view entityName = path.getPath().getFilename();
-                if (ECS::isIllegalEntityName(entityName)) {
-                    continue;
+                UUID selfID = UUID::fromString(IO::Resource { entityFolder / ".uuid" }.readText());
+                ECS::Entity self = world.newEntityWithID(selfID, selfName);
+
+                if (vfs.exists(entityFolder / ".flags")) {
+                    const ECS::EntityFlags flags = ECS::stringToFlags(IO::Resource{ entityFolder / ".flags"}.readText());
+                    self.setFlags(flags);
                 }
 
-                std::function<ECS::Entity(const IO::VFS::Path& entityFolder)> loadEntity = [&](const IO::VFS::Path& entityFolder) -> ECS::Entity {
-                    std::string_view selfName = entityFolder.getPath().getFilename();
-                    if (!vfs.exists(entityFolder / ".uuid")) {
-                        Log::error("Folder '%s' has no .uuid file, not a valid entity", entityFolder.toString().c_str());
-                        return {};
+                // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
+                Handle<ECS::Prefab> pPrefab;
+                Carrot::UUID prefabChildID = Carrot::UUID::null();
+                std::string prefabInstanceFilename { ECS::PrefabInstanceComponent::getStringRepresentation() };
+                prefabInstanceFilename += ".toml";
+
+                std::optional<std::unordered_set<ECS::EntityID>> expectedPrefabChildren;
+                if (vfs.exists(entityFolder / prefabInstanceFilename)) {
+                    const auto& prefabInstanceData = loadDocumentFromVFS(entityFolder / prefabInstanceFilename);
+                    auto component = componentLib.deserialise(ECS::PrefabInstanceComponent::getStringRepresentation(), prefabInstanceData, self);
+                    self.addComponent(std::move(component));
+
+                    auto prefabInstanceComp = self.getComponent<ECS::PrefabInstanceComponent>();
+                    pPrefab = prefabInstanceComp->prefab.get();
+                    prefabChildID = prefabInstanceComp->childID;
+
+                    if(pPrefab) {
+                        // add all components which are not saved inside instance, because they are exactly the same as the prefab's
+                        for(const ECS::Component* pComponent : pPrefab->getAllComponents(prefabChildID)) {
+                            std::string filename = pComponent->getName();
+                            filename += ".toml";
+
+                            if(!vfs.exists(entityFolder / filename)) { // no instance overrides, copy prefab's component
+                                self.addComponent(pComponent->duplicate(self));
+                            }
+                        }
+
+                        expectedPrefabChildren = pPrefab->getChildrenIDs(prefabChildID);
                     }
+                }
 
-                    UUID selfID = UUID::fromString(IO::Resource { entityFolder / ".uuid" }.readText());
-                    ECS::Entity self = world.newEntityWithID(selfID, selfName);
+                for (const auto childPath : vfs.iterateOverDirectory(entityFolder)) {
+                    // child entity
+                    if (vfs.isDirectory(childPath)) {
+                        std::string_view childName = childPath.getPath().getFilename();
+                        if (ECS::isIllegalEntityName(childName)) {
+                            continue;
+                        }
 
-                    if (vfs.exists(entityFolder / ".flags")) {
-                        const ECS::EntityFlags flags = ECS::stringToFlags(IO::Resource{ entityFolder / ".flags"}.readText());
-                        self.setFlags(flags);
-                    }
+                        ECS::Entity child = loadEntity(childPath);
+                        child.setParent(self);
+                    } else {
+                        // potentially a component
+                        if (childPath.getExtension() != ".toml") {
+                            continue;
+                        }
 
-                    // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
-                    Handle<ECS::Prefab> pPrefab;
-                    Carrot::UUID prefabChildID = Carrot::UUID::null();
-                    std::string prefabInstanceFilename { ECS::PrefabInstanceComponent::getStringRepresentation() };
-                    prefabInstanceFilename += ".toml";
-
-                    std::optional<std::unordered_set<ECS::EntityID>> expectedPrefabChildren;
-                    if (vfs.exists(entityFolder / prefabInstanceFilename)) {
-                        const auto& prefabInstanceData = loadDocumentFromVFS(entityFolder / prefabInstanceFilename);
-                        auto component = componentLib.deserialise(ECS::PrefabInstanceComponent::getStringRepresentation(), prefabInstanceData, self);
-                        self.addComponent(std::move(component));
-
-                        auto prefabInstanceComp = self.getComponent<ECS::PrefabInstanceComponent>();
-                        pPrefab = prefabInstanceComp->prefab.get();
-                        prefabChildID = prefabInstanceComp->childID;
-
+                        std::string componentName { childPath.getPath().getStem() };
+                        if(componentName == ECS::PrefabInstanceComponent::getStringRepresentation()) {
+                            continue;
+                        }
+                        Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
+                        if (!componentLib.has(componentName)) {
+                            self.addComponent(std::make_unique<ECS::MissingComponent>(self, componentName, doc));
+                            continue;
+                        }
                         if(pPrefab) {
-                            // add all components which are not saved inside instance, because they are exactly the same as the prefab's
-                            for(const ECS::Component* pComponent : pPrefab->getAllComponents(prefabChildID)) {
-                                std::string filename = pComponent->getName();
-                                filename += ".toml";
-
-                                if(!vfs.exists(entityFolder / filename)) { // no instance overrides, copy prefab's component
-                                    self.addComponent(pComponent->duplicate(self));
-                                }
-                            }
-
-                            expectedPrefabChildren = pPrefab->getChildrenIDs(prefabChildID);
-                        }
-                    }
-
-                    for (const auto childPath : vfs.iterateOverDirectory(entityFolder)) {
-                        // child entity
-                        if (vfs.isDirectory(childPath)) {
-                            std::string_view childName = childPath.getPath().getFilename();
-                            if (ECS::isIllegalEntityName(childName)) {
-                                continue;
-                            }
-
-                            ECS::Entity child = loadEntity(childPath);
-                            child.setParent(self);
-                        } else {
-                            // potentially a component
-                            if (childPath.getExtension() != ".toml") {
-                                continue;
-                            }
-
-                            std::string componentName { childPath.getPath().getStem() };
-                            if(componentName == ECS::PrefabInstanceComponent::getStringRepresentation()) {
-                                continue;
-                            }
-                            Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
-                            if (!componentLib.has(componentName)) {
-                                self.addComponent(std::make_unique<ECS::MissingComponent>(self, componentName, doc));
-                                continue;
-                            }
-                            if(pPrefab) {
-                                if (!pPrefab->hasChildWithID(prefabChildID)) {
-                                    auto pErrorComponent = std::make_unique<ECS::ErrorComponent>(self);
-                                    pErrorComponent->message = Carrot::sprintf("Prefab '%s' has no child with UUID %s", pPrefab->getFilePath().toString().c_str(), prefabChildID.toString().c_str());
-                                    self.addComponent(std::move(pErrorComponent));
+                            if (!pPrefab->hasChildWithID(prefabChildID)) {
+                                auto pErrorComponent = std::make_unique<ECS::ErrorComponent>(self);
+                                pErrorComponent->message = Carrot::sprintf("Prefab '%s' has no child with UUID %s", pPrefab->getFilePath().toString().c_str(), prefabChildID.toString().c_str());
+                                self.addComponent(std::move(pErrorComponent));
+                            } else {
+                                Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
+                                if(prefabComponent.hasValue()) {
+                                    // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
+                                    auto component = componentLib.deserialise(
+                                        componentName,
+                                        deserialiseWithDefaultValues(prefabComponent.asRef(), doc),
+                                        self);
+                                    self.addComponent(std::move(component));
                                 } else {
-                                    Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
-                                    if(prefabComponent.hasValue()) {
-                                        // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
-                                        auto component = componentLib.deserialise(
-                                            componentName,
-                                            deserialiseWithDefaultValues(prefabComponent.asRef(), doc),
-                                            self);
-                                        self.addComponent(std::move(component));
-                                    } else {
-                                        // not part of prefab, load directly
-                                        auto component = componentLib.deserialise(componentName, doc, self);
-                                        self.addComponent(std::move(component));
-                                    }
+                                    // not part of prefab, load directly
+                                    auto component = componentLib.deserialise(componentName, doc, self);
+                                    self.addComponent(std::move(component));
                                 }
-                            } else {
-                                // no prefab for this entity, load directly
-                                auto component = componentLib.deserialise(componentName, doc, self);
-                                self.addComponent(std::move(component));
                             }
+                        } else {
+                            // no prefab for this entity, load directly
+                            auto component = componentLib.deserialise(componentName, doc, self);
+                            self.addComponent(std::move(component));
                         }
-                    }
-
-                    if (expectedPrefabChildren.has_value()) {
-                        // remove children that no longer exist
-                        for (auto& child : self.getChildren(ShouldRecurse::NoRecursion)) {
-                            auto prefabRef = child.getComponent<ECS::PrefabInstanceComponent>();
-                            // prefab instances are not forbidden to add children to the hierarchy of the instance which were not present in original prefab
-                            if (!prefabRef.hasValue()) {
-                                continue;
-                            }
-
-                            if (!expectedPrefabChildren->contains(prefabRef->childID)) {
-                                child.remove();
-                            } else {
-                                expectedPrefabChildren->erase(prefabRef->childID);
-                            }
-                        }
-
-                        // add missing children
-                        for (auto& childID : expectedPrefabChildren.value()) {
-                            ECS::Entity subtree = pPrefab->instantiateSubTree(world, childID, remap);
-                            subtree.setParent(self);
-                        }
-                    }
-
-                    return self;
-                };
-
-                ECS::Entity rootEntity = loadEntity(path);
-                DISCARD(rootEntity);
-            }
-            if (!remap.empty()) {
-                world.repairLinks(remap);
-            }
-
-            if (loadSystems) {
-
-                for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {
-                    const std::string systemName { systemPath.getPath().getStem() };
-                    if (systemLib.has(systemName)) {
-                        auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
-                        world.addRenderSystem(std::move(system));
-                    } else {
-                        // TODO: dummy system
-                        Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
                     }
                 }
 
-                for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".LogicSystems")) {
-                    const std::string systemName { systemPath.getPath().getStem() };
-                    if (systemLib.has(systemName)) {
-                        auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
-                        world.addLogicSystem(std::move(system));
-                    } else {
-                        // TODO: dummy system
-                        Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
-                    }
-                }
-            }
-        /*} catch (std::exception& e) {
-            Carrot::Log::error("Failed to deserialise scene: %s", e.what());
-            throw;
-        } catch (...) {
-            Carrot::Log::error("Failed to deserialise scene!!");
-            throw;
-        }*/
-#if 0
+                if (expectedPrefabChildren.has_value()) {
+                    // remove children that no longer exist
+                    for (auto& child : self.getChildren(ShouldRecurse::NoRecursion)) {
+                        auto prefabRef = child.getComponent<ECS::PrefabInstanceComponent>();
+                        // prefab instances are not forbidden to add children to the hierarchy of the instance which were not present in original prefab
+                        if (!prefabRef.hasValue()) {
+                            continue;
+                        }
 
-            for(const auto& [componentNameKey, componentDataKey] : data) {
-                std::string componentName = componentNameKey.GetString();
-                if(componentName == "name" || componentName == "parent" || componentName == "flags" || componentName == ECS::PrefabInstanceComponent::getStringRepresentation()) {
-                    continue;
-                }
-                if(pPrefab != nullptr) {
-                    Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(componentName);
-                    if(prefabComponent.hasValue()) {
-                        // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
-                        auto component = componentLib.deserialise(
-                            componentName,
-                            deserialiseWithDefaultValues(prefabComponent.asRef(), componentDataKey, fakeDoc),
-                            entity);
-                        entity.addComponent(std::move(component));
-                    } else {
-                        // not part of prefab, load directly
-                        auto component = componentLib.deserialise(componentName, componentDataKey, entity);
-                        entity.addComponent(std::move(component));
+                        if (!expectedPrefabChildren->contains(prefabRef->childID)) {
+                            child.remove();
+                        } else {
+                            expectedPrefabChildren->erase(prefabRef->childID);
+                        }
                     }
+
+                    // add missing children
+                    for (auto& childID : expectedPrefabChildren.value()) {
+                        ECS::Entity subtree = pPrefab->instantiateSubTree(world, childID, remap);
+                        subtree.setParent(self);
+                    }
+                }
+
+                return self;
+            };
+
+            ECS::Entity rootEntity = loadEntity(path);
+            DISCARD(rootEntity);
+        }
+        if (!remap.empty()) {
+            world.repairLinks(remap);
+        }
+
+        if (loadSystems) {
+
+            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {
+                const std::string systemName { systemPath.getPath().getStem() };
+                if (systemLib.has(systemName)) {
+                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                    world.addRenderSystem(std::move(system));
                 } else {
-                    // no prefab for this entity, load directly
-                    auto component = componentLib.deserialise(componentName, componentDataKey, entity);
-                    entity.addComponent(std::move(component));
+                    // TODO: dummy system
+                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
+                }
+            }
+
+            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".LogicSystems")) {
+                const std::string systemName { systemPath.getPath().getStem() };
+                if (systemLib.has(systemName)) {
+                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                    world.addLogicSystem(std::move(system));
+                } else {
+                    // TODO: dummy system
+                    Carrot::Log::error("Unknown system %s, removing", systemName.c_str());
                 }
             }
         }
 
-#endif
+        // TODO: put entire function on fiber?
+        asyncLoadingCounter.sleepWait();
     }
 
     void Scene::load() {

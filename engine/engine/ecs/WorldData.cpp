@@ -8,7 +8,6 @@
 namespace Carrot::ECS {
     void WorldData::clear() {
         modelRenderers.clear();
-        modelRendererLookup.clear();
     }
 
     void WorldData::update() {
@@ -29,28 +28,10 @@ namespace Carrot::ECS {
         return it->second;
     }
 
-    std::shared_ptr<Carrot::Render::ModelRenderer> WorldData::findMatchingModelRenderer(const Carrot::Model& model, const Render::MaterialOverrides& overrides) const {
-        const auto& vfsPath = model.getFilePath();
-        auto matchingModel = modelRendererLookup.find(vfsPath);
-        if(matchingModel == modelRendererLookup.end()) {
-            return nullptr;
-        }
-
-        auto matchingOverrides = matchingModel->second.find(overrides);
-        if(matchingOverrides == matchingModel->second.end()) {
-            return nullptr;
-        }
-
-        return matchingOverrides->second.lock();
-    }
-
     void WorldData::storeModelRenderer(std::shared_ptr<Carrot::Render::ModelRenderer> value) {
         const Carrot::UUID& id = value->uuid;
         verify(modelRenderers.find(id) == modelRenderers.end(), Carrot::sprintf("A model renderer with the id %s already exists", id.toString().c_str()));
         modelRenderers[id] = value;
-
-        const auto& vfsPath = value->getModel().getFilePath();
-        modelRendererLookup[vfsPath][value->getOverrides()] = value;
     }
 
     void WorldData::removeModelRenderer(const Carrot::UUID& id) {
@@ -59,18 +40,15 @@ namespace Carrot::ECS {
             return;
         }
         modelRenderers.erase(id);
-
-        const auto& vfsPath = renderer->getModel().getFilePath();
-        modelRendererLookup[vfsPath].erase(renderer->getOverrides());
     }
 
-    void WorldData::deserialise(const Carrot::DocumentElement& doc) {
+    void WorldData::deserialiseAndQueueLoading(const Carrot::DocumentElement& doc, Async::Counter& loadingCounter) {
         clear();
 
         if(doc.contains("model_renderers")) {
             for(auto& [key, obj] : doc["model_renderers"].getAsObject()) {
                 const Carrot::UUID id = Carrot::UUID::fromString(key);
-                std::shared_ptr<Render::ModelRenderer> renderer = Render::ModelRenderer::deserialise(obj);
+                std::shared_ptr<Render::ModelRenderer> renderer = Render::ModelRenderer::asyncDeserialise(obj, loadingCounter);
                 renderer->uuid = id;
                 if(renderer) { // can be null if not valid
                     storeModelRenderer(renderer);

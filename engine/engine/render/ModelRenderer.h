@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/async/Counter.h>
 #include <core/io/Document.h>
 #include <rapidjson/document.h>
 #include <engine/render/MeshAndTransform.h>
@@ -135,8 +136,12 @@ namespace Carrot::Render {
 
         struct NoInitTag {};
         ModelRenderer(Model& model, NoInitTag);
+        ModelRenderer(NoInitTag){};
 
-        static std::shared_ptr<ModelRenderer> deserialise(const Carrot::DocumentElement& doc);
+        /**
+         * Deserialize resource asynchronously, "doc" does not need to be kept alive after calling this function
+         */
+        static std::shared_ptr<ModelRenderer> asyncDeserialise(const Carrot::DocumentElement& doc, Carrot::Async::Counter& loadingCounter);
         Carrot::DocumentElement serialise();
 
         /**
@@ -157,12 +162,13 @@ namespace Carrot::Render {
 
         Carrot::Model& getModel();
         const Carrot::Model& getModel() const;
+        void setModel(Carrot::Model& model);
 
         /// called when overriding materials, to recompute internal structures which help rendering
         void recreateStructures();
 
     private:
-        Model& model;
+        Model* pModel = nullptr;
         MaterialOverrides overrides;
 
         // default pipelines

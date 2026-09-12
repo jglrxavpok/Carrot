@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/async/Counter.h>
 #include <core/io/Document.h>
 #include <rapidjson/document.h>
 #include <engine/render/ModelRenderer.h>
@@ -37,8 +38,6 @@ namespace Carrot::ECS {
          */
         std::shared_ptr<Carrot::Render::ModelRenderer> loadModelRenderer(const Carrot::UUID& id) const;
 
-        std::shared_ptr<Carrot::Render::ModelRenderer> findMatchingModelRenderer(const Carrot::Model& model, const Render::MaterialOverrides& overrides) const;
-
         void storeModelRenderer(std::shared_ptr<Carrot::Render::ModelRenderer> value);
 
         void removeModelRenderer(const Carrot::UUID& id);
@@ -47,15 +46,14 @@ namespace Carrot::ECS {
         /**
          * Loads this structure from the provided JSON.
          * Previous data is deleted
+         *
+         * @param loadingCounter counter incremented when starting loading, will be decremented when finished
          */
-        void deserialise(const Carrot::DocumentElement& doc);
+        void deserialiseAndQueueLoading(const Carrot::DocumentElement& doc, Carrot::Async::Counter& loadingCounter);
         Carrot::DocumentElement serialise() const;
 
     private:
         std::unordered_map<Carrot::UUID, std::shared_ptr<Carrot::Render::ModelRenderer>> modelRenderers;
-
-        // model path -> which overrides -> the renderer
-        std::unordered_map<Carrot::IO::VFS::Path, std::unordered_map<Render::MaterialOverrides, std::weak_ptr<Carrot::Render::ModelRenderer>>> modelRendererLookup;
     };
 
 } // Carrot::ECS

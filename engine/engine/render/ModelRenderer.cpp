@@ -139,79 +139,91 @@ namespace Carrot::Render {
         return r;
     }
 
-    ModelRenderer::ModelRenderer(Model& model): model(model) {
+    ModelRenderer::ModelRenderer(Model& model): pModel(&model) {
         opaqueMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer");
         transparentMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer-transparent");
 
         recreateStructures();
     }
 
-    ModelRenderer::ModelRenderer(Model& model, ModelRenderer::NoInitTag): model(model) {}
+    ModelRenderer::ModelRenderer(Model& model, ModelRenderer::NoInitTag): pModel(&model) {}
 
-    /* static */std::shared_ptr<ModelRenderer> ModelRenderer::deserialise(const Carrot::DocumentElement& doc) {
-        std::shared_ptr<Carrot::Model> model = GetAssetServer().blockingLoadModel(doc["model"].getAsString());
-        std::shared_ptr<ModelRenderer> renderer = std::make_unique<ModelRenderer>(*model);
+    /* static */std::shared_ptr<ModelRenderer> ModelRenderer::asyncDeserialise(const Carrot::DocumentElement& docToCopy, Carrot::Async::Counter& loadingCounter) {
+        const Carrot::DocumentElement doc = docToCopy; // kept alive for loading task
+        std::shared_ptr<ModelRenderer> renderer = std::make_unique<ModelRenderer>(NoInitTag{});
 
-        Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
+        GetTaskScheduler().schedule(TaskDescription {
+            .name = "Load ModelRenderer",
+            .task = [doc = std::move(doc), renderer](TaskHandle& handle) {
+                std::shared_ptr<Carrot::Model> model = GetAssetServer().loadModel(handle, doc["model"].getAsString());
+                renderer->setModel(*model);
 
-        // modify 'overrides' directly not to call recreateStructures for each override
-        for(const auto& overrideObj : doc["overrides"].getAsArray()) {
-            MaterialOverride override;
+                renderer->opaqueMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer");
+                renderer->transparentMeshesPipeline = GetRenderer().getOrCreatePipeline("gBuffer-transparent");
 
-            override.meshIndex = overrideObj["mesh_index"].getAsInt64();
+                Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
 
-            if(overrideObj.contains("pipeline_name")) {
-                override.pipeline = GetRenderer().getOrCreatePipelineFullPath(std::string{overrideObj["pipeline_name"].getAsString()});
-            }
-            if(overrideObj.contains("material")) {
-                const auto& texturesObj = overrideObj["material"].getAsObject();
-                override.materialTextures = materialSystem.createMaterialHandle();
+                // modify 'overrides' directly not to call recreateStructures for each override
+                for(const auto& overrideObj : doc["overrides"].getAsArray()) {
+                    MaterialOverride override;
 
-                if(const auto& element = texturesObj.find("transparent"); element != texturesObj.end()) {
-                    override.materialTextures->isTransparent = element->second.getAsBool();
-                }
-                if(const auto& element = texturesObj.find("metallicness"); element != texturesObj.end()) {
-                    override.materialTextures->metallicFactor = element->second.getAsDouble();
-                }
-                if(const auto& element = texturesObj.find("roughness"); element != texturesObj.end()) {
-                    override.materialTextures->roughnessFactor = element->second.getAsDouble();
-                }
-                if(const auto& element = texturesObj.find("base_color"); element != texturesObj.end()) {
-                    override.materialTextures->baseColor = Carrot::DocumentHelpers::read<4, float>(element->second);
-                }
-                if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
-                    override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
+                    override.meshIndex = overrideObj["mesh_index"].getAsInt64();
+
+                    if(overrideObj.contains("pipeline_name")) {
+                        override.pipeline = GetRenderer().getOrCreatePipelineFullPath(std::string{overrideObj["pipeline_name"].getAsString()});
+                    }
+                    if(overrideObj.contains("material")) {
+                        const auto& texturesObj = overrideObj["material"].getAsObject();
+                        override.materialTextures = materialSystem.createMaterialHandle();
+
+                        if(const auto& element = texturesObj.find("transparent"); element != texturesObj.end()) {
+                            override.materialTextures->isTransparent = element->second.getAsBool();
+                        }
+                        if(const auto& element = texturesObj.find("metallicness"); element != texturesObj.end()) {
+                            override.materialTextures->metallicFactor = element->second.getAsDouble();
+                        }
+                        if(const auto& element = texturesObj.find("roughness"); element != texturesObj.end()) {
+                            override.materialTextures->roughnessFactor = element->second.getAsDouble();
+                        }
+                        if(const auto& element = texturesObj.find("base_color"); element != texturesObj.end()) {
+                            override.materialTextures->baseColor = Carrot::DocumentHelpers::read<4, float>(element->second);
+                        }
+                        if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
+                            override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
+                        }
+
+                        auto loadTexture = [&](const Carrot::DocumentElement& element) {
+                            std::string_view texturePath = element.getAsString();
+
+                            return materialSystem.createTextureHandle(GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { texturePath }));
+                        };
+                        if(const auto& element = texturesObj.find("albedo_texture"); element != texturesObj.end()) {
+                            override.materialTextures->albedo = loadTexture(element->second);
+                        }
+                        if(const auto& element = texturesObj.find("emissive_texture"); element != texturesObj.end()) {
+                            override.materialTextures->emissive = loadTexture(element->second);
+                        }
+                        if(const auto& element = texturesObj.find("normalmap_texture"); element != texturesObj.end()) {
+                            override.materialTextures->normalMap = loadTexture(element->second);
+                        }
+                        if(const auto& element = texturesObj.find("metallic_roughness_texture"); element != texturesObj.end()) {
+                            override.materialTextures->metallicRoughness = loadTexture(element->second);
+                        }
+                        if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
+                            override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
+                        }
+                    }
+                    if(overrideObj.contains("virtualized_geometry")) {
+                        override.virtualizedGeometry = overrideObj["virtualized_geometry"].getAsBool();
+                    }
+
+                    renderer->overrides.add(override);
                 }
 
-                auto loadTexture = [&](const Carrot::DocumentElement& element) {
-                    std::string_view texturePath = element.getAsString();
-
-                    return materialSystem.createTextureHandle(GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { texturePath }));
-                };
-                if(const auto& element = texturesObj.find("albedo_texture"); element != texturesObj.end()) {
-                    override.materialTextures->albedo = loadTexture(element->second);
-                }
-                if(const auto& element = texturesObj.find("emissive_texture"); element != texturesObj.end()) {
-                    override.materialTextures->emissive = loadTexture(element->second);
-                }
-                if(const auto& element = texturesObj.find("normalmap_texture"); element != texturesObj.end()) {
-                    override.materialTextures->normalMap = loadTexture(element->second);
-                }
-                if(const auto& element = texturesObj.find("metallic_roughness_texture"); element != texturesObj.end()) {
-                    override.materialTextures->metallicRoughness = loadTexture(element->second);
-                }
-                if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
-                    override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
-                }
-            }
-            if(overrideObj.contains("virtualized_geometry")) {
-                override.virtualizedGeometry = overrideObj["virtualized_geometry"].getAsBool();
-            }
-
-            renderer->overrides.add(override);
-        }
-
-        renderer->recreateStructures();
+                renderer->recreateStructures();
+            },
+            .joiner = &loadingCounter
+        }, Carrot::TaskScheduler::AssetLoading);
 
         return renderer;
     }
@@ -219,7 +231,7 @@ namespace Carrot::Render {
     Carrot::DocumentElement ModelRenderer::serialise() {
         Carrot::DocumentElement result;
 
-        const Carrot::IO::VFS::Path& source = model.getFilePath();
+        const Carrot::IO::VFS::Path& source = getModel().getFilePath();
 
         Carrot::DocumentElement overridesObj{ Carrot::DocumentType::Array };
 
@@ -278,7 +290,7 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<ModelRenderer> ModelRenderer::clone() const {
-        auto cloned = std::make_shared<ModelRenderer>(model, NoInitTag{});
+        auto cloned = std::make_shared<ModelRenderer>(*pModel, NoInitTag{});
         cloned->opaqueMeshesPipeline = opaqueMeshesPipeline;
         cloned->transparentMeshesPipeline = transparentMeshesPipeline;
 
@@ -341,10 +353,10 @@ namespace Carrot::Render {
 
                     for(const auto& meshInfo : bucket.meshes) {
                         materials.push_back(meshInfo.materialTextures);
-                        templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex, meshInfo.meshAndTransform.transform));
+                        templates.push_back(pModel->lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex, meshInfo.meshAndTransform.transform));
 
                         std::unordered_map<std::uint32_t, const PrecomputedBLAS*> precomputedBLASesForThisMesh;
-                        auto& precomputedBLASesForNode = model.getPrecomputedBLASes(meshInfo.meshAndTransform.nodeKey);
+                        auto& precomputedBLASesForNode = pModel->getPrecomputedBLASes(meshInfo.meshAndTransform.nodeKey);
                         for(const auto& [blasKey, precomputedBlas] : precomputedBLASesForNode) {
                             if(blasKey.first == meshInfo.meshAndTransform.staticMeshIndex) {
                                 precomputedBLASesForThisMesh[blasKey.second] = &precomputedBlas;
@@ -381,7 +393,7 @@ namespace Carrot::Render {
                 Async::LockGuard l{ storage.tlasAccess };
                 if(storage.tlasIsWaitingForModel) {
                     storage.tlasIsWaitingForModel = false;
-                    storage.tlas = GetRenderer().getRaytracingScene().addInstance(model.getStaticBLAS());
+                    storage.tlas = GetRenderer().getRaytracingScene().addInstance(pModel->getStaticBLAS());
                     storage.tlas->enabled = true;
                 }
             }
@@ -414,8 +426,8 @@ namespace Carrot::Render {
 
             renderPacket.commands = bucket.drawCommands;
 
-            renderPacket.vertexBuffer = model.getStaticMeshData().getVertexBuffer();
-            renderPacket.indexBuffer = model.getStaticMeshData().getIndexBuffer();
+            renderPacket.vertexBuffer = pModel->getStaticMeshData().getVertexBuffer();
+            renderPacket.indexBuffer = pModel->getStaticMeshData().getIndexBuffer();
 
             renderPacket.addPerDrawData(std::span(bucket.drawData));
             std::vector<InstanceData> instancesData = bucket.instanceData; // copied because modified below
@@ -447,7 +459,7 @@ namespace Carrot::Render {
                 }
 
                 if(DrawBoundingSpheres) {
-                    if(&model != renderContext.renderer.getUnitSphere().get()) {
+                    if(pModel != renderContext.renderer.getUnitSphere().get()) {
                         glm::mat4 sphereTransform = glm::translate(glm::mat4{1.0f}, s.center) * glm::scale(glm::mat4{1.0f}, glm::vec3{s.radius*2 /*unit sphere model has a radius of 0.5*/});
                         renderContext.renderer.renderWireframeSphere(renderContext, sphereTransform, 1.0f, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), instanceData.uuid);
                     }
@@ -489,14 +501,21 @@ namespace Carrot::Render {
     }
 
     Carrot::Model& ModelRenderer::getModel() {
-        return model;
+        verify(pModel != nullptr, "pModel == nullptr");
+        return *pModel;
     }
 
     const Carrot::Model& ModelRenderer::getModel() const {
-        return model;
+        verify(pModel != nullptr, "pModel == nullptr");
+        return *pModel;
+    }
+
+    void ModelRenderer::setModel(Carrot::Model& model) {
+        pModel = &model;
     }
 
     void ModelRenderer::recreateStructures() {
+        verify(pModel != nullptr, "pModel == nullptr");
         struct BucketKey {
             std::shared_ptr<Carrot::Pipeline> pipeline;
             bool virtualizedGeometry = false;
@@ -517,7 +536,7 @@ namespace Carrot::Render {
 
         std::unordered_map<BucketKey, PipelineBucket, BucketKey::Hasher> perPipelineBuckets;
         auto& materialSystem = GetRenderer().getMaterialSystem();
-        for(auto& [materialSlot, meshList] : model.getStaticMeshesPerMaterial()) {
+        for(auto& [materialSlot, meshList] : getModel().getStaticMeshesPerMaterial()) {
             for(auto& meshAndTransform : meshList) {
 
                 // change pipeline and/or material textures based on user provided overrides
@@ -546,7 +565,7 @@ namespace Carrot::Render {
                     BucketKey key { pipeline, pOverride ? pOverride->virtualizedGeometry : false };
                     auto& bucket = perPipelineBuckets[key];
 
-                    const Model::StaticMeshInfo& meshInfo = model.getStaticMeshInfo(meshAndTransform.staticMeshIndex);
+                    const Model::StaticMeshInfo& meshInfo = getModel().getStaticMeshInfo(meshAndTransform.staticMeshIndex);
 
                     MeshRenderingInfo renderingInfo {
                         .meshAndTransform = meshAndTransform,
