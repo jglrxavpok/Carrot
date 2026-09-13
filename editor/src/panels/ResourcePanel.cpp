@@ -9,6 +9,7 @@
 #include <core/utils/ImGuiUtils.hpp>
 #include <core/io/IO.h>
 #include <core/io/Files.h>
+#include <core/io/FileSystemOS.h>
 #include <core/io/Logging.hpp>
 #include <engine/edition/DragDropTypes.h>
 #include <core/utils/ImGuiUtils.hpp>
@@ -136,7 +137,7 @@ namespace Peeler {
                         localFlags |= ImGuiTreeNodeFlags_Selected;
                     }
 
-                    const std::string imguiID = filepath.string();
+                    const std::string imguiID = filepath.string() + "##" + toDisplay;
                     const bool wasOpen = ImGui::TreeNodeUpdateNextOpen(ImGui::GetID(imguiID.c_str()), localFlags);
                     const bool opened = ImGui::TreeNodeEx(imguiID.c_str(), localFlags, "");
 
@@ -158,6 +159,13 @@ namespace Peeler {
                         if(vfsPath) {
                             updateCurrentFolder(vfsPath.value());
                         }
+                    }
+
+                    if (ImGui::BeginPopupContextItem()) {
+                        if (ImGui::MenuItem("Open in Files")) {
+                            Carrot::IO::openFileInDefaultEditor(filepath);
+                        }
+                        ImGui::EndPopup();
                     }
 
                     const ImVec2 imageSize = ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize());
