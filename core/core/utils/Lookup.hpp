@@ -47,20 +47,20 @@ namespace Carrot {
         }
 
     public:
-        constexpr T at(const std::string& str) const {
+        constexpr T at(std::string_view str) const {
             for(const auto& entry : storage) {
                 if(str == entry.name) {
                     return entry.value;
                 }
             }
-            throw std::invalid_argument(str);
+            throw std::invalid_argument(std::string{str});
         }
 
-        constexpr T operator[](const std::string& str) const {
+        constexpr T operator[](std::string_view str) const {
             return at(str);
         }
 
-        constexpr const T* find(const std::string& str) const {
+        constexpr const T* find(std::string_view str) const {
             for(const auto& entry : storage) {
                 if(str == entry.name) {
                     return &entry.value;

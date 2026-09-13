@@ -218,9 +218,14 @@ namespace Carrot {
             vk::PipelineColorBlendStateCreateInfo colorBlending;
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreation;
 
-            vk::DynamicState dynamicStates[2] = {
+            vk::DynamicState dynamicStates[7] = {
                     vk::DynamicState::eScissor,
                     vk::DynamicState::eViewport,
+                    vk::DynamicState::eStencilOp,
+                    vk::DynamicState::eStencilTestEnable,
+                    vk::DynamicState::eStencilCompareMask,
+                    vk::DynamicState::eStencilReference,
+                    vk::DynamicState::eStencilWriteMask,
             };
             vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
 

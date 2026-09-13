@@ -262,7 +262,7 @@ namespace Peeler {
                         std::string nameCopy = compositions[selectedCompositionIndex].first;
                         Carrot::Render::ViewportComposition& composition = compositions[selectedCompositionIndex].second;
 
-                        if (ImGui::InputText("Composition name", nameCopy)) {
+                        if (ImGui::InputText("Composition name", nameCopy, ImGuiInputTextFlags_EnterReturnsTrue)) {
                             auto rename = Carrot::makeUnique<ChangeCompositionName>(Carrot::Allocator::getDefault(), app, selectedCompositionIndex, nameCopy);
                             auto changeSelection = Carrot::makeUnique<ChangeCurrentComposition>(Carrot::Allocator::getDefault(), app, nameCopy);
                             app.undoStack.push<CompoundCommand>(std::move(rename), std::move(changeSelection));
@@ -355,6 +355,42 @@ namespace Peeler {
                                 if (ImGui::InputFloat("Z", &z)) {
                                     app.undoStack.push<ModifyViewportCommand<float>>(pLocation->z, z);
                                 }
+
+                                ImGui::SeparatorText("Stencil");
+                                bool enabled = pLocation->stencilEnabled;
+                                if (ImGui::Checkbox("Enable", &enabled)) {
+                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilEnabled, enabled);
+                                }
+
+                                ImGui::BeginDisabled(!enabled);
+
+                                bool write = pLocation->stencilWrite;
+                                if (ImGui::Checkbox("Write", &write)) {
+                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilWrite, write);
+                                }
+                                bool compare = pLocation->stencilCompare;
+                                if (ImGui::Checkbox("Compare", &compare)) {
+                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilCompare, compare);
+                                }
+
+                                u8 ref = pLocation->stencilValue;
+                                if (ImGui::InputScalar("Reference", ImGuiDataType_U8, &ref)) {
+                                    app.undoStack.push<ModifyViewportCommand<u8>>(pLocation->stencilValue, ref);
+                                }
+
+                                Carrot::Render::StencilOperation viewportOp = pLocation->stencilOperation;
+                                if (ImGui::BeginCombo("Operation", Carrot::Render::toString(viewportOp))) {
+                                    auto handleOp = [&](const Carrot::Render::StencilOperation& op) {
+                                        if (ImGui::Selectable(toString(op), op == viewportOp)) {
+                                            app.undoStack.push<ModifyViewportCommand<Carrot::Render::StencilOperation>>(pLocation->stencilOperation, op);
+                                        }
+                                    };
+                                    handleOp(Carrot::Render::StencilOperation::AlwaysPass);
+                                    handleOp(Carrot::Render::StencilOperation::Equal);
+                                    ImGui::EndCombo();
+                                }
+
+                                ImGui::EndDisabled();
                             }
                         }
                         ImGui::EndChild();
@@ -435,6 +471,7 @@ namespace Peeler {
             fs::copy(compositionsFolder, compositionsBackupFolder, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
             fs::remove_all(compositionsFolder);
+            fs::create_directories(compositionsFolder);
         } else {
             fs::create_directories(compositionsFolder);
         }

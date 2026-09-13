@@ -378,7 +378,7 @@ void Carrot::Pipeline::createGraphicsTemplate() {
     };
 
     graphicsPipelineTemplate.dynamicStateInfo = {
-            .dynamicStateCount = 2,
+            .dynamicStateCount = 7,
             .pDynamicStates = graphicsPipelineTemplate.dynamicStates,
     };
 

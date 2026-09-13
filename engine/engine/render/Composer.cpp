@@ -13,6 +13,11 @@
 #include <engine/render/TextureRepository.h>
 
 namespace Carrot::Render {
+    static Lookup StencilOperationsTable = std::array {
+        Carrot::LookupEntry(StencilOperation::AlwaysPass, "always_pass"),
+        Carrot::LookupEntry(StencilOperation::Equal, "equal"),
+    };
+
     void ViewportComposition::copyViewportPositions(const ViewportComposition& other) {
         viewports.clear();
         for (const auto& [id, locationToCopy] : other.viewports) {
@@ -20,6 +25,10 @@ namespace Carrot::Render {
             location.offset = locationToCopy.offset;
             location.size = locationToCopy.size;
             location.z = locationToCopy.z;
+
+            location.stencilEnabled = locationToCopy.stencilEnabled;
+            location.stencilOperation = locationToCopy.stencilOperation;
+            location.stencilValue = locationToCopy.stencilValue;
         }
     }
 
@@ -35,6 +44,14 @@ namespace Carrot::Render {
             viewportObj["size_x"] = viewport.size.x;
             viewportObj["size_y"] = viewport.size.y;
             viewportObj["z"] = viewport.z;
+
+            if (viewport.stencilEnabled) {
+                auto& stencilInfo = viewportObj["stencil"];
+                stencilInfo["reference"] = viewport.stencilValue;
+                stencilInfo["operation"] = StencilOperationsTable[viewport.stencilOperation];
+                stencilInfo["compare"] = viewport.stencilCompare;
+                stencilInfo["write"] = viewport.stencilWrite;
+            }
         }
 
         doc.saveToFile(destination, false);
@@ -51,6 +68,15 @@ namespace Carrot::Render {
             loc.size.x = static_cast<float>(viewportElement.at("size_x").getAsDouble());
             loc.size.y = static_cast<float>(viewportElement.at("size_y").getAsDouble());
             loc.z = static_cast<float>(viewportElement.at("z").getAsDouble());
+
+            auto asObj = viewportElement.getAsObject();
+            if (auto stencilIter = asObj.find("stencil"); stencilIter.isValid()) {
+                loc.stencilEnabled = true;
+                loc.stencilValue = stencilIter->second["reference"].getAsInt64();
+                loc.stencilOperation = StencilOperationsTable[stencilIter->second["operation"].getAsString()];
+                loc.stencilCompare = stencilIter->second["compare"].getAsBool();
+                loc.stencilWrite = stencilIter->second["write"].getAsBool();
+            }
         }
     }
 
@@ -148,6 +174,10 @@ namespace Carrot::Render {
 
     bool Composer::hasRegions() const {
         return !regions.empty();
+    }
+
+    const char* toString(const StencilOperation& op) {
+        return StencilOperationsTable[op];
     }
 
 }
