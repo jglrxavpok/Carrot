@@ -105,6 +105,8 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .pColorAttachments = &colorAttachmentInfo,
     });
 
+    cmds.setStencilTestEnable(false);
+
     RenderingPipelineCreateInfo createInfo {
             .colorAttachments = {swapchainTexture->getImage().getFormat()}
     };

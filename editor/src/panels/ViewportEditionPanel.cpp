@@ -6,6 +6,8 @@
 #include <panels/ViewportEditionPanel.h>
 #include <core/utils/ImGuiUtils.hpp>
 
+#include "StencilSettingsEdition.h"
+
 namespace Peeler {
 
     class ChangeCurrentComposition final : public ICommand {
@@ -357,40 +359,33 @@ namespace Peeler {
                                 }
 
                                 ImGui::SeparatorText("Stencil");
-                                bool enabled = pLocation->stencilEnabled;
-                                if (ImGui::Checkbox("Enable", &enabled)) {
-                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilEnabled, enabled);
+                                bool stencilModified = false;
+                                auto [iter, wasNew] = savedSettings.try_emplace(pLocation);
+                                if (wasNew) {
+                                    iter->second = pLocation->stencil.value_or(Carrot::Render::StencilSettings{});
+                                }
+                                Carrot::Render::StencilSettings& settings = iter->second;
+                                bool enabled = pLocation->stencil.has_value();
+                                const bool wasEnabled = enabled;
+                                stencilModified = editStencilSettings(settings, enabled);
+                                if (enabled != wasEnabled) {
+                                    stencilModified = true;
+                                    if (enabled) {
+                                        settings.stencilEnabled = true;
+                                        pLocation->stencil = settings;
+                                    } else {
+                                        pLocation->stencil.reset();
+                                    }
                                 }
 
-                                ImGui::BeginDisabled(!enabled);
-
-                                bool write = pLocation->stencilWrite;
-                                if (ImGui::Checkbox("Write", &write)) {
-                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilWrite, write);
+                                if (stencilModified) {
+                                    iter->second = settings;
+                                    if (enabled) {
+                                        app.undoStack.push<ModifyViewportCommand<std::optional<Carrot::Render::StencilSettings>>>(pLocation->stencil, settings);
+                                    } else {
+                                        app.undoStack.push<ModifyViewportCommand<std::optional<Carrot::Render::StencilSettings>>>(pLocation->stencil, std::optional<Carrot::Render::StencilSettings>{});
+                                    }
                                 }
-                                bool compare = pLocation->stencilCompare;
-                                if (ImGui::Checkbox("Compare", &compare)) {
-                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->stencilCompare, compare);
-                                }
-
-                                u8 ref = pLocation->stencilValue;
-                                if (ImGui::InputScalar("Reference", ImGuiDataType_U8, &ref)) {
-                                    app.undoStack.push<ModifyViewportCommand<u8>>(pLocation->stencilValue, ref);
-                                }
-
-                                Carrot::Render::StencilOperation viewportOp = pLocation->stencilOperation;
-                                if (ImGui::BeginCombo("Operation", Carrot::Render::toString(viewportOp))) {
-                                    auto handleOp = [&](const Carrot::Render::StencilOperation& op) {
-                                        if (ImGui::Selectable(toString(op), op == viewportOp)) {
-                                            app.undoStack.push<ModifyViewportCommand<Carrot::Render::StencilOperation>>(pLocation->stencilOperation, op);
-                                        }
-                                    };
-                                    handleOp(Carrot::Render::StencilOperation::AlwaysPass);
-                                    handleOp(Carrot::Render::StencilOperation::Equal);
-                                    ImGui::EndCombo();
-                                }
-
-                                ImGui::EndDisabled();
                             }
                         }
                         ImGui::EndChild();

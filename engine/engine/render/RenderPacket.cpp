@@ -175,19 +175,66 @@ namespace Carrot::Render {
         }
 
         if(!isCompute) {
-            ZoneScopedN("Change viewport");
-            if(previousPacket == nullptr || previousPacket->viewportExtents != viewportExtents) {
-                if(viewportExtents.has_value()) {
-                    cmds.setViewport(0, viewportExtents.value());
-                } else {
-                    cmds.setViewport(0, vk::Viewport {
-                        .x = 0,
-                        .y = 0,
-                        .width = static_cast<float>(viewport->getWidth()),
-                        .height = static_cast<float>(viewport->getHeight()),
-                        .minDepth = 0.0f,
-                        .maxDepth = 1.0f,
-                    });
+            {
+                ZoneScopedN("Change viewport");
+                if(previousPacket == nullptr || previousPacket->viewportExtents != viewportExtents) {
+                    if(viewportExtents.has_value()) {
+                        cmds.setViewport(0, viewportExtents.value());
+                    } else {
+                        cmds.setViewport(0, vk::Viewport {
+                            .x = 0,
+                            .y = 0,
+                            .width = static_cast<float>(viewport->getWidth()),
+                            .height = static_cast<float>(viewport->getHeight()),
+                            .minDepth = 0.0f,
+                            .maxDepth = 1.0f,
+                        });
+                    }
+                }
+            }
+            {
+                ZoneScopedN("Change stencil settings");
+                if(previousPacket == nullptr || previousPacket->stencilSettings != stencilSettings || previousPacket->viewport != viewport) {
+                    std::optional<StencilSettings> settings;
+                    if(stencilSettings.has_value()) {
+                        settings = stencilSettings.value();
+                    } else {
+                        settings = renderContext.pViewport->getStencilSettings();
+                    }
+
+                    if (settings.has_value()) {
+                        cmds.setStencilTestEnable(settings->stencilEnabled);
+                        cmds.setStencilReference(vk::StencilFaceFlagBits::eFrontAndBack, settings->stencilValue);
+                        if (settings->stencilCompare) {
+                            cmds.setStencilCompareMask(vk::StencilFaceFlagBits::eFrontAndBack, 0xFF);
+                        } else {
+                            cmds.setStencilCompareMask(vk::StencilFaceFlagBits::eFrontAndBack, 0x00);
+                        }
+                        if (settings->stencilWrite) {
+                            cmds.setStencilWriteMask(vk::StencilFaceFlagBits::eFrontAndBack, 0xFF);
+                        } else {
+                            cmds.setStencilWriteMask(vk::StencilFaceFlagBits::eFrontAndBack, 0x00);
+                        }
+
+                        vk::CompareOp compareOp = vk::CompareOp::eAlways;
+                        switch (settings->stencilOperation) {
+                            case StencilOperation::AlwaysPass:
+                                compareOp = vk::CompareOp::eAlways;
+                                break;
+
+                            case StencilOperation::Equal:
+                                compareOp = vk::CompareOp::eEqual;
+                                break;
+                        }
+
+                        if (settings->stencilWrite) {
+                            cmds.setStencilOp(vk::StencilFaceFlagBits::eFrontAndBack, vk::StencilOp::eKeep, vk::StencilOp::eReplace, vk::StencilOp::eKeep, compareOp);
+                        } else {
+                            cmds.setStencilOp(vk::StencilFaceFlagBits::eFrontAndBack, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, compareOp);
+                        }
+                    } else {
+                        cmds.setStencilTestEnable(false);
+                    }
                 }
             }
         }
@@ -355,6 +402,7 @@ namespace Carrot::Render {
         viewport = std::move(toMove.viewport);
         viewportExtents = std::move(toMove.viewportExtents);
         scissor = std::move(toMove.scissor);
+        stencilSettings = std::move(toMove.stencilSettings);
 
         vertexBuffer = std::move(toMove.vertexBuffer);
         indexBuffer = std::move(toMove.indexBuffer);
@@ -385,6 +433,7 @@ namespace Carrot::Render {
         viewport = toCopy.viewport;
         viewportExtents = toCopy.viewportExtents;
         scissor = toCopy.scissor;
+        stencilSettings = toCopy.stencilSettings;
 
         vertexBuffer = toCopy.vertexBuffer;
         indexBuffer = toCopy.indexBuffer;

@@ -138,6 +138,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/RenderContext.cpp
         ${EngineRoot}render/RenderPacketContainer.cpp
         ${EngineRoot}render/Sprite.cpp
+        ${EngineRoot}render/StencilSettings.cpp
         ${EngineRoot}render/TextureAtlas.cpp
         ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}render/Viewport.cpp

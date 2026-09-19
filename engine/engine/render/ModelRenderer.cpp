@@ -216,6 +216,11 @@ namespace Carrot::Render {
                     if(overrideObj.contains("virtualized_geometry")) {
                         override.virtualizedGeometry = overrideObj["virtualized_geometry"].getAsBool();
                     }
+                    auto overrideObjView = overrideObj.getAsObject();
+                    if (const auto& iter = overrideObjView.find("stencil"); iter.isValid()) {
+                        override.stencilSettings.emplace();
+                        override.stencilSettings->deserialise(iter->second);
+                    }
 
                     renderer->overrides.add(override);
                 }
@@ -280,6 +285,9 @@ namespace Carrot::Render {
                 overrideObj["material"] = materialObj;
             }
             overrideObj["virtualized_geometry"] = override.virtualizedGeometry;
+            if (override.stencilSettings.has_value()) {
+                overrideObj["stencil"] = override.stencilSettings->serialise();
+            }
 
             overridesObj.pushBack() = overrideObj;
         }
@@ -428,6 +436,7 @@ namespace Carrot::Render {
 
             renderPacket.vertexBuffer = pModel->getStaticMeshData().getVertexBuffer();
             renderPacket.indexBuffer = pModel->getStaticMeshData().getIndexBuffer();
+            renderPacket.stencilSettings = bucket.stencilSettings;
 
             renderPacket.addPerDrawData(std::span(bucket.drawData));
             std::vector<InstanceData> instancesData = bucket.instanceData; // copied because modified below
@@ -519,16 +528,19 @@ namespace Carrot::Render {
         struct BucketKey {
             std::shared_ptr<Carrot::Pipeline> pipeline;
             bool virtualizedGeometry = false;
+            std::optional<StencilSettings> stencilSettings;
 
             bool operator==(const BucketKey& other) const {
                 return pipeline == other.pipeline
-                    && virtualizedGeometry == other.virtualizedGeometry;
+                    && virtualizedGeometry == other.virtualizedGeometry
+                    && stencilSettings == other.stencilSettings;
             }
 
             struct Hasher {
                 std::size_t operator()(const BucketKey& k) const {
                     std::size_t hash = robin_hood::hash_int((std::uint64_t)k.pipeline.get());
                     hash_combine(hash, k.virtualizedGeometry ? 1ull : 0ull);
+                    hash_combine(hash, k.stencilSettings.has_value() ? std::hash<StencilSettings>{}(*k.stencilSettings) : 0ull);
                     return hash;
                 }
             };
@@ -562,7 +574,7 @@ namespace Carrot::Render {
                 }
 
                 if(pMat) {
-                    BucketKey key { pipeline, pOverride ? pOverride->virtualizedGeometry : false };
+                    BucketKey key { pipeline, pOverride ? pOverride->virtualizedGeometry : false, pOverride ? pOverride->stencilSettings : std::optional<StencilSettings>{} };
                     auto& bucket = perPipelineBuckets[key];
 
                     const Model::StaticMeshInfo& meshInfo = getModel().getStaticMeshInfo(meshAndTransform.staticMeshIndex);
@@ -606,11 +618,12 @@ namespace Carrot::Render {
         buckets.clear();
         buckets.reserve(perPipelineBuckets.size());
         for(auto& [key, bucket] : perPipelineBuckets) {
-            auto& [pipeline, virtualizedGeometry] = key;
+            auto& [pipeline, virtualizedGeometry, stencilSettings] = key;
             PipelineBucket& newBucket = buckets.emplace_back();
             newBucket = std::move(bucket);
             newBucket.pipeline = pipeline;
             newBucket.virtualizedGeometry = virtualizedGeometry;
+            newBucket.stencilSettings = stencilSettings;
             hasVirtualizedGeometry |= virtualizedGeometry;
         }
     }

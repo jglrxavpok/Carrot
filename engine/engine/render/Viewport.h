@@ -11,6 +11,7 @@
 
 #include "RenderEye.h"
 #include "Camera.h"
+#include "StencilSettings.h"
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/resources/PerFrame.h"
@@ -72,6 +73,9 @@ namespace Carrot::Render {
         glm::vec2 getOffset() const;
         void setOffset(const glm::vec2& offset);
 
+        std::optional<StencilSettings> getStencilSettings() const;
+        void setStencilSettings(std::optional<StencilSettings> settings);
+
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
@@ -104,5 +108,7 @@ namespace Carrot::Render {
 
         Render::PerFrame<Carrot::BufferView> viewportUniformBuffers;
         Render::PerFrame<vk::DescriptorSet> viewportDescriptorSets;
+
+        std::optional<StencilSettings> stencilSettings; // can be overwritten by render packets, but used as a default
     };
 }

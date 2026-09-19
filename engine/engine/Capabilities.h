@@ -10,6 +10,8 @@ namespace Carrot {
         // ---- Rendering capabilities ----
         bool supportsRaytracing = false;
 
+        bool supportsKHRDeviceFault = false;
+
         // ---- Misc. ----
         std::size_t hardwareParallelism = 1;
     };

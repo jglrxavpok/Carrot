@@ -13,11 +13,6 @@
 #include <engine/render/TextureRepository.h>
 
 namespace Carrot::Render {
-    static Lookup StencilOperationsTable = std::array {
-        Carrot::LookupEntry(StencilOperation::AlwaysPass, "always_pass"),
-        Carrot::LookupEntry(StencilOperation::Equal, "equal"),
-    };
-
     void ViewportComposition::copyViewportPositions(const ViewportComposition& other) {
         viewports.clear();
         for (const auto& [id, locationToCopy] : other.viewports) {
@@ -26,9 +21,7 @@ namespace Carrot::Render {
             location.size = locationToCopy.size;
             location.z = locationToCopy.z;
 
-            location.stencilEnabled = locationToCopy.stencilEnabled;
-            location.stencilOperation = locationToCopy.stencilOperation;
-            location.stencilValue = locationToCopy.stencilValue;
+            location.stencil = locationToCopy.stencil;
         }
     }
 
@@ -45,12 +38,8 @@ namespace Carrot::Render {
             viewportObj["size_y"] = viewport.size.y;
             viewportObj["z"] = viewport.z;
 
-            if (viewport.stencilEnabled) {
-                auto& stencilInfo = viewportObj["stencil"];
-                stencilInfo["reference"] = viewport.stencilValue;
-                stencilInfo["operation"] = StencilOperationsTable[viewport.stencilOperation];
-                stencilInfo["compare"] = viewport.stencilCompare;
-                stencilInfo["write"] = viewport.stencilWrite;
+            if (viewport.stencil.has_value()) {
+                viewportObj["stencil"] = viewport.stencil->serialise();
             }
         }
 
@@ -71,11 +60,8 @@ namespace Carrot::Render {
 
             auto asObj = viewportElement.getAsObject();
             if (auto stencilIter = asObj.find("stencil"); stencilIter.isValid()) {
-                loc.stencilEnabled = true;
-                loc.stencilValue = stencilIter->second["reference"].getAsInt64();
-                loc.stencilOperation = StencilOperationsTable[stencilIter->second["operation"].getAsString()];
-                loc.stencilCompare = stencilIter->second["compare"].getAsBool();
-                loc.stencilWrite = stencilIter->second["write"].getAsBool();
+                loc.stencil.emplace();
+                loc.stencil->deserialise(stencilIter->second);
             }
         }
     }
@@ -122,6 +108,9 @@ namespace Carrot::Render {
         },
         [](const Render::CompiledPass& pass, const Render::Context& frame, const PassData::Composer& data, vk::CommandBuffer& cmds) {
             ZoneScopedN("CPU RenderGraph Composer");
+
+            //TODO; // STENCIL STATE to reset
+            cmds.setStencilTestEnable(false);
             auto& renderer = frame.renderer;
             auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("composer-blit", pass);
             auto& screenQuad = renderer.getFullscreenQuad();
@@ -174,10 +163,6 @@ namespace Carrot::Render {
 
     bool Composer::hasRegions() const {
         return !regions.empty();
-    }
-
-    const char* toString(const StencilOperation& op) {
-        return StencilOperationsTable[op];
     }
 
 }

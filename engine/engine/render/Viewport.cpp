@@ -227,4 +227,12 @@ namespace Carrot::Render {
         return viewportID;
     }
 
+    std::optional<StencilSettings> Viewport::getStencilSettings() const {
+        return stencilSettings;
+    }
+
+    void Viewport::setStencilSettings(std::optional<StencilSettings> settings) {
+        stencilSettings = settings;
+    }
+
 }

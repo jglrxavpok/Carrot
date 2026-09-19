@@ -12,6 +12,7 @@
 #include <engine/ecs/components/ModelComponent.h>
 #include <engine/ecs/World.h>
 #include <engine/ecs/WorldData.h>
+#include <panels/StencilSettingsEdition.h>
 
 namespace Peeler {
     // return true if should be removed
@@ -95,6 +96,24 @@ namespace Peeler {
             auto renderer = cloneIfNeeded();
             Carrot::Render::MaterialOverride* pNewOverride = renderer->getOverrides().findForMesh(override.meshIndex);
             pNewOverride->virtualizedGeometry = isVirtualizedGeometry;
+            edition.hasModifications = true;
+        }
+
+        Carrot::Render::StencilSettings settings{};
+        bool enabled = false;
+        if (override.stencilSettings.has_value()) {
+            enabled = true;
+            settings = override.stencilSettings.value();
+        } // TODO else remember old values
+
+        if (editStencilSettings(settings, enabled)) {
+            auto renderer = cloneIfNeeded();
+            Carrot::Render::MaterialOverride* pNewOverride = renderer->getOverrides().findForMesh(override.meshIndex);
+            if (enabled) {
+                pNewOverride->stencilSettings = settings;
+            } else {
+                pNewOverride->stencilSettings.reset();
+            }
             edition.hasModifications = true;
         }
 

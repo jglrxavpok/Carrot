@@ -17,6 +17,8 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
     for (auto& [id, location] : composition.viewports) {
         Render::Viewport& viewport = engine.getOrCreateViewport(id);
 
+        viewport.setStencilSettings(location.stencil);
+
         if (!location.renderGraph) {
             Render::GraphBuilder builder{GetVulkanDriver(), engine.getMainWindow()};
             Render::FrameResource colorOutput = engine.fillGraphBuilderForSingleGameViewport(builder);

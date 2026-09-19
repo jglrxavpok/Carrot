@@ -30,6 +30,7 @@ set(EditorSources
         ${EditorRoot}panels/InspectorPanel.cpp
         ${EditorRoot}panels/NavMeshPanel.cpp
         ${EditorRoot}panels/ResourcePanel.cpp
+        ${EditorRoot}panels/StencilSettingsEdition.cpp
         ${EditorRoot}panels/ViewportEditionPanel.cpp
 
         ${EditorRoot}particle_editor/ParticleEditor.cpp

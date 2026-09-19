@@ -16,6 +16,7 @@
 #include "resources/BufferView.h"
 #include "PassEnum.h"
 #include "GBufferDrawData.h"
+#include "StencilSettings.h"
 
 namespace Carrot {
     struct RenderingPipelineCreateInfo;
@@ -123,6 +124,7 @@ namespace Carrot::Render {
         /// ie similar to calling vkCmdSetViewport
         std::optional<vk::Viewport> viewportExtents;
         std::optional<vk::Rect2D> scissor;
+        std::optional<StencilSettings> stencilSettings;
 
         // TODO: allocators
         Carrot::Vector<vk::SemaphoreSubmitInfo> waitSemaphores;

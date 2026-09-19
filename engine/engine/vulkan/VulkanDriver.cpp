@@ -64,7 +64,7 @@ constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
-const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
+const std::vector<const char*> MandatoryDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_SPIRV_1_4_EXTENSION_NAME,
@@ -77,7 +77,6 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME,
         VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_9_EXTENSION_NAME,
-        VK_KHR_DEVICE_FAULT_EXTENSION_NAME,
         VK_KHR_SHADER_ABORT_EXTENSION_NAME,
         VK_KHR_SHADER_CONSTANT_DATA_EXTENSION_NAME, // required for shader abort
 };
@@ -555,6 +554,10 @@ void Carrot::VulkanDriver::fillRenderingCapabilities() {
     if(availableSet.contains(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) {
         memoryBudgetSupported = true;
     }
+
+    if (availableSet.contains(VK_KHR_DEVICE_FAULT_EXTENSION_NAME)) {
+        engine->getModifiableCapabilities().supportsKHRDeviceFault = true;
+    }
 }
 
 void Carrot::VulkanDriver::createLogicalDevice() {
@@ -641,16 +644,19 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .shaderAbort = true,
             },
             vk::PhysicalDeviceFaultFeaturesKHR{
-                .deviceFault = true,
+                .deviceFault = GetCapabilities().supportsKHRDeviceFault,
             }
     };
 
-    std::vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
+    std::vector<const char*> deviceExtensions = MandatoryDeviceExtensions; // copy
 
     if(GetCapabilities().supportsRaytracing) {
         for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
             deviceExtensions.push_back(rayTracingExt);
         }
+    }
+    if (GetCapabilities().supportsKHRDeviceFault) {
+        deviceExtensions.push_back(VK_KHR_DEVICE_FAULT_EXTENSION_NAME);
     }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
@@ -737,7 +743,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
     const std::vector<vk::ExtensionProperties> available = logicalDevice.enumerateDeviceExtensionProperties(nullptr);
 
-    std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
+    std::set<std::string> required(MandatoryDeviceExtensions.begin(), MandatoryDeviceExtensions.end());
 
     if(getConfiguration().raytracingSupport == RaytracingSupport::Required) {
         for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {

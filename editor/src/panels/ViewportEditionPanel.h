@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/containers/Pair.hpp>
 #include <panels/EditorPanel.h>
 
 namespace Peeler {
@@ -24,5 +25,8 @@ namespace Peeler {
         std::string currentCompositionID;
         std::unordered_map<std::string, Carrot::Identifier> composition2selectedViewport;
         Carrot::Vector<Carrot::Pair<std::string, Carrot::Render::ViewportComposition>> compositions;
+
+        // Used to keep settings in case user disables stencil by accident
+        std::unordered_map<Carrot::Render::ViewportLocation*, Carrot::Render::StencilSettings> savedSettings;
     };
 }

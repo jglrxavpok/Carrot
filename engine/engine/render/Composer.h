@@ -7,27 +7,16 @@
 #include <core/UniquePtr.hpp>
 
 #include "RenderGraph.h"
+#include "StencilSettings.h"
 
 namespace Carrot::Render {
-
-    enum class StencilOperation {
-        Equal,
-        AlwaysPass,
-    };
-
-    const char* toString(const StencilOperation& op);
 
     struct ViewportLocation {
         glm::vec2 offset = glm::vec2{0.0f}; // relative to main viewport size [0-1]
         glm::vec2 size = glm::vec2{1.0f}; // relative to main viewport size [0-1]
         float z = 0.0f; // can be used to order viewports that overlap
 
-        bool stencilEnabled = false; // used to apply stencil operations to the entire viewport
-        bool stencilCompare = false; // unused if stencilEnabled == false
-        bool stencilWrite = false; // unused if stencilEnabled == false
-        StencilOperation stencilOperation = StencilOperation::AlwaysPass; // unused if stencilEnabled == false
-        u8 stencilValue = 0; // unused if stencilEnabled == false. Value to compare or write depending on stencilOperation
-
+        std::optional<StencilSettings> stencil;
         std::unique_ptr<Graph> renderGraph; // render graph to render to this viewport. If set to empty, will default to engine's game render graph
 
         // function to extract the final texture for this viewport, which will be used for the final composition. If renderGraph is set to empty, will be ignored, and default engine's render graph will be used to find the resource

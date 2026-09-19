@@ -36,6 +36,7 @@ namespace Carrot::Render {
 
         std::shared_ptr<Carrot::Pipeline> pipeline; // can be null if only textures are changed
         std::shared_ptr<Carrot::Render::MaterialHandle> materialTextures; // can be null if only pipeline is changed
+        std::optional<StencilSettings> stencilSettings;
         // cannot be both null
 
         bool operator==(const MaterialOverride& other) const;
@@ -97,6 +98,8 @@ namespace Carrot::Render {
         std::vector<Carrot::GBufferDrawData> drawData; // contains index of material
 
         std::vector<MeshRenderingInfo> meshes;
+
+        std::optional<StencilSettings> stencilSettings;
     };
 
     struct ModelRendererStorage {
