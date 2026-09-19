@@ -640,6 +640,8 @@ namespace Carrot::Render {
 
     void Graph::onFrame(const Render::Context& context) {
         static Graph* graphToDebug = nullptr;
+        static Graph* graphToDebugNextFrame = nullptr;
+        graphToDebug = graphToDebugNextFrame;
         if(DebugRenderGraphs) {
             bool isOpen = true;
             if(ImGui::Begin("Debug render graphs", &isOpen)) {
@@ -647,7 +649,7 @@ namespace Carrot::Render {
 
                 std::string id = Carrot::sprintf("%x , %llu passes", (std::uint64_t)this, sortedPasses.size());
                 if(ImGui::RadioButton(id.c_str(), graphToDebug == this)) {
-                    graphToDebug = this;
+                    graphToDebugNextFrame = this;
                 }
 
                 if(graphToDebug == this) {
