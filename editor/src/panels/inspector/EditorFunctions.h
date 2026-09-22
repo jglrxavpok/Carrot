@@ -568,6 +568,59 @@ namespace Peeler {
         return wasModified;
     }
 
+    // TODO: other system to support template partial specialization
+    template<>
+    inline bool editMultiple<Carrot::Vector<Carrot::Identifier>>(const char* id, std::span<Carrot::Vector<Carrot::Identifier>> values, const Helpers::Limits<Carrot::Vector<Carrot::Identifier>>& limits) {
+        ImGui::SeparatorText(id);
+        ImGui::PushID(id);
+        CLEANUP(ImGui::PopID();
+            ImGui::Separator());
+        bool allSame = true;
+        const Carrot::Vector<Carrot::Identifier>& first = values[0];
+        for (i32 i = 1; i < values.size(); i++) {
+            if (values[i] != first) {
+                allSame = false;
+                break;
+            }
+        }
+
+        if (!allSame) {
+            ImGui::Text("Editing multiple different lists at the same time is not supported yet");
+            return false;
+        }
+
+        Carrot::Vector<Carrot::Identifier> tmp = first;
+        bool wasModified = false;
+        Carrot::Vector<i32> toRemove;
+        for (i32 index = 0; index < tmp.size(); index++) {
+            ImGui::PushID(index);
+            wasModified |= editMultiple("##subelement", std::span<Carrot::Identifier>{&tmp[index], 1}, {});
+            ImGui::SameLine();
+            if (ImGui::Button("Remove")) {
+                wasModified = true;
+                toRemove.pushBack(index);
+            }
+            ImGui::PopID();
+        }
+        if (ImGui::Button("+")) {
+            tmp.emplaceBack();
+            wasModified = true;
+        }
+
+        if (!toRemove.empty()) {
+            for (auto it = toRemove.rbegin(); it.isValid(); it++) {
+                tmp.remove(*it);
+            }
+        }
+
+        if(wasModified) {
+            for(auto& v : values) {
+                v = tmp;
+            }
+        }
+        return wasModified;
+    }
+
     template<>
     inline bool editMultiple<Carrot::Render::Texture::Ref>(const char* id, std::span<Carrot::Render::Texture::Ref> values, const Helpers::Limits<Carrot::Render::Texture::Ref>& limits) {
         Carrot::Vector<Carrot::IO::VFS::Path> paths;

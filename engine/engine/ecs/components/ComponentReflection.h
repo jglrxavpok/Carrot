@@ -128,6 +128,26 @@ namespace Carrot::ECS {
         }
     };
 
+    template<typename TElement>
+    struct ReflectedSerialisation<Carrot::Vector<TElement>> {
+        static void deserialiseElement(ECS::Component& component, Carrot::Vector<TElement>& out, const Carrot::DocumentElement& doc) {
+            DocumentElement::ArrayView asArray = doc.getAsArray();
+            out.resize(asArray.getSize());
+            for (i32 index = 0; index < out.size(); index++) {
+                ReflectedSerialisation<TElement>::deserialiseElement(component, out[index], asArray[index]);
+            }
+        }
+
+        static Carrot::DocumentElement serialiseElement(const ECS::Component& component, const Carrot::Vector<TElement>& input) {
+            Carrot::DocumentElement array{Carrot::DocumentType::Array};
+            array.setReserve(input.size());
+            for (i32 index = 0; index < input.size(); index++) {
+                array.pushBack() = std::move(ReflectedSerialisation<TElement>::serialiseElement(component, input[index]));
+            }
+            return array;
+        }
+    };
+
     template<typename T, bool WaitOnAccess, typename ValueContainer>
     struct ReflectedSerialisation<AsyncResource<T, WaitOnAccess, ValueContainer>> {
         using ResourceType = AsyncResource<T, WaitOnAccess, ValueContainer>;

@@ -205,6 +205,9 @@ namespace Peeler {
             +[](Carrot::ECS::ModelComponent& c) { return Helpers::RGBAColorWrapper { c.color }; },
             +[](Carrot::ECS::ModelComponent& c, const Helpers::RGBAColorWrapper& v) { c.color = v.rgba; });
 
+        multiEditField(edition, "Hidden in viewports", components,
+            +[](Carrot::ECS::ModelComponent& c) -> Carrot::Vector<Carrot::Identifier>& { return c.hiddenInViewports; });
+
         for(const auto& pComponent : components) {
             if(!pComponent->modelResource.isReady()) {
                 return;

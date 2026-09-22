@@ -31,6 +31,7 @@ namespace Carrot::ECS {
         FIELD(std::shared_ptr<Render::ModelRenderer>, modelRenderer, "ModelRendererOverrides", {});
         FIELD(glm::vec4, color, "Color", glm::vec4{1.0f});
         FIELD(bool, isTransparent, "Transparent", false);
+        OPTIONAL_FIELD(Carrot::Vector<Carrot::Identifier>, hiddenInViewports, "HiddenInViewports", {});
         Render::ModelRendererStorage rendererStorage;
         PROPERTY(bool, castsShadows, "CastsShadows", true,
             [](ModelComponent& self) { return self.rendererStorage.castsShadows; },

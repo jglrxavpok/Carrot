@@ -34,6 +34,12 @@ namespace Carrot::ECS {
                 return;
             }
 
+            if (!modelComp.hiddenInViewports.empty()) {
+                if (modelComp.hiddenInViewports.find(renderContext.pViewport->getViewportID()).isValid()) {
+                    return;
+                }
+            }
+
             if (modelComp.modelResource.isReady()) {
                 Carrot::InstanceData instanceData;
                 instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
