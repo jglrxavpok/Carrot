@@ -11,6 +11,7 @@ namespace Peeler {
     void Application::setupGameViewport() {
         gameTexture = setGameViewport(gameViewport.getViewportID());
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
+        gameViewport.renderingOrder = 9999999;
     }
 
     Carrot::Render::FrameResource Application::addOutlinePass(GraphBuilder& graphBuilder, const Carrot::Render::FrameResource& finalRenderedImage) {

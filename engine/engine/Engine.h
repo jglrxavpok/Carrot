@@ -244,15 +244,18 @@ namespace Carrot {
         void setShutdownRequestHandler(std::function<void()> handler);
         void requestShutdown();
 
+        struct ViewportFrameResources {
+            Render::FrameResource colorOutput;
+            Render::FrameResource depthStencil;
+        };
+
     private:
-        const Render::FrameResource& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
+        ViewportFrameResources fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
         void addPresentPass(Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent);
 
     public:
-        const Render::FrameResource& fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
-
-        ///
-        const Render::FrameResource& fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
+        ViewportFrameResources fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
+        ViewportFrameResources fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
 
     public: // viewports
         Render::Viewport& getMainViewport();
@@ -261,6 +264,7 @@ namespace Carrot {
         Render::Viewport& createViewport(Window& window, const Identifier& viewportID);
         void destroyViewport(Render::Viewport& viewport);
         Render::Viewport& getOrCreateViewport(const Identifier& viewportID);
+        void sortViewports();
 
         /// Sets up the render graph of the game viewport (set via CarrotGame::setGameViewport - by default Main viewport) to compose the different game viewports inside it
         /// Returns the final color image, to be used to blit later on if needed
@@ -483,6 +487,7 @@ namespace Carrot {
         std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};
 
         std::list<Carrot::Render::Viewport> viewports;
+        Carrot::Vector<Carrot::Render::Viewport*> sortedViewports; // pointers owned by viewports
         Render::Viewport* pGameViewport = nullptr;
         std::list<Carrot::Window> externalWindows;
 

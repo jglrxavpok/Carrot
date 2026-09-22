@@ -232,10 +232,10 @@ void Carrot::Engine::init() {
 
         Render::GraphBuilder rightEyeGraph = leftEyeGraph; // reuse most textures
 
-        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass);
+        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass.colorOutput);
         auto& leftEyeComposerPass = composers[Render::Eye::LeftEye]->appendPass(leftEyeGraph);
 
-        composers[Render::Eye::RightEye]->add(rightEyeFinalPass);
+        composers[Render::Eye::RightEye]->add(rightEyeFinalPass.colorOutput);
         auto& rightEyeComposerPass = composers[Render::Eye::RightEye]->appendPass(rightEyeGraph);
 
         companionComposer.add(leftEyeComposerPass.getData().color, -1.0, 0.0);
@@ -803,15 +803,26 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "render viewports");
             ZoneScopedN("Render viewports");
 
-            for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
+            auto recordViewport = [&](Render::Viewport& viewport) {
                 ZoneScopedN("Render single viewport");
-                auto& viewport = *it;
+                GPUZone(tracyCtx[frameIndex], mainCommandBuffers[frameIndex], "Render single viewport");
+
+                std::string profilingMarker = Carrot::sprintf("Viewport %s", std::string(viewport.getViewportID()).c_str());
+                ZoneText(profilingMarker.c_str(), profilingMarker.size());
+
                 Carrot::Render::Context rdrContext = mainRenderContext;
                 rdrContext.pViewport = &viewport;
                 rdrContext.eye = Carrot::Render::Eye::NoVR;
-                GetVulkanDriver().setFormattedMarker(mainCommandBuffers[frameIndex], "render viewport %x", &viewport);
+                GetVulkanDriver().setFormattedMarker(mainCommandBuffers[frameIndex], "Render viewport %s", std::string(viewport.getViewportID()).c_str());
                 viewport.render(rdrContext, mainCommandBuffers[frameIndex]);
+            };
+            for(auto & sortedViewport : sortedViewports) {
+                auto& viewport = *sortedViewport;
+                if (&viewport == &getMainViewport())
+                    continue;
+                recordViewport(viewport);
             }
+            recordViewport(getMainViewport());
         }
 
         mainCommandBuffers[frameIndex].writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *timingQueryPool, frameIndex*2 + 1);
@@ -1067,7 +1078,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         auto onFrame = [&](Carrot::Render::Viewport& v) {
             ZoneScoped;
-            std::string profilingMarker = Carrot::sprintf("Viewport %x", &v);
+            std::string profilingMarker = Carrot::sprintf("Viewport %s", std::string(v.getViewportID()).c_str());
             ZoneText(profilingMarker.c_str(), profilingMarker.size());
             Carrot::Render::Context renderContext = newRenderContext(currentFrame, imageIndex, v);
             {
@@ -1088,12 +1099,12 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             v.onFrame(renderContext); // update cameras only once all render systems are updated
             renderer.onFrame(renderContext);
         };
-        for(auto& v : viewports) {
-            if(&v == &getMainViewport()) {
+        for(auto* v : sortedViewports) {
+            if(v == &getMainViewport()) {
                 continue;
             }
 
-            onFrame(v);
+            onFrame(*v);
         }
         onFrame(getMainViewport());
 
@@ -1748,6 +1759,7 @@ Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
 Carrot::Render::Viewport& Carrot::Engine::createViewport(Window& window, const Identifier& viewportID) {
     verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
     viewports.emplace_back(renderer, viewportID, window.getWindowID());
+    sortedViewports.emplaceBack(&viewports.back());
     return viewports.back();
 }
 
@@ -1757,6 +1769,9 @@ void Carrot::Engine::destroyViewport(Carrot::Render::Viewport& viewport) {
     WaitDeviceIdle();
     viewports.remove_if([&](const Carrot::Render::Viewport& v) {
         return &v == &viewport;
+    });
+    sortedViewports.removeIf([&](const Carrot::Render::Viewport* pViewport) {
+        return pViewport == &viewport;
     });
 }
 
@@ -1768,6 +1783,12 @@ Carrot::Render::Viewport& Carrot::Engine::getOrCreateViewport(const Identifier& 
     }
 
     return createViewport(mainWindow, viewportID);
+}
+
+void Carrot::Engine::sortViewports() {
+    sortedViewports.sort([](const Render::Viewport* pA, const Render::Viewport* pB) {
+        return pA->renderingOrder < pB->renderingOrder;
+    });
 }
 
 Carrot::Window& Carrot::Engine::getMainWindow() {

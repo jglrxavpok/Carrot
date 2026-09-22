@@ -25,7 +25,8 @@ void Carrot::GBuffer::onSwapchainSizeChange(Window& window, int newWidth, int ne
     // TODO
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize) {
+Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize,
+    std::optional<Render::FrameResource> inheritedDepthStencil) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
@@ -35,10 +36,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
     };
     vk::ClearValue clearIntProperties = vk::ClearColorValue();
     vk::ClearValue clearEntityID = vk::ClearColorValue(std::array<std::uint32_t,4>{0,0,0,0});
-    auto& opaquePass = graph.addPass<Carrot::Render::PassData::GBuffer>("gbuffer",
+    auto& setupGBuffer = graph.addPass<Carrot::Render::PassData::GBuffer>("setup-gbuffer",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
            {
-
                 data.albedo = graph.createRenderTarget("Albedo",
                                                        vk::Format::eR8G8B8A8Unorm,
                                                        framebufferSize,
@@ -95,6 +95,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                             clearDepth,
                                                             vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
+               if (inheritedDepthStencil.has_value()) {
+                   data.inheritedStencil = graph.read(inheritedDepthStencil.value(), vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+               }
+
                // used by editor & temporal algorithms
                graph.reuseResourceAcrossFrames(data.albedo, 1);
                graph.reuseResourceAcrossFrames(data.positions, 1);
@@ -104,9 +108,62 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                graph.reuseResourceAcrossFrames(data.emissive, 1);
                graph.reuseResourceAcrossFrames(data.depthStencil, 1);
            },
-           [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
-                opaqueCallback(pass, frame, buffer);
+           [](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& cmds){
+               ZoneScopedN("CPU RenderGraph setup-gbuffer");
+               GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "setup-gbuffer");
+
            }
+    );
+
+    // need separate pass because copies are not allowed during rendering
+    auto& copyStencil = graph.addPass<PassData::GBuffer>("copy stencil",
+        [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data) {
+            data.writeTo(graph, setupGBuffer.getData(), vk::ImageLayout::eColorAttachmentOptimal);
+            data.inheritedStencil = setupGBuffer.getData().inheritedStencil;
+
+            pass.rasterized = false;
+        },
+        [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& cmds) {
+            if (data.inheritedStencil.has_value()) {
+               vk::ImageCopy stencilCopy {
+                   .srcSubresource = {
+                       .aspectMask = vk::ImageAspectFlagBits::eStencil,
+                       .layerCount = 1,
+                   },
+                   .dstSubresource = {
+                       .aspectMask = vk::ImageAspectFlagBits::eStencil,
+                       .layerCount = 1,
+                   },
+                   .extent = {
+                       .width = frame.pViewport->getWidth(),
+                       .height = frame.pViewport->getHeight(),
+                       .depth = 1,
+                   },
+               };
+
+               const FrameResource& stencilToCopy = data.inheritedStencil.value();
+               auto& source = pass.getGraph().getTexture(stencilToCopy, frame.frameNumber);
+               auto& destination = pass.getGraph().getTexture(data.depthStencil, frame.frameNumber);
+
+               // TODO: remove this transition
+               destination.assumeLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+               destination.transitionInline(cmds, vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+               cmds.copyImage(source.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, destination.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, stencilCopy);
+               destination.assumeLayout(vk::ImageLayout::eTransferDstOptimal);
+               destination.transitionInline(cmds, vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+           }
+        }
+    );
+
+    auto& opaquePass = graph.addPass<PassData::GBuffer>("gbuffer",
+        [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data) {
+            data.writeTo(graph, copyStencil.getData(), vk::ImageLayout::eColorAttachmentOptimal);
+        },
+        [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& cmds) {
+            ZoneScopedN("CPU RenderGraph gbuffer");
+            GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "gbuffer");
+            opaqueCallback(pass, frame, cmds);
+        }
     );
     return opaquePass;
 }

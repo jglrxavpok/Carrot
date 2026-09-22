@@ -340,6 +340,7 @@ namespace Peeler {
                                 float offset[2] = {pLocation->offset.x, pLocation->offset.y};
                                 float size[2] = {pLocation->size.x, pLocation->size.y};
                                 float z = pLocation->z;
+                                i32 renderingOrder = pLocation->renderingOrder;
 
                                 std::string viewportName {selectedViewportID};
                                 if (ImGui::InputText("Viewport name", viewportName)) {
@@ -357,6 +358,24 @@ namespace Peeler {
                                 if (ImGui::InputFloat("Z", &z)) {
                                     app.undoStack.push<ModifyViewportCommand<float>>(pLocation->z, z);
                                 }
+                                if (ImGui::InputInt("Rendering order", &renderingOrder)) {
+                                    app.undoStack.push<ModifyViewportCommand<i32>>(pLocation->renderingOrder, renderingOrder);
+                                }
+                                ImGuiUtils::helpTooltip(R"(Priority of this viewport in the rendering order.
+Lower means earlier in frame.
+Can be used to order rendering between different viewports (if there are dependencies for example).
+Main viewport (ie viewport used to display image on screen) is always rendered last, no matter the priorities)");
+
+                                std::string inheritFrom = pLocation->inheritDepthStencil.has_value() ? std::string(pLocation->inheritDepthStencil.value()) : "";
+                                if (ImGui::InputText("Inherit stencil from", &inheritFrom, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                                    std::optional<Carrot::Identifier> inherit;
+                                    if (!inheritFrom.empty()) {
+                                        inherit = Carrot::Identifier{inheritFrom};
+                                    }
+                                    app.undoStack.push<ModifyViewportCommand<std::optional<Carrot::Identifier>>>(pLocation->inheritDepthStencil, inherit);
+                                }
+                                ImGuiUtils::helpTooltip(R"(Viewport to inherit the stencil buffer from.
+If set to a valid viewport name, the current viewport will have a copy of the stencil buffer at the beginning of rendering.)");
 
                                 ImGui::SeparatorText("Stencil");
                                 bool stencilModified = false;

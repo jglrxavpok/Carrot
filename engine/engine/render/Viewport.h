@@ -36,6 +36,13 @@ namespace Carrot::Render {
         //! Is this viewport expected to support dual eye rendering?
         bool vrCompatible = false;
 
+        //! Priority of this viewport in the rendering order
+        //! Lower means earlier in frame
+        //! Can be used to order rendering between different viewports (if there are dependencies for example)
+        //! Main viewport (ie viewport used to display image on screen) is always rendered last, no matter the priorities
+        //! Use Engine::sortViewports() to update the order based on this value
+        i32 renderingOrder = 0;
+
     public: // camera
         Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR);
         const Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR) const;

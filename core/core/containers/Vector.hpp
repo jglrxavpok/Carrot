@@ -242,7 +242,8 @@ namespace Carrot {
 
             Iterator operator++(int) {
                 Iterator tmp = *this;
-                return tmp.next();
+                this->next();
+                return tmp;
             }
 
             Iterator& operator--() {
@@ -251,7 +252,8 @@ namespace Carrot {
 
             Iterator operator--(int) {
                 Iterator tmp = *this;
-                return tmp.prev();
+                this->prev();
+                return tmp;
             }
 
             difference_type operator-(const Iterator& o) const {

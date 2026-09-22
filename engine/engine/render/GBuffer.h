@@ -19,7 +19,7 @@ namespace Carrot {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     public: // Render::Graph reimpl
-        Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize = {});
+        Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
 
     private:
         VulkanRenderer& renderer;

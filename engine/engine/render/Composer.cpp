@@ -13,6 +13,7 @@
 #include <engine/render/TextureRepository.h>
 
 namespace Carrot::Render {
+    // TODO: rename
     void ViewportComposition::copyViewportPositions(const ViewportComposition& other) {
         viewports.clear();
         for (const auto& [id, locationToCopy] : other.viewports) {
@@ -22,6 +23,8 @@ namespace Carrot::Render {
             location.z = locationToCopy.z;
 
             location.stencil = locationToCopy.stencil;
+            location.inheritDepthStencil = locationToCopy.inheritDepthStencil;
+            location.renderingOrder = locationToCopy.renderingOrder;
         }
     }
 
@@ -37,9 +40,13 @@ namespace Carrot::Render {
             viewportObj["size_x"] = viewport.size.x;
             viewportObj["size_y"] = viewport.size.y;
             viewportObj["z"] = viewport.z;
+            viewportObj["rendering_order"] = viewport.renderingOrder;
 
             if (viewport.stencil.has_value()) {
                 viewportObj["stencil"] = viewport.stencil->serialise();
+            }
+            if (viewport.inheritDepthStencil.has_value()) {
+                viewportObj["inherit_from"] = std::string{viewport.inheritDepthStencil.value()};
             }
         }
 
@@ -57,6 +64,16 @@ namespace Carrot::Render {
             loc.size.x = static_cast<float>(viewportElement.at("size_x").getAsDouble());
             loc.size.y = static_cast<float>(viewportElement.at("size_y").getAsDouble());
             loc.z = static_cast<float>(viewportElement.at("z").getAsDouble());
+
+            auto objView = viewportElement.getAsObject();
+            // older format did not have this value
+            if (auto iter = objView.find("rendering_order"); iter.isValid()) {
+                loc.renderingOrder = static_cast<i32>(iter->second.getAsInt64());
+            }
+
+            if (auto iter = objView.find("inherit_from"); iter.isValid()) {
+                loc.inheritDepthStencil = Carrot::Identifier{iter->second.getAsString()};
+            }
 
             auto asObj = viewportElement.getAsObject();
             if (auto stencilIter = asObj.find("stencil"); stencilIter.isValid()) {

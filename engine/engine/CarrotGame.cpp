@@ -14,16 +14,34 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
     const i32 windowWidth = static_cast<i32>(engine.getGameViewport().getSizef().x);
     const i32 windowHeight = static_cast<i32>(engine.getGameViewport().getSizef().y);
 
+    Carrot::Vector<Pair<Carrot::Identifier, Render::ViewportLocation>> sortedViewports;
     for (auto& [id, location] : composition.viewports) {
+        sortedViewports.emplaceBack(id, std::move(location));
+    }
+
+    sortedViewports.sort([](const Pair<Identifier, Render::ViewportLocation>& a, const Pair<Identifier, Render::ViewportLocation>& b) {
+       return a.second.renderingOrder < b.second.renderingOrder;
+    });
+
+    std::unordered_map<Carrot::Identifier, Render::FrameResource> depthStencils;
+
+    for (auto& [id, location] : sortedViewports) {
         Render::Viewport& viewport = engine.getOrCreateViewport(id);
 
         viewport.setStencilSettings(location.stencil);
 
         if (!location.renderGraph) {
             Render::GraphBuilder builder{GetVulkanDriver(), engine.getMainWindow()};
-            Render::FrameResource colorOutput = engine.fillGraphBuilderForSingleGameViewport(builder);
+            std::optional<Render::FrameResource> inheritedDepthStencil;
+            if (location.inheritDepthStencil.has_value()) {
+                if (depthStencils.contains(location.inheritDepthStencil.value())) {
+                    inheritedDepthStencil = depthStencils[location.inheritDepthStencil.value()];
+                }
+            }
+            Engine::ViewportFrameResources frameResources = engine.fillGraphBuilderForSingleGameViewport(builder, Render::Eye::NoVR, {}, inheritedDepthStencil);
+            depthStencils[id] = frameResources.depthStencil;
             location.renderGraph = builder.compile();
-            location.colorTextureExtractor = [colorOutput](Render::Graph& g){ return colorOutput; };
+            location.colorTextureExtractor = [frameResources](Render::Graph& g){ return frameResources.colorOutput; };
         }
 
         Render::FrameResource colorTexture = location.colorTextureExtractor(*location.renderGraph);

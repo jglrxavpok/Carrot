@@ -8,6 +8,7 @@
 
 #include "engine/Engine.h"
 #include <algorithm>
+#include <utility>
 #include <core/math/BasicFunctions.h>
 
 #include "engine/constants.h"
@@ -29,19 +30,20 @@
 #include "render/DebugBufferObject.h"
 #include "render/lighting/LightingPasses.h"
 
-const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
+Carrot::Engine::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
                                                                            std::function<void(const Carrot::Render::CompiledPass&,
                                                                                               const Carrot::Render::Context&,
                                                                                               vk::CommandBuffer&)> opaqueCallback,
                                                                            std::function<void(const Carrot::Render::CompiledPass&,
                                                                                               const Carrot::Render::Context&,
                                                                                               vk::CommandBuffer&)> transparentCallback,
-                                                                           const Render::TextureSize& framebufferSize) {
+                                                                           const Render::TextureSize& framebufferSize,
+                                                                           std::optional<Render::FrameResource> inheritedDepthStencil) {
 
     auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         opaqueCallback(pass, frame, cmds);
-    }, framebufferSize);
+    }, framebufferSize, std::move(inheritedDepthStencil));
 
     auto& visibilityPasses = getVisibilityBuffer().addVisibilityBufferPasses(mainGraph, opaqueGBufferPass.getData(), framebufferSize);
 
@@ -318,10 +320,13 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             }
     );
 
-    return transitionUI.getData().resource;
+    return ViewportFrameResources {
+        .colorOutput = transitionUI.getData().resource,
+        .depthStencil = finalTAA.getData().gBufferInput.depthStencil,
+    };
 }
 
-const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+Carrot::Engine::ViewportFrameResources Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
     return fillInDefaultPipeline(mainGraph, eye,
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 GPUZone(tracyCtx[frame.frameIndex], cmds, "Opaque Rendering");
@@ -333,18 +338,22 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForSingleGa
                                                 ZoneScopedN("CPU RenderGraph Transparent GPass");
                                                 renderer.recordTransparentGBufferPass(pass, frame, cmds);
                                             },
-                                            framebufferSize);
+                                            framebufferSize, std::move(inheritedDepthStencil));
 
 }
 
-const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+Carrot::Engine::ViewportFrameResources Carrot::Engine::fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
     Render::Composer& composer = *composers[eye];
     if (composer.hasRegions()) {
         // if there are game viewports, they are expected to render the game themselves (via fillGraphBuilderForSingleGameViewport for example)
-        return composer.appendPass(mainGraph).getData().color;
+        auto& pass = composer.appendPass(mainGraph);
+        return ViewportFrameResources {
+            .colorOutput = pass.getData().color,
+            .depthStencil = pass.getData().depthStencil,
+        };
     } else {
         // draw game inside main viewport directly
-        return fillGraphBuilderForSingleGameViewport(mainGraph, eye, framebufferSize);
+        return fillGraphBuilderForSingleGameViewport(mainGraph, eye, framebufferSize, inheritedDepthStencil);
     }
 }
 
@@ -406,13 +415,13 @@ Carrot::Render::FrameResource Carrot::Engine::updateGameViewportRenderGraph(std:
                 addPresentPass(mainGraph, dummyPass.getData().dummy);
             } else {
                 auto lastPass = fillGraphBuilderForSingleGameViewport(mainGraph);
-                finalColor = lastPass;
+                finalColor = lastPass.colorOutput;
             }
         } else {
             auto lastPass = fillGraphBuilderForSingleGameViewport(mainGraph);
 
             Render::Composer composerCopy = *composers[Render::Eye::NoVR];
-            composerCopy.add(lastPass);
+            composerCopy.add(lastPass.colorOutput);
             auto& composerPass = composerCopy.appendPass(mainGraph);
             if (isMainViewport) {
                 addPresentPass(mainGraph, composerPass.getData().color);
@@ -431,6 +440,7 @@ Carrot::Render::FrameResource Carrot::Engine::updateGameViewportRenderGraph(std:
     gameViewportExtent.width = static_cast<u32>(gameViewport.getSizef().x);
     gameViewportExtent.height = static_cast<u32>(gameViewport.getSizef().y);
     gameViewport.setRenderGraph(std::move(mainGraph.compile(gameViewportExtent)));
+    sortViewports();
     return finalColor;
 }
 

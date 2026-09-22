@@ -15,9 +15,11 @@ namespace Carrot::Render {
         glm::vec2 offset = glm::vec2{0.0f}; // relative to main viewport size [0-1]
         glm::vec2 size = glm::vec2{1.0f}; // relative to main viewport size [0-1]
         float z = 0.0f; // can be used to order viewports that overlap
+        i32 renderingOrder = 0; // See Render::Viewport::renderingOrder
 
         std::optional<StencilSettings> stencil;
         std::unique_ptr<Graph> renderGraph; // render graph to render to this viewport. If set to empty, will default to engine's game render graph
+        std::optional<Carrot::Identifier> inheritDepthStencil; // inherit the depth stencil from another viewport
 
         // function to extract the final texture for this viewport, which will be used for the final composition. If renderGraph is set to empty, will be ignored, and default engine's render graph will be used to find the resource
         std::function<Render::FrameResource(Graph&)> colorTextureExtractor;

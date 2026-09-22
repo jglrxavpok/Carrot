@@ -75,10 +75,10 @@ namespace Peeler {
         /*if(renderContext.pViewport->getViewportID() == GameViewportID) */{
             switch (currentCameraType) {
                 case CameraType::FreeCam:
-                    freeCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                    freeCameraController.applyTo(gameViewport.getSizef(), /*gameViewport.getCamera()*/renderContext.pViewport->getCamera());
                 break;
                 case CameraType::UI:
-                    uiCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                    uiCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
                 break;
                 default: TODO;
             }
@@ -89,10 +89,10 @@ namespace Peeler {
             if(!isPlaying) {
                 switch (currentCameraType) {
                     case CameraType::FreeCam:
-                        freeCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        freeCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
                         break;
                     case CameraType::UI:
-                        uiCameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
+                        uiCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
                         break;
                     default: TODO;
                 }

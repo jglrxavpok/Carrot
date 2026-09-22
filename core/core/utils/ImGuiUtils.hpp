@@ -114,4 +114,10 @@ namespace ImGuiUtils {
     glm::vec4 getDebugColorFromPalette(uint64_t index);
     ImColor getDebugColorFromPaletteAsImColor(uint64_t index);
 
+    /**
+     * Shows a (?) hoverable text which explains something to the user
+     * @param sameLine whether to add the hoverable text on the same line as the previous element
+     */
+    void helpTooltip(const char* text, bool sameLine = true);
+
 }

@@ -96,4 +96,17 @@ namespace ImGuiUtils {
         glm::vec4 c = getDebugColorFromPalette(index);
         return {c.r, c.g, c.b, c.a};
     }
+
+    void helpTooltip(const char* text, bool sameLine) {
+        if (sameLine) {
+            ImGui::SameLine();
+        }
+        ImGui::Text("(?)");
+        if (ImGui::IsItemHovered()) {
+            if (ImGui::BeginTooltip()) {
+                ImGui::TextUnformatted(text);
+                ImGui::EndTooltip();
+            }
+        }
+    }
 }
