@@ -114,6 +114,7 @@ namespace Carrot::ECS {
     DECLARE_PROPERTY_TYPE(Carrot::Identifier);
     DECLARE_PROPERTY_TYPE(Carrot::Math::Transform);
     DECLARE_PROPERTY_TYPE(Carrot::UUID);
+    DECLARE_PROPERTY_TYPE(Carrot::ECS::Entity);
 
     template<typename TOwningType, typename TElement>
     struct ReflectedSerialisation<PropertyWrapper<TOwningType, TElement>> {

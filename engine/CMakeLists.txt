@@ -87,6 +87,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/UIRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
+        ${EngineRoot}ecs/systems/demo/PortalRenderSystem.cpp
+
         ${EngineRoot}ecs/EntityTypes.cpp
         ${EngineRoot}ecs/Prefab.cpp
         ${EngineRoot}ecs/Signature.cpp

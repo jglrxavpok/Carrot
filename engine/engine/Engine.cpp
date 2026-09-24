@@ -50,6 +50,7 @@
 #include "ecs/components/ui/UIBoxComponent.h"
 #include "ecs/systems/SystemParticles.h"
 #include "ecs/systems/UIRenderSystem.h"
+#include "ecs/systems/demo/PortalRenderSystem.h"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -702,6 +703,8 @@ void Carrot::Engine::initECS() {
         components.addV2<Carrot::ECS::CameraComponent>();
         components.addV2<Carrot::UI::UIBoxComponent>();
         components.addV2<Carrot::UI::UICanvasComponent>();
+
+        components.addV2<Carrot::ECS::PortalComponent>();
     }
 
     {
@@ -720,6 +723,8 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::BillboardSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemParticles>();
         systems.addUniquePtrBased<Carrot::ECS::UIRenderSystem>();
+
+        systems.addUniquePtrBased<Carrot::ECS::PortalRenderSystem>();
     }
 }
 

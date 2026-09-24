@@ -127,4 +127,14 @@ namespace Carrot::ECS {
         doc = input.toString();
         return doc;
     }
+
+    void ReflectedSerialisation<Carrot::ECS::Entity>::deserialiseElement(ECS::Component& component, Carrot::ECS::Entity& out, const Carrot::DocumentElement& doc) {
+        out = component.getEntity().getWorld().wrap(Carrot::UUID::fromString(doc.getAsString()));
+    }
+
+    Carrot::DocumentElement ReflectedSerialisation<Carrot::ECS::Entity>::serialiseElement(const ECS::Component& component, const Carrot::ECS::Entity& input) {
+        Carrot::DocumentElement doc;
+        doc = input.getID().toString();
+        return doc;
+    }
 }

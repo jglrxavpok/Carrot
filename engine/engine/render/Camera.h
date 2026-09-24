@@ -38,6 +38,8 @@ namespace Carrot {
         // For PoseAndLookAt positions, this is the same as calling getPosition, but with an additional copy
         glm::vec3 computePosition() const;
 
+        glm::quat computeOrientation() const;
+
     public:
         void setTargetAndPosition(const glm::vec3& target, const glm::vec3& position);
         void setViewProjection(const glm::mat4& view, const glm::mat4& projection);

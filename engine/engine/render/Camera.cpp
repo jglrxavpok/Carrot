@@ -60,10 +60,15 @@ namespace Carrot {
         if (type == ControlType::PoseAndLookAt) {
             return position;
         } else if (type == ControlType::ViewProjection) {
-            return viewMatrix[3];
+            return glm::inverse(viewMatrix)[3];
         }
         TODO; // unhandled case
         return {};
+    }
+
+    glm::quat Camera::computeOrientation() const {
+        verify(type == ControlType::ViewProjection, "computeOrientation");
+        return glm::inverse(glm::quat(glm::mat3(viewMatrix)));
     }
 
     glm::vec3& Camera::getTargetRef() {
