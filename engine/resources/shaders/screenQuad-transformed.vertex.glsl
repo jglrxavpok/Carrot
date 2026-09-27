@@ -3,6 +3,7 @@ layout(location = 0) in vec2 inPosition;
 
 layout(location = 0) out vec2 uv;
 layout(location = 1) flat out uint texIndex;
+layout(location = 2) flat out uint discardWhereDepthIsUnwritten;
 
 layout(push_constant) uniform Region {
     float left;
@@ -11,6 +12,7 @@ layout(push_constant) uniform Region {
     float bottom;
     float depth;
     uint texIndex;
+    uint discardWhereDepthIsUnwritten;
 } region;
 
 void main() {
@@ -18,4 +20,5 @@ void main() {
     vec2 screenPosition = uv * vec2(region.right - region.left, region.top - region.bottom) + vec2(region.left, region.bottom);
     gl_Position = vec4(screenPosition, region.depth, 1);
     texIndex = region.texIndex;
+    discardWhereDepthIsUnwritten = region.discardWhereDepthIsUnwritten;
 }

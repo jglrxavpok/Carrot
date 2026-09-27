@@ -36,6 +36,7 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
     previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver(), engine.getMainWindow());
     struct TmpPass {
         Carrot::Render::FrameResource color;
+        Carrot::Render::FrameResource depthStencil;
     };
 
     auto& tmpPass = previewRenderGraphBuilder->addPass<TmpPass>("tmp-test",
@@ -47,6 +48,10 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
                                                 vk::AttachmentLoadOp::eClear,
                                                 clearColor,
                                                 vk::ImageLayout::eColorAttachmentOptimal);
+        data.depthStencil = builder.createStorageTarget("preview-depthStencil",
+                                                GetVulkanDriver().getDepthFormat(),
+                                                vk::Extent3D{.width = 500, .height = 500, .depth = 1},
+                                                vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     },
     [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
@@ -60,7 +65,7 @@ updateGraph("UpdateEditor"), renderGraph("RenderEditor"), previewRenderGraph(), 
     previewColorTexture = tmpPass.getData().color;
 
     auto& composer = engine.getMainComposer();
-    composer.add(tmpPass.getData().color/*, -0.25, 0.25, 1.0, 0.5, -0.5*/);
+    composer.add(Carrot::Render::ViewportFrameResources{tmpPass.getData().color, tmpPass.getData().depthStencil}/*, -0.25, 0.25, 1.0, 0.5, -0.5*/);
 
     previewRenderGraph = previewRenderGraphBuilder->compile();
 

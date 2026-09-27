@@ -233,14 +233,22 @@ void Carrot::Engine::init() {
 
         Render::GraphBuilder rightEyeGraph = leftEyeGraph; // reuse most textures
 
-        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass.colorOutput);
+        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass);
         auto& leftEyeComposerPass = composers[Render::Eye::LeftEye]->appendPass(leftEyeGraph);
 
-        composers[Render::Eye::RightEye]->add(rightEyeFinalPass.colorOutput);
+        composers[Render::Eye::RightEye]->add(rightEyeFinalPass);
         auto& rightEyeComposerPass = composers[Render::Eye::RightEye]->appendPass(rightEyeGraph);
 
-        companionComposer.add(leftEyeComposerPass.getData().color, -1.0, 0.0);
-        companionComposer.add(rightEyeComposerPass.getData().color, 0.0, 1.0);
+        Render::ViewportFrameResources leftEyeComposerData {
+            .colorOutput = leftEyeComposerPass.getData().color,
+            .depthStencil = leftEyeComposerPass.getData().depthStencil,
+        };
+        Render::ViewportFrameResources rightEyeComposerData {
+            .colorOutput = rightEyeComposerPass.getData().color,
+            .depthStencil = rightEyeComposerPass.getData().depthStencil,
+        };
+        companionComposer.add(leftEyeComposerData, -1.0, 0.0);
+        companionComposer.add(rightEyeComposerData, 0.0, 1.0);
 
         vrSession->setEyeTexturesToPresent(leftEyeComposerPass.getData().color, rightEyeComposerPass.getData().color);
 

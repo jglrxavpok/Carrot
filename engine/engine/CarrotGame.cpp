@@ -38,13 +38,13 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
                     inheritedDepthStencil = depthStencils[location.inheritDepthStencil.value()];
                 }
             }
-            Engine::ViewportFrameResources frameResources = engine.fillGraphBuilderForSingleGameViewport(builder, Render::Eye::NoVR, {}, inheritedDepthStencil);
+            Render::ViewportFrameResources frameResources = engine.fillGraphBuilderForSingleGameViewport(builder, Render::Eye::NoVR, {}, inheritedDepthStencil);
             depthStencils[id] = frameResources.depthStencil;
             location.renderGraph = builder.compile();
-            location.colorTextureExtractor = [frameResources](Render::Graph& g){ return frameResources.colorOutput; };
+            location.viewportTexturesExtractor = [frameResources](Render::Graph& g){ return frameResources; };
         }
 
-        Render::FrameResource colorTexture = location.colorTextureExtractor(*location.renderGraph);
+        Render::ViewportFrameResources viewportTextures = location.viewportTexturesExtractor(*location.renderGraph);
         viewport.setScene(&engine.getSceneManager().getMainScene());
         viewport.setRenderGraph(std::move(location.renderGraph));
 
@@ -57,7 +57,7 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
         const float right = (location.offset.x + location.size.x) * 2 - 1;
         const float top = (location.offset.y + location.size.y) * 2 - 1;
         const float bottom = location.offset.y * 2 - 1;
-        composer.add(colorTexture, left, right, top, bottom, location.z);
+        composer.add(viewportTextures, left, right, top, bottom, location.z, location.discardIfDepthNotWritten);
     }
 
     currentComposition.copyViewportPositions(composition);

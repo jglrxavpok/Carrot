@@ -138,7 +138,11 @@ namespace Carrot::Render {
         std::string name;
     };
 
-
+    // Expected final output of rendering to a viewport
+    struct ViewportFrameResources {
+        Render::FrameResource colorOutput;
+        Render::FrameResource depthStencil;
+    };
 
     // Default pass data
     namespace PassData {
@@ -225,7 +229,8 @@ namespace Carrot::Render {
             float bottom = -1.0f;
             float top = +1.0f;
             float depth = 0.0f;
-            FrameResource toDraw;
+            bool discardWhereDepthIsUnwritten = false; // If depth was not written to for the result to compose, discard pixel. Can allow to "cut through" the color texture
+            ViewportFrameResources toDraw;
         };
 
         struct Composer {

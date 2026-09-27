@@ -5,6 +5,7 @@
 #include "PortalRenderSystem.h"
 
 #include <engine/Engine.h>
+#include <glm/gtc/type_ptr.inl>
 
 namespace Carrot::ECS {
     void PortalRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
@@ -17,6 +18,38 @@ namespace Carrot::ECS {
         } else if (entity.getName() == "Portal2") {
             exitPortal = entity;
         }
+    }
+
+    // Based on https://aras-p.info/texts/obliqueortho.html
+    static void makeObliqueProjection(glm::mat4& projection, const Math::Plane& clipPlane) {
+        glm::vec4 vec4Form = glm::vec4{clipPlane.normal, clipPlane.distanceFromOrigin};
+#if 1
+        const glm::mat4 invProjection = glm::inverse(projection);
+        glm::vec4 q = invProjection * glm::vec4{glm::sign(clipPlane.normal.x), glm::sign(clipPlane.normal.y), 1.0f, 1.0f};
+
+        glm::vec4 c = vec4Form * (2 / glm::dot(vec4Form, q));
+       // c.z ++;
+        // third row = clip plane - fourth row
+        for (int i = 0; i < 4; i++) {
+            projection[i][2] = c[i] - projection[i][3];
+        }
+#else
+
+        // https://terathon.com/blog/oblique-clipping.html
+        float* matrix = glm::value_ptr(projection);
+        glm::vec4 q = {
+            (glm::sign(vec4Form.x) + matrix[8]) / matrix[0],
+            (glm::sign(vec4Form.y) + matrix[9]) / matrix[5],
+            -1,
+            (1 + matrix[10]) / matrix[14]
+        };
+
+        glm::vec4 c = vec4Form * (2.0f / glm::dot(vec4Form, q));
+        matrix[2] = c.x;
+        matrix[6] = c.y;
+        matrix[10] = c.z + 1;
+        matrix[14] = c.w;
+#endif
     }
 
     // TODO: change signature to avoid copies
@@ -65,7 +98,7 @@ namespace Carrot::ECS {
         //relativeRotation = glm::inverse(relativeRotation);
 
         // transform to position relative to exit portal
-        const glm::vec3 positionRelativeToExitPortal = (right * exitRight + up * exitUp + forward * exitForward)/2.0f;
+        const glm::vec3 positionRelativeToExitPortal = (right * exitRight + up * exitUp + forward * exitForward);
         const glm::vec3 finalPosition = positionRelativeToExitPortal + exitPos;
         Carrot::Math::Transform finalTransform;
         finalTransform.position = finalPosition;
@@ -75,8 +108,18 @@ namespace Carrot::ECS {
         auto transform = glm::translate(glm::mat4(1.0f), finalTransform.position) * modelRotation;
         glm::mat4 view = glm::inverse(transform);
 
-        viewportCamera.setViewProjection(view, cameraFromMainViewport.getProjectionMatrix());
-        // TODO: different clip plane
+        glm::mat4 projection = cameraFromMainViewport.getProjectionMatrix();
+
+        const float portalSide = glm::sign(glm::dot(cameraPos - entryPos, entryForward)); // which side of the portal we are exiting from
+        const glm::vec3 cameraSpaceExitPortalPos = (view * glm::vec4(exitPos, 1)).xyz();
+        const glm::vec3 cameraSpaceExitPortalForward = (glm::transpose(glm::inverse(glm::mat3{view})) * exitForward) * portalSide;
+        const float cameraSpaceExitPortalDistance = -glm::dot(cameraSpaceExitPortalForward, cameraSpaceExitPortalPos);
+        Math::Plane clipPlane{};
+        clipPlane.normal = cameraSpaceExitPortalForward;
+        clipPlane.distanceFromOrigin = cameraSpaceExitPortalDistance;
+
+        //makeObliqueProjection(projection, clipPlane);
+        viewportCamera.setViewProjection(view, projection);
     }
 
     std::unique_ptr<Carrot::ECS::System> PortalRenderSystem::duplicate(Carrot::ECS::World& newOwner) const {

@@ -30,7 +30,7 @@
 #include "render/DebugBufferObject.h"
 #include "render/lighting/LightingPasses.h"
 
-Carrot::Engine::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
+Carrot::Render::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
                                                                            std::function<void(const Carrot::Render::CompiledPass&,
                                                                                               const Carrot::Render::Context&,
                                                                                               vk::CommandBuffer&)> opaqueCallback,
@@ -320,13 +320,13 @@ Carrot::Engine::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Car
             }
     );
 
-    return ViewportFrameResources {
+    return Render::ViewportFrameResources {
         .colorOutput = transitionUI.getData().resource,
         .depthStencil = finalTAA.getData().gBufferInput.depthStencil,
     };
 }
 
-Carrot::Engine::ViewportFrameResources Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
+Carrot::Render::ViewportFrameResources Carrot::Engine::fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
     return fillInDefaultPipeline(mainGraph, eye,
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 GPUZone(tracyCtx[frame.frameIndex], cmds, "Opaque Rendering");
@@ -342,12 +342,12 @@ Carrot::Engine::ViewportFrameResources Carrot::Engine::fillGraphBuilderForSingle
 
 }
 
-Carrot::Engine::ViewportFrameResources Carrot::Engine::fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
+Carrot::Render::ViewportFrameResources Carrot::Engine::fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize, std::optional<Render::FrameResource> inheritedDepthStencil) {
     Render::Composer& composer = *composers[eye];
     if (composer.hasRegions()) {
         // if there are game viewports, they are expected to render the game themselves (via fillGraphBuilderForSingleGameViewport for example)
         auto& pass = composer.appendPass(mainGraph);
-        return ViewportFrameResources {
+        return Render::ViewportFrameResources {
             .colorOutput = pass.getData().color,
             .depthStencil = pass.getData().depthStencil,
         };
@@ -421,7 +421,7 @@ Carrot::Render::FrameResource Carrot::Engine::updateGameViewportRenderGraph(std:
             auto lastPass = fillGraphBuilderForSingleGameViewport(mainGraph);
 
             Render::Composer composerCopy = *composers[Render::Eye::NoVR];
-            composerCopy.add(lastPass.colorOutput);
+            composerCopy.add(lastPass);
             auto& composerPass = composerCopy.appendPass(mainGraph);
             if (isMainViewport) {
                 addPresentPass(mainGraph, composerPass.getData().color);

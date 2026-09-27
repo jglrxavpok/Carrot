@@ -244,18 +244,13 @@ namespace Carrot {
         void setShutdownRequestHandler(std::function<void()> handler);
         void requestShutdown();
 
-        struct ViewportFrameResources {
-            Render::FrameResource colorOutput;
-            Render::FrameResource depthStencil;
-        };
-
     private:
-        ViewportFrameResources fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
+        Render::ViewportFrameResources fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
         void addPresentPass(Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent);
 
     public:
-        ViewportFrameResources fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
-        ViewportFrameResources fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
+        Render::ViewportFrameResources fillGraphBuilderForSingleGameViewport(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
+        Render::ViewportFrameResources fillGraphBuilderForEntireGame(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {}, std::optional<Render::FrameResource> inheritedDepthStencil = {});
 
     public: // viewports
         Render::Viewport& getMainViewport();

@@ -341,6 +341,7 @@ namespace Peeler {
                                 float size[2] = {pLocation->size.x, pLocation->size.y};
                                 float z = pLocation->z;
                                 i32 renderingOrder = pLocation->renderingOrder;
+                                bool discardIfDepthNotWritten = pLocation->discardIfDepthNotWritten;
 
                                 std::string viewportName {selectedViewportID};
                                 if (ImGui::InputText("Viewport name", viewportName)) {
@@ -365,6 +366,12 @@ namespace Peeler {
 Lower means earlier in frame.
 Can be used to order rendering between different viewports (if there are dependencies for example).
 Main viewport (ie viewport used to display image on screen) is always rendered last, no matter the priorities)");
+
+                                if (ImGui::Checkbox("Discard pixel if depth not written", &discardIfDepthNotWritten)) {
+                                    app.undoStack.push<ModifyViewportCommand<bool>>(pLocation->discardIfDepthNotWritten, discardIfDepthNotWritten);
+                                }
+                                ImGuiUtils::helpTooltip(R"(If a given pixel never wrote to the depth buffer of this viewport, discard it when making the final composition.
+This allows to "punch through" the color texture if no geometry is there.)");
 
                                 std::string inheritFrom = pLocation->inheritDepthStencil.has_value() ? std::string(pLocation->inheritDepthStencil.value()) : "";
                                 if (ImGui::InputText("Inherit stencil from", &inheritFrom, ImGuiInputTextFlags_EnterReturnsTrue)) {

@@ -10,6 +10,7 @@ namespace Carrot::ECS {
         using ReflectionComponent::ReflectionComponent;
 
         FIELD(Carrot::ECS::Entity, otherPortal, "OtherPortal", {});
+        OPTIONAL_FIELD(Carrot::ECS::Entity, debugCamera, "DebugCamera", {});
     };
 }
 

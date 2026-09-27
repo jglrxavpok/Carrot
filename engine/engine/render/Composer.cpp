@@ -25,6 +25,7 @@ namespace Carrot::Render {
             location.stencil = locationToCopy.stencil;
             location.inheritDepthStencil = locationToCopy.inheritDepthStencil;
             location.renderingOrder = locationToCopy.renderingOrder;
+            location.discardIfDepthNotWritten = locationToCopy.discardIfDepthNotWritten;
         }
     }
 
@@ -41,6 +42,7 @@ namespace Carrot::Render {
             viewportObj["size_y"] = viewport.size.y;
             viewportObj["z"] = viewport.z;
             viewportObj["rendering_order"] = viewport.renderingOrder;
+            viewportObj["discard_if_depth_not_written"] = viewport.discardIfDepthNotWritten;
 
             if (viewport.stencil.has_value()) {
                 viewportObj["stencil"] = viewport.stencil->serialise();
@@ -75,17 +77,21 @@ namespace Carrot::Render {
                 loc.inheritDepthStencil = Carrot::Identifier{iter->second.getAsString()};
             }
 
-            auto asObj = viewportElement.getAsObject();
-            if (auto stencilIter = asObj.find("stencil"); stencilIter.isValid()) {
+            if (auto iter = objView.find("discard_if_depth_not_written"); iter.isValid()) {
+                loc.discardIfDepthNotWritten = iter->second.getAsBool();
+            }
+
+            if (auto stencilIter = objView.find("stencil"); stencilIter.isValid()) {
                 loc.stencil.emplace();
                 loc.stencil->deserialise(stencilIter->second);
             }
         }
     }
 
-    PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
+    PassData::ComposerRegion& Composer::add(const ViewportFrameResources& toDraw, float left, float right, float top, float bottom, float z, bool discardIfDepthNotWritten) {
         // graph containing composer pass can be initialised after the 'toDraw' texture has been created
-        driver.getEngine().getResourceRepository().getTextureUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        driver.getEngine().getResourceRepository().getTextureUsages(toDraw.colorOutput.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        driver.getEngine().getResourceRepository().getTextureUsages(toDraw.depthStencil.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
         auto& r = regions.emplace_back();
         r.toDraw = toDraw;
@@ -94,6 +100,7 @@ namespace Carrot::Render {
         r.top = top;
         r.bottom = bottom;
         r.depth = z;
+        r.discardWhereDepthIsUnwritten = discardIfDepthNotWritten;
         return r;
     }
 
@@ -107,7 +114,9 @@ namespace Carrot::Render {
             };
             for(const auto& r : regions) {
                 data.elements.emplace_back(r);
-                data.elements.back().toDraw = builder.read(r.toDraw, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.elements.back().toDraw.colorOutput = builder.read(r.toDraw.colorOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.elements.back().toDraw.depthStencil = builder.read(r.toDraw.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.elements.back().discardWhereDepthIsUnwritten = r.discardWhereDepthIsUnwritten;
             }
             data.color = builder.createRenderTarget("Composed color",
                                                     vk::Format::eR8G8B8A8Unorm,
@@ -135,14 +144,17 @@ namespace Carrot::Render {
 
             std::uint32_t index = 0;
             for(const auto& e : data.elements) {
-                auto& texture = pass.getGraph().getTexture(e.toDraw, frame.frameNumber);
-                renderer.bindTexture(*pipeline, frame, texture, 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, index);
+                auto& colorTexture = pass.getGraph().getTexture(e.toDraw.colorOutput, frame.frameNumber);
+                auto& depthStencilTexture = pass.getGraph().getTexture(e.toDraw.depthStencil, frame.frameNumber);
+                renderer.bindTexture(*pipeline, frame, colorTexture, 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, index);
+                renderer.bindTexture(*pipeline, frame, depthStencilTexture, 0, 2, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, index);
                 index++;
             }
 
             // fill remaining slots
             for (size_t i = index; i < 16 /* TODO: base on constant inside .json file*/ ; i++) {
-                renderer.bindTexture(*pipeline, frame, renderer.getVulkanDriver().getDefaultTexture(), 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, i);
+                renderer.unbindTexture(*pipeline, frame, 0, 1, i);
+                renderer.unbindTexture(*pipeline, frame, 0, 2, i);
             }
 
             index = 0;
@@ -155,6 +167,7 @@ namespace Carrot::Render {
                     float bottom;
                     float depth;
                     std::uint32_t texIndex;
+                    std::uint32_t discardWhereDepthIsUnwritten;
                 };
 
                 Region r = {
@@ -164,6 +177,7 @@ namespace Carrot::Render {
                     .bottom = e.bottom,
                     .depth = e.depth,
                     .texIndex = index,
+                    .discardWhereDepthIsUnwritten = e.discardWhereDepthIsUnwritten,
                 };
                 renderer.pushConstantBlock("region", *pipeline, frame, vk::ShaderStageFlagBits::eVertex, cmds, r);
 
