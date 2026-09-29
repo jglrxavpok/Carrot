@@ -25,6 +25,7 @@ VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
     InstanceData instance = input.instance;
 
     const float4x4 modelview = camera.CurrentFrame().view * instance.transform;
+    const float3 worldPos = (instance.transform * vertex.getPos()).xyz;
     const float4x4 previousFrameModelview = camera.PreviousFrame().view * instance.lastFrameTransform;
     const float4 viewPosition = modelview * vertex.getPos();
     const float4 previousFrameViewPosition = previousFrameModelview * vertex.getPos();
@@ -51,6 +52,8 @@ VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
     out.inModelview = modelview;
 
     out.drawID = drawID;
+
+    out.clipDistances[0] = camera.CurrentFrame().getClippingDistance(worldPos);
 
     return out;
 }

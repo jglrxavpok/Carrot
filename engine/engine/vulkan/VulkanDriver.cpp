@@ -585,6 +585,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                             .shaderSampledImageArrayDynamicIndexing = true,
                             .shaderStorageBufferArrayDynamicIndexing = true,
                             .shaderStorageImageArrayDynamicIndexing = true,
+                            .shaderClipDistance = true,
                             .shaderFloat64 = true,
                             .shaderInt64 = true,
                             .shaderInt16 = true,

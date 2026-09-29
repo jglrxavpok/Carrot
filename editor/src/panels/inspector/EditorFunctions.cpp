@@ -363,6 +363,8 @@ namespace Peeler {
         registerFunction(inspector, editParticleEmitterComponent);
         registerFunction(inspector, editUICanvasComponent);
         registerFunction(inspector, editUIBoxComponent);
+
+        registerFunction(inspector, editPortalComponent);
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
@@ -381,5 +383,10 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::ParticleEmitterComponent::getID(), ICON_FA_STAR "  ParticleEmitter");
         inspector.registerComponentDisplayName(Carrot::UI::UICanvasComponent::getID(), ICON_FA_IMAGE_PORTRAIT "  UICanvas");
         inspector.registerComponentDisplayName(Carrot::UI::UIBoxComponent::getID(), ICON_FA_RECTANGLE_AD "  UIBox");
+    }
+
+    void editPortalComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PortalComponent*>& components) {
+        multiEditField(edition, "Other Portal", components,
+            +[](Carrot::ECS::PortalComponent& c) -> Carrot::ECS::Entity& { return c.otherPortal; });
     }
 }

@@ -18,6 +18,8 @@ public struct VSGBufferOutput {
     public nointerpolation int drawID;
 
     public vec4 svPos: SV_Position;
+
+    public float clipDistances[1] : SV_ClipDistance;
 }
 
 // Intended to be used in a ParameterBlock<>

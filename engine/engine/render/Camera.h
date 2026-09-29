@@ -52,6 +52,11 @@ namespace Carrot {
     public:
         bool isInFrustum(const Math::Sphere& sphere) const;
 
+        /// Cameras can define an additional clipping plane to clip primitive based on the signed distance to the plane
+        void setWorldSpaceClippingPlane(std::optional<Math::Plane> plane);
+
+        const std::optional<Math::Plane>& getWorldSpaceClippingPlane() const;
+
     public:
         glm::vec3& getTargetRef();
         glm::vec3& getPositionRef();
@@ -75,6 +80,7 @@ namespace Carrot {
         glm::vec3 up{};
         glm::vec3 position{};
         glm::vec3 target{};
+        std::optional<Math::Plane> additionalWorldSpaceClippingPlane;
 
         std::array<Math::Plane, 6> frustum;
     };

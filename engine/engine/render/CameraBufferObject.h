@@ -36,6 +36,10 @@ namespace Carrot {
         alignas(16) std::array<Carrot::Math::Plane, 6> frustum;
 
         alignas(16) glm::vec2 jitter{0.0f};
+        u32 hasAdditionalClippingPlane = 0; // != 0 = true
+
+        /// Clipping plane, only used if hasAdditionalClippingPlane is not zero. Defined in world space
+        alignas(16) Math::Plane additionalClippingPlane{};
 
         void update(Camera& camera, const Render::Context& renderContext);
     };

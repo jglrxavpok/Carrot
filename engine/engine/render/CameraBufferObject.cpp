@@ -45,5 +45,13 @@ namespace Carrot {
         for (int i = 0; i < 6; ++i) {
             frustum[i] = camera.getFrustumPlane(i);
         }
+
+        const std::optional<Math::Plane>& cameraAdditionalClippingPlane = camera.getWorldSpaceClippingPlane();
+        if (cameraAdditionalClippingPlane.has_value()) {
+            hasAdditionalClippingPlane = 1;
+            additionalClippingPlane = cameraAdditionalClippingPlane.value();
+        } else {
+            hasAdditionalClippingPlane = 0;
+        }
     }
 }

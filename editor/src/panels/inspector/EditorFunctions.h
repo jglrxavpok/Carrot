@@ -13,6 +13,7 @@
 #include <engine/ecs/Prefab.h>
 #include <engine/edition/DragDropTypes.h>
 #include <engine/Engine.h>
+#include <engine/ecs/components/demo/PortalComponent.h>
 
 namespace Carrot::ECS {
     class CSharpLogicSystem;
@@ -795,6 +796,8 @@ namespace Peeler {
 
     void editCSharpComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components);
     void editCSharpSystem(EditContext& edition, Carrot::ECS::CSharpLogicSystem& system);
+
+    void editPortalComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PortalComponent*>& components);
 
     namespace Helpers {
         /**

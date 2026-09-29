@@ -147,5 +147,13 @@ namespace Carrot {
         return true;
     }
 
+    void Camera::setWorldSpaceClippingPlane(std::optional<Math::Plane> plane) {
+        additionalWorldSpaceClippingPlane = std::move(plane);
+    }
+
+    const std::optional<Math::Plane>& Camera::getWorldSpaceClippingPlane() const {
+        return additionalWorldSpaceClippingPlane;
+    }
+
     Camera& Camera::operator=(const Camera& toCopy) = default;
 }
