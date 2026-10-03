@@ -35,13 +35,11 @@ namespace Carrot::Render {
     }
 
     Carrot::Camera& Viewport::getCamera(Carrot::Render::Eye eye) {
-        return cameras[eye];
+        return cameras[static_cast<i32>(eye)];
     }
 
     const Carrot::Camera& Viewport::getCamera(Carrot::Render::Eye eye) const {
-        auto it = cameras.find(eye);
-        verify(it != cameras.end(), "Camera does not exist");
-        return it->second;
+        return cameras[static_cast<i32>(eye)];
     }
 
     void Viewport::onSwapchainImageCountChange(size_t newCount) {

@@ -53,18 +53,21 @@ namespace Carrot {
         Render::ViewportLocation& getViewportLocation(const Identifier& viewportID);
 
         /// Modifies count, location, and ids of viewports used by game
-        /// Returns the texture in which the game will be rendered
-        Carrot::Render::FrameResource updateViewportComposition(Render::ViewportComposition&& composition);
+        /// Use onCompositionFinalized to get the color output
+        void updateViewportComposition(Render::ViewportComposition&& composition);
 
         /// Allows game to select in which viewport it will be rendered
-        /// Returns the texture in which the game will be rendered
-        Carrot::Render::FrameResource setGameViewport(const Identifier& gameViewportID);
+        /// Use onCompositionFinalized to get the color output
+        void setGameViewport(const Identifier& gameViewportID);
 
         /// Called after the game viewport has changed size, to allow subviewports to be resized
         void onGameViewportSizeChanged(u32 w, u32 h);
 
         /// Does the game have multiple viewports?
         bool hasMultipleGameViewports() const;
+
+        /// Called when viewport composition is finished, to tell game about final texture
+        virtual void onCompositionFinalized(const Carrot::Render::FrameResource& colorOutput) {};
 
     protected:
         Carrot::Render::ViewportComposition currentComposition; // stored without render graphs, they are moved inside the viewports

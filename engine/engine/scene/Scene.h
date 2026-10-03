@@ -32,6 +32,7 @@ namespace Carrot {
         void tick(double frameTime);
         void prePhysics();
         void postPhysics();
+        void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
 
     public:

@@ -266,6 +266,8 @@ namespace Peeler {
 
         bool isGameViewportFocused() const;
 
+        void onCompositionFinalized(const Carrot::Render::FrameResource& colorOutput) override;
+
     private:
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture pauseButtonIcon;

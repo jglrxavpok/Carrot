@@ -68,6 +68,7 @@ namespace Carrot::ECS {
         void prePhysics();
         void postPhysics();
         void setupCamera(Carrot::Render::Context renderContext);
+        void beginFrame(const Carrot::Render::Context& mainRenderContext);
         void onFrame(Carrot::Render::Context renderContext);
 
         Entity newEntity(std::string_view name = "<unnamed>");

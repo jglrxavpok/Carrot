@@ -115,7 +115,7 @@ namespace Carrot::Render {
             for(const auto& r : regions) {
                 data.elements.emplace_back(r);
                 data.elements.back().toDraw.colorOutput = builder.read(r.toDraw.colorOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.elements.back().toDraw.depthStencil = builder.read(r.toDraw.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.elements.back().toDraw.depthStencil = builder.read(r.toDraw.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
                 data.elements.back().discardWhereDepthIsUnwritten = r.discardWhereDepthIsUnwritten;
             }
             data.color = builder.createRenderTarget("Composed color",

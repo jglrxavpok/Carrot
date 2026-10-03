@@ -5,7 +5,7 @@
 #include <engine/CarrotGame.h>
 #include <engine/Engine.h>
 
-Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Render::ViewportComposition&& composition) {
+void Carrot::CarrotGame::updateViewportComposition(Render::ViewportComposition&& composition) {
     verify(!GetConfiguration().runInVR, "Multi viewport not supported in VR");
 
     Render::Composer& composer = engine.getMainComposer();
@@ -13,6 +13,8 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
 
     const i32 windowWidth = static_cast<i32>(engine.getGameViewport().getSizef().x);
     const i32 windowHeight = static_cast<i32>(engine.getGameViewport().getSizef().y);
+
+    currentComposition.copyViewportPositions(composition);
 
     Carrot::Vector<Pair<Carrot::Identifier, Render::ViewportLocation>> sortedViewports;
     for (auto& [id, location] : composition.viewports) {
@@ -47,6 +49,7 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
         Render::ViewportFrameResources viewportTextures = location.viewportTexturesExtractor(*location.renderGraph);
         viewport.setScene(&engine.getSceneManager().getMainScene());
         viewport.setRenderGraph(std::move(location.renderGraph));
+        viewport.renderingOrder = location.renderingOrder;
 
         // need to be after render graph, to tell render graph about new size
         glm::ivec2 viewportSize = location.size * glm::vec2{windowWidth, windowHeight};
@@ -60,14 +63,14 @@ Carrot::Render::FrameResource Carrot::CarrotGame::updateViewportComposition(Rend
         composer.add(viewportTextures, left, right, top, bottom, location.z, location.discardIfDepthNotWritten);
     }
 
-    currentComposition.copyViewportPositions(composition);
-    return engine.updateGameViewportRenderGraph();
+    Carrot::Render::FrameResource outputColor = engine.updateGameViewportRenderGraph();
+    onCompositionFinalized(outputColor);
 }
 
-Carrot::Render::FrameResource Carrot::CarrotGame::setGameViewport(const Identifier& gameViewportID) {
+void Carrot::CarrotGame::setGameViewport(const Identifier& gameViewportID) {
     Render::Viewport& gameViewport = engine.getOrCreateViewport(gameViewportID);
     engine.setGameViewport(gameViewport);
-    return engine.updateGameViewportRenderGraph();
+    engine.updateGameViewportRenderGraph();
 }
 
 bool Carrot::CarrotGame::hasMultipleGameViewports() const {

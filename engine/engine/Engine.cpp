@@ -1087,6 +1087,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         assetServer.beginFrame(mainRenderContext);
         resourceAllocator->beginFrame(mainRenderContext);
         renderer.beginFrame(mainRenderContext);
+        sceneManager.getMainScene().beginFrame(mainRenderContext);
         GetTaskScheduler().executeRendering();
 
         auto onFrame = [&](Carrot::Render::Viewport& v) {

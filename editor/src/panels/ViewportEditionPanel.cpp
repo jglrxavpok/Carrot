@@ -459,7 +459,7 @@ If set to a valid viewport name, the current viewport will have a copy of the st
             if (compositionRefresh.has_value()) {
                 Carrot::Render::ViewportComposition copy;
                 copy.copyViewportPositions(compositions[compositionRefresh.value()].second);
-                app.gameTexture = app.updateViewportComposition(std::move(copy));
+                app.updateViewportComposition(std::move(copy));
                 compositionRefresh.reset();
             }
         }

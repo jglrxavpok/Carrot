@@ -30,6 +30,10 @@ namespace Carrot::ECS {
         [[nodiscard]] const Signature& getSignature() const;
         std::span<const Entity> getEntities() const;
 
+        /// Setups the rendering for the entire frame. Called once per frame, with the render context used for the main viewport
+        /// Called before all 'onFrame' and rendering
+        virtual void beginFrame(const Carrot::Render::Context& mainRenderContext) {};
+
         virtual void onFrame(const Carrot::Render::Context& renderContext) = 0;
         virtual void setupCamera(Carrot::Render::Context renderContext) {};
         virtual void firstTick() {};
@@ -93,6 +97,7 @@ namespace Carrot::ECS {
         std::vector<EntityWithComponents> entitiesWithComponents;
 
         virtual void onEntityAdded(Entity& entity) {};
+        virtual void onEntityRemoved(Entity& entity) {};
 
     private:
 

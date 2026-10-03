@@ -45,7 +45,10 @@ namespace Carrot::ECS {
             std::size_t removedCount = std::erase_if(entities, [&](const Entity& entity) {
                 return entity.operator EntityID() == e;
             });
-            changed |= removedCount > 0;
+            if (removedCount > 0) {
+                onEntityRemoved(obj);
+                changed = true;
+            }
         }
 
         if(changed) {
@@ -62,7 +65,10 @@ namespace Carrot::ECS {
                 std::size_t removedCount = std::erase_if(entities, [&](const Entity& entity) {
                     return entity.operator EntityID() == e;
                 });
-                changed |= removedCount > 0;
+                if (removedCount > 0) {
+                    onEntityRemoved(obj);
+                    changed = true;
+                }
             } else if((world.getSignature(obj) & getSignature()) == getSignature()) {
                 auto it = std::find_if(entities.begin(), entities.end(), [&](const Entity& entity) {
                     return entity.operator EntityID() == e;

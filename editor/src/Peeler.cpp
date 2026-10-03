@@ -73,7 +73,7 @@ namespace Peeler {
 
     void Application::setupCamera(const Carrot::Render::Context& renderContext) {
         /*if(renderContext.pViewport->getViewportID() == GameViewportID) */{
-            if(renderContext.pViewport->getViewportID() != Carrot::Identifier{"portal1"}) // let game decide
+            if(!std::string_view(renderContext.pViewport->getViewportID()).starts_with("portal")) // let game decide
             switch (currentCameraType) {
                 case CameraType::FreeCam:
                     freeCameraController.applyTo(gameViewport.getSizef(), /*gameViewport.getCamera()*/renderContext.pViewport->getCamera());
@@ -88,7 +88,7 @@ namespace Peeler {
 
             // override any primary camera the game might have
             if(!isPlaying) {
-                if(renderContext.pViewport->getViewportID() == Carrot::Identifier{"portal1"}) // let game decide
+                if(std::string_view(renderContext.pViewport->getViewportID()).starts_with("portal")) // let game decide
                     return;
                 switch (currentCameraType) {
                     case CameraType::FreeCam:
@@ -2599,5 +2599,9 @@ namespace Peeler {
         }
 
         focusWasPressed =focusCameraOnEntities.isPressed();
+    }
+
+    void Application::onCompositionFinalized(const Carrot::Render::FrameResource& colorOutput) {
+        gameTexture = colorOutput;
     }
 }

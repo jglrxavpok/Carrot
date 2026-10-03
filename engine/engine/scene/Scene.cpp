@@ -42,6 +42,10 @@ namespace Carrot {
         world.setupCamera(renderContext);
     }
 
+    void Scene::beginFrame(const Carrot::Render::Context& mainRenderContext) {
+        world.beginFrame(mainRenderContext);
+    }
+
     void Scene::onFrame(const Carrot::Render::Context& renderContext) {
         world.onFrame(renderContext);
     }

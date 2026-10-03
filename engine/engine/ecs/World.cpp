@@ -381,6 +381,28 @@ namespace Carrot::ECS {
         }
     }
 
+    void World::beginFrame(const Carrot::Render::Context& renderContext) {
+        ZoneScoped;
+        updateEntityLists();
+        {
+            ZoneScopedN("Logic");
+            for(const auto& logic : logicSystems) {
+                ZoneScopedN("LogicSystem");
+                ZoneText(typeid(*logic).name(), std::strlen(typeid(*logic).name()));
+                logic->beginFrame(renderContext);
+            }
+        }
+
+        {
+            ZoneScopedN("Prepare render");
+            for(const auto& render : renderSystems) {
+                ZoneScopedN("RenderSystem");
+                ZoneText(typeid(*render).name(), std::strlen(typeid(*render).name()));
+                render->beginFrame(renderContext);
+            }
+        }
+    }
+
     void World::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
 

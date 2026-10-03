@@ -108,7 +108,7 @@ namespace Carrot::Render {
         std::uint32_t height = 100;
         glm::vec2 offset{0.0f};
 
-        std::unordered_map<Render::Eye, Camera> cameras{};
+        std::array<Camera, static_cast<i32>(Render::Eye::Count)> cameras;
 
         Vector<Carrot::BufferView> cameraUniformBuffers;
         Vector<vk::DescriptorSet> cameraDescriptorSets;

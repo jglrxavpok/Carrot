@@ -107,6 +107,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                graph.reuseResourceAcrossFrames(data.metallicRoughnessVelocityXY, 1);
                graph.reuseResourceAcrossFrames(data.emissive, 1);
                graph.reuseResourceAcrossFrames(data.depthStencil, 1);
+
+               // can be copied if a viewport requests to inherit the buffer from another viewport
+               renderer.getEngine().getResourceRepository().getTextureUsages(data.depthStencil.rootID) |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
            },
            [](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& cmds){
                ZoneScopedN("CPU RenderGraph setup-gbuffer");

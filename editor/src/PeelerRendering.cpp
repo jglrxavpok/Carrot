@@ -9,7 +9,7 @@ using namespace Carrot::Render;
 
 namespace Peeler {
     void Application::setupGameViewport() {
-        gameTexture = setGameViewport(gameViewport.getViewportID());
+        setGameViewport(gameViewport.getViewportID());
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
         gameViewport.renderingOrder = 9999999;
     }
