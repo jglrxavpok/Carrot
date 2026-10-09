@@ -48,5 +48,8 @@ std::size_t std::hash<Carrot::Render::StencilSettings>::operator()(const Carrot:
     Carrot::hash_combine(h, robin_hood::hash_int(settings.stencilValue));
     Carrot::hash_combine(h, robin_hood::hash_int(settings.stencilWrite));
     Carrot::hash_combine(h, robin_hood::hash_int(static_cast<uint64_t>(settings.stencilOperation)));
+    Carrot::hash_combine(h, std::hash<decltype(settings.incrementPerViewport)>{}(settings.incrementPerViewport));
+    Carrot::hash_combine(h, std::hash<decltype(settings.stencilValuePerViewport)>{}(settings.stencilValuePerViewport));
+    Carrot::hash_combine(h, std::hash<decltype(settings.stencilOperationPerViewport)>{}(settings.stencilOperationPerViewport));
     return h;
 }

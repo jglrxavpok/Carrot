@@ -15,24 +15,29 @@ namespace Carrot::ECS {
         if (!regenerateViewports)
             return;
 
+        Carrot::Identifier mainViewportID {"main"};
+
         regenerateViewports = false;
         portalViewportInfo.clear();
-        for (Carrot::ECS::EntityID entityID : entities) {
-            auto makeViewportIDFromEntryPortal = [](Carrot::ECS::EntityID entity) {
-                return Carrot::Identifier { Carrot::sprintf("portal %s", entity.toString().c_str()) };
-            };
+
+        auto makeViewportIDFromEntryPortal = [](Carrot::ECS::EntityID entity) {
+            return Carrot::Identifier { Carrot::sprintf("portal %s", entity.toString().c_str()) };
+        };
+        for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
+            Entity& entity = entities[portalIndex];
+            auto entityID = entity.getID();
+
+            entity.getComponent<ModelComponent>()->hiddenInViewports.clear();
+
             Carrot::Identifier id = makeViewportIDFromEntryPortal(entityID);
             Render::Viewport& viewport = GetEngine().getOrCreateViewport(id);
 
-            i32 portalIndex = portalViewportInfo.size();
             Render::StencilSettings viewportStencil{};
             viewportStencil.stencilEnabled = true;
             viewportStencil.stencilCompare = true;
-            viewportStencil.stencilValue = portalIndex+1;
+            viewportStencil.stencilValue = (portalIndex+1)*10;
             viewportStencil.stencilOperation = Render::StencilOperation::Equal;
             viewport.setStencilSettings(viewportStencil);
-
-            Carrot::ECS::Entity entity = world.wrap(entityID);
 
             ViewportInfo info {
                 .config = viewportStencil,
@@ -40,11 +45,22 @@ namespace Carrot::ECS {
             };
 
             portalViewportInfo[id] = info;
+        }
+
+        // TODO: use forEachEntity
+        for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
+            Entity& entity = entities[portalIndex];
+            auto entityID = entity.getID();
+            auto makeViewportIDFromEntryPortal = [](Carrot::ECS::EntityID entity) {
+                return Carrot::Identifier { Carrot::sprintf("portal %s", entity.toString().c_str()) };
+            };
+            Carrot::Identifier id = makeViewportIDFromEntryPortal(entityID);
+            Render::Viewport& viewport = GetEngine().getOrCreateViewport(id);
 
             // make exit portal invisible in viewport rendering the view from out of exit portal
             PortalComponent& portalComp = entity.getComponent<PortalComponent>();
             if (portalComp.otherPortal.exists()) {
-                portalComp.otherPortal.getComponent<ModelComponent>()->hiddenInViewports = {makeViewportIDFromEntryPortal(entityID)};
+                portalComp.otherPortal.getComponent<ModelComponent>()->hiddenInViewports.pushBack(makeViewportIDFromEntryPortal(entityID));
             }
 
             // setup model to write correct value to stencil buffer
@@ -64,10 +80,29 @@ namespace Carrot::ECS {
                 modelComp.modelRenderer = cloneRenderer(modelComp);
                 std::size_t staticMeshCount = modelComp.modelRenderer ? modelComp.modelRenderer->getModel().getStaticMeshes().size() : modelComp.modelResource->getStaticMeshes().size();
 
-                Render::StencilSettings meshStencil = viewportStencil;
-                meshStencil.stencilCompare = false;
+                Render::StencilSettings meshStencil;
+                meshStencil.stencilEnabled = true;
                 meshStencil.stencilWrite = true;
-                meshStencil.stencilOperation = Render::StencilOperation::AlwaysPass;
+                meshStencil.stencilValuePerViewport.emplace();
+                meshStencil.stencilOperationPerViewport.emplace();
+                meshStencil.incrementPerViewport.emplace();
+                meshStencil.stencilComparePerViewport.emplace();
+
+                // in main viewport, always render portal with a fixed value
+                (*meshStencil.stencilValuePerViewport)[mainViewportID] = (portalIndex+1)*10;
+                (*meshStencil.stencilOperationPerViewport)[mainViewportID] = Render::StencilOperation::AlwaysPass;
+                (*meshStencil.incrementPerViewport)[mainViewportID] = false;
+                (*meshStencil.stencilComparePerViewport)[mainViewportID] = false;
+
+                // in portal viewports, render only if value matches with "viewport stencil", and increment once (to setup for recursive rendering)
+                for (i32 otherPortalIndex = 0; otherPortalIndex < entities.size(); otherPortalIndex++) {
+                    const Carrot::Identifier otherViewportID = makeViewportIDFromEntryPortal(entities[otherPortalIndex]);
+                    (*meshStencil.stencilValuePerViewport)[otherViewportID] = portalViewportInfo[otherViewportID].config.stencilValue;
+                    (*meshStencil.stencilOperationPerViewport)[otherViewportID] = Render::StencilOperation::Equal;
+                    (*meshStencil.incrementPerViewport)[otherViewportID] = true;
+                    (*meshStencil.stencilComparePerViewport)[otherViewportID] = true;
+                }
+
                 for(std::size_t i = 0; i < staticMeshCount; i++) {
                     Carrot::Render::MaterialOverride* pExistingOverride = modelComp.modelRenderer->getOverrides().findForMesh(i);
                     if(pExistingOverride) {
@@ -85,7 +120,6 @@ namespace Carrot::ECS {
         }
 
         Render::ViewportComposition composition;
-        Carrot::Identifier mainViewportID {"main"};
         Render::ViewportLocation& main = composition.viewports[mainViewportID];
         main.stencil.emplace();
         main.stencil->stencilEnabled = true;

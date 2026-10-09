@@ -3,16 +3,17 @@
 //
 
 #pragma once
+#include <engine/ecs/components/ModelComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/demo/PortalComponent.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/render/Composer.h>
 
 namespace Carrot::ECS {
-    class PortalRenderSystem: public RenderSystem<TransformComponent, PortalComponent>, public Identifiable<PortalRenderSystem> {
+    class PortalRenderSystem: public RenderSystem<TransformComponent, PortalComponent, ModelComponent>, public Identifiable<PortalRenderSystem> {
     public:
         explicit PortalRenderSystem(World& world)
-            : RenderSystem<TransformComponent, PortalComponent>(world) {}
+            : RenderSystem<TransformComponent, PortalComponent, ModelComponent>(world) {}
 
         PortalRenderSystem(const Carrot::DocumentElement& doc, World& world)
             : PortalRenderSystem(world) {}

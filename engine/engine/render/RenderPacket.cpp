@@ -204,8 +204,22 @@ namespace Carrot::Render {
 
                     if (settings.has_value()) {
                         cmds.setStencilTestEnable(settings->stencilEnabled);
-                        cmds.setStencilReference(vk::StencilFaceFlagBits::eFrontAndBack, settings->stencilValue);
-                        if (settings->stencilCompare) {
+
+                        u8 stencilReference = settings->stencilValue;
+                        if (settings->stencilValuePerViewport.has_value()) {
+                            if (const auto iter = settings->stencilValuePerViewport->find(renderContext.pViewport->getViewportID()); iter != settings->stencilValuePerViewport->end()) {
+                                stencilReference = iter->second;
+                            }
+                        }
+                        cmds.setStencilReference(vk::StencilFaceFlagBits::eFrontAndBack, stencilReference);
+
+                        bool compare = settings->stencilCompare;
+                        if (settings->stencilComparePerViewport.has_value()) {
+                            if (const auto iter = settings->stencilComparePerViewport->find(renderContext.pViewport->getViewportID()); iter != settings->stencilComparePerViewport->end()) {
+                                compare = iter->second;
+                            }
+                        }
+                        if (compare) {
                             cmds.setStencilCompareMask(vk::StencilFaceFlagBits::eFrontAndBack, 0xFF);
                         } else {
                             cmds.setStencilCompareMask(vk::StencilFaceFlagBits::eFrontAndBack, 0x00);
@@ -216,8 +230,15 @@ namespace Carrot::Render {
                             cmds.setStencilWriteMask(vk::StencilFaceFlagBits::eFrontAndBack, 0x00);
                         }
 
+                        StencilOperation stencilOp = settings->stencilOperation;
                         vk::CompareOp compareOp = vk::CompareOp::eAlways;
-                        switch (settings->stencilOperation) {
+                        if (settings->stencilOperationPerViewport.has_value()) {
+                            if (const auto iter = settings->stencilOperationPerViewport->find(renderContext.pViewport->getViewportID()); iter != settings->stencilOperationPerViewport->end()) {
+                                stencilOp = iter->second;
+                            }
+                        }
+
+                        switch (stencilOp) {
                             case StencilOperation::AlwaysPass:
                                 compareOp = vk::CompareOp::eAlways;
                                 break;
@@ -228,7 +249,15 @@ namespace Carrot::Render {
                         }
 
                         if (settings->stencilWrite) {
-                            cmds.setStencilOp(vk::StencilFaceFlagBits::eFrontAndBack, vk::StencilOp::eKeep, vk::StencilOp::eReplace, vk::StencilOp::eKeep, compareOp);
+                            vk::StencilOp passOp = vk::StencilOp::eReplace;
+                            if (settings->incrementPerViewport.has_value()) {
+                                if (const auto iter = settings->incrementPerViewport->find(renderContext.pViewport->getViewportID()); iter != settings->incrementPerViewport->end()) {
+                                    if (iter->second) {
+                                        passOp = vk::StencilOp::eIncrementAndClamp;
+                                    }
+                                }
+                            }
+                            cmds.setStencilOp(vk::StencilFaceFlagBits::eFrontAndBack, vk::StencilOp::eKeep, passOp, vk::StencilOp::eKeep, compareOp);
                         } else {
                             cmds.setStencilOp(vk::StencilFaceFlagBits::eFrontAndBack, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, compareOp);
                         }

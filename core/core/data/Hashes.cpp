@@ -6,7 +6,7 @@
 #include <robin_hood.h>
 
 namespace Carrot {
-    void hash_combine(std::size_t& seed, const std::size_t& v) {
+    void hash_combine(std::size_t& seed, const std::size_t& v) noexcept {
         seed ^= robin_hood::hash_int(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
     }
 }
