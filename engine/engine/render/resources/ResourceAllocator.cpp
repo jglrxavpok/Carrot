@@ -11,6 +11,7 @@
 
 static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1GiB, no particular reason for this exact value
 static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", false);
+static Carrot::RuntimeOption ForceDedicatedBuffers("Debug/Force dedicated buffers", false); // TODO: push with false
 
 namespace Carrot {
     ResourceAllocator::ResourceAllocator(VulkanDriver& device): device(device) {
@@ -303,7 +304,7 @@ namespace Carrot {
                                                        void* virtualBlock,
                                                        Carrot::Buffer& heapStorage,
                                                        std::function<BufferAllocation(vk::DeviceSize)> makeDedicated) {
-        if(allocInfo.size > HeapSize) {
+        if(allocInfo.size > HeapSize || ForceDedicatedBuffers) {
             // TODO: support for multiple heaps?
             return makeDedicated(allocInfo.size);
         }

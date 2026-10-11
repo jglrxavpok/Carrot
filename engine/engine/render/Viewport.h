@@ -43,6 +43,11 @@ namespace Carrot::Render {
         //! Use Engine::sortViewports() to update the order based on this value
         i32 renderingOrder = 0;
 
+        //! Is this viewport enabled for rendering?
+        //! By default set to true.
+        //! When set to false, no rendering will be done for the viewport. This means no calls to onFrame, nor to the render graph
+        bool enabled = true;
+
     public: // camera
         Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR);
         const Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR) const;

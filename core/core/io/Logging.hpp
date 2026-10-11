@@ -53,6 +53,8 @@ namespace Carrot::Log {
     std::list<Message>& getMessages();
     const std::chrono::system_clock::time_point& getStartTime();
 
+    void setFrameNumber(u64 frameNumber);
+
     inline const char* getSeverityString(Severity severity) {
         switch (severity) {
             case Severity::Debug:

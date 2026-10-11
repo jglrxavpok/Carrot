@@ -121,7 +121,7 @@ namespace Carrot {
     public:
         using DeferredCarrotBufferDestruction = DeferredDestruction<Carrot::Buffer*>;
 
-        static constexpr std::uint32_t MaxCameras = 20; // used to determine descriptor set pool size
+        static constexpr std::uint32_t MaxCameras = 40; // used to determine descriptor set pool size, needs at least one per viewport
         static constexpr std::uint32_t MaxViewports = 32; // used to determine descriptor set pool size
         static constexpr double BlinkDuration = 0.100f;
 

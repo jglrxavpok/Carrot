@@ -395,6 +395,7 @@ void Carrot::Engine::run() {
     bool ticked = false;
     while(running) {
         ScopedMarker("Frame");
+        Carrot::Log::setFrameNumber(renderer.getFrameCount());
 #if USE_LIVEPP
         if (optLPPAgent.has_value() && optLPPAgent->WantsReload(lpp::LPP_RELOAD_OPTION_SYNCHRONIZE_WITH_RELOAD)) {
             optLPPAgent->Reload(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
@@ -820,6 +821,9 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                 ZoneScopedN("Render single viewport");
                 GPUZone(tracyCtx[frameIndex], mainCommandBuffers[frameIndex], "Render single viewport");
 
+                if (!viewport.enabled)
+                    return;
+
                 std::string profilingMarker = Carrot::sprintf("Viewport %s", std::string(viewport.getViewportID()).c_str());
                 ZoneText(profilingMarker.c_str(), profilingMarker.size());
 
@@ -1092,6 +1096,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         auto onFrame = [&](Carrot::Render::Viewport& v) {
             ZoneScoped;
+            if (!v.enabled)
+                return;
             std::string profilingMarker = Carrot::sprintf("Viewport %s", std::string(v.getViewportID()).c_str());
             ZoneText(profilingMarker.c_str(), profilingMarker.size());
             Carrot::Render::Context renderContext = newRenderContext(currentFrame, imageIndex, v);

@@ -6,8 +6,11 @@
 #include "engine/utils/Macros.h"
 #include "engine/Engine.h"
 #include <core/io/Logging.hpp>
+#include <engine/console/RuntimeOption.hpp>
 
 static constexpr bool VerboseOutput = false;
+static Carrot::RuntimeOption LogGPUAllocations{"Debug/Log GPU Allocations", true};
+static Carrot::RuntimeOption LogGPUAllocationsWithCallstack{"Debug/Log GPU Allocations", true}; // TODO: push with false
 
 namespace Carrot {
     std::atomic<std::size_t> DeviceMemory::TotalMemoryUsed = 0;
@@ -26,6 +29,13 @@ namespace Carrot {
 
         size = allocInfo.allocationSize;
         vkMemory = GetVulkanDriver().getLogicalDevice().allocateMemory(allocInfo, GetEngine().getAllocator());
+        if (LogGPUAllocations) {
+            if (LogGPUAllocationsWithCallstack) {
+                TracyAllocNS(vkMemory, size, 20, "GPU");
+            } else {
+                TracyAllocN(vkMemory, size, "GPU");
+            }
+        }
 
         TotalMemoryUsed += size;
         MemoryUsedByLocation.getOrCompute(sourceLocation, []() { return 0; }) += size;
@@ -59,6 +69,13 @@ namespace Carrot {
 
     void DeviceMemory::free() {
         if(vkMemory) {
+            if (LogGPUAllocations) {
+                if (LogGPUAllocationsWithCallstack) {
+                    TracyFreeNS(vkMemory, 20, "GPU");
+                } else {
+                    TracyFreeN(vkMemory, "GPU");
+                }
+            }
             GetEngine().getLogicalDevice().freeMemory(vkMemory, GetEngine().getAllocator());
             vkMemory = nullptr;
         }

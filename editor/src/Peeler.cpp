@@ -1214,6 +1214,7 @@ namespace Peeler {
             WaitDeviceIdle();
             GetRenderer().waitForRenderToComplete();
             gameViewport.resize(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
+            GetVulkanDriver().executeDeferredDestructionsNow();
         }
     }
 

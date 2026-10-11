@@ -593,7 +593,7 @@ namespace Carrot::Render {
             [bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "fill surface cache");
 
-                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/fill-surface-cache", (std::uint64_t)&pass);
+                auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("lighting/gi/fill-surface-cache", pass);
 
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, true, data, pass.getGraph(), frame, *pipeline, cmds);
