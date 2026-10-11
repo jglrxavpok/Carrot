@@ -10,7 +10,7 @@
 
 static constexpr bool VerboseOutput = false;
 static Carrot::RuntimeOption LogGPUAllocations{"Debug/Log GPU Allocations", true};
-static Carrot::RuntimeOption LogGPUAllocationsWithCallstack{"Debug/Log GPU Allocations", true}; // TODO: push with false
+static Carrot::RuntimeOption LogGPUAllocationsWithCallstack{"Debug/Log GPU Allocation callstacks", false};
 
 namespace Carrot {
     std::atomic<std::size_t> DeviceMemory::TotalMemoryUsed = 0;
