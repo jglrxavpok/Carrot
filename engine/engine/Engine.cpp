@@ -1805,6 +1805,16 @@ Carrot::Render::Viewport& Carrot::Engine::getOrCreateViewport(const Identifier& 
     return createViewport(mainWindow, viewportID);
 }
 
+Carrot::Memory::OptionalRef<Carrot::Render::Viewport> Carrot::Engine::getViewport(const Identifier& viewportID) {
+    for (Render::Viewport& viewport : viewports) {
+        if (viewport.getViewportID() == viewportID) {
+            return viewport;
+        }
+    }
+
+    return {};
+}
+
 void Carrot::Engine::sortViewports() {
     sortedViewports.sort([](const Render::Viewport* pA, const Render::Viewport* pB) {
         return pA->renderingOrder < pB->renderingOrder;

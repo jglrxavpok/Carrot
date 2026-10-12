@@ -145,6 +145,13 @@ namespace Carrot::ECS {
             portalView.z = 0;
             portalView.renderingOrder = info.config.stencilValue; // reuse it as it is already increasing
             portalView.discardIfDepthNotWritten = true;
+            portalView.renderingCondition = [id] {
+                Memory::OptionalRef<Render::Viewport> viewportRef = GetEngine().getViewport(id);
+                if (viewportRef.hasValue()) {
+                    return viewportRef->enabled;
+                }
+                return false;
+            };
         }
 
         GetEngine().getGame()->updateViewportComposition(std::move(composition));

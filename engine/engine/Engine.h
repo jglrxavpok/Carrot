@@ -259,6 +259,7 @@ namespace Carrot {
         Render::Viewport& createViewport(Window& window, const Identifier& viewportID);
         void destroyViewport(Render::Viewport& viewport);
         Render::Viewport& getOrCreateViewport(const Identifier& viewportID);
+        Carrot::Memory::OptionalRef<Carrot::Render::Viewport> getViewport(const Identifier& viewportID);
         void sortViewports();
 
         /// Sets up the render graph of the game viewport (set via CarrotGame::setGameViewport - by default Main viewport) to compose the different game viewports inside it

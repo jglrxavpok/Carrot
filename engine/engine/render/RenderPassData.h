@@ -231,10 +231,11 @@ namespace Carrot::Render {
             float depth = 0.0f;
             bool discardWhereDepthIsUnwritten = false; // If depth was not written to for the result to compose, discard pixel. Can allow to "cut through" the color texture
             ViewportFrameResources toDraw;
+            std::function<bool()> renderingCondition;
         };
 
         struct Composer {
-            std::vector<ComposerRegion> elements;
+            Carrot::Vector<ComposerRegion> elements;
             FrameResource depthStencil;
             FrameResource color;
         };

@@ -60,7 +60,7 @@ void Carrot::CarrotGame::updateViewportComposition(Render::ViewportComposition&&
         const float right = (location.offset.x + location.size.x) * 2 - 1;
         const float top = (location.offset.y + location.size.y) * 2 - 1;
         const float bottom = location.offset.y * 2 - 1;
-        composer.add(viewportTextures, left, right, top, bottom, location.z, location.discardIfDepthNotWritten);
+        composer.add(viewportTextures, left, right, top, bottom, location.z, location.discardIfDepthNotWritten, location.renderingCondition);
     }
 
     Carrot::Render::FrameResource outputColor = engine.updateGameViewportRenderGraph();

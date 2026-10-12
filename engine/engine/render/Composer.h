@@ -22,6 +22,8 @@ namespace Carrot::Render {
         std::optional<Carrot::Identifier> inheritDepthStencil; // inherit the depth stencil from another viewport
         bool discardIfDepthNotWritten = false;
 
+        std::function<bool()> renderingCondition; // condition to check before rendering the viewport to the final composition viewport. If left empty, considered to be always true
+
         // function to extract the final texture for this viewport, which will be used for the final composition. If renderGraph is set to empty, will be ignored, and default engine's render graph will be used to find the resource
         std::function<Render::ViewportFrameResources(Graph&)> viewportTexturesExtractor;
     };
@@ -48,7 +50,7 @@ namespace Carrot::Render {
         Composer(VulkanDriver& driver): driver(driver) {};
 
         /// Adds a texture/depth stencil pair to render. Coordinates are expressed in the NDC (Normalized device coordinate) system
-        PassData::ComposerRegion& add(const ViewportFrameResources& toDraw, float left = -1.0f, float right = 1.0f, float top = 1.0f, float bottom = -1.0f, float z = 0.0f, bool discardIfDepthNotWritten = false);
+        PassData::ComposerRegion& add(const ViewportFrameResources& toDraw, float left = -1.0f, float right = 1.0f, float top = 1.0f, float bottom = -1.0f, float z = 0.0f, bool discardIfDepthNotWritten = false, std::function<bool()> renderingCondition = {});
 
         /// Does this composer have anything to render?
         bool hasRegions() const;
