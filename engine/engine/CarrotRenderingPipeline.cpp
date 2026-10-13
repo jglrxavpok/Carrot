@@ -120,8 +120,8 @@ Carrot::Render::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Car
                     data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
 
                     pipeline->bind(pass, frame, buffer, vk::PipelineBindPoint::eCompute);
-                    const u32 groupX = Carrot::Math::alignUp(currentFrameColor.getSize().width, (u32)8);
-                    const u32 groupY = Carrot::Math::alignUp(currentFrameColor.getSize().height, (u32)8);
+                    const u32 groupX = Carrot::Math::alignUp(currentFrameColor.getSize().width, (u32)8) / 8;
+                    const u32 groupY = Carrot::Math::alignUp(currentFrameColor.getSize().height, (u32)8) / 8;
                     buffer.dispatch(groupX, groupY, 1);
                 }
         );
@@ -293,14 +293,17 @@ Carrot::Render::ViewportFrameResources Carrot::Engine::fillInDefaultPipeline(Car
                 pass.rasterized = false;
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const AlphaRemoval& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph remove-alpha");
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], buffer, "remove-alpha");
+
                 auto pRemoveAlpha = frame.renderer.getOrCreatePipeline("compute/remove-alpha", (u64)&pass);
                 auto& textureToModify = pass.getGraph().getTexture(data.output, frame.frameNumber);
                 pRemoveAlpha->setSampledImage(frame, "entryPointParams.input", pass.getGraph().getTexture(data.input, frame.frameNumber));
                 pRemoveAlpha->setStorageImage(frame, "entryPointParams.output", textureToModify, vk::ImageLayout::eGeneral);
                 pRemoveAlpha->bind(pass, frame, buffer, vk::PipelineBindPoint::eCompute);
 
-                const u32 groupX = Math::alignUp(textureToModify.getSize().width, static_cast<u32>(32));
-                const u32 groupY = Math::alignUp(textureToModify.getSize().height, static_cast<u32>(2));
+                const u32 groupX = Math::alignUp(textureToModify.getSize().width, static_cast<u32>(32)) / 32;
+                const u32 groupY = Math::alignUp(textureToModify.getSize().height, static_cast<u32>(2)) / 2;
                 buffer.dispatch(groupX, groupY, 1);
             }
     );
