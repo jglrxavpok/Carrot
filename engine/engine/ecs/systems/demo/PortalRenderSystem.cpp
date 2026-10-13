@@ -10,24 +10,84 @@
 
 namespace Carrot::ECS {
     static bool freeze = false;
-    constexpr i32 MaxRecursion = 2; // TODO: bump higher once memory issues are fixed
+
+    const Carrot::Identifier MainViewportID {"main"};
+
+    static Carrot::Identifier makeViewportIDFromEntryPortal(Carrot::ECS::EntityID entity, i32 recursionIndex) {
+        return Carrot::Identifier { Carrot::sprintf("portal %s %d", entity.toString().c_str(), recursionIndex) };
+    }
+
+    static u8 makeStencilValue(i32 portalIndex, i32 recursionIndex) {
+        return (portalIndex+1) * PortalComponent::MaxRecursion + recursionIndex;
+    }
 
     void PortalRenderSystem::beginFrame(const Carrot::Render::Context& mainRenderContext) {
-        if (!regenerateViewports)
-            return;
+        if (regenerateViewports) {
+            regenerateViewports = false;
+            doViewportRegeneration();
+        }
 
-        Carrot::Identifier mainViewportID {"main"};
+        // check if viewports should still be enabled
+        const Render::Viewport& mainViewport = GetEngine().getOrCreateViewport(Carrot::Identifier{"main"});
+        const Camera& cameraFromMainViewport = mainViewport.getCamera();
+        for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
+            Entity& entryPortal = entities[portalIndex];
+            PortalComponent& portalComp = entryPortal.getComponent<PortalComponent>();
+            Entity& exitPortal = portalComp.otherPortal;
 
-        regenerateViewports = false;
+            if (exitPortal.exists()) {
+                glm::mat4 cameraStartPosition = glm::inverse(cameraFromMainViewport.getCurrentFrameViewMatrix());
+                const TransformComponent& entryTransform = entryPortal.getComponent<TransformComponent>();
+                const TransformComponent& exitTransform = exitPortal.getComponent<TransformComponent>();
+                const glm::vec3 exitPos = exitTransform.computeFinalPosition();
+                const glm::vec3 exitForward = exitTransform.computeGlobalForward();
+
+                const glm::vec3 exitRight = glm::cross(exitForward, exitTransform.computeGlobalUp()); // X is forward with current setup
+
+                auto computeOneLookThroughPortal = [&](const glm::mat4& cameraPosition) -> PortalComponent::CameraData {
+                    glm::mat4 finalTransformAsMatrix = exitTransform.toTransformMatrix() * glm::inverse(entryTransform.toTransformMatrix()) * cameraPosition;
+
+                    Math::Transform finalTransform;
+                    finalTransform.position = finalTransformAsMatrix[3].xyz();
+                    finalTransform.rotation = glm::quat(glm::mat3{finalTransformAsMatrix});
+
+                    Math::Plane clipPlane{};
+                    float portalSide = glm::sign(glm::dot(exitPos - finalTransform.position, exitRight));
+                    clipPlane.normal = exitRight * portalSide;
+                    clipPlane.distanceFromOrigin = -glm::dot(clipPlane.normal, exitPos);
+
+                    return PortalComponent::CameraData {
+                        .finalCameraTransform = finalTransformAsMatrix,
+                        .worldSpaceClipPlane = clipPlane,
+                    };
+                };
+
+                portalComp.cameraData[0] = computeOneLookThroughPortal(cameraStartPosition);
+                if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, 0)); viewportRef.hasValue()) {
+                    viewportRef->enabled = true;
+                }
+
+                for (i32 recursionIndex = 1; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
+                    const glm::mat4& previousCameraPosition = portalComp.cameraData[recursionIndex-1].finalCameraTransform;
+                    portalComp.cameraData[recursionIndex] = computeOneLookThroughPortal(previousCameraPosition);
+
+                    if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
+                        // TODO: check if overlap between entry & exit
+                        viewportRef->enabled = true;
+                    }
+                }
+            } else {
+                for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
+                    if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
+                        viewportRef->enabled = false;
+                    }
+                }
+            }
+        }
+    }
+
+    void PortalRenderSystem::doViewportRegeneration() {
         portalViewportInfo.clear();
-
-        auto makeViewportIDFromEntryPortal = [](Carrot::ECS::EntityID entity, i32 recursionIndex) {
-            return Carrot::Identifier { Carrot::sprintf("portal %s %d", entity.toString().c_str(), recursionIndex) };
-        };
-
-        auto makeStencilValue = [](i32 portalIndex, i32 recursionIndex) {
-            return (portalIndex+1) * MaxRecursion + recursionIndex;
-        };
 
         // create viewports for portal
         for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
@@ -36,7 +96,8 @@ namespace Carrot::ECS {
 
             entity.getComponent<ModelComponent>()->hiddenInViewports.clear();
 
-            for (i32 recursionIndex = 0; recursionIndex < MaxRecursion; recursionIndex++) {
+            Carrot::Identifier previousViewportID = MainViewportID;
+            for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
                 Carrot::Identifier id = makeViewportIDFromEntryPortal(entityID, recursionIndex);
                 Render::Viewport& viewport = GetEngine().getOrCreateViewport(id);
 
@@ -46,12 +107,16 @@ namespace Carrot::ECS {
                 viewportStencil.stencilValue = makeStencilValue(portalIndex, recursionIndex);
                 viewportStencil.stencilOperation = Render::StencilOperation::Equal;
                 viewport.setStencilSettings(viewportStencil);
-                viewport.enabled = recursionIndex == 0; // TODO: enable only if overlap
+                viewport.enabled = recursionIndex == 0;
 
                 ViewportInfo info {
                     .config = viewportStencil,
                     .entryPortal = entity,
+                    .recursionIndex = recursionIndex,
+                    .previousViewportID = previousViewportID,
                 };
+
+                previousViewportID = id;
 
                 portalViewportInfo[id] = info;
             }
@@ -67,7 +132,10 @@ namespace Carrot::ECS {
             // make exit portal invisible in viewport rendering the view from out of exit portal
             PortalComponent& portalComp = entity.getComponent<PortalComponent>();
             if (portalComp.otherPortal.exists()) {
-                portalComp.otherPortal.getComponent<ModelComponent>()->hiddenInViewports.pushBack(makeViewportIDFromEntryPortal(entityID, 0));
+                Carrot::Vector<Carrot::Identifier>& hiddenInViewports = portalComp.otherPortal.getComponent<ModelComponent>()->hiddenInViewports;
+                for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
+                    hiddenInViewports.pushBack(makeViewportIDFromEntryPortal(entityID, recursionIndex));
+                }
             }
 
             // setup model to write correct value to stencil buffer
@@ -96,14 +164,14 @@ namespace Carrot::ECS {
                 meshStencil.stencilComparePerViewport.emplace();
 
                 // in main viewport, always render portal with a fixed value
-                (*meshStencil.stencilValuePerViewport)[mainViewportID] = makeStencilValue(portalIndex, 0);
-                (*meshStencil.stencilOperationPerViewport)[mainViewportID] = Render::StencilOperation::AlwaysPass;
-                (*meshStencil.incrementPerViewport)[mainViewportID] = false;
-                (*meshStencil.stencilComparePerViewport)[mainViewportID] = false;
+                (*meshStencil.stencilValuePerViewport)[MainViewportID] = makeStencilValue(portalIndex, 0);
+                (*meshStencil.stencilOperationPerViewport)[MainViewportID] = Render::StencilOperation::AlwaysPass;
+                (*meshStencil.incrementPerViewport)[MainViewportID] = false;
+                (*meshStencil.stencilComparePerViewport)[MainViewportID] = false;
 
                 // in portal viewports, render only if value matches with "viewport stencil", and increment once (to setup for recursive rendering)
                 for (i32 otherPortalIndex = 0; otherPortalIndex < entities.size(); otherPortalIndex++) {
-                    for (i32 recursionIndex = 0; recursionIndex < MaxRecursion; recursionIndex++) {
+                    for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
                         const Carrot::Identifier otherViewportID = makeViewportIDFromEntryPortal(entities[otherPortalIndex], recursionIndex);
                         (*meshStencil.stencilValuePerViewport)[otherViewportID] = portalViewportInfo[otherViewportID].config.stencilValue;
                         (*meshStencil.stencilOperationPerViewport)[otherViewportID] = Render::StencilOperation::Equal;
@@ -113,13 +181,12 @@ namespace Carrot::ECS {
                 }
 
                 for(std::size_t i = 0; i < staticMeshCount; i++) {
-                    Carrot::Render::MaterialOverride* pExistingOverride = modelComp.modelRenderer->getOverrides().findForMesh(i);
-                    if(pExistingOverride) {
+                    if(Carrot::Render::MaterialOverride* pExistingOverride = modelComp.modelRenderer->getOverrides().findForMesh(i)) {
                         pExistingOverride->stencilSettings = meshStencil;
                     } else {
                         Carrot::Render::MaterialOverride override;
                         override.meshIndex = i;
-                        pExistingOverride->stencilSettings = meshStencil;
+                        override.stencilSettings = meshStencil;
                         modelComp.modelRenderer->addOverride(override);
                     }
                 }
@@ -129,7 +196,7 @@ namespace Carrot::ECS {
         }
 
         Render::ViewportComposition composition;
-        Render::ViewportLocation& main = composition.viewports[mainViewportID];
+        Render::ViewportLocation& main = composition.viewports[MainViewportID];
         main.stencil.emplace();
         main.stencil->stencilEnabled = true;
         main.stencil->stencilWrite = true;
@@ -137,12 +204,11 @@ namespace Carrot::ECS {
         main.renderingOrder = 0;
         main.z = 1.0f;
 
-        i32 order = 1;
         for (const auto& [id, info] : portalViewportInfo) {
             Render::ViewportLocation& portalView = composition.viewports[id];
             portalView.stencil = info.config;
-            portalView.inheritDepthStencil = mainViewportID;
-            portalView.z = 0;
+            portalView.inheritDepthStencil = info.previousViewportID;
+            portalView.z = 1.0f / static_cast<float>(info.recursionIndex+1);
             portalView.renderingOrder = info.config.stencilValue; // reuse it as it is already increasing
             portalView.discardIfDepthNotWritten = true;
             portalView.renderingCondition = [id] {
@@ -158,11 +224,9 @@ namespace Carrot::ECS {
     }
 
     void PortalRenderSystem::reload() {
-        //TODO;
     }
 
     void PortalRenderSystem::unload() {
-        //TODO;
     }
 
     void PortalRenderSystem::onFrame(const Carrot::Render::Context& renderContext) {
@@ -196,7 +260,9 @@ namespace Carrot::ECS {
             return;
         }
 
-        Carrot::ECS::Entity& entryPortal = entryIter->second.entryPortal;
+        ViewportInfo& viewportInfo = entryIter->second;
+
+        Carrot::ECS::Entity& entryPortal = viewportInfo.entryPortal;
         if (!entryPortal.exists())
             return;
 
@@ -207,28 +273,11 @@ namespace Carrot::ECS {
 
         const Render::Viewport& mainViewport = GetEngine().getOrCreateViewport(Carrot::Identifier{"main"});
         const Camera& cameraFromMainViewport = mainViewport.getCamera();
-        const TransformComponent& entryTransform = entryPortal.getComponent<TransformComponent>();
-        const TransformComponent& exitTransform = exitPortal.getComponent<TransformComponent>();
-        const glm::vec3 exitPos = exitTransform.computeFinalPosition();
-        const glm::vec3 exitForward = exitTransform.computeGlobalForward();
 
-        const glm::vec3 exitRight = glm::cross(exitForward, exitTransform.computeGlobalUp()); // X is forward with current setup
-
-        glm::mat4 finalTransformAsMatrix = exitTransform.toTransformMatrix() * glm::inverse(entryTransform.toTransformMatrix()) * glm::inverse(cameraFromMainViewport.getCurrentFrameViewMatrix());
-
-        Math::Transform finalTransform;
-        finalTransform.position = finalTransformAsMatrix[3].xyz();
-        finalTransform.rotation = glm::quat(glm::mat3{finalTransformAsMatrix});
-
-        glm::mat4 view = glm::inverse(finalTransform.toTransformMatrix());
+        glm::mat4 view = glm::inverse(entryPortalComponent.cameraData[viewportInfo.recursionIndex].finalCameraTransform);
         glm::mat4 projection = cameraFromMainViewport.getProjectionMatrix();
         viewportCamera.setViewProjection(view, projection);
-
-        Math::Plane clipPlane{};
-        float portalSide = glm::sign(glm::dot(exitPos - finalTransform.position, exitRight));
-        clipPlane.normal = exitRight * portalSide;
-        clipPlane.distanceFromOrigin = -glm::dot(clipPlane.normal, exitPos);
-        viewportCamera.setWorldSpaceClippingPlane(clipPlane);
+        viewportCamera.setWorldSpaceClippingPlane(entryPortalComponent.cameraData[viewportInfo.recursionIndex].worldSpaceClipPlane);
     }
 
     std::unique_ptr<Carrot::ECS::System> PortalRenderSystem::duplicate(Carrot::ECS::World& newOwner) const {

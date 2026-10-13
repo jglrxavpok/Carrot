@@ -42,9 +42,13 @@ namespace Carrot::ECS {
         virtual std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
     private:
+        void doViewportRegeneration();
+
         struct ViewportInfo {
             Render::StencilSettings config;
             Entity entryPortal;
+            i32 recursionIndex = -1;
+            Carrot::Identifier previousViewportID; // used to inherit depth stencil
         };
         std::unordered_map<Carrot::Identifier, ViewportInfo> portalViewportInfo;
         bool regenerateViewports = false;

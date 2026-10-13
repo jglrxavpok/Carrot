@@ -10,6 +10,14 @@ namespace Carrot::ECS {
         using ReflectionComponent::ReflectionComponent;
 
         FIELD(Carrot::ECS::Entity, otherPortal, "OtherPortal", {});
+
+        constexpr inline static i32 MaxRecursion = 2; // TODO: bump higher once memory issues are fixed
+
+        struct CameraData {
+            glm::mat4 finalCameraTransform{1.0f};
+            Math::Plane worldSpaceClipPlane{};
+        };
+        std::array<CameraData, MaxRecursion> cameraData;
     };
 }
 
