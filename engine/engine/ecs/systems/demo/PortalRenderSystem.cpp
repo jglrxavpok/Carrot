@@ -26,64 +26,6 @@ namespace Carrot::ECS {
             regenerateViewports = false;
             doViewportRegeneration();
         }
-
-        // check if viewports should still be enabled
-        const Render::Viewport& mainViewport = GetEngine().getOrCreateViewport(Carrot::Identifier{"main"});
-        const Camera& cameraFromMainViewport = mainViewport.getCamera();
-        for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
-            Entity& entryPortal = entities[portalIndex];
-            PortalComponent& portalComp = entryPortal.getComponent<PortalComponent>();
-            Entity& exitPortal = portalComp.otherPortal;
-
-            if (exitPortal.exists()) {
-                glm::mat4 cameraStartPosition = glm::inverse(cameraFromMainViewport.getCurrentFrameViewMatrix());
-                const TransformComponent& entryTransform = entryPortal.getComponent<TransformComponent>();
-                const TransformComponent& exitTransform = exitPortal.getComponent<TransformComponent>();
-                const glm::vec3 exitPos = exitTransform.computeFinalPosition();
-                const glm::vec3 exitForward = exitTransform.computeGlobalForward();
-
-                const glm::vec3 exitRight = glm::cross(exitForward, exitTransform.computeGlobalUp()); // X is forward with current setup
-
-                auto computeOneLookThroughPortal = [&](const glm::mat4& cameraPosition) -> PortalComponent::CameraData {
-                    glm::mat4 finalTransformAsMatrix = exitTransform.toTransformMatrix() * glm::inverse(entryTransform.toTransformMatrix()) * cameraPosition;
-
-                    Math::Transform finalTransform;
-                    finalTransform.position = finalTransformAsMatrix[3].xyz();
-                    finalTransform.rotation = glm::quat(glm::mat3{finalTransformAsMatrix});
-
-                    Math::Plane clipPlane{};
-                    float portalSide = glm::sign(glm::dot(exitPos - finalTransform.position, exitRight));
-                    clipPlane.normal = exitRight * portalSide;
-                    clipPlane.distanceFromOrigin = -glm::dot(clipPlane.normal, exitPos);
-
-                    return PortalComponent::CameraData {
-                        .finalCameraTransform = finalTransformAsMatrix,
-                        .worldSpaceClipPlane = clipPlane,
-                    };
-                };
-
-                portalComp.cameraData[0] = computeOneLookThroughPortal(cameraStartPosition);
-                if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, 0)); viewportRef.hasValue()) {
-                    viewportRef->enabled = true;
-                }
-
-                for (i32 recursionIndex = 1; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
-                    const glm::mat4& previousCameraPosition = portalComp.cameraData[recursionIndex-1].finalCameraTransform;
-                    portalComp.cameraData[recursionIndex] = computeOneLookThroughPortal(previousCameraPosition);
-
-                    if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
-                        // TODO: check if overlap between entry & exit
-                        viewportRef->enabled = true;
-                    }
-                }
-            } else {
-                for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
-                    if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
-                        viewportRef->enabled = false;
-                    }
-                }
-            }
-        }
     }
 
     void PortalRenderSystem::doViewportRegeneration() {
@@ -253,6 +195,69 @@ namespace Carrot::ECS {
         if (freeze) {
             return;
         }
+
+        // Needs to be done in setupCamera instead of beginFrame because portals need position of main camera to render the correct view
+        // without this, the view inside portal lag behind
+        if (renderContext.pViewport->getViewportID() == MainViewportID) {
+            // check if viewports should still be enabled and compute camera positions
+            const Render::Viewport& mainViewport = GetEngine().getOrCreateViewport(Carrot::Identifier{"main"});
+            const Camera& cameraFromMainViewport = mainViewport.getCamera();
+            for (i32 portalIndex = 0; portalIndex < entities.size(); portalIndex++) {
+                Entity& entryPortal = entities[portalIndex];
+                PortalComponent& portalComp = entryPortal.getComponent<PortalComponent>();
+                Entity& exitPortal = portalComp.otherPortal;
+
+                if (exitPortal.exists()) {
+                    glm::mat4 cameraStartPosition = glm::inverse(cameraFromMainViewport.getCurrentFrameViewMatrix());
+                    const TransformComponent& entryTransform = entryPortal.getComponent<TransformComponent>();
+                    const TransformComponent& exitTransform = exitPortal.getComponent<TransformComponent>();
+                    const glm::vec3 exitPos = exitTransform.computeFinalPosition();
+                    const glm::vec3 exitForward = exitTransform.computeGlobalForward();
+
+                    const glm::vec3 exitRight = glm::cross(exitForward, exitTransform.computeGlobalUp()); // X is forward with current setup
+
+                    auto computeOneLookThroughPortal = [&](const glm::mat4& cameraPosition) -> PortalComponent::CameraData {
+                        glm::mat4 finalTransformAsMatrix = exitTransform.toTransformMatrix() * glm::inverse(entryTransform.toTransformMatrix()) * cameraPosition;
+
+                        Math::Transform finalTransform;
+                        finalTransform.position = finalTransformAsMatrix[3].xyz();
+                        finalTransform.rotation = glm::quat(glm::mat3{finalTransformAsMatrix});
+
+                        Math::Plane clipPlane{};
+                        float portalSide = glm::sign(glm::dot(exitPos - finalTransform.position, exitRight));
+                        clipPlane.normal = exitRight * portalSide;
+                        clipPlane.distanceFromOrigin = -glm::dot(clipPlane.normal, exitPos);
+
+                        return PortalComponent::CameraData {
+                            .finalCameraTransform = finalTransformAsMatrix,
+                            .worldSpaceClipPlane = clipPlane,
+                        };
+                    };
+
+                    portalComp.cameraData[0] = computeOneLookThroughPortal(cameraStartPosition);
+                    if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, 0)); viewportRef.hasValue()) {
+                        viewportRef->enabled = true;
+                    }
+
+                    for (i32 recursionIndex = 1; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
+                        const glm::mat4& previousCameraPosition = portalComp.cameraData[recursionIndex-1].finalCameraTransform;
+                        portalComp.cameraData[recursionIndex] = computeOneLookThroughPortal(previousCameraPosition);
+
+                        if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
+                            // TODO: check if overlap between entry & exit
+                            viewportRef->enabled = true;
+                        }
+                    }
+                } else {
+                    for (i32 recursionIndex = 0; recursionIndex < PortalComponent::MaxRecursion; recursionIndex++) {
+                        if (auto viewportRef = GetEngine().getViewport(makeViewportIDFromEntryPortal(entryPortal, recursionIndex)); viewportRef.hasValue()) {
+                            viewportRef->enabled = false;
+                        }
+                    }
+                }
+            }
+        }
+
         Camera& viewportCamera = renderContext.getCamera();
 
         auto entryIter = portalViewportInfo.find(renderContext.pViewport->getViewportID());
