@@ -35,7 +35,6 @@ namespace Carrot::Render {
         };
 
         struct StorageHeader {
-            vk::DeviceAddress keys;
             vk::DeviceAddress hash2;
             vk::DeviceAddress radiance;
             vk::DeviceAddress sampleCounts;
@@ -46,8 +45,7 @@ namespace Carrot::Render {
 
         // from gi.slang
         static constexpr std::uint32_t SizeOfHashCell =
-            sizeof(HashCellKey)
-            + sizeof(std::uint32_t)
+            sizeof(std::uint32_t)
             + sizeof(glm::ivec3)
             + sizeof(std::uint32_t)
             + sizeof(glm::ivec3)
@@ -66,8 +64,7 @@ namespace Carrot::Render {
         static void prepareBuffers(const Carrot::Render::Graph& graph, const Carrot::Render::PassData::HashGridResources& r) {
             BufferView hashGridBuffer = graph.getBuffer(r.hashGrid, 0).view;
             StorageHeader header{};
-            header.keys = hashGridBuffer.getDeviceAddress() + sizeof(StorageHeader);
-            header.hash2 = header.keys + sizeof(HashCellKey) * HashGridTotalCellCount;
+            header.hash2 = hashGridBuffer.getDeviceAddress() + sizeof(StorageHeader);
             header.radiance = header.hash2 + sizeof(u32) * HashGridTotalCellCount;
             header.sampleCounts = header.radiance + sizeof(glm::vec3) * HashGridTotalCellCount;
             header.radianceAccumulation = header.sampleCounts + sizeof(u32) * HashGridTotalCellCount;

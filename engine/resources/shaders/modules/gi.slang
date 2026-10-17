@@ -97,7 +97,6 @@ namespace HashGrid {
     }
 
     public struct Storage {
-        Key* keys;//[TotalCellCount];
         uint* hash2;//[TotalCellCount];
         int3* radiance;//[TotalCellCount];
         uint* sampleCounts;//[TotalCellCount];
@@ -115,7 +114,6 @@ namespace HashGrid {
 
         [mutating][ForceInline]
         public void clearCell(uint cellIndex) {
-            keys[cellIndex] = Key();
             hash2[cellIndex] = 0;
             radiance[cellIndex] = packRadiance(0);
             sampleCounts[cellIndex] = 0;
@@ -139,7 +137,6 @@ namespace HashGrid {
                     wasNew = true;
 
                     // reset cell
-                    keys[cellIndex] = key;
                     hash2[cellIndex] = desc.hash2;
 
                     break;
