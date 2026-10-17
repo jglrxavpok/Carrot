@@ -194,6 +194,16 @@ namespace Carrot {
         /// Writes current active gpu resources to "./gpu-resources.txt"
         void dumpActiveGPUResources();
 
+        /**
+         * Attempts to disassemble the input pipeline.
+         * Disassembling the pipeline requires cooperation from the driver so it might not be available everywhere.
+         * This has been tested with RADV
+         *
+         * @param pipeline pipeline to get disassembly of
+         * @return the disassembled pipeline, or empty optional if it could not be disassembled
+         */
+        std::optional<std::string> tryGetDisassembly(const vk::Pipeline& pipeline);
+
     public:
         const vk::PhysicalDeviceFeatures& getPhysicalDeviceFeatures() const;
         const vk::PhysicalDeviceLimits& getPhysicalDeviceLimits() const;
@@ -342,7 +352,6 @@ namespace Carrot {
     private: // memory inspection support
         vk::PhysicalDeviceMemoryProperties baseProperties{};
 
-        bool memoryBudgetSupported = false;
         vk::DeviceSize gpuHeapBudgets[VK_MAX_MEMORY_HEAPS] = {0};
         vk::DeviceSize gpuHeapUsages[VK_MAX_MEMORY_HEAPS] = {0};
     };

@@ -10,7 +10,10 @@ namespace Carrot {
         // ---- Rendering capabilities ----
         bool supportsRaytracing = false;
 
+        bool gpuMemoryBudgetSupported = false;
         bool supportsKHRDeviceFault = false;
+        bool supportsKHRPipelineExecutableProperties = false;
+        bool canDisassembleShaders = false;
 
         // ---- Misc. ----
         std::size_t hardwareParallelism = 1;

@@ -552,11 +552,13 @@ void Carrot::VulkanDriver::fillRenderingCapabilities() {
     }
 
     if(availableSet.contains(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) {
-        memoryBudgetSupported = true;
+        engine->getModifiableCapabilities().gpuMemoryBudgetSupported = true;
     }
-
     if (availableSet.contains(VK_KHR_DEVICE_FAULT_EXTENSION_NAME)) {
         engine->getModifiableCapabilities().supportsKHRDeviceFault = true;
+    }
+    if (availableSet.contains(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME)) {
+        engine->getModifiableCapabilities().supportsKHRPipelineExecutableProperties = true;
     }
 }
 
@@ -569,98 +571,104 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     queuePartition.toCreateInfo(queueCreateInfoStructs, priorities);
 
     vk::StructureChain deviceFeatures {
-            vk::PhysicalDeviceFeatures2 {
-                    .features = {
-                            .independentBlend = true,
-                            .geometryShader = true, // for mesh shaders?
+        vk::PhysicalDeviceFeatures2 {
+                .features = {
+                        .independentBlend = true,
+                        .geometryShader = true, // for mesh shaders?
 
-                            .multiDrawIndirect = true,
-                            .drawIndirectFirstInstance = true,
+                        .multiDrawIndirect = true,
+                        .drawIndirectFirstInstance = true,
 
-                            .fillModeNonSolid = true,
+                        .fillModeNonSolid = true,
 
-                            .samplerAnisotropy = true,
+                        .samplerAnisotropy = true,
 
-                            .fragmentStoresAndAtomics = true,
-                            .shaderStorageImageWriteWithoutFormat = true,
+                        .fragmentStoresAndAtomics = true,
+                        .shaderStorageImageWriteWithoutFormat = true,
 
-                            .shaderUniformBufferArrayDynamicIndexing = true,
-                            .shaderSampledImageArrayDynamicIndexing = true,
-                            .shaderStorageBufferArrayDynamicIndexing = true,
-                            .shaderStorageImageArrayDynamicIndexing = true,
-                            .shaderClipDistance = true,
-                            .shaderFloat64 = true,
-                            .shaderInt64 = true,
-                            .shaderInt16 = true,
-                    },
-            },
-            vk::PhysicalDeviceMeshShaderFeaturesEXT {
-                .taskShader = true,
-                .meshShader = true,
-            },
-            vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
-                    .rayTracingPipeline = GetCapabilities().supportsRaytracing,
-            },
-            vk::PhysicalDeviceRayQueryFeaturesKHR {
-                    .rayQuery = GetCapabilities().supportsRaytracing,
-            },
-            vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
-                    .accelerationStructure = GetCapabilities().supportsRaytracing,
-            },
-            vk::PhysicalDeviceVulkan11Features {
-                    .storageBuffer16BitAccess = true,
-                    .uniformAndStorageBuffer16BitAccess = true,
-                    .shaderDrawParameters = true,
-            },
-            vk::PhysicalDeviceVulkan12Features {
-                .storageBuffer8BitAccess = true,
-                .uniformAndStorageBuffer8BitAccess = true,
-                .storagePushConstant8 = true, // TODO: not on AMD Windows?
-                .shaderBufferInt64Atomics = true,
-                .shaderFloat16 = true,
-                .shaderInt8 = true,
-                .shaderSampledImageArrayNonUniformIndexing  = true,
-                .shaderStorageBufferArrayNonUniformIndexing = true,
-                .descriptorBindingPartiallyBound = true,
-                .runtimeDescriptorArray = true,
+                        .shaderUniformBufferArrayDynamicIndexing = true,
+                        .shaderSampledImageArrayDynamicIndexing = true,
+                        .shaderStorageBufferArrayDynamicIndexing = true,
+                        .shaderStorageImageArrayDynamicIndexing = true,
+                        .shaderClipDistance = true,
+                        .shaderFloat64 = true,
+                        .shaderInt64 = true,
+                        .shaderInt16 = true,
+                },
+        },
+        vk::PhysicalDeviceMeshShaderFeaturesEXT {
+            .taskShader = true,
+            .meshShader = true,
+        },
+        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
+                .rayTracingPipeline = GetCapabilities().supportsRaytracing,
+        },
+        vk::PhysicalDeviceRayQueryFeaturesKHR {
+                .rayQuery = GetCapabilities().supportsRaytracing,
+        },
+        vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
+                .accelerationStructure = GetCapabilities().supportsRaytracing,
+        },
+        vk::PhysicalDeviceVulkan11Features {
+                .storageBuffer16BitAccess = true,
+                .uniformAndStorageBuffer16BitAccess = true,
+                .shaderDrawParameters = true,
+        },
+        vk::PhysicalDeviceVulkan12Features {
+            .storageBuffer8BitAccess = true,
+            .uniformAndStorageBuffer8BitAccess = true,
+            .storagePushConstant8 = true, // TODO: not on AMD Windows?
+            .shaderBufferInt64Atomics = true,
+            .shaderFloat16 = true,
+            .shaderInt8 = true,
+            .shaderSampledImageArrayNonUniformIndexing  = true,
+            .shaderStorageBufferArrayNonUniformIndexing = true,
+            .descriptorBindingPartiallyBound = true,
+            .runtimeDescriptorArray = true,
 
-                .scalarBlockLayout = true,
-                .hostQueryReset = true,
-                .timelineSemaphore = true,
-                .bufferDeviceAddress = true,
+            .scalarBlockLayout = true,
+            .hostQueryReset = true,
+            .timelineSemaphore = true,
+            .bufferDeviceAddress = true,
 
-            },
-            vk::PhysicalDeviceVulkan13Features {
-                .shaderDemoteToHelperInvocation = true,
-                .synchronization2 = true,
-                .dynamicRendering = true,
-            },
-            vk::PhysicalDeviceRobustness2FeaturesEXT {
-                    .nullDescriptor = true,
-            },
-            vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR {
-                    .computeDerivativeGroupQuads = true,
-            },
-            vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
-                    .shaderImageInt64Atomics = true,
-            },
-            vk::PhysicalDeviceShaderAbortFeaturesKHR{
-                .shaderAbort = true,
-            },
-            vk::PhysicalDeviceFaultFeaturesKHR{
-                .deviceFault = GetCapabilities().supportsKHRDeviceFault,
-            }
+        },
+        vk::PhysicalDeviceVulkan13Features {
+            .shaderDemoteToHelperInvocation = true,
+            .synchronization2 = true,
+            .dynamicRendering = true,
+        },
+        vk::PhysicalDeviceRobustness2FeaturesEXT {
+                .nullDescriptor = true,
+        },
+        vk::PhysicalDeviceComputeShaderDerivativesFeaturesKHR {
+                .computeDerivativeGroupQuads = true,
+        },
+        vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
+                .shaderImageInt64Atomics = true,
+        },
+        vk::PhysicalDeviceShaderAbortFeaturesKHR{
+            .shaderAbort = true,
+        },
+        vk::PhysicalDeviceFaultFeaturesKHR{
+            .deviceFault = engine->getCapabilities().supportsKHRDeviceFault,
+        },
+        vk::PhysicalDevicePipelineExecutablePropertiesFeaturesKHR {
+            .pipelineExecutableInfo = engine->getCapabilities().supportsKHRPipelineExecutableProperties,
+        },
     };
 
     std::vector<const char*> deviceExtensions = MandatoryDeviceExtensions; // copy
 
-    if(GetCapabilities().supportsRaytracing) {
+    if(engine->getCapabilities().supportsRaytracing) {
         for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
             deviceExtensions.push_back(rayTracingExt);
         }
     }
-    if (GetCapabilities().supportsKHRDeviceFault) {
+    if (engine->getCapabilities().supportsKHRDeviceFault) {
         deviceExtensions.push_back(VK_KHR_DEVICE_FAULT_EXTENSION_NAME);
+    }
+    if (engine->getCapabilities().supportsKHRPipelineExecutableProperties) {
+        deviceExtensions.push_back(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME);
     }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
@@ -1181,7 +1189,7 @@ namespace BufferSorters {
 }
 
 void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderContext) {
-    if(memoryBudgetSupported) {
+    if(engine->getCapabilities().gpuMemoryBudgetSupported) {
         vk::StructureChain<vk::PhysicalDeviceMemoryProperties2, vk::PhysicalDeviceMemoryBudgetPropertiesEXT> chain;
         physicalDevice.getMemoryProperties2(&chain.get<vk::PhysicalDeviceMemoryProperties2>());
         baseProperties = chain.get<vk::PhysicalDeviceMemoryProperties2>().memoryProperties;
@@ -1202,7 +1210,7 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                 dumpActiveGPUResources();
             }
             std::size_t totalUsage = 0;
-            if(memoryBudgetSupported) {
+            if(engine->getCapabilities().gpuMemoryBudgetSupported) {
                 for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
                     if(gpuHeapBudgets[j] > 0) {
                         ImGui::Text("Heap #%d", j);
@@ -1217,7 +1225,7 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
             }
 
 
-            if(memoryBudgetSupported) {
+            if(engine->getCapabilities().gpuMemoryBudgetSupported) {
                 double trackedPercent = Carrot::DeviceMemory::TotalMemoryUsed.load() / (double)totalUsage;
                 ImGui::Text("Tracked device memory: %s", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
                 ImGui::Text("Untracked device memory: %s", Carrot::IO::toReadableFormat(totalUsage - Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
@@ -1822,6 +1830,65 @@ void Carrot::VulkanDriver::dumpActiveGPUResources() {
             f << std::endl;
         }
     }
+}
+
+std::optional<std::string> Carrot::VulkanDriver::tryGetDisassembly(const vk::Pipeline& pipeline) {
+    if (!engine->getCapabilities().supportsKHRPipelineExecutableProperties) {
+        return {};
+    }
+
+    vk::PipelineInfoKHR pipelineInfo {
+        .pipeline = pipeline,
+    };
+    u32 executableCount;
+    if (getLogicalDevice().getPipelineExecutablePropertiesKHR(&pipelineInfo, &executableCount, nullptr) != vk::Result::eSuccess) {
+        return {};
+    }
+
+    constexpr std::string_view nameToLookFor{"Assembly"};
+    std::string finalStr;
+    Carrot::Vector<vk::PipelineExecutableInternalRepresentationKHR> representations;
+    for (u32 executableIndex = 0; executableIndex < executableCount; executableIndex++) {
+        vk::PipelineExecutableInfoKHR executableInfo {
+            .pipeline = pipeline,
+            .executableIndex = executableIndex,
+        };
+
+        // get representation count
+        u32 count;
+        if (getLogicalDevice().getPipelineExecutableInternalRepresentationsKHR(&executableInfo, &count, nullptr) != vk::Result::eSuccess) {
+            continue;
+        }
+
+        // get representation sizes
+        representations.clear(); // clear old values
+        representations.resize(count);
+        if (getLogicalDevice().getPipelineExecutableInternalRepresentationsKHR(&executableInfo, &count, representations.data()) != vk::Result::eSuccess) {
+            continue;
+        }
+
+        // get representation data
+        Carrot::Vector<Carrot::Vector<u8>> dataPerRepresentation;
+        dataPerRepresentation.resize(representations.size());
+
+        for (i32 representationIndex = 0; representationIndex < representations.size(); representationIndex++) {
+            const std::size_t dataSize = representations[representationIndex].dataSize;
+            dataPerRepresentation[representationIndex].resize(dataSize);
+            representations[representationIndex].pData = dataPerRepresentation[representationIndex].data();
+        }
+
+        if (getLogicalDevice().getPipelineExecutableInternalRepresentationsKHR(&executableInfo, &count, representations.data()) != vk::Result::eSuccess) {
+            continue;
+        }
+
+        for (const vk::PipelineExecutableInternalRepresentationKHR& representation : representations) {
+            if (representation.isText && nameToLookFor == representation.name) {
+                finalStr += std::string{static_cast<const char*>(representation.pData)};
+            }
+        }
+    }
+
+    return finalStr;
 }
 
 /// Used to dump when a crash happens (can be called from debugger)
