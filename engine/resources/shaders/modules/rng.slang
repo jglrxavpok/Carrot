@@ -45,13 +45,9 @@ public struct RandomSampler {
         float theta = 0.0f;
         float r = 0.0f;
 
-        if(abs(u.x) >= abs(u.y)) {
-            r = u.x;
-            theta = M_PI_OVER_4f * (u.y / u.x);
-        } else {
-            r = u.y;
-            theta = M_PI_OVER_2f - M_PI_OVER_4f * (u.x / u.y);
-        }
+        bool condition = abs(u.x) >= abs(u.y);
+        r = select(condition, u.x, u.y);
+        theta = select(condition, M_PI_OVER_4f * (u.y / u.x), M_PI_OVER_2f - M_PI_OVER_4f * (u.x / u.y));
         return r * float2(cos(theta), sin(theta));
     }
 
