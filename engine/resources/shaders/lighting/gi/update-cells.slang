@@ -53,10 +53,6 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
     const float2 uv = float2(coords * CacheDownscaleFactor + offsetInTile + 0.5f) / push.frameDimensions;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
 
-    if (pixelInfo.isSky) {
-        return;
-    }
-
     const float3x3 cboNormalView = transpose(inverse(float3x3(cameras.CurrentFrame().view)));
     const float3x3 inverseNormalView = inverse(cboNormalView);
 
@@ -87,6 +83,10 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
     float startingMetallic = pixelInfo.gBuffer.metallicness;
 
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, push.frameCount);
+
+    if (pixelInfo.isSky) {
+        return;
+    }
 
     float directionPDF = 1;
     float3 rayDirection = rng.nextCosineHemisphere(materialSystem, startingNormal, normalize(startOfRay - pixelInfo.cameraPos), directionPDF);

@@ -34,12 +34,7 @@ public struct PixelInfo {
 
     [mutating]
     private void loadFrom(in CameraBufferObject camera, in GBuffer gBufferIn) {
-        if(gBufferIn.readIsSky) {
-            isSky = true;
-            return;
-        }
-
-        isSky = false;
+        isSky = gBufferIn.readIsSky;
         gBuffer = gBufferIn;
         
         cameraPos = (camera.inverseView * float4(0, 0, 0, 1)).xyz;
