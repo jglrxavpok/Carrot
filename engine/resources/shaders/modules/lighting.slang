@@ -295,10 +295,6 @@ public struct Lighting {
 
         const float3 L = posOnTriangle - worldPos;
 
-        // check visibility
-        const float3 smallOffset = normalize(L) * 0.0001f;
-        const float visibility = float(config.checkVisibility(worldPos + smallOffset, worldPos + L - smallOffset));
-
         pbr.L = normalize(L);
         pbr.H = normalize(pbr.L + pbr.V);
 
@@ -307,23 +303,22 @@ public struct Lighting {
             return float3(0,0,0);
         }
 
+        const float brdf = dot(normal, normalize(L)) * dot(-normalize(L), normalOnLight);
+
+        const float d = distance(posOnTriangle, worldPos);
+        if (d < 0.0001f || brdf <= 10e-6f) {
+            return float3(0, 0, 0);
+        }
+            
+        // check visibility
+        const float3 smallOffset = normalize(L) * 0.0001f;
+        const float visibility = float(config.checkVisibility(worldPos + smallOffset, worldPos + L - smallOffset));
+
         pbr.NdotH = dot(pbr.N, pbr.H);
         pbr.NdotL = abs(NdotL);
         pbr.HdotL = dot(pbr.H, pbr.L);
         pbr.HdotV = dot(pbr.H, pbr.V);
 
-        // TODO: test without this brdf but only G factor
-        /*const float3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
-        if (isnan(brdf.x)) {
-            return float3(0, 0, 0);
-        }*/
-
-        const float brdf = dot(normal, normalize(L)) * dot(-normalize(L), normalOnLight);
-
-        const float d = distance(posOnTriangle, worldPos);
-        if (d > 0.0001f) {
-            return brdf * visibility * emissiveLight / (d * d);
-        }
-        return float3(0,0,0);
+        return visibility * brdf * emissiveLight / (d * d);
     }
 }
