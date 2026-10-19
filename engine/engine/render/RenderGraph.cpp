@@ -97,7 +97,7 @@ namespace Carrot::Render {
             }
         }
         resources.emplace_back(&toWrite);
-        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false, false);
+        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false, false, false);
         return resources.back();
     }
 
@@ -119,7 +119,7 @@ namespace Carrot::Render {
         return createTarget(true, name, format, size, vk::AttachmentLoadOp::eDontCare, {}, layout);
     }
 
-    FrameResource& GraphBuilder::createBuffer(std::string name, const ComputedBufferSize& size, vk::BufferUsageFlags usages, bool clearEachFrame) {
+    FrameResource& GraphBuilder::createBuffer(std::string name, const ComputedBufferSize& size, vk::BufferUsageFlags usages, bool clearEachFrame, bool cpuVisible) {
         auto& r = resources.emplace_back();
         r.name = std::move(name);
         r.owner = this;
@@ -130,7 +130,7 @@ namespace Carrot::Render {
         GetEngine().getResourceRepository().getBufferUsages(r.rootID) |= usages;
         GetEngine().getResourceRepository().setCreatorID(r.rootID, currentPass->passID);
 
-        currentPass->addOutput(r, {}, {}, {}, {}, true, clearEachFrame);
+        currentPass->addOutput(r, {}, {}, {}, {}, true, clearEachFrame, cpuVisible);
         return r;
     }
 
@@ -177,7 +177,7 @@ namespace Carrot::Render {
                 break;
         }
 
-        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true, false);
+        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true, false, false);
         return r;
     }
 
@@ -917,9 +917,9 @@ namespace Carrot::Render {
         return driver.getEngine().getResourceRepository().getBuffer(resourceID, frameIndex);
     }
 
-    BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
+    BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize, bool cpuVisibleBuffer) {
         return driver.getEngine().getResourceRepository().getOrCreateBuffer(resource, viewportSize, frameIndex,
-            driver.getEngine().getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags);
+            driver.getEngine().getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags, cpuVisibleBuffer);
     }
 
     void Graph::onSwapchainImageCountChange(size_t newCount) {

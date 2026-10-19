@@ -4,6 +4,7 @@
 
 #include "LightingPasses.h"
 
+#include <core/io/Logging.hpp>
 #include <core/math/BasicFunctions.h>
 #include <engine/render/TextureRepository.h>
 
@@ -532,6 +533,8 @@ namespace Carrot::Render {
         struct GIUpdateData {
             GIData gi;
             PassData::GBuffer gbuffer;
+
+            Render::FrameResource statsBuffer;
         };
 
         auto bindBaseGIUpdateInputs = [preparePushConstant](PushConstantRT& block, bool needRaytracing, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& frame, Carrot::Pipeline& pipeline, vk::CommandBuffer& cmds) {
@@ -577,6 +580,21 @@ namespace Carrot::Render {
             data.gbuffer.bindLastFrameInputs(pipeline, frame, graph, 5, vk::ImageLayout::eGeneral);
         };
 
+        struct PerBounceTimes {
+            u64 totalTime;
+            u64 hashGridInsertion;
+            u64 raytracing;
+            u64 setup;
+            u64 lightSampling;
+            u64 emissiveSampling;
+            u64 memoization;
+        };
+        struct SurfaceCacheStats {
+            u64 totalTime;
+            u64 headerTime;
+            PerBounceTimes bounceTimes[4];
+            u64 reconstructionTime;
+        };
         auto fillSurfaceCache = graph.addPass<GIUpdateData>("fill-surface-cache",
             [&lightingPass, &decayGICells](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
@@ -586,11 +604,40 @@ namespace Carrot::Render {
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eGeneral);
                 data.gbuffer.positions = graph.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eGeneral);
                 data.gbuffer.viewSpaceNormalTangents = graph.read(lightingPass.getData().gBuffer.viewSpaceNormalTangents, vk::ImageLayout::eGeneral);
+
+                data.statsBuffer = graph.createBuffer("surface cache stats", sizeof(SurfaceCacheStats), vk::BufferUsageFlagBits::eStorageBuffer, false, true);
+
+                graph.reuseResourceAcrossFrames(data.statsBuffer, 2);
             },
             [bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "fill surface cache");
 
                 auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("lighting/gi/fill-surface-cache", pass);
+
+                if (false)
+                {
+                    BufferView view = pass.getGraph().getBuffer(data.statsBuffer, frame.getPreviousFrameNumber()).view;
+                    const SurfaceCacheStats* pStats = view.map<SurfaceCacheStats>();
+                    if (pStats) {
+                        Carrot::Log::info("============= Viewport %s", std::string_view{frame.pViewport->getViewportID()}.data());
+                        Carrot::Log::info("Total time: %lu", pStats->totalTime);
+                        Carrot::Log::info("Header time: %lu (%.5f %%)", pStats->headerTime, static_cast<double>(pStats->headerTime) / pStats->totalTime * 100);
+                        Carrot::Log::info("Reconstruction time: %lu (%.5f %%)", pStats->reconstructionTime, static_cast<double>(pStats->reconstructionTime) / pStats->totalTime * 100);
+                        for (int i = 0; i < 4; ++i) {
+                            Carrot::Log::info("Bounce %d time: %lu (%.5f %%)", i, pStats->bounceTimes[i].totalTime, static_cast<double>(pStats->bounceTimes[i].totalTime) / pStats->totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d hash grid insertion time: %lu (%.5f %%)", i, pStats->bounceTimes[i].hashGridInsertion, static_cast<double>(pStats->bounceTimes[i].hashGridInsertion) / pStats->bounceTimes[i].totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d raytrace time: %lu (%.5f %%)", i, pStats->bounceTimes[i].raytracing, static_cast<double>(pStats->bounceTimes[i].raytracing) / pStats->bounceTimes[i].totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d setup time: %lu (%.5f %%)", i, pStats->bounceTimes[i].setup, static_cast<double>(pStats->bounceTimes[i].setup) / pStats->bounceTimes[i].totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d light sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].lightSampling, static_cast<double>(pStats->bounceTimes[i].lightSampling) / pStats->bounceTimes[i].totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d emissive sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].emissiveSampling, static_cast<double>(pStats->bounceTimes[i].emissiveSampling) / pStats->bounceTimes[i].totalTime * 100);
+                            Carrot::Log::info("\t- Bounce %d memoization time: %lu (%.5f %%)", i, pStats->bounceTimes[i].memoization, static_cast<double>(pStats->bounceTimes[i].memoization) / pStats->bounceTimes[i].totalTime * 100);
+                        }
+                        Carrot::Log::info("=============");
+                    }
+                    BufferView view = pass.getGraph().getBuffer(data.statsBuffer, frame.frameNumber).view;
+                    cmds.fillBuffer(view.getVulkanBuffer(), view.getStart(), sizeof(SurfaceCacheStats), 0);
+                    pipeline->setStorageBuffer(frame, "stats", view);
+                }
 
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, true, data, pass.getGraph(), frame, *pipeline, cmds);

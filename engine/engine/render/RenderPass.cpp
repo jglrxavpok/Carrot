@@ -209,11 +209,12 @@ void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource,
 }
 
 void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
-                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame) {
+                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame, bool cpuVisible) {
     outputs.emplace_back(resource, layout, loadOp, clearValue, aspect);
     outputs.back().resource.updateLayout(layout);
     outputs.back().isCreatedInThisPass = isCreatedInThisPass;
     outputs.back().clearBufferEachFrame = clearBufferEachFrame;
+    outputs.back().cpuVisibleBuffer = cpuVisible;
     resource.updateLayout(layout);
     finalLayouts[resource.id] = layout;
 }
@@ -335,7 +336,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 bool hasOnlyStorageBuffers = true;
                 for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
                     if(output.resource.type == ResourceType::StorageBuffer) {
-                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize));
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize, output.cpuVisibleBuffer));
                     } else {
                         hasOnlyStorageBuffers = false;
                         if (output.resource.imageOrigin == ImageOrigin::SurfaceSwapchain) {
@@ -365,7 +366,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 for (const auto& output : outputs) {
                     // force create resources
                     if(output.resource.type == ResourceType::StorageBuffer) {
-                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize));
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i, viewportSize, output.cpuVisibleBuffer));
                     } else if (output.resource.imageOrigin != ImageOrigin::SurfaceSwapchain) {
                         DISCARD(graph.getOrCreateTexture(output.resource, i, viewportSize));
                     }

@@ -15,7 +15,7 @@ namespace Carrot::IO {
     /// Reads the content of a file as a string
     std::string readFileAsText(const std::string& filename);
 
-    void writeFile(const std::string& filename, void* ptr, size_t length);
+    void writeFile(const std::string& filename, const void* ptr, size_t length);
 
     using WriteToFileFunction = std::function<void(std::ofstream& out)>;
 

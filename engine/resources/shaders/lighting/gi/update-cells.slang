@@ -46,9 +46,37 @@ void decayCells(uint cellIndex: SV_DispatchThreadID, uniform DecayPushConstant p
     }
 }
 
+#define PROFILE 0
+
+#if PROFILE
+struct PerBounceTimes {
+    uint64_t totalTime;
+    uint64_t hashGridInsertion;
+    uint64_t raytracing;
+    uint64_t setup;
+    uint64_t lightSampling;
+    uint64_t emissiveSampling;
+    uint64_t memoization;
+};
+
+struct Stats {
+    uint64_t totalTime;
+    uint64_t headerTime;
+    PerBounceTimes bounceTimes[MaxBounces];
+    uint64_t reconstructionTime;
+};
+
+RWStructuredBuffer<Stats> stats;
+#endif
+
 [shader("compute")]
 [numthreads(8, 4, 1)]
 void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUniforms push) {
+#if PROFILE
+    uint64_t headerStart = clockARB();
+    defer InterlockedAdd(stats[0].totalTime, clockARB() - headerStart);
+#endif
+
     const float2 offsetInTile = r2Sequence(push.frameCount) * CacheDownscaleFactor;
     const float2 uv = float2(coords * CacheDownscaleFactor + offsetInTile + 0.5f) / push.frameDimensions;
     const PixelInfo pixelInfo = PixelInfo(cameras.CurrentFrame(), gBufferInputs, uv);
@@ -84,6 +112,10 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
 
     RandomSampler rng = RandomSampler(uv, push.frameWidth, push.frameHeight, push.frameCount);
 
+#if PROFILE
+    uint64_t headerEnd = clockARB();
+    InterlockedAdd(stats[0].headerTime, headerEnd - headerStart);
+#endif // PROFILE
     if (pixelInfo.isSky) {
         return;
     }
@@ -93,8 +125,17 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
     float3 previousPos = pixelInfo.cameraPos;
     bool hitSky = false;
 
+#if PROFILE
+    uint64_t bounceStartTimes[MaxBounces];
+#endif
     // forward trace: collect direct lighting at each bounce
     for (; bounceIndex < MaxBounces; bounceIndex++) {
+
+#if PROFILE
+        bounceStartTimes[bounceIndex] = clockARB();
+        defer InterlockedAdd(stats[0].bounceTimes[bounceIndex].totalTime, clockARB() - bounceStartTimes[bounceIndex]);
+#endif
+
         HashGrid::Key key;
         key.hitPosition = startOfRay;
         float3 dPos = previousPos - startOfRay;
@@ -104,7 +145,15 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
         key.rayLength = l;
         bool wasNew;
 
+#if PROFILE
+        uint64_t beforeInsert = clockARB();
+#endif
         bounces[bounceIndex].gridCellIndex = GetHashGrid().insert(key, wasNew);
+#if PROFILE
+        InterlockedAdd(stats[0].bounceTimes[bounceIndex].hashGridInsertion, clockARB() - beforeInsert);
+
+        uint64_t setupStart = clockARB();
+#endif
 
         pbr.alpha = startingRoughness * startingRoughness;
         pbr.metallic = startingMetallic;
@@ -113,23 +162,46 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
         pbr.N = startingNormal;
         pbr.NdotV = abs(dot(pbr.N, pbr.V));
 
+#if PROFILE
+        uint64_t sampleLightsStart = clockARB();
+#endif
         float lightPDF = 1;
         float3 directLighting = lightData.sampleLights(lightPDF, capability, pbr, startOfRay, startingNormal, startingTangent, startingMetallic, startingRoughness);
         directLighting /= lightPDF;
+#if PROFILE
+        InterlockedAdd(stats[0].bounceTimes[bounceIndex].lightSampling, clockARB() - sampleLightsStart);
+#endif
 
+#if PROFILE
+        uint64_t sampleEmissiveStart = clockARB();
+#endif
         float emissivePDF = 1;
         float3 emissiveLighting = lightData.sampleEmissives(emissivePDF, rng, materialSystem, capability, pbr, startOfRay, startingNormal);
         directLighting += emissiveLighting / emissivePDF;
+#if PROFILE
+        InterlockedAdd(stats[0].bounceTimes[bounceIndex].emissiveSampling, clockARB() - sampleEmissiveStart);
+#endif
 
         directLighting += startingEmissive * 50;
 
+#if PROFILE
+        uint64_t memoizationStart = clockARB();
+#endif
         bounces[bounceIndex].R = startingAlbedo;
         bounces[bounceIndex].directLight = directLighting;
         bounces[bounceIndex].pdfOfNextDirection = directionPDF;
         bounces[bounceIndex].directionToNext = rayDirection;
         bounces[bounceIndex].normal = startingNormal;
+#if PROFILE
+        InterlockedAdd(stats[0].bounceTimes[bounceIndex].memoization, clockARB() - memoizationStart);
 
+        InterlockedAdd(stats[0].bounceTimes[bounceIndex].setup, clockARB() - setupStart);
+        uint64_t rtStart = clockARB();
+#endif
         if (let intersection = capability.raytrace(materialSystem, uv, startOfRay + rayDirection * 0.01f, rayDirection, tMax)) {
+#if PROFILE
+            InterlockedAdd(stats[0].bounceTimes[bounceIndex].raytracing, clockARB() - rtStart);
+#endif
             float3 worldBitangent = cross(intersection.worldNormal, intersection.worldTangent);
             float3x3 intersectionTBN = float3x3(intersection.worldTangent, worldBitangent, intersection.worldNormal);
             previousPos = startOfRay;
@@ -145,6 +217,9 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
             startingTangent = intersection.worldTangent;
             startingEmissive = intersection.computedMaterial.emissive;
         } else {
+#if PROFILE
+            InterlockedAdd(stats[0].bounceTimes[bounceIndex].raytracing, clockARB() - rtStart);
+#endif
             // correct orientation for skybox cubemap
             constexpr float3x3 rot = float3x3(
                 float3(1.0, 0.0, 0.0),
@@ -184,6 +259,9 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
 #endif
     }
 
+#if PROFILE
+    uint64_t reconstructionStartTime = clockARB();
+#endif
     uint lastBounceIndex = bounceIndex;
     for (; bounceIndex >= 0; bounceIndex--) {
         // rebuild path forward
@@ -211,6 +289,10 @@ void fillSurfaceCache(uint2 coords: SV_DispatchThreadID, uniform LightingPassUni
             GetHashGrid().accumulate(cellIndex, L);
         }
     }
+#if PROFILE
+    uint64_t reconstructionEndTime = clockARB();
+    InterlockedAdd(stats[0].reconstructionTime, reconstructionEndTime - reconstructionStartTime);
+#endif
 }
 
 [shader("compute")]

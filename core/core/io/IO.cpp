@@ -45,7 +45,7 @@ namespace Carrot::IO {
         return std::move(contents);
     }
 
-    void writeFile(const std::string& filename, void *ptr, size_t length) {
+    void writeFile(const std::string& filename, const void *ptr, size_t length) {
         std::ofstream file(filename, std::ios::out | std::ios::binary);
         file.write(static_cast<const char *>(ptr), length);
     }

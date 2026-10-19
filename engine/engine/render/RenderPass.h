@@ -37,6 +37,7 @@ namespace Carrot::Render {
         vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
         bool isCreatedInThisPass: 1 = false;
         bool clearBufferEachFrame: 1 = false;
+        bool cpuVisibleBuffer: 1 = false;
 
         Output(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), expectedLayout(expectedLayout), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
     };
@@ -157,7 +158,7 @@ namespace Carrot::Render {
 
     public:
         void addInput(FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
-        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame);
+        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame, bool cpuVisible);
         void present(FrameResource& toPresent);
 
     public:

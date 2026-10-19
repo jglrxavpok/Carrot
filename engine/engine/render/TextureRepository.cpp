@@ -61,17 +61,22 @@ namespace Carrot::Render {
         return *chain.get(frameIndex);
     }
 
-    static BufferAllocation makeBufferAlloc(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages) {
-        BufferAllocation alloc = GetResourceAllocator().allocateDeviceBuffer(buffer.bufferSize.computeCode({viewportSize.width, viewportSize.height}), usages);
+    static BufferAllocation makeBufferAlloc(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages, bool cpuVisibleBuffer) {
+        BufferAllocation alloc;
+        if (cpuVisibleBuffer) {
+            alloc = GetResourceAllocator().allocateStagingBuffer(buffer.bufferSize.computeCode({viewportSize.width, viewportSize.height}), 1);
+        } else {
+            alloc = GetResourceAllocator().allocateDeviceBuffer(buffer.bufferSize.computeCode({viewportSize.width, viewportSize.height}), usages);
+        }
         alloc.name(buffer.name);
         return alloc;
     }
 
-    void ResourceRepository::BufferChain::resize(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages, std::size_t historyLength) {
+    void ResourceRepository::BufferChain::resize(const FrameResource& buffer, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages, std::size_t historyLength, bool cpuVisibleBuffer) {
         std::size_t bufferCount = historyLength+1;
         buffers.resize(bufferCount);
         for (int i = 0; i < bufferCount; ++i) {
-            buffers[i] = std::move(makeBufferAlloc(buffer, viewportSize, usages));
+            buffers[i] = std::move(makeBufferAlloc(buffer, viewportSize, usages, cpuVisibleBuffer));
         }
     }
 
@@ -118,14 +123,14 @@ namespace Carrot::Render {
     }
 
 
-    ResourceRepository::BufferChain& ResourceRepository::createBuffer(const FrameResource& texture, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages) {
+    ResourceRepository::BufferChain& ResourceRepository::createBuffer(const FrameResource& texture, const vk::Extent2D& viewportSize, vk::BufferUsageFlags usages, bool cpuVisibleBuffer) {
         verify(texture.type == ResourceType::StorageBuffer, "Resource is not a buffer");
         verify(!buffers.contains(texture.id), "Buffer already exists");
         auto& ref = buffers[texture.rootID];
 
         auto historyLengthIter = resourceReuseHistoryLengths.find(texture.id);
         std::size_t historyLength = historyLengthIter == resourceReuseHistoryLengths.end() ? 0 : historyLengthIter->second;
-        ref.resize(texture, viewportSize, usages, historyLength);
+        ref.resize(texture, viewportSize, usages, historyLength, cpuVisibleBuffer);
         return ref;
     }
 
@@ -137,9 +142,9 @@ namespace Carrot::Render {
         return buffers.at(id).get(frameNumber);
     }
 
-    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, const vk::Extent2D& viewportSize, u64 frameNumber, vk::BufferUsageFlags usages) {
+    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, const vk::Extent2D& viewportSize, u64 frameNumber, vk::BufferUsageFlags usages, bool cpuVisibleBuffer) {
         if(!buffers.contains(id.rootID)) {
-            createBuffer(id, viewportSize, usages);
+            createBuffer(id, viewportSize, usages, cpuVisibleBuffer);
         }
         return buffers[id.rootID].get(frameNumber);
     }

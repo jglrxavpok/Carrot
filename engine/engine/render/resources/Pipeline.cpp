@@ -517,10 +517,11 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRendering(const RenderingP
         if(!debugName.empty()) {
             DebugNameable::nameSingle(debugName, *vkPipelines[createInfo]);
 
-            if (false && debugName.find("fill-surface-cache") != std::string::npos) { // TODO: debug only
+            if (false && debugName.find("svgf") != std::string::npos) { // TODO: debug only
                 std::optional<std::string> disassembly = driver.tryGetDisassembly(*vkPipelines[createInfo]);
                 if (disassembly.has_value()) {
-                    Carrot::Log::info("Disassembly is:\n%s", disassembly->c_str());
+                    Carrot::IO::writeFile("/tmp/disasm.txt", disassembly->c_str(), disassembly->size());
+                   // Carrot::Log::info("Disassembly is:\n%s", disassembly->c_str());
                 }
             }
         }

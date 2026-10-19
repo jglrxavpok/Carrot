@@ -36,6 +36,11 @@
       "type": "manual",
       "setID": 7,
       "_comment": "RT"
+    },
+    {
+      "type": "manual",
+      "setID": 8,
+      "_comment": "Stats"
     }
   ]
 }
