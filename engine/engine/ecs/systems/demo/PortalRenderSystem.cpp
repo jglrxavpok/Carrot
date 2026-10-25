@@ -166,6 +166,7 @@ namespace Carrot::ECS {
     }
 
     void PortalRenderSystem::reload() {
+        regenerateViewports = true;
     }
 
     void PortalRenderSystem::unload() {
@@ -286,6 +287,8 @@ namespace Carrot::ECS {
     }
 
     std::unique_ptr<Carrot::ECS::System> PortalRenderSystem::duplicate(Carrot::ECS::World& newOwner) const {
-        return std::make_unique<PortalRenderSystem>(newOwner);
+        auto result = std::make_unique<PortalRenderSystem>(newOwner);
+        result->regenerateViewports = regenerateViewports; // To make reloading work across playing/stopping game in editor
+        return result;
     }
 }
