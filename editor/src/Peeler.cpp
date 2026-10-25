@@ -72,33 +72,20 @@ namespace Peeler {
     Application* Instance = nullptr;
 
     void Application::setupCamera(const Carrot::Render::Context& renderContext) {
-        /*if(renderContext.pViewport->getViewportID() == GameViewportID) */{
-            if(!std::string_view(renderContext.pViewport->getViewportID()).starts_with("portal")) // let game decide
+        currentScene.setupCamera(renderContext);
+
+        // override any primary camera the game might have
+        if(!isPlaying) {
+            if(std::string_view(renderContext.pViewport->getViewportID()).starts_with("portal")) // let game decide
+                return;
             switch (currentCameraType) {
                 case CameraType::FreeCam:
-                    freeCameraController.applyTo(gameViewport.getSizef(), /*gameViewport.getCamera()*/renderContext.pViewport->getCamera());
-                break;
+                    freeCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
+                    break;
                 case CameraType::UI:
                     uiCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
-                break;
+                    break;
                 default: TODO;
-            }
-
-            currentScene.setupCamera(renderContext);
-
-            // override any primary camera the game might have
-            if(!isPlaying) {
-                if(std::string_view(renderContext.pViewport->getViewportID()).starts_with("portal")) // let game decide
-                    return;
-                switch (currentCameraType) {
-                    case CameraType::FreeCam:
-                        freeCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
-                        break;
-                    case CameraType::UI:
-                        uiCameraController.applyTo(gameViewport.getSizef(), renderContext.pViewport->getCamera());
-                        break;
-                    default: TODO;
-                }
             }
         }
     }

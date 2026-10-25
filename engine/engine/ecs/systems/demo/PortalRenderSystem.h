@@ -51,7 +51,7 @@ namespace Carrot::ECS {
             Carrot::Identifier previousViewportID; // used to inherit depth stencil
         };
         std::unordered_map<Carrot::Identifier, ViewportInfo> portalViewportInfo;
-        bool regenerateViewports = false;
+        bool regenerateViewports = true;
     };
 
 } // Carrot::ECS
