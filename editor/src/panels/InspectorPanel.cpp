@@ -258,15 +258,17 @@ namespace Peeler {
             }
         } else {
             Carrot::ECS::System* pSystem = app.selectedSystems[0].get(app.currentScene.world);
-            ImGui::TextUnformatted(pSystem->getName());
+            if (pSystem) {
+                ImGui::TextUnformatted(pSystem->getName());
 
-            if (auto* pCsharp = dynamic_cast<Carrot::ECS::CSharpLogicSystem*>(pSystem)) {
-                EditContext editContext {
-                    .editor = app,
-                    .inspector = *this,
-                    .renderContext = renderContext
-                };
-                editCSharpSystem(editContext, *pCsharp);
+                if (auto* pCsharp = dynamic_cast<Carrot::ECS::CSharpLogicSystem*>(pSystem)) {
+                    EditContext editContext {
+                        .editor = app,
+                        .inspector = *this,
+                        .renderContext = renderContext
+                    };
+                    editCSharpSystem(editContext, *pCsharp);
+                }
             }
         }
     }

@@ -616,23 +616,25 @@ namespace Carrot::Render {
 
                 if (false)
                 {
-                    BufferView view = pass.getGraph().getBuffer(data.statsBuffer, frame.getPreviousFrameNumber()).view;
-                    const SurfaceCacheStats* pStats = view.map<SurfaceCacheStats>();
-                    if (pStats) {
-                        Carrot::Log::info("============= Viewport %s", std::string_view{frame.pViewport->getViewportID()}.data());
-                        Carrot::Log::info("Total time: %lu", pStats->totalTime);
-                        Carrot::Log::info("Header time: %lu (%.5f %%)", pStats->headerTime, static_cast<double>(pStats->headerTime) / pStats->totalTime * 100);
-                        Carrot::Log::info("Reconstruction time: %lu (%.5f %%)", pStats->reconstructionTime, static_cast<double>(pStats->reconstructionTime) / pStats->totalTime * 100);
-                        for (int i = 0; i < 4; ++i) {
-                            Carrot::Log::info("Bounce %d time: %lu (%.5f %%)", i, pStats->bounceTimes[i].totalTime, static_cast<double>(pStats->bounceTimes[i].totalTime) / pStats->totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d hash grid insertion time: %lu (%.5f %%)", i, pStats->bounceTimes[i].hashGridInsertion, static_cast<double>(pStats->bounceTimes[i].hashGridInsertion) / pStats->bounceTimes[i].totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d raytrace time: %lu (%.5f %%)", i, pStats->bounceTimes[i].raytracing, static_cast<double>(pStats->bounceTimes[i].raytracing) / pStats->bounceTimes[i].totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d setup time: %lu (%.5f %%)", i, pStats->bounceTimes[i].setup, static_cast<double>(pStats->bounceTimes[i].setup) / pStats->bounceTimes[i].totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d light sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].lightSampling, static_cast<double>(pStats->bounceTimes[i].lightSampling) / pStats->bounceTimes[i].totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d emissive sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].emissiveSampling, static_cast<double>(pStats->bounceTimes[i].emissiveSampling) / pStats->bounceTimes[i].totalTime * 100);
-                            Carrot::Log::info("\t- Bounce %d memoization time: %lu (%.5f %%)", i, pStats->bounceTimes[i].memoization, static_cast<double>(pStats->bounceTimes[i].memoization) / pStats->bounceTimes[i].totalTime * 100);
+                    { // read from previous frame
+                        BufferView view = pass.getGraph().getBuffer(data.statsBuffer, frame.getPreviousFrameNumber()).view;
+                        const SurfaceCacheStats* pStats = view.map<SurfaceCacheStats>();
+                        if (pStats) {
+                            Carrot::Log::info("============= Viewport %s", std::string_view{frame.pViewport->getViewportID()}.data());
+                            Carrot::Log::info("Total time: %lu", pStats->totalTime);
+                            Carrot::Log::info("Header time: %lu (%.5f %%)", pStats->headerTime, static_cast<double>(pStats->headerTime) / pStats->totalTime * 100);
+                            Carrot::Log::info("Reconstruction time: %lu (%.5f %%)", pStats->reconstructionTime, static_cast<double>(pStats->reconstructionTime) / pStats->totalTime * 100);
+                            for (int i = 0; i < 4; ++i) {
+                                Carrot::Log::info("Bounce %d time: %lu (%.5f %%)", i, pStats->bounceTimes[i].totalTime, static_cast<double>(pStats->bounceTimes[i].totalTime) / pStats->totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d hash grid insertion time: %lu (%.5f %%)", i, pStats->bounceTimes[i].hashGridInsertion, static_cast<double>(pStats->bounceTimes[i].hashGridInsertion) / pStats->bounceTimes[i].totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d raytrace time: %lu (%.5f %%)", i, pStats->bounceTimes[i].raytracing, static_cast<double>(pStats->bounceTimes[i].raytracing) / pStats->bounceTimes[i].totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d setup time: %lu (%.5f %%)", i, pStats->bounceTimes[i].setup, static_cast<double>(pStats->bounceTimes[i].setup) / pStats->bounceTimes[i].totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d light sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].lightSampling, static_cast<double>(pStats->bounceTimes[i].lightSampling) / pStats->bounceTimes[i].totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d emissive sampling time: %lu (%.5f %%)", i, pStats->bounceTimes[i].emissiveSampling, static_cast<double>(pStats->bounceTimes[i].emissiveSampling) / pStats->bounceTimes[i].totalTime * 100);
+                                Carrot::Log::info("\t- Bounce %d memoization time: %lu (%.5f %%)", i, pStats->bounceTimes[i].memoization, static_cast<double>(pStats->bounceTimes[i].memoization) / pStats->bounceTimes[i].totalTime * 100);
+                            }
+                            Carrot::Log::info("=============");
                         }
-                        Carrot::Log::info("=============");
                     }
                     BufferView view = pass.getGraph().getBuffer(data.statsBuffer, frame.frameNumber).view;
                     cmds.fillBuffer(view.getVulkanBuffer(), view.getStart(), sizeof(SurfaceCacheStats), 0);
