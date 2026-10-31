@@ -251,6 +251,7 @@ function(add_includes Target)
 
         target_compile_options(${Target} PRIVATE "$<$<C_COMPILER_ID:MSVC>:/bigobj>")
         target_compile_options(${Target} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
+        target_compile_options(${Target} PRIVATE "-DNOMINMAX=1")
 
     else()
         # jet-live support:
@@ -272,7 +273,7 @@ function(add_includes Target)
             VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 
     if(IS_MSVC)
-        target_compile_options("${Target}" PRIVATE "/We4172") # returning address of temporary
+        target_compile_options("${Target}" PRIVATE "/we4172") # returning address of temporary
     else ()
         target_compile_options("${Target}" PRIVATE "-Werror=return-local-addr")
     endif ()

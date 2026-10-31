@@ -4,6 +4,7 @@
 
 #include "AABB.h"
 #include <core/math/Sphere.h>
+#include <array>
 
 namespace Carrot::Math {
     AABB::AABB(glm::vec3 minBounds, glm::vec3 maxBounds): min(minBounds), max(maxBounds) {}

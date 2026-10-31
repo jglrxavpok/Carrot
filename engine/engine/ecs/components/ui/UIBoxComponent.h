@@ -7,6 +7,7 @@
 #include <engine/ecs/components/ComponentReflection.h>
 #include <engine/render/AsyncResource.hpp>
 #include <engine/render/resources/Texture.h>
+#include <variant>
 
 namespace Carrot::UI {
     struct Range {

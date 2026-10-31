@@ -26,6 +26,7 @@
 #ifdef AFTERMATH_ENABLE
 #include <GFSDK_Aftermath_GpuCrashDump.h>
 #include "engine/utils/NsightAftermathHelpers.h"
+#include "engine/utils/AftermathIntegration.h"
 #include "engine/console/RuntimeOption.hpp"
 #include "core/io/Strings.h"
 
