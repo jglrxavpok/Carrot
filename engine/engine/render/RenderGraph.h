@@ -20,6 +20,8 @@ namespace Carrot::Render {
     public:
         explicit Graph(VulkanDriver& driver);
 
+        virtual ~Graph();
+
         /**
          * Setups graph for this frame
          */

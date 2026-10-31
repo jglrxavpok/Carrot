@@ -218,6 +218,10 @@ namespace Carrot::Render {
         timingQueries.fill(Timestamp{0,1}); // start with all available
     }
 
+    Graph::~Graph() {
+        driver.deferDestroy("RenderGraph timings", std::move(timingQueryPool));
+    }
+
     static std::uint32_t uniqueID = 1;
     static std::unordered_map<std::uint32_t, ed::NodeId> nodes;
 

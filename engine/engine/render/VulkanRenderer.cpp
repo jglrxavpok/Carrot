@@ -1543,7 +1543,7 @@ void Carrot::VulkanRenderer::queueAsyncCopy(bool onRenderThread, const Carrot::B
 }
 
 
-void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& mainRenderContext, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList) {
+void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& mainRenderContext, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList, std::optional<u64> frameToWaitFor) {
     ASSERT_RENDER_THREAD();
     updatePerDrawBuffers(mainRenderContext);
 
@@ -1563,12 +1563,30 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
 
-        driver.submitTransfer(vk::SubmitInfo {
-            .commandBufferCount = 1,
-            .pCommandBuffers = &cmds,
+        vk::SemaphoreSubmitInfo waitForPreviousFrame {
+            .semaphore = getEngine().getRenderFinishedTimelineSemaphore(),
+            .value = frameToWaitFor.value_or(0),
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        };
 
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &asyncCopySemaphore,
+        vk::SemaphoreSubmitInfo asyncCopySemaphoreSignal {
+            .semaphore = asyncCopySemaphore,
+            .value = 0, // binary semaphore, not applicable
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        };
+
+        vk::CommandBufferSubmitInfo cmdBufferInfo {
+            .commandBuffer = cmds,
+        };
+        driver.submitTransfer(vk::SubmitInfo2 {
+            .waitSemaphoreInfoCount = frameToWaitFor.has_value() ? 1u : 0u,
+            .pWaitSemaphoreInfos = &waitForPreviousFrame,
+
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &cmdBufferInfo,
+
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &asyncCopySemaphoreSignal,
         });
     }
 

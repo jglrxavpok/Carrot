@@ -882,7 +882,11 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         }
 
         // copies that need to be done *before* the start of the frame
-        renderer.submitAsyncCopies(mainRenderContext, waitSemaphores);
+        std::optional<u64> previousFrameNumber;
+        if (mainRenderContext.getPreviousFrameNumber() < mainRenderContext.frameNumber) { // TODO: hasPreviousFrame()
+            previousFrameNumber = mainRenderContext.getPreviousFrameNumber();
+        }
+        renderer.submitAsyncCopies(mainRenderContext, waitSemaphores, previousFrameNumber);
 
 
         std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};

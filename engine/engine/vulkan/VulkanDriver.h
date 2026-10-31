@@ -66,6 +66,7 @@ namespace Carrot {
     using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
     using DeferredMemoryDestruction = DeferredDestruction<Carrot::DeviceMemory>;
     using DeferredBufferDestruction = DeferredDestruction<vk::UniqueBuffer>;
+    using DeferredQueryPoolDestruction = DeferredDestruction<vk::UniqueQueryPool>;
 
     struct AccelerationStructureAndBackingMemory {
         vk::UniqueAccelerationStructureKHR as;
@@ -213,6 +214,7 @@ namespace Carrot {
         void deferDestroy(const std::string& name, vk::UniqueImageView&& imageView);
         void deferDestroy(const std::string& name, Carrot::DeviceMemory&& memory);
         void deferDestroy(const std::string& name, vk::UniqueBuffer&& resource);
+        void deferDestroy(const std::string& name, vk::UniqueQueryPool&& resource);
         void deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource, Carrot::BufferAllocation&& backingMemory);
 
     public: // swapchain & viewport
@@ -269,6 +271,7 @@ namespace Carrot {
         std::list<DeferredImageViewDestruction> deferredImageViewDestructions;
         std::list<DeferredMemoryDestruction> deferredMemoryDestructions;
         std::list<DeferredBufferDestruction> deferredBufferDestructions;
+        std::list<DeferredQueryPoolDestruction> deferredQueryPoolDestructions;
         std::list<DeferredAccelerationStructureDestruction> deferredAccelerationStructureDestructions;
 
         ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;

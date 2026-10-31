@@ -997,6 +997,7 @@ void Carrot::VulkanDriver::executeDeferredDestructionsNow() {
     deferredImageDestructions.clear();
     deferredImageViewDestructions.clear();
     deferredBufferDestructions.clear();
+    deferredQueryPoolDestructions.clear();
     deferredMemoryDestructions.clear();
     deferredAccelerationStructureDestructions.clear();
 }
@@ -1020,6 +1021,9 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
         for(auto& resource : deferredBufferDestructions) {
             resource.tickDown();
         }
+        for(auto& resource : deferredQueryPoolDestructions) {
+            resource.tickDown();
+        }
         for(auto& resource : deferredMemoryDestructions) {
             resource.tickDown();
         }
@@ -1034,6 +1038,9 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
             return d.isReadyForDestruction();
         });
         std::erase_if(deferredBufferDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+        std::erase_if(deferredQueryPoolDestructions, [](auto& d) {
             return d.isReadyForDestruction();
         });
         std::erase_if(deferredMemoryDestructions, [](auto& d) {
@@ -1081,6 +1088,15 @@ void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueBuffe
     }
     Async::LockGuard g { deferredDestroysLock };
     deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(name, std::move(resource))));
+}
+
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueQueryPool&& resource) {
+    if (GetEngine().isShuttingDown()) {
+        drop(std::move(resource));
+        return;
+    }
+    Async::LockGuard g { deferredDestroysLock };
+    deferredQueryPoolDestructions.push_back(std::move(DeferredQueryPoolDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, Carrot::DeviceMemory&& resource) {
