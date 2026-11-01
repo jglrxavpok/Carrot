@@ -70,7 +70,9 @@ void Carrot::CarrotGame::updateViewportComposition(Render::ViewportComposition&&
 void Carrot::CarrotGame::setGameViewport(const Identifier& gameViewportID) {
     Render::Viewport& gameViewport = engine.getOrCreateViewport(gameViewportID);
     engine.setGameViewport(gameViewport);
-    engine.updateGameViewportRenderGraph();
+
+    Carrot::Render::FrameResource outputColor = engine.updateGameViewportRenderGraph();
+    onCompositionFinalized(outputColor);
 }
 
 bool Carrot::CarrotGame::hasMultipleGameViewports() const {
