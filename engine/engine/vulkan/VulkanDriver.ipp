@@ -6,7 +6,7 @@
 #include "engine/utils/Macros.h"
 
 template<typename CommandBufferConsumer>
-vk::CommandBuffer Carrot::VulkanDriver::recordStandaloneBuffer(vk::CommandPool& commandPool, const CommandBufferConsumer& consumer) {
+Carrot::CommandBufferToFree Carrot::VulkanDriver::recordStandaloneBuffer(vk::CommandPool& commandPool, const CommandBufferConsumer& consumer) {
     // allocate command buffer
     vk::CommandBufferAllocateInfo allocationInfo {
         .commandPool = commandPool,
@@ -28,21 +28,21 @@ vk::CommandBuffer Carrot::VulkanDriver::recordStandaloneBuffer(vk::CommandPool& 
 
     // end and submit
     stagingCommands.end();
-    return stagingCommands;
+    return Carrot::CommandBufferToFree{commandPool, stagingCommands};
 }
 
 template<typename CommandBufferConsumer>
-vk::CommandBuffer Carrot::VulkanDriver::recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer) {
+Carrot::CommandBufferToFree Carrot::VulkanDriver::recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer) {
     return recordStandaloneBuffer(getThreadGraphicsCommandPool(), consumer);
 }
 
 template<typename CommandBufferConsumer>
-vk::CommandBuffer Carrot::VulkanDriver::recordStandaloneTransferBuffer(const CommandBufferConsumer& consumer) {
+Carrot::CommandBufferToFree Carrot::VulkanDriver::recordStandaloneTransferBuffer(const CommandBufferConsumer& consumer) {
     return recordStandaloneBuffer(getThreadTransferCommandPool(), consumer);
 }
 
 template<typename CommandBufferConsumer>
-vk::CommandBuffer Carrot::VulkanDriver::recordStandaloneComputeBuffer(const CommandBufferConsumer& consumer) {
+Carrot::CommandBufferToFree Carrot::VulkanDriver::recordStandaloneComputeBuffer(const CommandBufferConsumer& consumer) {
     return recordStandaloneBuffer(getThreadComputeCommandPool(), consumer);
 }
 
@@ -55,10 +55,10 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
                                                      vk::PipelineStageFlags2 waitDstFlags,
                                                      vk::Semaphore signalSemaphore,
                                                      CommandBufferConsumer consumer) {
-    vk::CommandBuffer stagingCommands = recordStandaloneBuffer(commandPool, consumer);
+    Carrot::CommandBufferToFree stagingCommands = recordStandaloneBuffer(commandPool, consumer);
 
     vk::CommandBufferSubmitInfo stagingCommandInfo {
-        .commandBuffer = stagingCommands
+        .commandBuffer = stagingCommands.buffer
     };
 
     vk::SubmitInfo2 submitInfo = {
@@ -89,9 +89,9 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
         waitAction();
 
         // free now-useless command buffers
-        getLogicalDevice().freeCommandBuffers(commandPool, stagingCommands);
+        stagingCommands.immediateFree(*this);
     } else {
-        deferCommandBufferDestruction(commandPool, stagingCommands);
+        stagingCommands.deferFree(*this);
     }
 }
 

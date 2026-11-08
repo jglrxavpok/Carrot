@@ -1538,6 +1538,11 @@ vk::Semaphore Carrot::VulkanRenderer::fetchACopySemaphore() {
 }
 
 void Carrot::VulkanRenderer::queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination, const std::source_location& sourceLocation) {
+    if (onRenderThread) {
+        ASSERT_RENDER_THREAD();
+    } else {
+        ASSERT_NOT_RENDER_THREAD();
+    }
     auto* pAsyncCopyQueue = onRenderThread ? renderData.pAsyncCopyQueue : mainData.pAsyncCopyQueue;
     pAsyncCopyQueue->push(AsyncCopyDesc{source, destination, sourceLocation});
 }
@@ -1549,7 +1554,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
 
     auto& asyncCopiesQueue = *renderData.pAsyncCopyQueue;
     bool needAsyncCopies = false;
-    vk::CommandBuffer cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
+    Carrot::CommandBufferToFree cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
         AsyncCopyDesc copyDesc;
         while(asyncCopiesQueue.popSafe(copyDesc)) {
             copyDesc.source.cmdCopyTo(cmds, copyDesc.destination);
@@ -1576,7 +1581,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
         };
 
         vk::CommandBufferSubmitInfo cmdBufferInfo {
-            .commandBuffer = cmds,
+            .commandBuffer = cmds.buffer,
         };
         driver.submitTransfer(vk::SubmitInfo2 {
             .waitSemaphoreInfoCount = frameToWaitFor.has_value() ? 1u : 0u,
@@ -1599,6 +1604,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
         });
     }
     semaphorePool.reset();
+    cmds.deferFree(driver);
 }
 
 
@@ -1835,12 +1841,12 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     if (packet.async) {
         Allocator& alloc = Allocator::getDefault(); // TODO: reuse between frames?
         auto renderContext = getEngine().newRenderContext((currentEngineFrame+1) % MAX_FRAMES_IN_FLIGHT, 0, *static_cast<Render::Viewport*>(nullptr));
-        vk::CommandBuffer cmds = driver.recordStandaloneComputeBuffer([&](vk::CommandBuffer& cmds) {
+        CommandBufferToFree cmds = driver.recordStandaloneComputeBuffer([&](vk::CommandBuffer& cmds) {
             packet.record(alloc, {}, renderContext, cmds, nullptr);
         });
 
         vk::CommandBufferSubmitInfo cmdBufferInfo {
-            .commandBuffer = cmds,
+            .commandBuffer = cmds.buffer,
         };
         vk::SubmitInfo2 submitInfo {
             .waitSemaphoreInfoCount = static_cast<u32>(packet.waitSemaphores.size()),
@@ -1851,6 +1857,7 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
             .pSignalSemaphoreInfos = packet.signalSemaphores.data(),
         };
         driver.getComputeQueue().submit(submitInfo);
+        cmds.deferFree(driver);
     } else {
         verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
         threadLocalRenderPackets->unsorted[getCurrentBufferPointerForMain()].emplace_back(packet);

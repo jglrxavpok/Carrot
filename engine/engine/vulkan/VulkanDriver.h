@@ -42,6 +42,7 @@ namespace Carrot {
     class Buffer;
     class Engine;
     class VulkanRenderer;
+    class VulkanDriver;
 
     struct QueuePartition {
         std::optional<uint32_t> graphicsFamily;
@@ -73,6 +74,21 @@ namespace Carrot {
         Carrot::BufferAllocation backingMemory;
     };
     using DeferredAccelerationStructureDestruction = DeferredDestruction<AccelerationStructureAndBackingMemory>;
+
+    /// Structure used to ensure code does not forget to free a command buffer
+    struct CommandBufferToFree {
+        vk::CommandPool originPool;
+        vk::CommandBuffer buffer;
+        bool freed = false;
+
+        CommandBufferToFree(vk::CommandPool pool, vk::CommandBuffer buffer);
+        ~CommandBufferToFree();
+        CommandBufferToFree(const CommandBufferToFree& toCopy) = default;
+        CommandBufferToFree& operator=(const CommandBufferToFree& toCopy) = default;
+
+        void immediateFree(VulkanDriver& driver);
+        void deferFree(VulkanDriver& driver);
+    };
 
     class VulkanDriver: public SwapchainAware {
     public:
@@ -128,13 +144,13 @@ namespace Carrot {
         void performSingleTimeComputeCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags2 waitDstFlags = static_cast<vk::PipelineStageFlagBits2>(0), vk::Semaphore signalSemaphore = {});
 
         template<typename CommandBufferConsumer>
-        vk::CommandBuffer recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer);
+        CommandBufferToFree recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer);
 
         template<typename CommandBufferConsumer>
-        vk::CommandBuffer recordStandaloneTransferBuffer(const CommandBufferConsumer& consumer);
+        CommandBufferToFree recordStandaloneTransferBuffer(const CommandBufferConsumer& consumer);
 
         template<typename CommandBufferConsumer>
-        vk::CommandBuffer recordStandaloneComputeBuffer(const CommandBufferConsumer& consumer);
+        CommandBufferToFree recordStandaloneComputeBuffer(const CommandBufferConsumer& consumer);
 
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
@@ -342,7 +358,7 @@ namespace Carrot {
 
     private:
         template<typename CommandBufferConsumer>
-        vk::CommandBuffer recordStandaloneBuffer(vk::CommandPool& commandPool, const CommandBufferConsumer& consumer);
+        Carrot::CommandBufferToFree recordStandaloneBuffer(vk::CommandPool& commandPool, const CommandBufferConsumer& consumer);
 
         template<typename CommandBufferConsumer>
         void performSingleTimeCommands(vk::CommandPool& commandPool, const std::function<void(const vk::SubmitInfo2&, const vk::Fence&)>& submitAction, const std::function<void()>& waitAction, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore, CommandBufferConsumer consumer);

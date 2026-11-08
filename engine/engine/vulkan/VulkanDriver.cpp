@@ -1908,6 +1908,23 @@ std::optional<std::string> Carrot::VulkanDriver::tryGetDisassembly(const vk::Pip
     return finalStr;
 }
 
+Carrot::CommandBufferToFree::CommandBufferToFree(vk::CommandPool pool, vk::CommandBuffer buffer) : originPool(pool),
+    buffer(buffer) {}
+
+Carrot::CommandBufferToFree::~CommandBufferToFree() {
+    verify(freed, "Forgot to free a buffer!");
+}
+
+void Carrot::CommandBufferToFree::deferFree(VulkanDriver& driver) {
+    driver.deferCommandBufferDestruction(originPool, buffer);
+    freed = true;
+}
+
+void Carrot::CommandBufferToFree::immediateFree(VulkanDriver& driver) {
+    driver.getLogicalDevice().freeCommandBuffers(originPool, buffer);
+    freed = true;
+}
+
 /// Used to dump when a crash happens (can be called from debugger)
 static void _DumpGPUResources() {
     GetVulkanDriver().dumpActiveGPUResources();
