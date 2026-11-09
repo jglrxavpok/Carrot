@@ -260,14 +260,25 @@ namespace Peeler {
             Carrot::ECS::System* pSystem = app.selectedSystems[0].get(app.currentScene.world);
             if (pSystem) {
                 ImGui::TextUnformatted(pSystem->getName());
-
                 if (auto* pCsharp = dynamic_cast<Carrot::ECS::CSharpLogicSystem*>(pSystem)) {
-                    EditContext editContext {
-                        .editor = app,
-                        .inspector = *this,
-                        .renderContext = renderContext
-                    };
-                    editCSharpSystem(editContext, *pCsharp);
+                    ImGui::InputTextWithHint("##Searchbar", "Search", &searchQuery);
+
+                    if (ImSearch::BeginSearch()) {
+                        ImSearch::SetUserQuery(searchQuery.c_str());
+                        EditContext editContext {
+                            .editor = app,
+                            .inspector = *this,
+                            .renderContext = renderContext
+                        };
+                        editCSharpSystem(editContext, *pCsharp);
+
+                        if(editContext.hasModifications) {
+                            app.markDirty();
+                        }
+
+                        ImSearch::EndSearch();
+                    }
+
                 }
             }
         }

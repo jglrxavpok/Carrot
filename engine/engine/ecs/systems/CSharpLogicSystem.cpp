@@ -238,7 +238,7 @@ namespace Carrot::ECS {
     }
 
     std::unique_ptr <Carrot::ECS::System> CSharpLogicSystem::duplicate(Carrot::ECS::World& newWorld) const {
-        std::unique_ptr<CSharpLogicSystem> result = std::make_unique<CSharpLogicSystem>(newWorld, namespaceName, className);
+        std::unique_ptr<CSharpLogicSystem> result = std::make_unique<CSharpLogicSystem>(serialise(), newWorld, namespaceName, className);
         return result;
     }
 
