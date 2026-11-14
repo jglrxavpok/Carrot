@@ -16,6 +16,8 @@ set(CORE-SOURCES
         ${CoreRoot}data/ParticleBlueprint.cpp
         ${CoreRoot}data/ShaderMetadata.cpp
 
+        ${CoreRoot}debug/Callstack.cpp
+
         ${CoreRoot}expressions/Expressions.cpp
         ${CoreRoot}expressions/ImageExpressions.cpp
 

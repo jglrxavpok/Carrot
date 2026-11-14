@@ -10,7 +10,7 @@
 #include <core/io/Resource.h>
 #include <core/utils/JSON.h>
 #include <core/utils/Lookup.hpp>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.hpp>
 
 namespace ShaderCompiler {
     static Carrot::Lookup DescriptorTypeNames = std::array {

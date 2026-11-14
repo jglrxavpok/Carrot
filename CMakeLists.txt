@@ -1,8 +1,8 @@
 # If using Ninja, use -d keepdepfile to ensure JetLive works properly!
 
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 4.4)
 project(Carrot)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # required for JetLive
 
@@ -188,6 +188,7 @@ add_subdirectory(thirdparty/tomlplusplus)
 find_package(ShaderSlang REQUIRED)
 
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+set(GLM_ENABLE_CXX_20 ON CACHE BOOL "" FORCE)
 add_subdirectory(thirdparty/glm/)
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
@@ -276,6 +277,7 @@ function(add_includes Target)
         target_compile_options("${Target}" PRIVATE "/we4172") # returning address of temporary
     else ()
         target_compile_options("${Target}" PRIVATE "-Werror=return-local-addr")
+        target_link_options("${Target}" PRIVATE "-lstdc++exp") # for stacktrace support
     endif ()
 endfunction()
 
