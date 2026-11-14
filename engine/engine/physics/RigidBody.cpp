@@ -25,13 +25,13 @@ namespace Carrot::Physics {
     }
 
     RigidBody& RigidBody::operator=(const RigidBody& toCopy) {
-        BaseBody::operator=(toCopy);
-        verify(!toCopy.bodyID.IsInvalid(), "Used after std::move");
-
         if(&toCopy == this) {
             return *this;
         }
 
+        BaseBody::operator=(toCopy);
+
+        bool wasInJolt = !toCopy.bodyID.IsInvalid();
         destroyJoltRepresentation();
 
         bodyType = toCopy.bodyType;
@@ -44,14 +44,11 @@ namespace Carrot::Physics {
         }
         layerID = toCopy.layerID;
 
-        JPH::BodyCreationSettings creationSettings;
-        {
-            BodyAccessRead toCopyBody{toCopy.getPhysicsSystem(), toCopy.bodyID};
-            creationSettings = toCopyBody->GetBodyCreationSettings();
-            bodyShapeRef = toCopy.bodyShapeRef;
-            bodyTemplate = toCopy.bodyTemplate;
-        }
-        createBody(creationSettings);
+        bodyShapeRef = toCopy.bodyShapeRef;
+        bodyTemplate = toCopy.bodyTemplate;
+
+        if (wasInJolt)
+            createBodyFromColliders();
 
         return *this;
     }
@@ -161,10 +158,11 @@ namespace Carrot::Physics {
     }
 
     Carrot::Math::Transform RigidBody::getTransform() const {
-        BodyAccessRead body{getPhysicsSystem(), bodyID};
         Carrot::Math::Transform transform;
-        transform.position = joltToCarrot(body->GetPosition());
-        transform.rotation = joltToCarrot(body->GetRotation());
+        if (BodyAccessRead body{getPhysicsSystem(), bodyID}) {
+            transform.position = joltToCarrot(body->GetPosition());
+            transform.rotation = joltToCarrot(body->GetRotation());
+        }
         return transform;
     }
 
