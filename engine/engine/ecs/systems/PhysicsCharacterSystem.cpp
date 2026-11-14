@@ -54,17 +54,4 @@ namespace Carrot::ECS {
         std::unique_ptr<PhysicsCharacterSystem> result = std::make_unique<PhysicsCharacterSystem>(newWorld);
         return result;
     }
-
-    void PhysicsCharacterSystem::reload() {
-        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
-            characterComp.firstFrame = true;
-            characterComp.character.addToWorld();
-        });
-    }
-
-    void PhysicsCharacterSystem::unload() {
-        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
-            characterComp.character.removeFromWorld();
-        });
-    }
 }

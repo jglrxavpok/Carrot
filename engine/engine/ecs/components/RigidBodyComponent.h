@@ -29,13 +29,10 @@ namespace Carrot::ECS {
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<RigidBodyComponent>(newOwner);
             result->rigidbody = rigidbody;
-            result->wasActive = wasActive;
             result->firstTick = true;
             return result;
         }
 
-        void reloadComponent() override;
-        void unloadComponent() override;
         void dispatchEventsPostPhysicsMainThread();
 
         bool& getRegisteredForContactsRef();
@@ -46,7 +43,6 @@ namespace Carrot::ECS {
 
     private:
         bool firstTick = true;
-        bool wasActive = true;
 
         // scripting stuff, because C# component are transient
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;

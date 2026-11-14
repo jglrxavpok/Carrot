@@ -72,7 +72,7 @@ public:
             return;
         }
 
-        auto& layersManager = GetPhysics().getCollisionLayers();
+        auto& layersManager = const_cast<Carrot::Physics::CollisionLayers&>(GetConfiguration().collisionLayers);
         layersManager.reset();
         if(description.HasMember("collision_layers")) {
             std::unordered_map<std::string, Carrot::Physics::CollisionLayerID> name2layer;
@@ -126,19 +126,10 @@ public:
         scene.world.broadcastStartEvent();
         scene.world.tick(0.0); // force systems to update their entity lists
         scene.load();
-        GetPhysics().resume();
     }
 
     void setupCamera(const Carrot::Render::Context& renderContext) override {
         scene.setupCamera(renderContext);
-    }
-
-    void prePhysics() override {
-        scene.prePhysics();
-    }
-
-    void postPhysics() override {
-        scene.postPhysics();
     }
 
     void onFrame(const Carrot::Render::Context& renderContext) override {

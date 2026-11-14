@@ -28,7 +28,7 @@ namespace Carrot::Physics {
 
     class RigidBody: public BaseBody {
     public:
-        explicit RigidBody();
+        explicit RigidBody(PhysicsSystem& system);
 
         RigidBody(const RigidBody& toCopy);
         RigidBody(RigidBody&& toMove);

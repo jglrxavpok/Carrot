@@ -30,9 +30,10 @@ using namespace JPH;
 
 namespace Carrot::Physics {
 
+    RuntimeOption PhysicsSystem::DebugView{"Physics/Debug view", false};
     static Log::Category joltCategory{"Jolt"};
 
-    BPLayerInterfaceImpl::BPLayerInterfaceImpl(CollisionLayers& layers): layers(layers) {}
+    BPLayerInterfaceImpl::BPLayerInterfaceImpl(const CollisionLayers& layers): layers(layers) {}
 
     uint BPLayerInterfaceImpl::GetNumBroadPhaseLayers() const {
         return layers.getCollisionLayersCount();
@@ -60,7 +61,7 @@ namespace Carrot::Physics {
     }
 #endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
 
-    ObjectVsBroadPhaseLayerFilterImpl::ObjectVsBroadPhaseLayerFilterImpl(CollisionLayers& layers): layers(layers) {}
+    ObjectVsBroadPhaseLayerFilterImpl::ObjectVsBroadPhaseLayerFilterImpl(const CollisionLayers& layers): layers(layers) {}
 
     bool ObjectVsBroadPhaseLayerFilterImpl::ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const {
         if(layers.getLayer(inLayer1).isStatic) {
@@ -71,15 +72,10 @@ namespace Carrot::Physics {
         }
     }
 
-    ObjectLayerPairFilterImpl::ObjectLayerPairFilterImpl(CollisionLayers& layers): layers(layers) {}
+    ObjectLayerPairFilterImpl::ObjectLayerPairFilterImpl(const CollisionLayers& layers): layers(layers) {}
 
     bool ObjectLayerPairFilterImpl::ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const {
         return layers.canCollide(inObject1, inObject2);
-    }
-
-    PhysicsSystem& PhysicsSystem::getInstance() {
-        static PhysicsSystem system;
-        return system;
     }
 
     static void JoltTrace(const char* inFMT, ...) {
@@ -89,7 +85,11 @@ namespace Carrot::Physics {
         va_end(args);
     }
 
-    PhysicsSystem::PhysicsSystem() {
+    PhysicsSystem::PhysicsSystem() :
+        broadphaseLayerInterface{GetConfiguration().collisionLayers},
+        objectVsBPFilter{GetConfiguration().collisionLayers},
+        objectLayerPairFilter{GetConfiguration().collisionLayers} {
+
         JPH::RegisterDefaultAllocator();
 
         JPH::Trace = JoltTrace;
@@ -124,7 +124,7 @@ namespace Carrot::Physics {
         jolt->SetContactListener(this);
     }
 
-    void PhysicsSystem::tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback) {
+    void PhysicsSystem::tick(double deltaTime, const std::function<void()>& prePhysicsCallback, const std::function<void()>& postPhysicsCallback) {
         ZoneScoped;
         constexpr int collisionSteps = 3;
         accumulator += deltaTime;
@@ -167,20 +167,27 @@ namespace Carrot::Physics {
         CustomLayerFilter objectLayerFilter { settings.collideAgainstLayer };
 
         struct CustomBodyFilter: public BodyFilter {
+            PhysicsSystem& physics;
             bool ignoreSensors = true;
             std::function<bool(const RigidBody&)> collideAgainstBody;
             std::function<bool(const Character&)> collideAgainstCharacter;
 
-            CustomBodyFilter(bool ignoreSensors, const function<bool(const RigidBody&)> b, const function<bool(const Character&)> c): ignoreSensors(ignoreSensors), collideAgainstBody(b), collideAgainstCharacter(c) {};
+            CustomBodyFilter(PhysicsSystem& physics, bool ignoreSensors, const function<bool(const RigidBody&)> b, const function<bool(const Character&)> c)
+            : physics(physics)
+            , ignoreSensors(ignoreSensors)
+            , collideAgainstBody(b)
+            , collideAgainstCharacter(c) {};
 
             struct BodyHandle {
-                BodyHandle(const BodyID& inBodyID) {
-                    mutex = GetPhysics().lockReadBody(inBodyID);
-                    body = GetPhysics().lockedGetBody(inBodyID);
+                PhysicsSystem& physics;
+
+                BodyHandle(PhysicsSystem& physics, const BodyID& inBodyID): physics(physics) {
+                    mutex = physics.lockReadBody(inBodyID);
+                    body = physics.lockedGetBody(inBodyID);
                 }
 
                 ~BodyHandle() {
-                    GetPhysics().unlockReadBody(mutex);
+                    physics.unlockReadBody(mutex);
                 }
 
                 JPH::SharedMutex* mutex = nullptr;
@@ -208,7 +215,7 @@ namespace Carrot::Physics {
             }
 
             bool ShouldCollide(const BodyID& inBodyID) const override {
-                BodyHandle body{ inBodyID };
+                BodyHandle body{ physics, inBodyID };
                 return check(*body.body);
             }
 
@@ -217,7 +224,7 @@ namespace Carrot::Physics {
             }
         };
 
-        CustomBodyFilter bodyFilter { settings.ignoreSensors, settings.collideAgainstBody, settings.collideAgainstCharacter };
+        CustomBodyFilter bodyFilter { *this, settings.ignoreSensors, settings.collideAgainstBody, settings.collideAgainstCharacter };
         bool intersected = jolt->GetNarrowPhaseQuery().CastRay(ray, rayResult, *broadphaseLayerFilter, objectLayerFilter, bodyFilter);
         if(intersected) {
             raycastInfo.t = rayResult.mFraction;
@@ -262,9 +269,9 @@ namespace Carrot::Physics {
     void PhysicsSystem::onFrame(const Carrot::Render::Context& context) {
         ZoneScoped;
 
-        if(debugViewport != nullptr) {
+        if(DebugView) {
             if(debugRenderer == nullptr) {
-                debugRenderer = std::make_unique<Physics::JoltDebugRenderer>(*debugViewport);
+                debugRenderer = std::make_unique<Physics::JoltDebugRenderer>();
             }
         } else {
             if(debugRenderer != nullptr) {
@@ -281,31 +288,10 @@ namespace Carrot::Physics {
 
         JPH::BodyManager::DrawSettings drawSettings;
         drawSettings.mDrawBoundingBox = true;
+        debugRenderer->pCurrentViewport = context.pViewport;
         jolt->DrawBodies(drawSettings, debugRenderer.get());
         debugRenderer->render(context);
-    }
-
-    CollisionLayers& PhysicsSystem::getCollisionLayers() {
-        return collisionLayers;
-    }
-
-    const CollisionLayers& PhysicsSystem::getCollisionLayers() const {
-        return collisionLayers;
-    }
-
-    CollisionLayerID PhysicsSystem::getDefaultStaticLayer() const {
-        return collisionLayers.getStaticLayer();
-    }
-    CollisionLayerID PhysicsSystem::getDefaultMovingLayer() const {
-        return collisionLayers.getMovingLayer();
-    }
-
-    Carrot::Render::Viewport* PhysicsSystem::getDebugViewport() {
-        return debugViewport;
-    }
-
-    void PhysicsSystem::setViewport(Carrot::Render::Viewport *viewport) {
-        debugViewport = viewport;
+        debugRenderer->pCurrentViewport = nullptr;
     }
 
     PhysicsSystem::~PhysicsSystem() {

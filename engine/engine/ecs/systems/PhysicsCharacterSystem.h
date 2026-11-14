@@ -25,10 +25,6 @@ namespace Carrot::ECS {
 
         virtual void onFrame(const Carrot::Render::Context& renderContext) override;
 
-        void reload() override;
-
-        void unload() override;
-
     public:
         inline static const char *getStringRepresentation() {
             return "PhysicsCharacters";

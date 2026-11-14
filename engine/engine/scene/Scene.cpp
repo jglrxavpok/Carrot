@@ -30,14 +30,6 @@ namespace Carrot {
         world.tick(frameTime);
     }
 
-    void Scene::prePhysics() {
-        world.prePhysics();
-    }
-
-    void Scene::postPhysics() {
-        world.postPhysics();
-    }
-
     void Scene::setupCamera(const Carrot::Render::Context& renderContext) {
         world.setupCamera(renderContext);
     }

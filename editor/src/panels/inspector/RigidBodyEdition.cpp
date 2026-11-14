@@ -448,20 +448,21 @@ namespace Peeler {
                 .formatOverride = "%.2f kg"
             });
 
+        PhysicsSystem& physics = components[0]->character.getPhysicsSystem();
         Carrot::Vector<CollisionLayerID> validIDs;
-        const std::vector<CollisionLayer>& layers = GetPhysics().getCollisionLayers().getLayers();
+        const std::vector<CollisionLayer>& layers = GetConfiguration().collisionLayers.getLayers();
         validIDs.ensureReserve(layers.size());
         for(const auto& layer : layers) {
             validIDs.pushBack(layer.layerID);
         }
-        multiEditEnumField(edition, "Collision layer", components,
-            +[](Carrot::ECS::PhysicsCharacterComponent& c) {
+        multiEditEnumField<Carrot::ECS::PhysicsCharacterComponent, CollisionLayerID>(edition, "Collision layer", components,
+            [](Carrot::ECS::PhysicsCharacterComponent& c) {
                 return c.character.getCollisionLayer();
             },
-            +[](Carrot::ECS::PhysicsCharacterComponent& c, const CollisionLayerID& v) {
+            [](Carrot::ECS::PhysicsCharacterComponent& c, const CollisionLayerID& v) {
                 c.character.setCollisionLayer(v);
             },
-            +[](const CollisionLayerID& c) { return GetPhysics().getCollisionLayers().getLayer(c).name.c_str(); },
+            [&physics](const CollisionLayerID& c) { return GetConfiguration().collisionLayers.getLayer(c).name.c_str(); },
             validIDs
         );
 
@@ -588,19 +589,20 @@ namespace Peeler {
         );
 
         Carrot::Vector<CollisionLayerID> validIDs;
-        const std::vector<CollisionLayer>& layers = GetPhysics().getCollisionLayers().getLayers();
+        PhysicsSystem& physics = components[0]->rigidbody.getPhysicsSystem();
+        const std::vector<CollisionLayer>& layers = GetConfiguration().collisionLayers.getLayers();
         validIDs.ensureReserve(layers.size());
         for(const auto& layer : layers) {
             validIDs.pushBack(layer.layerID);
         }
-        multiEditEnumField(edition, "Collision layer", components,
-            +[](Carrot::ECS::RigidBodyComponent& c) {
+        multiEditEnumField<Carrot::ECS::RigidBodyComponent, CollisionLayerID>(edition, "Collision layer", components,
+            [](Carrot::ECS::RigidBodyComponent& c) {
                 return c.rigidbody.getCollisionLayer();
             },
-            +[](Carrot::ECS::RigidBodyComponent& c, const CollisionLayerID& v) {
+            [](Carrot::ECS::RigidBodyComponent& c, const CollisionLayerID& v) {
                 c.rigidbody.setCollisionLayer(v);
             },
-            +[](const CollisionLayerID& c) { return GetPhysics().getCollisionLayers().getLayer(c).name.c_str(); },
+            [&physics](const CollisionLayerID& c) { return GetConfiguration().collisionLayers.getLayer(c).name.c_str(); },
             validIDs
         );
 

@@ -17,10 +17,12 @@ namespace Carrot::Render {
 namespace Carrot::Physics {
     class JoltDebugRenderer: public ::JPH::DebugRenderer {
     public:
-        JoltDebugRenderer(Carrot::Render::Viewport& debugViewport);
+        JoltDebugRenderer();
 
         // do the actual rendering
         void render(const Carrot::Render::Context& renderContext);
+
+        Carrot::Render::Viewport* pCurrentViewport = nullptr;
 
     public: // Jolt - record only
         void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) override;
@@ -45,7 +47,5 @@ namespace Carrot::Physics {
         std::vector<Carrot::Render::Packet> batchDraws; // draws of Jolt DebugRenderer::Batch
         std::shared_ptr<Carrot::Pipeline> debugTrianglesPipeline;
         std::shared_ptr<Carrot::Pipeline> debugLinesPipeline;
-
-        Carrot::Render::Viewport& debugViewport;
     };
 } // Carrot::Physics

@@ -21,7 +21,7 @@ namespace Carrot::Physics {
      */
     class Character: public BaseBody {
     public:
-        Character();
+        Character(PhysicsSystem& system);
         Character(const Character&);
         Character(Character&&);
         ~Character() override;
@@ -95,7 +95,7 @@ namespace Carrot::Physics {
         CollisionLayerID layerID = 1 /* default moving layer */;
         Collider collider;
         JPH::CharacterSettings characterSettings;
-        std::unique_ptr<JPH::Character> physics;
+        std::unique_ptr<JPH::Character> physicsRepresentation;
         BodyUserData bodyUserData { BodyUserData::Type::Character, this };
     };
 

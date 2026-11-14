@@ -234,14 +234,7 @@ namespace Peeler {
             static bool showClayDebug = false;
 
             if(ImGui::BeginMenu(ICON_FA_VIAL "  Tests")) {
-                bool hasPhysicsDebug = GetPhysics().getDebugViewport() != nullptr;
-                if(ImGui::MenuItem("Activate Physics debug", nullptr, hasPhysicsDebug)) {
-                    if(!hasPhysicsDebug) {
-                        GetPhysics().setViewport(&gameViewport);
-                    } else {
-                        GetPhysics().setViewport(nullptr);
-                    }
-                }
+                ImGui::MenuItem("Activate Physics debug", nullptr, &Carrot::Physics::PhysicsSystem::DebugView.getValueRef());
 
                 if(ImGui::MenuItem("Show ImGui demo", nullptr, showDemo)) {
                     showDemo = !showDemo;
@@ -1342,7 +1335,7 @@ namespace Peeler {
             if(ImGui::Begin("Physics settings", &showPhysicsSettings)) {
 
                 // draw collision matrix (ie which layers can collide with which other layers)
-                auto& layersManager = GetPhysics().getCollisionLayers();
+                auto& layersManager = const_cast<Carrot::Physics::CollisionLayers&>(GetConfiguration().collisionLayers);
                 const auto collisionLayers = layersManager.getLayers();
                 const std::size_t layerCount = collisionLayers.size();
 
@@ -1502,7 +1495,6 @@ namespace Peeler {
         currentScene.world.broadcastStartEvent();
         currentScene.load();
         removeEditingSystems();
-        GetPhysics().resume();
 
         startSimulationRequested = false;
     }
@@ -1530,7 +1522,6 @@ namespace Peeler {
         savedScene.load();
         currentScene.copyFrom(savedScene);
         savedScene.clear();
-        GetPhysics().pause();
         GetEngine().ungrabCursor();
         GetAudioManager().stopAllSounds();
         stopSimulationRequested = false;
@@ -1567,14 +1558,12 @@ namespace Peeler {
     void Application::pauseSimulation() {
         isPaused = true;
 
-        GetPhysics().pause();
         GetEngine().ungrabCursor();
         currentScene.world.freezeLogic();
     }
 
     void Application::resumeSimulation() {
         currentScene.world.unfreezeLogic();
-        GetPhysics().resume();
         isPaused = false;
     }
 
@@ -1687,7 +1676,6 @@ namespace Peeler {
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 
-        GetPhysics().pause();
         pushLayer<GizmosLayer>();
         pushLayer<CameraTypeLayer>();
 
@@ -1854,14 +1842,6 @@ namespace Peeler {
                 default: TODO;
             }
         }
-    }
-
-    void Application::prePhysics() {
-        currentScene.prePhysics();
-    }
-
-    void Application::postPhysics() {
-        currentScene.postPhysics();
     }
 
     void Application::performLoad(std::filesystem::path fileToOpen) {
@@ -2065,7 +2045,7 @@ namespace Peeler {
             }
         }
 
-        auto& layersManager = GetPhysics().getCollisionLayers();
+        auto& layersManager = const_cast<Carrot::Physics::CollisionLayers&>/*yolo*/(GetConfiguration().collisionLayers);
         layersManager.reset();
         if(description.HasMember("collision_layers")) {
             std::unordered_map<std::string, Carrot::Physics::CollisionLayerID> name2layer;
@@ -2256,7 +2236,7 @@ namespace Peeler {
         }
 
         {
-            auto& layersManager = GetPhysics().getCollisionLayers();
+            auto& layersManager = GetConfiguration().collisionLayers;
             rapidjson::Value layersObj(rapidjson::kObjectType);
 
             for(const auto& layer : layersManager.getLayers()) {

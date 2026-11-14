@@ -20,7 +20,7 @@ namespace Carrot::Physics {
         return collider;
     }
 
-    Character::Character(): collider(makeDefaultCollider()) {
+    Character::Character(PhysicsSystem& system): BaseBody(system), collider(makeDefaultCollider()) {
         characterSettings.mUp = JPH::Vec3::sAxisZ();
         characterSettings.mShape = collider.getShape().shape;
         characterSettings.mSupportingVolume = JPH::Plane { JPH::Vec3::sAxisZ(), -0.9f};
@@ -29,16 +29,16 @@ namespace Carrot::Physics {
         createJoltRepresentation();
     }
 
-    Character::Character(const Character& other): collider(other.collider.getShape().duplicate(), other.collider.getLocalTransform()) {
+    Character::Character(const Character& other): BaseBody(other.getPhysicsSystem()), collider(other.collider.getShape().duplicate(), other.collider.getLocalTransform()) {
         *this = other;
     }
 
-    Character::Character(Character&& other): collider(std::move(other.collider)) {
+    Character::Character(Character&& other): BaseBody(other.getPhysicsSystem()), collider(std::move(other.collider)) {
         *this = std::move(other);
     }
 
     Character::~Character() {
-        if(!physics) {
+        if(!physicsRepresentation) {
             return;
         }
         if(inWorld) {
@@ -47,6 +47,7 @@ namespace Carrot::Physics {
     }
 
     Character& Character::operator=(const Character& other) {
+        BaseBody::operator=(other);
         collider = Collider{other.collider.getShape().duplicate(), other.collider.getLocalTransform()};
         characterSettings = other.characterSettings;
         worldTransform = other.worldTransform;
@@ -65,6 +66,7 @@ namespace Carrot::Physics {
     }
 
     Character& Character::operator=(Character&& other) {
+        BaseBody::operator=(std::move(other));
         collider = std::move(other.collider);
         characterSettings = std::move(other.characterSettings);
         worldTransform = std::move(other.worldTransform);
@@ -74,12 +76,12 @@ namespace Carrot::Physics {
         inWorld = other.inWorld;
         layerID = other.layerID;
 
-        physics = std::move(other.physics);
+        physicsRepresentation = std::move(other.physicsRepresentation);
 
-        if(physics) {
-            JPH::SharedMutex* bodyMutex = GetPhysics().lockReadBody(physics->GetBodyID());
-            CLEANUP(GetPhysics().unlockReadBody(bodyMutex));
-            JPH::Body* body = GetPhysics().lockedGetBody(physics->GetBodyID());
+        if(physicsRepresentation) {
+            JPH::SharedMutex* bodyMutex = getPhysicsSystem().lockReadBody(physicsRepresentation->GetBodyID());
+            CLEANUP(getPhysicsSystem().unlockReadBody(bodyMutex));
+            JPH::Body* body = getPhysicsSystem().lockedGetBody(physicsRepresentation->GetBodyID());
             body->SetUserData((std::uint64_t)&bodyUserData);
         }
         return *this;
@@ -89,28 +91,28 @@ namespace Carrot::Physics {
     void Character::prePhysics() {
         if(dirtyTransform) {
             dirtyTransform = false;
-            physics->SetPositionAndRotation(Carrot::carrotToJolt(worldTransform.position), Carrot::carrotToJolt(worldTransform.rotation), inWorld ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+            physicsRepresentation->SetPositionAndRotation(Carrot::carrotToJolt(worldTransform.position), Carrot::carrotToJolt(worldTransform.rotation), inWorld ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
         }
 
         if(dirtyVelocity && inWorld) {
             dirtyVelocity = false;
-            physics->SetLinearVelocity(Carrot::carrotToJolt(velocity));
+            physicsRepresentation->SetLinearVelocity(Carrot::carrotToJolt(velocity));
         }
     }
 
     void Character::postPhysics() {
-        physics->PostSimulation(cCollisionTolerance);
+        physicsRepresentation->PostSimulation(cCollisionTolerance);
 
         JPH::Vec3 position;
         JPH::Quat rotation;
 
-        physics->GetPositionAndRotation(position, rotation);
+        physicsRepresentation->GetPositionAndRotation(position, rotation);
 
         worldTransform.position = Carrot::joltToCarrot(position);
         worldTransform.rotation = Carrot::joltToCarrot(rotation);
 
-        velocity = Carrot::joltToCarrot(physics->GetLinearVelocity());
-        onGround = physics->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
+        velocity = Carrot::joltToCarrot(physicsRepresentation->GetLinearVelocity());
+        onGround = physicsRepresentation->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
     }
 
     Collider& Character::getCollider() {
@@ -185,14 +187,14 @@ namespace Carrot::Physics {
 
     void Character::addToWorld() {
         if(!inWorld) {
-            physics->AddToPhysicsSystem();
+            physicsRepresentation->AddToPhysicsSystem();
             inWorld = true;
         }
     }
 
     void Character::removeFromWorld() {
         if(inWorld) {
-            physics->RemoveFromPhysicsSystem();
+            physicsRepresentation->RemoveFromPhysicsSystem();
             inWorld = false;
         }
     }
@@ -201,21 +203,21 @@ namespace Carrot::Physics {
         bool wasInWorld = inWorld;
         removeFromWorld();
 
-        const auto& layersManager = GetPhysics().getCollisionLayers();
+        const auto& layersManager = GetConfiguration().collisionLayers;
         if(layersManager.isValid(layerID)) {
-            characterSettings.mLayer = GetPhysics().getCollisionLayers().getLayer(layerID).layerID;
+            characterSettings.mLayer = GetConfiguration().collisionLayers.getLayer(layerID).layerID;
         } else {
-            characterSettings.mLayer = GetPhysics().getDefaultMovingLayer();
+            characterSettings.mLayer = GetConfiguration().collisionLayers.getMovingLayer();
         }
 
         characterSettings.mShape = collider.getShape().shape;
-        physics = std::make_unique<JPH::Character>(&characterSettings,
+        physicsRepresentation = std::make_unique<JPH::Character>(&characterSettings,
                                                    Carrot::carrotToJolt(worldTransform.position),
                                                    Carrot::carrotToJolt(worldTransform.rotation),
                                                    (std::uint64_t)this,
-                                                   GetPhysics().jolt.get());
+                                                   getPhysicsSystem().jolt.get());
         {
-            BodyAccessWrite body(physics->GetBodyID());
+            BodyAccessWrite body(getPhysicsSystem(), physicsRepresentation->GetBodyID());
             body->SetUserData((std::uint64_t)&bodyUserData);
         }
         if(wasInWorld) {

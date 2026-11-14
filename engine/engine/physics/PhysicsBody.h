@@ -17,8 +17,12 @@ namespace JPH {
 }
 
 namespace Carrot::Physics {
+    class PhysicsSystem;
+
     struct BodyAccessWrite {
-        BodyAccessWrite(const JPH::BodyID& bodyID);
+        PhysicsSystem& physics;
+
+        BodyAccessWrite(PhysicsSystem& physics, const JPH::BodyID& bodyID);
         ~BodyAccessWrite();
 
         JPH::Body* operator->();
@@ -32,7 +36,9 @@ namespace Carrot::Physics {
     };
 
     struct BodyAccessRead {
-        BodyAccessRead(const JPH::BodyID& bodyID);
+        PhysicsSystem& physics;
+
+        BodyAccessRead(PhysicsSystem& physics, const JPH::BodyID& bodyID);
         ~BodyAccessRead();
 
         const JPH::Body* operator->();
@@ -47,6 +53,8 @@ namespace Carrot::Physics {
 
     class BaseBody {
     public:
+        BaseBody(PhysicsSystem& physics): pPhysics(&physics){}
+
         /// Adds a contact listener to this rigidbody.
         /// If 'mainThreadOnly' is true, the callback will be called from postPhysics, on the Main thread.
         /// If 'mainThreadOnly' is false, the callback will be called on the physics thread detecting the contact
@@ -58,12 +66,19 @@ namespace Carrot::Physics {
         /// Calls contact listeners registered on main thread, for each contact added to this rigidbody (therefore may call no callbacks at all)
         void dispatchEventsPostPhysicsMainThread();
 
+        PhysicsSystem& getPhysicsSystem() const;
+
     public: // called by physics code
         void onContactAdded(const JPH::BodyID& other);
 
         virtual ~BaseBody() {};
 
+    protected:
+        BaseBody& operator=(const BaseBody& other);
+        BaseBody& operator=(BaseBody&& other);
+
     private:
+        PhysicsSystem* pPhysics = nullptr;
         Async::SpinLock contactAddedListsAccess;
         Async::SpinLock contactAddedSinceLastPostPhysicsAccess;
         eventpp::CallbackList<void(JPH::BodyID)> contactAddedCallbacks;

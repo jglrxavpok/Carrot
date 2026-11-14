@@ -1118,7 +1118,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                     game->onFrame(renderContext);
                 }
             }
-            GetPhysics().onFrame(renderContext);
             getRayTracer().onFrame(renderContext); // update instance positions only once everything has been updated
             v.onFrame(renderContext); // update cameras only once all render systems are updated
             renderer.onFrame(renderContext);
@@ -1544,14 +1543,7 @@ void Carrot::Engine::tick(double deltaTime) {
     audioManager.tick(deltaTime);
     assetServer.tick(deltaTime);
 
-    auto prePhysics = [&]() {
-        game->prePhysics();
-    };
-    auto postPhysics = [&]() {
-        game->postPhysics();
-    };
     csBindings->tick(deltaTime);
-    GetPhysics().tick(deltaTime, prePhysics, postPhysics);
 }
 
 void Carrot::Engine::takeScreenshot() {

@@ -61,6 +61,8 @@ namespace Carrot::Physics {
 
         virtual void changeShapeScale(const glm::vec3& scale) { TODO("Not supported for this shape"); };
 
+        const JPH::ShapeRefC& getShape() const;
+
     public:
         /**
          * Performs a raycast against this collider (NOT *using* this collider!)
@@ -75,7 +77,10 @@ namespace Carrot::Physics {
         /// Used when the underlying shape cannot be modified directly.
         void reattachCollider();
 
-        JPH::ShapeRefC shape;
+        // non-const ref to change user data
+        void makeShape(JPH::ShapeSettings&& settings);
+
+        void clearShape();
 
     private:
         void setCollider(Collider* collider);
@@ -83,6 +88,8 @@ namespace Carrot::Physics {
     private:
         // Collider which uses this shape. Non-owning pointer
         Collider* owner = nullptr;
+
+        JPH::ShapeRefC shape;
 
         friend class Character;
         friend class Collider;

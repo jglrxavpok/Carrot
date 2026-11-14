@@ -20,7 +20,7 @@
 
 namespace Carrot::ECS {
 
-    RigidBodyComponent::RigidBodyComponent(Entity entity): IdentifiableComponent<RigidBodyComponent>(std::move(entity)) {
+    RigidBodyComponent::RigidBodyComponent(Entity entity): IdentifiableComponent<RigidBodyComponent>(std::move(entity)), rigidbody(entity.getWorld().getPhysics()) {
     }
 
     RigidBodyComponent::RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity): RigidBodyComponent(std::move(entity)) {
@@ -39,8 +39,8 @@ namespace Carrot::ECS {
         }
         if(doc.contains("layer")) {
             Physics::CollisionLayerID collisionLayer;
-            if(!GetPhysics().getCollisionLayers().findByName(doc["layer"].getAsString(), collisionLayer)) {
-                collisionLayer = GetPhysics().getDefaultMovingLayer();
+            if(!GetConfiguration().collisionLayers.findByName(doc["layer"].getAsString(), collisionLayer)) {
+                collisionLayer = GetConfiguration().collisionLayers.getMovingLayer();
             }
             rigidbody.setCollisionLayer(collisionLayer);
         }
@@ -73,7 +73,7 @@ namespace Carrot::ECS {
         obj["sensor"] = rigidbody.isSensor();
         obj["free_translation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getTranslationAxes());
         obj["free_rotation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getRotationAxes());
-        obj["layer"] = GetPhysics().getCollisionLayers().getLayer(rigidbody.getCollisionLayer()).name;
+        obj["layer"] = GetConfiguration().collisionLayers.getLayer(rigidbody.getCollisionLayer()).name;
         obj["friction"] = rigidbody.getFriction();
         obj["linear_damping"] = rigidbody.getLinearDamping();
 
@@ -113,15 +113,6 @@ namespace Carrot::ECS {
         }
         verify(false, "invalid string");
         return Physics::BodyType::Dynamic;
-    }
-
-    void RigidBodyComponent::reloadComponent() {
-        rigidbody.setActive(wasActive);
-    }
-
-    void RigidBodyComponent::unloadComponent() {
-        wasActive = rigidbody.isActive();
-        rigidbody.setActive(false);
     }
 
     void RigidBodyComponent::dispatchEventsPostPhysicsMainThread() {

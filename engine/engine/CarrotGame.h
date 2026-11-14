@@ -29,8 +29,6 @@ namespace Carrot {
         virtual void setupCamera(const Carrot::Render::Context& renderContext) {};
 
         virtual void tick(double frameTime) = 0;
-        virtual void prePhysics() {};
-        virtual void postPhysics() {};
 
         [[deprecated]] virtual void onMouseMove(double dx, double dy) {};
 

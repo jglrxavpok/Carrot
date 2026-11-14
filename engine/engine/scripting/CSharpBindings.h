@@ -277,7 +277,7 @@ namespace Carrot::Scripting {
 
         static bool RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo);
 
-        static bool _RaycastHelper(MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
+        static bool _RaycastHelper(Physics::PhysicsSystem& physics, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
         static bool RaycastRigidbody(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
         static bool RaycastCharacter(MonoObject* characterComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
 

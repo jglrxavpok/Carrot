@@ -5,6 +5,7 @@
 #pragma once
 
 #include <thread>
+#include <engine/console/RuntimeOption.hpp>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Core/TempAllocator.h>
@@ -31,7 +32,7 @@ namespace Carrot::Physics {
     // This defines a mapping between object and broadphase layers.
     class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
     {
-        CollisionLayers& layers;
+        const CollisionLayers& layers;
 
     public:
         // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
@@ -42,7 +43,7 @@ namespace Carrot::Physics {
         static inline JPH::BroadPhaseLayer StaticLayer{0};
         static inline JPH::BroadPhaseLayer MovingLayer{1};
 
-        BPLayerInterfaceImpl(CollisionLayers& layers);
+        BPLayerInterfaceImpl(const CollisionLayers& layers);
 
         virtual JPH::uint GetNumBroadPhaseLayers() const override;
 
@@ -54,40 +55,34 @@ namespace Carrot::Physics {
     };
 
     class ObjectVsBroadPhaseLayerFilterImpl: public JPH::ObjectVsBroadPhaseLayerFilter {
-        CollisionLayers& layers;
+        const CollisionLayers& layers;
     public:
-        ObjectVsBroadPhaseLayerFilterImpl(CollisionLayers& layers);
+        ObjectVsBroadPhaseLayerFilterImpl(const CollisionLayers& layers);
 
         bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
     };
 
     /// Class that determines if two object layers can collide
     class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
-        CollisionLayers& layers;
+        const CollisionLayers& layers;
     public:
-        ObjectLayerPairFilterImpl(CollisionLayers& layers);
+        ObjectLayerPairFilterImpl(const CollisionLayers& layers);
 
         virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
     };
 
     class PhysicsSystem: public JPH::ContactListener {
     public:
+        static RuntimeOption DebugView;
         constexpr static double TimeStep = 1.0 / 60.0;
-        static PhysicsSystem& getInstance();
 
-        void tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback);
+        explicit PhysicsSystem();
+        ~PhysicsSystem() override;
+
+        void tick(double deltaTime, const std::function<void()>& prePhysicsCallback, const std::function<void()>& postPhysicsCallback);
 
     public: // debug rendering
-        Carrot::Render::Viewport* getDebugViewport();
-        void setViewport(Carrot::Render::Viewport* viewport);
         void onFrame(const Carrot::Render::Context& context);
-
-    public:
-        CollisionLayers& getCollisionLayers();
-        const CollisionLayers& getCollisionLayers() const;
-
-        CollisionLayerID getDefaultStaticLayer() const;
-        CollisionLayerID getDefaultMovingLayer() const;
 
     public:
         bool isPaused() const;
@@ -140,10 +135,6 @@ namespace Carrot::Physics {
         void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
 
     private:
-        explicit PhysicsSystem();
-        ~PhysicsSystem();
-
-    private:
         std::unique_ptr<JPH::PhysicsSystem> jolt;
 
         // TODO: from HelloWorld example of JoltPhysics, will need to customize & integrate with rest of engine
@@ -168,14 +159,11 @@ namespace Carrot::Physics {
         void destroyRigidbody(const JPH::BodyID& bodyID);
 
     private: // debug rendering
-        Carrot::Render::Viewport* debugViewport = nullptr;
         std::unique_ptr<Physics::JoltDebugRenderer> debugRenderer;
 
-        CollisionLayers collisionLayers;
-
-        BPLayerInterfaceImpl broadphaseLayerInterface{collisionLayers};
-        ObjectVsBroadPhaseLayerFilterImpl objectVsBPFilter{collisionLayers};
-        ObjectLayerPairFilterImpl objectLayerPairFilter{collisionLayers};
+        BPLayerInterfaceImpl broadphaseLayerInterface;
+        ObjectVsBroadPhaseLayerFilterImpl objectVsBPFilter;
+        ObjectLayerPairFilterImpl objectLayerPairFilter;
 
         friend class Character;
         friend class RigidBody;

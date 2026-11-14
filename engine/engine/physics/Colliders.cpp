@@ -122,17 +122,17 @@ namespace Carrot::Physics {
 
     void Collider::setLocalTransform(const Carrot::Math::Transform& transform) {
         localTransform = transform;
-        verify(shape->shape, "Must already have a shape");
-        auto oldShapeRef = shape->shape;
+        verify(shape->getShape(), "Must already have a shape");
+        auto oldShapeRef = shape->getShape();
         const JPH::Shape* oldShape = oldShapeRef.GetPtr();
         if(oldShapeRef->GetSubType() == JPH::EShapeSubType::RotatedTranslated) {
             oldShape = reinterpret_cast<const RotatedTranslatedShape*>(oldShapeRef.GetPtr())->GetInnerShape();
         }
-        shape->shape = JPH::RotatedTranslatedShapeSettings{
+        shape->makeShape(JPH::RotatedTranslatedShapeSettings{
             carrotToJolt(transform.position),
             carrotToJolt(transform.rotation).Normalized(),
             oldShape
-        }.Create().Get();
+        });
         reattach();
     }
 
@@ -149,15 +149,19 @@ namespace Carrot::Physics {
     }
 
     bool Collider::containsJoltShape(const JPH::Shape* pJoltShape) const {
-        const JPH::Shape* leafShape = shape->shape.GetPtr();
+        const JPH::Shape* leafShape = shape->getShape().GetPtr();
         while (leafShape->GetSubType() == JPH::EShapeSubType::RotatedTranslated) {
             leafShape = static_cast<const JPH::RotatedTranslatedShape*>(leafShape)->GetInnerShape();
         }
 
-        return leafShape == pJoltShape;
+        return leafShape->GetUserData() == pJoltShape->GetUserData();
     }
 
     // ---- Collision shapes ----
+
+    const JPH::ShapeRefC& CollisionShape::getShape() const {
+        return shape;
+    }
 
     bool CollisionShape::raycast(const glm::vec3& startPoint, const glm::vec3& direction, float maxLength, RaycastInfo& raycastInfo) {
         TODO;
@@ -167,6 +171,15 @@ namespace Carrot::Physics {
         if(owner) {
             owner->reattach();
         }
+    }
+
+    void CollisionShape::makeShape(JPH::ShapeSettings&& settings) {
+        settings.mUserData = reinterpret_cast<u64>(this);
+        shape = settings.Create().Get();
+    }
+
+    void CollisionShape::clearShape() {
+        shape = nullptr;
     }
 
     void CollisionShape::setCollider(Collider* collider) {
@@ -187,7 +200,7 @@ namespace Carrot::Physics {
 
     void BoxCollisionShape::setHalfExtents(const glm::vec3& halfExtents) {
         currentHalfExtents = halfExtents;
-        shape = BoxShapeSettings{carrotToJolt(halfExtents), 0.0f}.Create().Get();
+        makeShape(BoxShapeSettings{carrotToJolt(halfExtents), 0.0f});
         reattachCollider();
     }
 
@@ -222,7 +235,7 @@ namespace Carrot::Physics {
     void SphereCollisionShape::setRadius(float radius) {
         verify(radius > 0, "radius must be > 0");
         currentRadius = radius;
-        shape = SphereShapeSettings{radius}.Create().Get();
+        makeShape(SphereShapeSettings{radius});
         reattachCollider();
     }
 
@@ -271,7 +284,7 @@ namespace Carrot::Physics {
     void CapsuleCollisionShape::setRadiusAndHeight(float radius, float height) {
         currentRadius = radius;
         currentHeight = height;
-        shape = CapsuleShapeSettings{height/2, radius}.Create().Get();
+        makeShape(CapsuleShapeSettings{height/2, radius});
         reattachCollider();
     }
 
@@ -338,7 +351,7 @@ namespace Carrot::Physics {
 
             stbi_image_free(pixels);
         }
-        shape = HeightFieldShapeSettings{ samples.data(), JPH::Vec3::sZero(), carrotToJolt(scale), (u32)sqrt(samples.size()) }.Create().Get();
+        makeShape(HeightFieldShapeSettings{ samples.data(), JPH::Vec3::sZero(), carrotToJolt(scale), (u32)sqrt(samples.size()) });
     }
 
     ColliderType HeightmapCollisionShape::getType() const {
@@ -396,7 +409,7 @@ namespace Carrot::Physics {
     }
 
     void StaticConcaveTriangleMeshShape::recreateShape() {
-        shape = nullptr;
+        clearShape();
         VertexList vertices;
         IndexedTriangleList triangles;
         if (path.isEmpty()) {
@@ -408,7 +421,7 @@ namespace Carrot::Physics {
             triangles[0].mIdx[0] = 0;
             triangles[0].mIdx[1] = 1;
             triangles[0].mIdx[2] = 2;
-            shape = MeshShapeSettings{vertices, triangles}.Create().Get();
+            makeShape(MeshShapeSettings{vertices, triangles});
             return;
         }
         Render::SceneLoader loader;
@@ -449,7 +462,7 @@ namespace Carrot::Physics {
             }
         };
         iterateOverHierarchy(scene.nodeHierarchy->hierarchy, glm::scale(glm::mat4(1.0f), scale));
-        shape = MeshShapeSettings{vertices, triangles}.Create().Get();
+        makeShape(MeshShapeSettings{vertices, triangles});
     }
 
     std::unique_ptr<CollisionShape> StaticConcaveTriangleMeshShape::duplicate() const {

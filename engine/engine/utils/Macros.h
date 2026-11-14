@@ -50,5 +50,3 @@ Carrot::AssetServer& GetAssetServer();
 
 #undef GetVFS
 #define GetVFS() GetEngine().getVFS()
-
-Carrot::Physics::PhysicsSystem& GetPhysics();

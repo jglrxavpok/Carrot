@@ -42,8 +42,6 @@ namespace Peeler {
         void onFrame(const Carrot::Render::Context& renderContext) override;
 
         void tick(double frameTime) override;
-        void prePhysics() override;
-        void postPhysics() override;
 
         void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 

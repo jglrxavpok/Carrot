@@ -25,6 +25,7 @@
 #include <engine/ecs/systems/CSharpLogicSystem.h>
 
 #include <core/functional/Reflection.hpp>
+#include <core/io/Logging.hpp>
 #include <engine/ecs/components/AnimatedModelComponent.h>
 
 #include <engine/io/actions/Action.hpp>
@@ -45,6 +46,7 @@
 
 namespace Carrot::Scripting {
     static thread_local std::stack<TracyCZoneCtx> ProfilingZones_TLS;
+    static Log::Category ScriptingLogCategory{"Scripting"};
 
     static CSharpBindings& instance() {
         return GetCSharpBindings();
@@ -1039,8 +1041,16 @@ namespace Carrot::Scripting {
                 return;
             }
 
+            ECS::Entity nonConstEntity = entity;
+            Memory::OptionalRef<ECS::RigidBodyComponent> rigidBodyComp = nonConstEntity.getComponent<ECS::RigidBodyComponent>();
+            if (!rigidBodyComp.hasValue()) {
+                Carrot::Log::error(ScriptingLogCategory, "Tried to invoke contact listener on entity %s which does not have a RigidBodyComponent", entity.getID().toString().c_str());
+                return;
+            }
+
+            Physics::RigidBody& rigidBody = rigidBodyComp->rigidbody;
             // main thread, post physics: allowed to lock
-            Physics::BodyAccessRead body{ otherBody };
+            Physics::BodyAccessRead body{ rigidBody.getPhysicsSystem(), otherBody };
             Physics::BodyUserData& userData = *(Physics::BodyUserData*)body->GetUserData();
             if (userData.type != Physics::BodyUserData::Type::Rigidbody) {
                 return; // TODO: support characters too
@@ -1168,7 +1178,7 @@ namespace Carrot::Scripting {
         return hasHit;
     }
 
-    bool CSharpBindings::_RaycastHelper(MonoObject* _csRaycastSettings, MonoObject* pCSRaycastInfo) {
+    bool CSharpBindings::_RaycastHelper(Physics::PhysicsSystem& physics, MonoObject* _csRaycastSettings, MonoObject* pCSRaycastInfo) {
         Carrot::Physics::PhysicsSystem::RayCastSettings raycastSettings;
 
         Scripting::CSObject csRaycastSettings { _csRaycastSettings };
@@ -1218,12 +1228,12 @@ namespace Carrot::Scripting {
             }
 
             raycastSettings.collideAgainstLayer = [&](const Physics::CollisionLayerID& collisionLayerID) {
-                return !layersToIgnore.contains(GetPhysics().getCollisionLayers().getLayer(collisionLayerID).name);
+                return !layersToIgnore.contains(GetConfiguration().collisionLayers.getLayer(collisionLayerID).name);
             };
         }
 
         Carrot::Physics::RaycastInfo raycastInfo;
-        bool hasHit = GetPhysics().raycast(raycastSettings, raycastInfo);
+        bool hasHit = physics.raycast(raycastSettings, raycastInfo);
 
         Scripting::CSObject csRaycastInfo{ pCSRaycastInfo };
         if(hasHit) {
@@ -1242,11 +1252,19 @@ namespace Carrot::Scripting {
     }
 
     bool CSharpBindings::RaycastRigidbody(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo) {
-        return _RaycastHelper(raycastSettings, pCSRaycastInfo);
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(rigidbodyComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& rigidbody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+
+        return _RaycastHelper(rigidbody.getPhysicsSystem(), raycastSettings, pCSRaycastInfo);
     }
 
-    bool CSharpBindings::RaycastCharacter(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo) {
-        return _RaycastHelper(raycastSettings, pCSRaycastInfo);
+    bool CSharpBindings::RaycastCharacter(MonoObject* characterComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& character = entity.getComponent<ECS::PhysicsCharacterComponent>()->character;
+
+        return _RaycastHelper(character.getPhysicsSystem(), raycastSettings, pCSRaycastInfo);
     }
 
     glm::vec3 CSharpBindings::GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p) {

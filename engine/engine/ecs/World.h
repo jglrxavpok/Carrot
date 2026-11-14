@@ -12,6 +12,7 @@
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/WorldData.h>
+#include <engine/physics/PhysicsSystem.h>
 #include <engine/render/lighting/Lights.h>
 #include <eventpp/callbacklist.h>
 
@@ -151,6 +152,9 @@ namespace Carrot::ECS {
         Render::Lighting& getLighting() { return lighting; }
         const Render::Lighting& getLighting() const { return lighting; }
 
+        Physics::PhysicsSystem& getPhysics() { return physics; }
+        const Physics::PhysicsSystem& getPhysics() const { return physics; }
+
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);
@@ -204,6 +208,7 @@ namespace Carrot::ECS {
     private:
         WorldData worldData;
         Render::Lighting lighting;
+        Physics::PhysicsSystem physics;
 
         std::vector<EntityID> entities;
         std::vector<EntityID> entitiesToAdd;

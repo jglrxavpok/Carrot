@@ -5,7 +5,7 @@
 
 namespace Carrot::ECS {
     PhysicsCharacterComponent::PhysicsCharacterComponent(Carrot::ECS::Entity entity)
-            : Carrot::ECS::IdentifiableComponent<PhysicsCharacterComponent>(std::move(entity)) {
+            : Carrot::ECS::IdentifiableComponent<PhysicsCharacterComponent>(std::move(entity)), character(entity.getWorld().getPhysics()) {
 
     }
 
@@ -20,8 +20,8 @@ namespace Carrot::ECS {
         }
         if(doc.contains("layer")) {
             Physics::CollisionLayerID collisionLayer;
-            if(!GetPhysics().getCollisionLayers().findByName(doc["layer"].getAsString(), collisionLayer)) {
-                collisionLayer = GetPhysics().getDefaultMovingLayer();
+            if(!GetConfiguration().collisionLayers.findByName(doc["layer"].getAsString(), collisionLayer)) {
+                collisionLayer = GetConfiguration().collisionLayers.getMovingLayer();
             }
             character.setCollisionLayer(collisionLayer);
         }
@@ -34,7 +34,7 @@ namespace Carrot::ECS {
         Carrot::DocumentElement obj;
         obj["mass"] = character.getMass();
         obj["collider"] = character.getCollider().serialise();
-        obj["layer"] = GetPhysics().getCollisionLayers().getLayer(character.getCollisionLayer()).name;
+        obj["layer"] = GetConfiguration().collisionLayers.getLayer(character.getCollisionLayer()).name;
         obj["apply_rotation"] = applyRotation;
         return obj;
     }

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <Jolt/Physics/PhysicsSystem.h>
 #include <engine/physics/Types.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace Carrot::Physics {
 
@@ -67,7 +67,7 @@ namespace Carrot::Physics {
          * Finds a layer via its name.
          * Returns true and modifies 'layer' if a matching layer is found, otherwise return false
          */
-        bool findByName(const std::string_view& name, CollisionLayerID& layer);
+        bool findByName(const std::string_view& name, CollisionLayerID& layer) const;
 
         CollisionLayerID getStaticLayer() const;
         CollisionLayerID getMovingLayer() const;

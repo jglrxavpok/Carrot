@@ -8,17 +8,17 @@
 #include <engine/utils/Macros.h>
 
 namespace Carrot::Physics {
-    BodyAccessWrite::BodyAccessWrite(const JPH::BodyID& bodyID) {
+    BodyAccessWrite::BodyAccessWrite(PhysicsSystem& physics, const JPH::BodyID& bodyID): physics(physics) {
         if(!bodyID.IsInvalid()) {
-            mutex = GetPhysics().lockWriteBody(bodyID);
-            body = GetPhysics().lockedGetBody(bodyID);
+            mutex = physics.lockWriteBody(bodyID);
+            body = physics.lockedGetBody(bodyID);
             verify(body != nullptr, "Invalid bodyID");
         }
     }
 
     BodyAccessWrite::~BodyAccessWrite() {
         if(mutex) {
-            GetPhysics().unlockWriteBody(mutex);
+            physics.unlockWriteBody(mutex);
         }
     }
 
@@ -34,17 +34,17 @@ namespace Carrot::Physics {
         return body;
     }
 
-    BodyAccessRead::BodyAccessRead(const JPH::BodyID& bodyID) {
+    BodyAccessRead::BodyAccessRead(PhysicsSystem& physics, const JPH::BodyID& bodyID): physics(physics) {
         if(!bodyID.IsInvalid()) {
-            mutex = GetPhysics().lockReadBody(bodyID);
-            body = GetPhysics().lockedGetBody(bodyID);
+            mutex = physics.lockReadBody(bodyID);
+            body = physics.lockedGetBody(bodyID);
             verify(body != nullptr, "Invalid bodyID");
         }
     }
 
     BodyAccessRead::~BodyAccessRead() {
         if(mutex) {
-            GetPhysics().unlockReadBody(mutex);
+            physics.unlockReadBody(mutex);
         }
     }
 
@@ -93,4 +93,17 @@ namespace Carrot::Physics {
         contactAddedSinceLastPostPhysics.clear();
     }
 
+    PhysicsSystem& BaseBody::getPhysicsSystem() const {
+        return *pPhysics;
+    }
+
+    BaseBody& BaseBody::operator=(const BaseBody& other) {
+        verify(other.pPhysics != nullptr, "Copy source needs a physics system to be assigned");
+        return *this;
+    }
+
+    BaseBody& BaseBody::operator=(BaseBody&& other) {
+        verify(other.pPhysics == pPhysics, "Moving data from one BaseBody to another needs to be done in the same physics system");
+        return *this;
+    }
 }

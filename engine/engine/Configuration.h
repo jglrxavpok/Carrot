@@ -9,6 +9,8 @@
 #include "core/io/Resource.h"
 #include <optional>
 
+#include "physics/CollisionLayers.h"
+
 namespace Carrot {
     enum class RaytracingSupport {
         /**
@@ -58,5 +60,6 @@ namespace Carrot {
         bool enableFileWatching = true;
         bool startInFullscreen = false;
 
+        Physics::CollisionLayers collisionLayers;
     };
 }

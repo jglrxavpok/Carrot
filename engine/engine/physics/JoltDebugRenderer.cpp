@@ -20,7 +20,7 @@ namespace Carrot::Physics {
         std::atomic<std::uint32_t> mRefCount = 0;
     };
 
-    JoltDebugRenderer::JoltDebugRenderer(Carrot::Render::Viewport& debugViewport): debugViewport(debugViewport) {
+    JoltDebugRenderer::JoltDebugRenderer(): ::JPH::DebugRenderer() {
         debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("unlitGBuffer");
 
         Initialize();
@@ -31,7 +31,7 @@ namespace Carrot::Physics {
             return;
         }
 
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, *renderContext.pViewport);
         renderPacket.pipeline = debugTrianglesPipeline;
 
         Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameHostBuffer(vertices.size() * sizeof(Carrot::Vertex));
@@ -142,6 +142,7 @@ namespace Carrot::Physics {
                                      float inLODScaleSq, JPH::ColorArg inModelColor,
                                      const DebugRenderer::GeometryRef& inGeometry, DebugRenderer::ECullMode inCullMode,
                                      DebugRenderer::ECastShadow inCastShadow, DebugRenderer::EDrawMode inDrawMode) {
+        verify(pCurrentViewport, "pCurrentViewport must not be nullptr");
         if(!inGeometry) {
             return;
         }
@@ -153,7 +154,7 @@ namespace Carrot::Physics {
         // TODO: lod selection
         // TODO: handle shadow/cull/draw modes
         TriangleMesh* triangleMesh = (TriangleMesh*)inGeometry->mLODs[0].mTriangleBatch.GetPtr();
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, Render::PacketType::DrawIndexedInstanced, debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, Render::PacketType::DrawIndexedInstanced, *pCurrentViewport);
 
         renderPacket.pipeline = debugTrianglesPipeline;
         renderPacket.useMesh(*triangleMesh->mesh);

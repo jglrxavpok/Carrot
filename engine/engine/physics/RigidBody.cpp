@@ -11,20 +11,21 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 namespace Carrot::Physics {
-    RigidBody::RigidBody() {
+    RigidBody::RigidBody(PhysicsSystem& system): BaseBody(system) {
         bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         bodyTemplate.mMassPropertiesOverride.mMass = 1.0f;
     }
 
-    RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
+    RigidBody::RigidBody(const RigidBody& toCopy): RigidBody(toCopy.getPhysicsSystem()) {
         *this = toCopy;
     }
 
-    RigidBody::RigidBody(RigidBody&& toMove) {
+    RigidBody::RigidBody(RigidBody&& toMove): RigidBody(toMove.getPhysicsSystem()) {
         *this = std::move(toMove);
     }
 
     RigidBody& RigidBody::operator=(const RigidBody& toCopy) {
+        BaseBody::operator=(toCopy);
         verify(!toCopy.bodyID.IsInvalid(), "Used after std::move");
 
         if(&toCopy == this) {
@@ -39,12 +40,13 @@ namespace Carrot::Physics {
         colliders.resize(toCopy.colliders.size());
         for (int i = 0; i < colliders.size(); ++i) {
             colliders[i] = std::make_unique<Collider>(toCopy.colliders[i]->getShape().duplicate(), toCopy.colliders[i]->getLocalTransform());
+            colliders[i]->addToBody(*this);
         }
         layerID = toCopy.layerID;
 
         JPH::BodyCreationSettings creationSettings;
         {
-            BodyAccessRead toCopyBody{toCopy.bodyID};
+            BodyAccessRead toCopyBody{toCopy.getPhysicsSystem(), toCopy.bodyID};
             creationSettings = toCopyBody->GetBodyCreationSettings();
             bodyShapeRef = toCopy.bodyShapeRef;
             bodyTemplate = toCopy.bodyTemplate;
@@ -55,6 +57,7 @@ namespace Carrot::Physics {
     }
 
     RigidBody& RigidBody::operator=(RigidBody&& toMove) {
+        BaseBody::operator=(std::move(toMove));
         verify(!toMove.bodyID.IsInvalid(), "Used after std::move");
         bodyID = toMove.bodyID;
 
@@ -64,7 +67,7 @@ namespace Carrot::Physics {
         bodyShapeRef = toMove.bodyShapeRef;
         bodyType = toMove.bodyType;
         bodyTemplate = std::move(toMove.bodyTemplate);
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{toMove.getPhysicsSystem(), bodyID};
         if(body) {
             body->SetUserData((std::uint64_t)&bodyUserData);
         }
@@ -128,7 +131,7 @@ namespace Carrot::Physics {
 
     Collider* RigidBody::getColliderFromSubShapeID_Locked(JPH::SubShapeID shapeID) const {
         JPH::SubShapeID remainder;
-        JPH::Body* body = GetPhysics().lockedGetBody(bodyID);
+        JPH::Body* body = getPhysicsSystem().lockedGetBody(bodyID);
         const JPH::Shape* shape = body->GetShape()->GetLeafShape(shapeID, remainder);
         for (auto& pCollider : colliders) {
             if (pCollider->containsJoltShape(shape)) {
@@ -139,26 +142,26 @@ namespace Carrot::Physics {
     }
 
     glm::vec3 RigidBody::getPointVelocityInLocalSpace(const glm::vec3& point) {
-        BodyAccessRead r {bodyID};
+        BodyAccessRead r {getPhysicsSystem(), bodyID};
         verify(!glm::any(glm::isnan(point)), "NaN point!");
         return joltToCarrot(r->GetRotation().InverseRotate(r->GetPointVelocity(r->GetPosition() + r->GetRotation() * carrotToJolt(point))));
     }
 
     void RigidBody::addForceAtPointInLocalSpace(const glm::vec3& force, const glm::vec3& point) {
-        BodyAccessWrite w {bodyID};
+        BodyAccessWrite w {getPhysicsSystem(), bodyID};
         verify(!glm::any(glm::isnan(force)), "NaN force!");
         verify(!glm::any(glm::isnan(point)), "NaN point!");
         w->AddForce(w->GetRotation() * carrotToJolt(force), w->GetPosition() + w->GetRotation() * carrotToJolt(point));
     }
 
     void RigidBody::addRelativeForceInLocalSpace(const glm::vec3& force) {
-        BodyAccessWrite w {bodyID};
+        BodyAccessWrite w {getPhysicsSystem(), bodyID};
         verify(!glm::any(glm::isnan(force)), "NaN force!");
         w->AddForce(w->GetRotation() * carrotToJolt(force));
     }
 
     Carrot::Math::Transform RigidBody::getTransform() const {
-        BodyAccessRead body{bodyID};
+        BodyAccessRead body{getPhysicsSystem(), bodyID};
         Carrot::Math::Transform transform;
         transform.position = joltToCarrot(body->GetPosition());
         transform.rotation = joltToCarrot(body->GetRotation());
@@ -176,13 +179,13 @@ namespace Carrot::Physics {
         bodyTemplate.mRotation = joltRot;
         if (!bodyID.IsInvalid()) {
             {
-                BodyAccessRead r { bodyID };
+                BodyAccessRead r { getPhysicsSystem(), bodyID };
                 bodyTemplate.mLinearVelocity = r->GetLinearVelocity();
                 bodyTemplate.mAngularVelocity = r->GetAngularVelocity();
             }
 
             if (bodyType == BodyType::Static) {
-                GetPhysics().jolt->GetBodyInterface().SetPositionAndRotation(bodyID, joltPos, joltRot, JPH::EActivation::Activate);
+                getPhysicsSystem().jolt->GetBodyInterface().SetPositionAndRotation(bodyID, joltPos, joltRot, JPH::EActivation::Activate);
                 return;
             }
         }
@@ -229,7 +232,7 @@ namespace Carrot::Physics {
         if (type == BodyType::Static) {
             setActive(false);
         }
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         bodyType = type;
         if(body) {
             body->SetMotionType(carrotToJolt(type));
@@ -246,7 +249,7 @@ namespace Carrot::Physics {
     }
 
     bool RigidBody::isActive() const {
-        BodyAccessRead body{bodyID};
+        BodyAccessRead body{getPhysicsSystem(), bodyID};
         if(!body) {
             return false;
         }
@@ -256,11 +259,11 @@ namespace Carrot::Physics {
     void RigidBody::setActive(bool active) {
         if(active) {
             if(!isActive()) {
-                GetPhysics().jolt->GetBodyInterface().AddBody(bodyID, JPH::EActivation::Activate);
+                getPhysicsSystem().jolt->GetBodyInterface().AddBody(bodyID, JPH::EActivation::Activate);
             }
         } else {
             if(isActive()) {
-                GetPhysics().jolt->GetBodyInterface().RemoveBody(bodyID);
+                getPhysicsSystem().jolt->GetBodyInterface().RemoveBody(bodyID);
             }
         }
     }
@@ -270,7 +273,7 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setSensor(bool isSensor) {
-        BodyAccessWrite w { bodyID };
+        BodyAccessWrite w { getPhysicsSystem(), bodyID };
         bodyTemplate.mIsSensor = isSensor;
         if (w) {
             w->SetIsSensor(true);
@@ -283,24 +286,24 @@ namespace Carrot::Physics {
 
     void RigidBody::setMass(float mass) {
         bodyTemplate.mMassPropertiesOverride.mMass = mass;
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         if(body) {
             body->GetMotionProperties()->SetInverseMass(1.0f / mass);
         }
     }
 
     glm::vec3 RigidBody::getAngularVelocityInLocalSpace() const {
-        BodyAccessRead body{bodyID};
+        BodyAccessRead body{getPhysicsSystem(), bodyID};
         return Carrot::joltToCarrot(body->GetRotation().InverseRotate(body->GetAngularVelocity()));
     }
 
     glm::vec3 RigidBody::getVelocity() const {
-        BodyAccessRead body{bodyID};
+        BodyAccessRead body{getPhysicsSystem(), bodyID};
         return Carrot::joltToCarrot(body->GetLinearVelocity());
     }
 
     void RigidBody::setVelocity(const glm::vec3& velocity) {
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         if(body) {
             body->SetLinearVelocity(Carrot::carrotToJolt(velocity));
         } else {
@@ -313,7 +316,7 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setFriction(float friction) {
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         bodyTemplate.mFriction = friction;
         if (body) {
             body->SetFriction(friction);
@@ -325,7 +328,7 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setLinearDamping(float friction) {
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         bodyTemplate.mLinearDamping = friction;
         if (body) {
             body->GetMotionProperties()->SetLinearDamping(friction);
@@ -362,16 +365,16 @@ namespace Carrot::Physics {
         creationSettings.mUserData = (std::uint64_t)&bodyUserData;
 
         if(bodyType == BodyType::Static) {
-            creationSettings.mObjectLayer = GetPhysics().getDefaultStaticLayer(); // TODO
+            creationSettings.mObjectLayer = GetConfiguration().collisionLayers.getStaticLayer(); // TODO
         } else {
-            const auto& layersManager = GetPhysics().getCollisionLayers();
+            const auto& layersManager = GetConfiguration().collisionLayers;
             if(layersManager.isValid(layerID)) {
-                creationSettings.mObjectLayer = GetPhysics().getCollisionLayers().getLayer(layerID).layerID;
+                creationSettings.mObjectLayer = GetConfiguration().collisionLayers.getLayer(layerID).layerID;
             } else {
-                creationSettings.mObjectLayer = GetPhysics().getDefaultMovingLayer();
+                creationSettings.mObjectLayer = GetConfiguration().collisionLayers.getMovingLayer();
             }
         }
-        bodyID = GetPhysics().createRigidbody(creationSettings);
+        bodyID = getPhysicsSystem().createRigidbody(creationSettings);
         setupDOFConstraint();
     }
 
@@ -409,7 +412,7 @@ namespace Carrot::Physics {
 
     void RigidBody::setupDOFConstraint() {
         if(dofConstraint) {
-            GetPhysics().jolt->RemoveConstraint(dofConstraint);
+            getPhysicsSystem().jolt->RemoveConstraint(dofConstraint);
             dofConstraint = nullptr;
         }
 
@@ -421,7 +424,7 @@ namespace Carrot::Physics {
             return;
         }
 
-        BodyAccessWrite body{bodyID};
+        BodyAccessWrite body{getPhysicsSystem(), bodyID};
         JPH::SixDOFConstraintSettings settings;
 
         if(!rotationAxes.x)
@@ -442,16 +445,16 @@ namespace Carrot::Physics {
         settings.mPosition1 = body->GetCenterOfMassPosition();
 
         dofConstraint = (JPH::SixDOFConstraint*)settings.Create(JPH::Body::sFixedToWorld, *body.get());
-        GetPhysics().jolt->AddConstraint(dofConstraint);
+        getPhysicsSystem().jolt->AddConstraint(dofConstraint);
     }
 
     void RigidBody::destroyJoltRepresentation() {
         if(dofConstraint) {
-            GetPhysics().jolt->RemoveConstraint(dofConstraint);
+            getPhysicsSystem().jolt->RemoveConstraint(dofConstraint);
             dofConstraint = nullptr;
         }
         if(!bodyID.IsInvalid()) {
-            GetPhysics().destroyRigidbody(bodyID);
+            getPhysicsSystem().destroyRigidbody(bodyID);
         }
         if(bodyShapeRef) {
             bodyShapeRef = {};

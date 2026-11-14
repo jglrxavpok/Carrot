@@ -727,7 +727,7 @@ namespace Peeler {
     static void multiEditEnumField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*>& components,
         std::function<TEnum(TComponent&)> getter,
         std::function<void(TComponent&, const TEnum&)> setter,
-        const char*(nameGetter)(const TEnum&),
+        std::function<const char*(const TEnum&)> nameGetter,
         const Carrot::Vector<TEnum>& validValues,
         const Helpers::Limits<TEnum>& limits = {})
     {
@@ -783,7 +783,7 @@ namespace Peeler {
         const char*(nameGetter)(const TEnum&),
         const Carrot::Vector<TEnum>& validValues,
         const Helpers::Limits<TEnum>& limits = {}) {
-        multiEditEnumField<TComponent, TEnum>(edition, id, components, std::function(getter), std::function(setter), nameGetter, validValues, limits);
+        multiEditEnumField<TComponent, TEnum>(edition, id, components, std::function(getter), std::function(setter), std::function(nameGetter), validValues, limits);
     }
 }
 

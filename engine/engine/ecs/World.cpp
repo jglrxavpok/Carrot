@@ -332,6 +332,8 @@ namespace Carrot::ECS {
         }
 
         worldData.update();
+
+        physics.tick(dt, [&](){ this->prePhysics(); }, [&]() { this->postPhysics(); });
     }
 
     void World::prePhysics() {
@@ -477,6 +479,8 @@ namespace Carrot::ECS {
                 lighting.drawDebug();
             }
         }
+
+        physics.onFrame(renderContext);
     }
 
     Signature World::getSignature(const Entity& entity) const {
