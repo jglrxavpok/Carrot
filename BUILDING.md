@@ -1,14 +1,15 @@
 # Building the engine
 
 ## Requirements
-1. You need to install the Vulkan SDK. I currently use the 1.4.341.1 LunarG SDK.
-2. (Linux) You may need to install `xorg-dev` for GLFW (as per its documentation).
-3. (Linux) You may need to install `libgtk-3-dev` for nativefiledialog.
-4. (Linux) You may need to install `libxcb-glx0-dev` for OpenXR.
-5. (Linux) You may need to install `libpulse-dev` for OpenAL.
-6. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
+1. You need to install the Vulkan SDK. I currently use the 1.4.363.1 LunarG SDK.
+2. You need a C++23 compatible compiler.
+3. (Linux) You may need to install `xorg-dev` for GLFW (as per its documentation).
+4. (Linux) You may need to install `libgtk-3-dev` for nativefiledialog.
+5. (Linux) You may need to install `libxcb-glx0-dev` for OpenXR.
+6. (Linux) You may need to install `libpulse-dev` for OpenAL.
+7. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
 Go into `thirdparty/OpenXR-Hpp` and run `generate-openxr-hpp.sh` (or .ps1). If you have the error ` cannot import name 'soft_unicode' from 'markupsafe'`, you need to remove markupsafe & jinja2 from your installed packages on Linux (see https://github.com/KhronosGroup/OpenXR-SDK-Source/issues/416).
-7. Then you can open the CMake project with your IDE, or generate the project via the command line.
+8. Then you can open the CMake project with your IDE, or generate the project via the command line.
 
 TODO: automate and remove dependencies where possible
 
