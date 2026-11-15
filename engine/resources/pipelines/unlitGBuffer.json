@@ -16,6 +16,10 @@
     {
       "type": "per_draw",
       "setID": 2
+    },
+    {
+      "type": "viewport",
+      "setID": 3
     }
   ],
   "depthWrite": true,

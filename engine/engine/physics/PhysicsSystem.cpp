@@ -288,6 +288,7 @@ namespace Carrot::Physics {
 
         JPH::BodyManager::DrawSettings drawSettings;
         drawSettings.mDrawBoundingBox = true;
+        drawSettings.mDrawShapeColor = JPH::BodyManager::EShapeColor::InstanceColor;
         debugRenderer->pCurrentViewport = context.pViewport;
         jolt->DrawBodies(drawSettings, debugRenderer.get());
         debugRenderer->render(context);
