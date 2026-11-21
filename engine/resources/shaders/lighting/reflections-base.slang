@@ -90,10 +90,7 @@ void computeReflections(IRaytracingCapabilities config, uint2 coords, LightingPa
     io.outImage.Store(coords, float4(finalColor * pixelInfo.gBuffer.albedo.rgb, 1));
     gBufferInputs.viewPos.Store(coords, firstBounceViewPos);
 
-    bool nSign = false;
-    bool tSign = false;
-    bool bSign = false;
-    float4 compressedViewNormalTangent;
-    compressTBN(float3x3(firstBounceTangent, 0, firstBounceNormal), compressedViewNormalTangent, nSign, tSign, bSign);
+    uint16_t4 compressedViewNormalTangent;
+    compressTBN(float3x3(firstBounceTangent, 0, firstBounceNormal), compressedViewNormalTangent);
     gBufferInputs.viewNormalTangents.Store(coords, compressedViewNormalTangent);
 }

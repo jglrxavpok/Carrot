@@ -63,7 +63,7 @@ public struct EncodedGBuffer {
 
     public vec4 color;
     public vec4 viewPosition;
-    public vec4 viewNormalTangent;
+    public uint16_t4 viewNormalTangent;
     public uint32_t intProperty;
     public uvec4 entityID;
     public vec4 metallicRoughnessVelocityXY;
@@ -72,7 +72,7 @@ public struct EncodedGBuffer {
     public __init() {
         color = vec4(0.0);
         viewPosition = vec4(0.0);
-        viewNormalTangent = vec4(0.0);
+        viewNormalTangent = uint16_t4(0);
         intProperty = 0;
         entityID = uvec4(0);
         metallicRoughnessVelocityXY = vec4(0.0);
@@ -89,21 +89,7 @@ public struct EncodedGBuffer {
 
         emissive = gbuffer.emissiveColor;
 
-        bool nSign = false;
-        bool tSign = false;
-        bool bSign = false;
-        {
-            compressTBN(gbuffer.viewTBN, viewNormalTangent, nSign, tSign, bSign);
-            if (nSign) {
-                intProperty = intProperty | IntProperties::NegativeViewNormalZ;
-            }
-            if (tSign) {
-                intProperty = intProperty | IntProperties::NegativeViewTangentZ;
-            }
-            if (bSign) {
-                intProperty = intProperty | IntProperties::NegativeViewBitangentZ;
-            }
-        }
+        compressTBN(gbuffer.viewTBN, viewNormalTangent);
     }
 
 }

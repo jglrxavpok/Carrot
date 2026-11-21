@@ -54,7 +54,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                           vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.viewSpaceNormalTangents = graph.createRenderTarget("View space normals tangents",
-                                                        vk::Format::eR16G16B16A16Sfloat,
+                                                        vk::Format::eR16G16B16A16Uint,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,

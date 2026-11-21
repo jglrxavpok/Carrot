@@ -26,7 +26,7 @@ public struct VSGBufferOutput {
 public struct GBufferInputs {
     public Texture2D albedo;
     public Texture2D viewPos;
-    public Texture2D viewNormalTangents;
+    public Texture2D<uint16_t4> viewNormalTangents;
     public Sampler2D<IntProperties::__Tag> intPropertiesInput;
     public Texture2D<uvec4> entityID;
     public Texture2D metallicRoughnessValuesVelocityXY;
@@ -46,14 +46,11 @@ public struct GBufferInputs {
         result.readIsSky = viewPosData.w < 0.5f;
         result.readDepth = depth.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).r;
 
-        const float4 compressedTBN = viewNormalTangents.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        int2 dimensions;
+        viewNormalTangents.GetDimensions(dimensions.x, dimensions.y);
+        const uint16_t4 compressedTBN = viewNormalTangents.Load(int3(int2(uv*dimensions), 0));
         
-        const IntProperties properties = IntProperties(intPropertiesInput.SampleGrad(uv, float2(0), float2(0)).r);
-        result.intProperty = properties;
-        const bool negativeNormal = properties & IntProperties::NegativeViewNormalZ;
-        const bool negativeTangent = properties & IntProperties::NegativeViewTangentZ;
-        const bool negativeBitangent = properties & IntProperties::NegativeViewBitangentZ;
-        decompressTBN(compressedTBN, negativeNormal, negativeTangent, negativeBitangent, result.viewTBN);
+        decompressTBN(compressedTBN, result.viewTBN);
 
         result.entityID = entityID.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
 
@@ -76,7 +73,7 @@ public struct GBufferInputs {
 public struct RWGBufferInputs {
     public RWTexture2D albedo;
     public RWTexture2D viewPos;
-    public RWTexture2D viewNormalTangents;
+    public RWTexture2D<uint16_t4> viewNormalTangents;
     public RWTexture2D<IntProperties::__Tag> intPropertiesInput;
     public RWTexture2D<uvec4> entityID;
     public RWTexture2D metallicRoughnessValuesVelocityXY;
@@ -100,14 +97,9 @@ public struct RWGBufferInputs {
         result.readIsSky = viewPosData.w < 0.5f;
         result.readDepth = depth.Load(float3(coords, 0)).r;
 
-        const float4 compressedTBN = viewNormalTangents.Load(coords);
+        const uint16_t4 compressedTBN = viewNormalTangents.Load(coords);
         
-        const IntProperties properties = IntProperties(intPropertiesInput.Load(coords).r);
-        result.intProperty = properties;
-        const bool negativeNormal = properties & IntProperties::NegativeViewNormalZ;
-        const bool negativeTangent = properties & IntProperties::NegativeViewTangentZ;
-        const bool negativeBitangent = properties & IntProperties::NegativeViewBitangentZ;
-        decompressTBN(compressedTBN, negativeNormal, negativeTangent, negativeBitangent, result.viewTBN);
+        decompressTBN(compressedTBN, result.viewTBN);
 
         result.entityID = entityID.Load(coords);
 
