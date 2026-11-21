@@ -34,7 +34,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
             .depth = 1.0f,
             .stencil = 0
     };
-    vk::ClearValue clearIntProperties = vk::ClearColorValue();
     vk::ClearValue clearEntityID = vk::ClearColorValue(std::array<std::uint32_t,4>{0,0,0,0});
     auto& setupGBuffer = graph.addPass<Carrot::Render::PassData::GBuffer>("setup-gbuffer",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
@@ -59,13 +58,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
-
-                data.flags = graph.createRenderTarget("Flags",
-                                                      vk::Format::eR32Uint,
-                                                      framebufferSize,
-                                                      vk::AttachmentLoadOp::eClear,
-                                                      clearIntProperties,
-                                                      vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.entityID = graph.createRenderTarget("EntityID",
                                                          vk::Format::eR32G32B32A32Uint,
@@ -175,7 +167,6 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
     albedo = graph.read(other.albedo, wantedLayout);
     positions = graph.read(other.positions, wantedLayout);
     viewSpaceNormalTangents = graph.read(other.viewSpaceNormalTangents, wantedLayout);
-    flags = graph.read(other.flags, wantedLayout);
     entityID = graph.read(other.entityID, wantedLayout);
     metallicRoughnessVelocityXY = graph.read(other.metallicRoughnessVelocityXY, wantedLayout);
     emissive = graph.read(other.emissive, wantedLayout);
@@ -195,7 +186,6 @@ void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, con
     albedo = graph.write(other.albedo, vk::AttachmentLoadOp::eLoad, wantedLayout);
     positions = graph.write(other.positions, vk::AttachmentLoadOp::eLoad, wantedLayout);
     viewSpaceNormalTangents = graph.write(other.viewSpaceNormalTangents, vk::AttachmentLoadOp::eLoad, wantedLayout);
-    flags = graph.write(other.flags, vk::AttachmentLoadOp::eLoad, wantedLayout);
     entityID = graph.write(other.entityID, vk::AttachmentLoadOp::eLoad, wantedLayout);
     metallicRoughnessVelocityXY = graph.write(other.metallicRoughnessVelocityXY, vk::AttachmentLoadOp::eLoad, wantedLayout);
     emissive = graph.write(other.emissive, vk::AttachmentLoadOp::eLoad, wantedLayout);
@@ -224,10 +214,9 @@ void Carrot::Render::PassData::GBuffer::bindInputsFromGivenFrame(Carrot::Pipelin
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frameNumber), setID, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frameNumber), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frameNumber), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frameNumber), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if(expectedLayout == vk::ImageLayout::eGeneral) {
@@ -235,17 +224,16 @@ void Carrot::Render::PassData::GBuffer::bindInputsFromGivenFrame(Carrot::Pipelin
     } else if(expectedLayout == vk::ImageLayout::eColorAttachmentOptimal) {
         depthLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     }
-    // 7 unused
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frameNumber), setID, 8, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
 
     Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
     if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
         skyboxCubeMap = renderer.getBlackCubeMapTexture();
     }
-    renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+    renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 7, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 
-    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 10);
-    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 11);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 8);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 9);
 }
 
 void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID) const {
@@ -255,10 +243,9 @@ void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(albedo, frameNumber), setID, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(positions, frameNumber), setID, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frameNumber), setID, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(flags, frameNumber), setID, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 6, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
 
     vk::ImageLayout depthLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     if(expectedLayout == vk::ImageLayout::eGeneral) {
@@ -266,15 +253,14 @@ void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const
     } else if(expectedLayout == vk::ImageLayout::eColorAttachmentOptimal) {
         depthLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     }
-    // 7 unused
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frameNumber), setID, 8, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frameNumber), setID, 6, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, depthLayout);
 
     Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
     if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
         skyboxCubeMap = renderer.getBlackCubeMapTexture();
     }
-    renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+    renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 7, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 
-    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 10);
-    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 11);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 8);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 9);
 }

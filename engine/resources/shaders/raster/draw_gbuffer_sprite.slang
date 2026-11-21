@@ -86,7 +86,6 @@ EncodedGBuffer pixel(in VertexOutput input, float4 fragCoords: SV_Position) {
     result.roughness = output.roughness;
     result.entityID = input.uuid;
     result.viewPosition = input.viewPosition;
-    result.intProperty = IntProperties::RayTracedLighting;
 
     vec3 previousClipPos = input.previousFrameViewPosition;
     previousClipPos.xy /= previousClipPos.z;

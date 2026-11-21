@@ -159,7 +159,6 @@ namespace Carrot::Render {
             FrameResource albedo;
             FrameResource positions;
             FrameResource viewSpaceNormalTangents;
-            FrameResource flags;
             FrameResource entityID;
             FrameResource metallicRoughnessVelocityXY;
             FrameResource emissive;

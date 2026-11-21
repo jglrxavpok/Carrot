@@ -97,7 +97,6 @@ GBuffer defaultGBuffer(VSGBufferOutput input, float4 fragCoords) {
     result.roughness = output.roughness;
     result.entityID = input.uuid;
     result.viewPosition = input.viewPosition;
-    result.intProperty = IntProperties::RayTracedLighting;
 
     vec3 previousClipPos = input.previousFrameViewPosition;
     previousClipPos.xy /= previousClipPos.z;

@@ -5,16 +5,6 @@ import base;
 __include gbuffer.io;
 __include gbuffer.utils;
 
-
-[Flags]
-public enum IntProperties : uint32_t {
-    None = 0,
-    RayTracedLighting,
-    NegativeViewNormalZ,
-    NegativeViewTangentZ,
-    NegativeViewBitangentZ,
-}
-
 /**
     "Fat" version of the gbuffer, should be the version used by shaders
 */
@@ -23,7 +13,6 @@ public struct GBuffer {
     public vec3 viewPosition;
     public mat3 viewTBN;
 
-    public IntProperties intProperty;
     public uvec4 entityID;
 
     public float metallicness;
@@ -43,7 +32,6 @@ public struct GBuffer {
                         vec3(0.0, 1.0, 0.0),
                         vec3(0.0, 0.0, 1.0));
 
-        intProperty = IntProperties::None;
         entityID = uvec4(0);
         metallicness = 0.0;
         roughness = 0.0;
@@ -64,7 +52,6 @@ public struct EncodedGBuffer {
     public vec4 color;
     public vec4 viewPosition;
     public uint16_t4 viewNormalTangent;
-    public uint32_t intProperty;
     public uvec4 entityID;
     public vec4 metallicRoughnessVelocityXY;
     public float3 emissive;
@@ -73,7 +60,6 @@ public struct EncodedGBuffer {
         color = vec4(0.0);
         viewPosition = vec4(0.0);
         viewNormalTangent = uint16_t4(0);
-        intProperty = 0;
         entityID = uvec4(0);
         metallicRoughnessVelocityXY = vec4(0.0);
         emissive = float3(0.0);
@@ -83,7 +69,6 @@ public struct EncodedGBuffer {
         color = gbuffer.albedo;
         viewPosition = vec4(gbuffer.viewPosition, 1 /*not sky*/);
         viewNormalTangent = vec4(1);
-        intProperty = gbuffer.intProperty;
         entityID = gbuffer.entityID;
         metallicRoughnessVelocityXY = vec4(gbuffer.metallicness, gbuffer.roughness, gbuffer.motionVector.xy);
 

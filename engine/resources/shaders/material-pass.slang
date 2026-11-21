@@ -114,7 +114,6 @@ EncodedGBuffer main(in PixelIn input, out float outDepth : SV_Depth) {
     GBuffer gbuffer;
     gbuffer.viewPosition = viewPos.xyz;
 
-    gbuffer.intProperty = IntProperties::RayTracedLighting;
     gbuffer.entityID = modelData.instanceData.uuid;
 
     gbuffer.albedo = materialOutput.albedo * modelData.instanceData.color;

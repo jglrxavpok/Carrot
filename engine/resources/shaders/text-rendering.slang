@@ -94,7 +94,6 @@ EncodedGBuffer gBufferPixel(VSOutput input, uniform PushData pushData) {
     }
     //gbuffer.albedo = lerp(gbuffer.albedo, float4(1, 1, 1, 1), 0.25f);
     gbuffer.viewPosition = input.viewPos;
-    gbuffer.intProperty = IntProperties::RayTracedLighting;
 
     return EncodedGBuffer(gbuffer);
 }

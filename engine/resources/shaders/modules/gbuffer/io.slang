@@ -27,11 +27,9 @@ public struct GBufferInputs {
     public Texture2D albedo;
     public Texture2D viewPos;
     public Texture2D<uint16_t4> viewNormalTangents;
-    public Sampler2D<IntProperties::__Tag> intPropertiesInput;
     public Texture2D<uvec4> entityID;
     public Texture2D metallicRoughnessValuesVelocityXY;
     public Texture2D emissiveValues;
-    public Texture2D _unused;
     public Texture2D depth;
     public SamplerCube skybox3D;
     public SamplerState linearSampler;
@@ -74,11 +72,9 @@ public struct RWGBufferInputs {
     public RWTexture2D albedo;
     public RWTexture2D viewPos;
     public RWTexture2D<uint16_t4> viewNormalTangents;
-    public RWTexture2D<IntProperties::__Tag> intPropertiesInput;
     public RWTexture2D<uvec4> entityID;
     public RWTexture2D metallicRoughnessValuesVelocityXY;
     public RWTexture2D emissiveValues;
-    public RWTexture2D _unused;
     public Texture2D depth; // depth not writtable
     public SamplerCube skybox3D;
     public SamplerState linearSampler;
