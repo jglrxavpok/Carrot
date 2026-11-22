@@ -26,10 +26,25 @@ RWTexture2D<float4> momentsHistory;
 RWTexture2D<float4> colorOutput;
 [[vk::binding(5, 3)]]
 RWTexture2D<float4> momentsOutput; // Encodes history length in 3rd channel // TODO: use proper type
-[[vk::binding(6, 3)]]
-RWTexture2D<float4> varianceInput; // TODO: use proper type
+
 [[vk::binding(7, 3)]]
-RWTexture2D<float4> varianceOutput; // TODO: use proper type
+RWTexture2D<float4> varianceOutput;
+
+struct Stats {
+    uint64_t totalTime;
+    uint64_t getCurrentPixel;
+    uint64_t blurVariance;
+    uint64_t export;
+
+    uint64_t singlePixel[25];
+    uint64_t singlePixelFetchInfo[25];
+    uint64_t singlePixelFetchColor[25];
+    uint64_t singlePixelApplyWeights[25];
+};
+[[vk::binding(0, 4)]]
+RWStructuredBuffer<Stats> stats;
+
+#define PROFILE 0
 
 struct Sample {
     float4 color;
@@ -136,7 +151,7 @@ double powNormal128(double a) {
     return a128;
 }
 
-float weightFunc(float variance, float depthDivisor, float4 centerColor, PixelInfo centerInfo, float4 otherColor, PixelInfo otherInfo) {
+float weightFunc(float variance, float depthDivisor, float3 centerColor, PixelInfo centerInfo, float3 otherColor, PixelInfo otherInfo) {
     const float sigmaDepth = 1;
     const float sigmaNormal = 128;
     const float sigmaLuminance = 4;
@@ -144,7 +159,7 @@ float weightFunc(float variance, float depthDivisor, float4 centerColor, PixelIn
     const float depthNumerator = abs(centerInfo.gBuffer.viewPosition.z - otherInfo.gBuffer.viewPosition.z);
     const float depthDenominator = sigmaDepth * depthDivisor + 10e-12f;
     const float weightDepth = exp(-depthNumerator / depthDenominator);
-    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerInfo.worldNormal, otherInfo.worldNormal)))));
+    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerInfo.gBuffer.viewTBN[2], otherInfo.gBuffer.viewTBN[2])))));
 
     const float luminanceNumerator = abs(luminance(centerColor.rgb) - luminance(otherColor.rgb));
     const float luminanceDenominator = (sigmaLuminance * sqrt(variance)) + 10e-12f;
@@ -186,13 +201,13 @@ void estimateVariance(uint2 coords: SV_DispatchThreadID) {
                     continue;
                 }
 
-                const float4 color = currentFrameColor.Load(newCoords);
+                const float3 color = currentFrameColor.Load(newCoords).rgb;
                 const float luminanceValue = luminance(color.rgb);
 
                 const PixelInfo otherPixelInfo = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, (newCoords + 0.5f) / float2(w, h));
                 if (otherPixelInfo.isSky)
                     continue;
-                const float weight = weightFunc(1, length(dot(depthGradient, int2(dx, dy))), centerColor, centerPixelInfo, color, otherPixelInfo);
+                const float weight = weightFunc(1, length(dot(depthGradient, int2(dx, dy))), centerColor.rgb, centerPixelInfo, color, otherPixelInfo);
                 const float l = luminanceValue;
                 moments += float2(l, l * l) * weight;
                 weightSum += weight;
@@ -203,11 +218,12 @@ void estimateVariance(uint2 coords: SV_DispatchThreadID) {
             moments /= weightSum;
         }
         const float variance = max(0, moments.y - moments.x * moments.x);
-        varianceOutput.Store(coords, float4(variance, 0, 0,1));
+        varianceOutput.Store(coords, float4(centerColor.rgb, variance));
     } else {
         // otherwise, integrate temporally
+        const float4 centerColor = currentFrameColor.Load(coords);
         const float variance = max(0, momentsAndHistoryLength.y - momentsAndHistoryLength.x * momentsAndHistoryLength.x);
-        varianceOutput.Store(coords, float4(variance,0,0,1));
+        varianceOutput.Store(coords, float4(centerColor.rgb, variance));
     }
 }
 
@@ -223,6 +239,11 @@ float getDepth(int2 coords, int dx, int dy, int w, int h) {
 [shader("compute")]
 [numthreads(8, 8, 1)]
 void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iterationIndex) {
+#if PROFILE
+    uint64_t headerStart = clockARB();
+    defer InterlockedAdd(stats[0].totalTime, clockARB() - headerStart);
+#endif
+
     uint w;
     uint h;
     colorOutput.GetDimensions(w, h);
@@ -230,24 +251,34 @@ void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iteration
         return;
     }
 
+#if PROFILE
+    uint64_t getCurrentPixelStart = clockARB();
+#endif
+
     const float2 uv = (coords + 0.5f) / float2(w, h);
     const PixelInfo centerPixel = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, uv);
     if (centerPixel.isSky) {
-        colorOutput.Store(coords, float4(0,0,0,0));
-        varianceOutput.Store(coords, float4(0, 0, 0, 1));
-
+        colorOutput.Store(coords, float4(0,0,0,1));
         return;
     }
+
+#if PROFILE
+    InterlockedAdd(stats[0].getCurrentPixel, clockARB() - getCurrentPixelStart);
+#endif
 
     int jumpSize = 1 << iterationIndex;
 
     const float kernel[3] = { 3 / 8.0f, 1 / 4.0f, 1 / 16.0f };
-    const float4 centerColor = currentFrameColor.Load(coords);
-    const float centerVariance = varianceInput.Load(coords).r;
+    const float4 centerData = currentFrameColor.Load(coords);
+    const float3 centerColor = centerData.rgb;
+    const float centerVariance = centerData.a;
 
     float weightSum = 0.0f;
     float4 accumulatedColor = 0;
-    float accumulatedVariance = 0;
+
+#if PROFILE
+    uint64_t blurVarianceStart = clockARB();
+#endif
 
     float gaussianBlurVariance = 0;
     int c = 0;
@@ -255,52 +286,90 @@ void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iteration
     float gaussianKernel[2] = { 1 / 2.0f, 1 / 4.0f };
     for (int dy = -1; dy <= 1; dy++) {
         for (int dx = -1; dx <= 1; dx++) {
-            const int2 otherCoords = int2(coords) + int2(dx, dy) * jumpSize;
+            const int2 otherCoords = int2(coords) + int2(dx, dy);
             if (otherCoords.x < 0 || otherCoords.y < 0 || otherCoords.x >= w || otherCoords.y >= h) {
                 continue;
             }
 
             const float w = gaussianKernel[abs(dx)] * gaussianKernel[abs(dy)];
-            gaussianBlurVariance += varianceInput.Load(otherCoords).r * w;
+            gaussianBlurVariance += currentFrameColor.Load(otherCoords).w * w;
             gaussianWeightSum += w;
         }
     }
     if (gaussianWeightSum > 0)
         gaussianBlurVariance /= gaussianWeightSum;
 
+#if PROFILE
+    InterlockedAdd(stats[0].blurVariance, clockARB() - blurVarianceStart);
+#endif
+
     float2 depthGradient;
     depthGradient.x = getDepth(coords, 1, 0, w, h) - getDepth(coords, -1, 0, w, h);
     depthGradient.y = getDepth(coords, 0, 1, w, h) - getDepth(coords, 0, -1, w, h);
-    
-    for (int dy = -2; dy <= 2; dy++) {
-        for (int dx = -2; dx <= 2; dx++) {
+
+    int pixelIndex = 0;
+    [loop] for (int dy = -2; dy <= 2; dy++) {
+        [loop] for (int dx = -2; dx <= 2; dx++) {
+            int currentPixelIndex = pixelIndex++;
+
+#if PROFILE
+            uint64_t singlePixelStart = clockARB();
+            defer InterlockedAdd(stats[0].singlePixel[currentPixelIndex], clockARB() - singlePixelStart);
+#endif
+
             const int2 otherCoords = int2(coords) + int2(dx, dy) * jumpSize;
             if (otherCoords.x < 0 || otherCoords.y < 0 || otherCoords.x >= w || otherCoords.y >= h) {
                 continue;
             }
 
             const float2 otherUV = otherCoords / float2(w, h);
+
+#if PROFILE
+            uint64_t fetchInfoStart = clockARB();
+#endif
             const PixelInfo otherPixel = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, otherUV);
+
+#if PROFILE
+            InterlockedAdd(stats[0].singlePixelFetchInfo[currentPixelIndex], clockARB() - fetchInfoStart);
+#endif
 
             if (otherPixel.isSky)
                 continue;
 
-            const float4 otherColor = currentFrameColor.Load(otherCoords);
-            const float otherVariance = varianceInput.Load(otherCoords).r;
+#if PROFILE
+            uint64_t fetchColorStart = clockARB();
+#endif
+            const float4 otherData = currentFrameColor.Load(otherCoords);
+            const float3 otherColor = otherData.rgb;
+
+#if PROFILE
+            InterlockedAdd(stats[0].singlePixelFetchColor[currentPixelIndex], clockARB() - fetchColorStart);
+#endif
+
+#if PROFILE
+            uint64_t applyWeightsStart = clockARB();
+#endif
 
             float weight = kernel[abs(dx)] * kernel[abs(dy)];
             weight *= weightFunc(gaussianBlurVariance, length(dot(depthGradient, int2(dx, dy))), centerColor, centerPixel, otherColor, otherPixel);
-            accumulatedColor += weight * otherColor;
+            accumulatedColor += float4(weight.xxx, weight * weight) * otherData;
             weightSum += weight;
-
-            accumulatedVariance += weight * weight * otherVariance;
+#if PROFILE
+            InterlockedAdd(stats[0].singlePixelApplyWeights[currentPixelIndex], clockARB() - applyWeightsStart);
+#endif
         }
     }
 
+#if PROFILE
+    uint64_t exportStart = clockARB();
+#endif
+
     if (weightSum > 0.00001f) {
-        accumulatedColor /= weightSum;
-        accumulatedVariance /= weightSum * weightSum;
+        accumulatedColor /= float4(weightSum.xxx, weightSum * weightSum); // W contains variance
     }
-    colorOutput.Store(coords, float4(accumulatedColor.rgb,1));
-    varianceOutput.Store(coords, float4(accumulatedVariance, 0, 0, 1));
+    colorOutput.Store(coords, accumulatedColor);
+
+#if PROFILE
+    InterlockedAdd(stats[0].export, clockARB() - exportStart);
+#endif
 }

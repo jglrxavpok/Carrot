@@ -37,27 +37,31 @@ public struct GBufferInputs {
 
     public GBuffer read(float2 uv) {
         GBuffer result;
-        result.albedo = albedo.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        
+        int2 dimensions;
+        albedo.GetDimensions(dimensions.x, dimensions.y);
 
-        float4 viewPosData = viewPos.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        int2 pixelCoords = int2(uv * dimensions);
+
+        result.albedo = albedo.Load(int3(pixelCoords, 0));
+
+        float4 viewPosData = viewPos.Load(int3(pixelCoords, 0));
         result.viewPosition = viewPosData.xyz;
         result.readIsSky = viewPosData.w < 0.5f;
-        result.readDepth = depth.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).r;
+        result.readDepth = depth.Load(int3(pixelCoords, 0)).r;
 
-        int2 dimensions;
-        viewNormalTangents.GetDimensions(dimensions.x, dimensions.y);
-        const uint16_t4 compressedTBN = viewNormalTangents.Load(int3(int2(uv*dimensions), 0));
+        const uint16_t4 compressedTBN = viewNormalTangents.Load(int3(pixelCoords, 0));
         
         decompressTBN(compressedTBN, result.viewTBN);
 
-        result.entityID = entityID.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        result.entityID = entityID.Load(int3(pixelCoords, 0));
 
-        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.SampleGrad(gNearestSampler, uv, float2(0), float2(0));
+        const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.Load(int3(pixelCoords, 0));
 
         result.metallicness = metallicRoughnessVelocityXY.x;
         result.roughness = metallicRoughnessVelocityXY.y;
 
-        result.emissiveColor = emissiveValues.SampleGrad(gNearestSampler, uv, float2(0), float2(0)).rgb;
+        result.emissiveColor = emissiveValues.Load(int3(pixelCoords, 0)).rgb;
         result.motionVector = metallicRoughnessVelocityXY.zw; // motion vector, in UV space
         return result;
     }

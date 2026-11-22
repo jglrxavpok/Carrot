@@ -836,7 +836,8 @@ namespace Carrot::Render {
         auto& svgfVarianceEstimation = graph.addPass<SVGFVariance>("svgf-variance-estimation",
             [&](GraphBuilder& graph, Pass<SVGFVariance>& pass, SVGFVariance& data) {
                 data.gBuffer.readFrom(graph, svgfTemporal.getData().gBuffer, vk::ImageLayout::eGeneral);
-                data.varianceOutput = graph.createStorageTarget("variance output", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                // RGB = color, A = variance. Used to reduce fetches on GPU
+                data.varianceOutput = graph.createStorageTarget("output", vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 data.currentFrameColor = graph.read(svgfTemporal.getData().integratedColor, vk::ImageLayout::eGeneral);
                 data.momentsHistory = graph.read(svgfTemporal.getData().momentsHistory, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
@@ -865,34 +866,74 @@ namespace Carrot::Render {
             PassData::GBuffer gBuffer;
             FrameResource previousPassColor;
             FrameResource currentPassColorOutput;
-            FrameResource previousPassVariance;
-            FrameResource updatedVariance;
+
+            FrameResource stats;
+        };
+
+        struct SVGFIterationStats {
+            u64 totalTime;
+            u64 getCurrentPixel;
+            u64 blurVariance;
+            u64 exportTime;
+            u64 singlePixelTime[25];
+            u64 singlePixelFetchInfo[25];
+            u64 singlePixelFetchColor[25];
+            u64 singlePixelApplyWeights[25];
+        };
+
+        auto dumpSVGFProfiling = [](vk::CommandBuffer& cmds, Carrot::Pipeline& pipeline, i32 iterationIndex, const CompiledPass& pass, const FrameResource& statsBuffer, const Carrot::Render::Context& frame) {
+                if (false)
+                {
+                    { // read from previous frame
+                        BufferView view = pass.getGraph().getBuffer(statsBuffer, frame.getPreviousFrameNumber()).view;
+                        const SVGFIterationStats* pStats = view.map<SVGFIterationStats>();
+                        if (pStats) {
+                            Carrot::Log::info("============= Viewport %s - SVGF iteration %d", std::string_view{frame.pViewport->getViewportID()}.data(), iterationIndex);
+                            Carrot::Log::info("Total time: %lu", pStats->totalTime);
+                            Carrot::Log::info("getCurrentPixel: %.3f %%", double(pStats->getCurrentPixel) / double(pStats->totalTime) * 100);
+                            Carrot::Log::info("blurVariance: %.3f %%", double(pStats->blurVariance) / double(pStats->totalTime) * 100);
+                            Carrot::Log::info("export: %.3f %%", double(pStats->exportTime) / double(pStats->totalTime) * 100);
+                            for (i32 i = 0; i < 25; i++) {
+                                Carrot::Log::info("pixel %d: %.3f %%", i, double(pStats->singlePixelTime[i]) / double(pStats->totalTime) * 100);
+                                Carrot::Log::info("pixel fetch info %d: %.3f %%", i, double(pStats->singlePixelFetchInfo[i]) / double(pStats->singlePixelTime[i]) * 100, double(pStats->singlePixelFetchInfo[i]) / double(pStats->totalTime) * 100);
+                                Carrot::Log::info("pixel fetch color %d: %.3f %%", i, double(pStats->singlePixelFetchColor[i]) / double(pStats->singlePixelTime[i]) * 100, double(pStats->singlePixelFetchColor[i]) / double(pStats->totalTime) * 100);
+                                Carrot::Log::info("pixel apply weights %d: of pixel: %.3f %%, of total: %.3f %%", i, double(pStats->singlePixelApplyWeights[i]) / double(pStats->singlePixelTime[i]) * 100, double(pStats->singlePixelApplyWeights[i]) / double(pStats->totalTime) * 100);
+                            }
+                            // TODO
+                            Carrot::Log::info("=============");
+                        }
+                    }
+                    BufferView view = pass.getGraph().getBuffer(statsBuffer, frame.frameNumber).view;
+                    cmds.fillBuffer(view.getVulkanBuffer(), view.getStart(), sizeof(SVGFIterationStats), 0);
+                    pipeline.setStorageBuffer(frame, "stats", view);
+                }
         };
 
         auto& svgfFirstIteration = graph.addPass<SVGFIteration>("svgf-iteration-1",
             [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
                 data.gBuffer.readFrom(graph, svgfVarianceEstimation.getData().gBuffer, vk::ImageLayout::eGeneral);
-                data.previousPassColor = graph.read(svgfVarianceEstimation.getData().currentFrameColor, vk::ImageLayout::eGeneral);
+                data.previousPassColor = graph.read(svgfVarianceEstimation.getData().varianceOutput, vk::ImageLayout::eGeneral);
                 data.currentPassColorOutput = graph.createStorageTarget("filtered color 1", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
-                data.previousPassVariance = graph.read(svgfVarianceEstimation.getData().varianceOutput, vk::ImageLayout::eGeneral);
-                data.updatedVariance = graph.createStorageTarget("updated variance 1", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
 
                 GetEngine().getResourceRepository().getTextureUsages(data.currentPassColorOutput.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+
+                data.stats = graph.createBuffer("stats", sizeof(SVGFIterationStats), vk::BufferUsageFlagBits::eStorageBuffer, false, true);
+                graph.reuseResourceAcrossFrames(data.stats, 2);
             },
-            [](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+            [dumpSVGFProfiling](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Filter 0");
                 auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("lighting/svgf/wavelet-filter", pass);
                 auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
+
+                dumpSVGFProfiling(cmds, *pipeline, 0, pass, data.stats, frame);
 
                 // 0 is camera
                 data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
 
                 pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
-                pipeline->setStorageImage(frame, "varianceInput", pass.getGraph().getTexture(data.previousPassVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
                 pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
-                pipeline->setStorageImage(frame, "varianceOutput", pass.getGraph().getTexture(data.updatedVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
 
                 frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, (u32)0);
 
@@ -935,24 +976,26 @@ namespace Carrot::Render {
                 [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
                     data.gBuffer.readFrom(graph, previousPass.gBuffer, vk::ImageLayout::eGeneral);
                     data.previousPassColor = graph.read(previousPass.currentPassColorOutput, vk::ImageLayout::eGeneral);
-                    data.currentPassColorOutput = graph.createStorageTarget("filtered color", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
-                    data.previousPassVariance = graph.read(previousPass.updatedVariance, vk::ImageLayout::eGeneral);
-                    data.updatedVariance = graph.createStorageTarget("updated variance", vk::Format::eR32Sfloat, framebufferSize, vk::ImageLayout::eGeneral);
+                    data.currentPassColorOutput = graph.createStorageTarget("filtered color", previousPass.currentPassColorOutput.format, framebufferSize, vk::ImageLayout::eGeneral);
+
+                    data.stats = graph.createBuffer("stats", sizeof(SVGFIterationStats), vk::BufferUsageFlagBits::eStorageBuffer, false, true);
+                    graph.reuseResourceAcrossFrames(data.stats, 2);
+
                     pass.rasterized = false;
                 },
-                [iterationIndex](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
+                [iterationIndex, dumpSVGFProfiling](const CompiledPass& pass, const Context& frame, const SVGFIteration& data, vk::CommandBuffer& cmds) {
                     GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Filter iteration");
                     auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/wavelet-filter", (u64)&pass);
                     auto& output = pass.getGraph().getTexture(data.currentPassColorOutput, frame.frameNumber);
+
+                    dumpSVGFProfiling(cmds, *pipeline, iterationIndex, pass, data.stats, frame);
 
                     // 0 is camera
                     data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
                     data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
 
                     pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
-                    pipeline->setStorageImage(frame, "varianceInput", pass.getGraph().getTexture(data.previousPassVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
                     pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
-                    pipeline->setStorageImage(frame, "varianceOutput", pass.getGraph().getTexture(data.updatedVariance, frame.frameNumber), vk::ImageLayout::eGeneral);
 
                     frame.renderer.pushConstants("entryPointParams", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, (u32)iterationIndex);
 
@@ -964,10 +1007,10 @@ namespace Carrot::Render {
                 });
         };
 
-        auto& iteration2 = addWaveletIteration(2, svgfFirstIteration.getData());
-        auto& iteration3 = addWaveletIteration(3, iteration2.getData());
-        auto& iteration4 = addWaveletIteration(4, iteration3.getData());
-        auto& iteration5 = addWaveletIteration(5, iteration4.getData());
+        auto& iteration2 = addWaveletIteration(1, svgfFirstIteration.getData());
+        auto& iteration3 = addWaveletIteration(2, iteration2.getData());
+        auto& iteration4 = addWaveletIteration(3, iteration3.getData());
+        auto& iteration5 = addWaveletIteration(4, iteration4.getData());
 
         PassData::Lighting data {
             .ambientOcclusion = lightingPass.getData().ambientOcclusionSpatial.pingPong[(lightingPass.getData().ambientOcclusionSpatial.iterationCount+1) % 2],
