@@ -159,7 +159,7 @@ float weightFunc(float variance, float depthDivisor, float3 centerColor, PixelIn
     const float depthNumerator = abs(centerInfo.gBuffer.viewPosition.z - otherInfo.gBuffer.viewPosition.z);
     const float depthDenominator = sigmaDepth * depthDivisor + 10e-12f;
     const float weightDepth = exp(-depthNumerator / depthDenominator);
-    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerInfo.gBuffer.viewTBN[2], otherInfo.gBuffer.viewTBN[2])))));
+    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerInfo.gBuffer.worldTBN[2], otherInfo.gBuffer.worldTBN[2])))));
 
     const float luminanceNumerator = abs(luminance(centerColor.rgb) - luminance(otherColor.rgb));
     const float luminanceDenominator = (sigmaLuminance * sqrt(variance)) + 10e-12f;

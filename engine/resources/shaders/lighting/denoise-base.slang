@@ -56,7 +56,7 @@ ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
     ExtractedGBuffer e;
     e.albedo = g.albedo;
     e.viewPosition = g.viewPosition;
-    e.normal = g.viewTBN[2];
+    e.normal = g.worldTBN[2];
     e.entityID = g.entityID;
     return e;
 }

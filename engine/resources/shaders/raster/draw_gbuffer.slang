@@ -24,7 +24,8 @@ VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
     BaseVertex<false> vertex = input.vertex;
     InstanceData instance = input.instance;
 
-    const float4x4 modelview = camera.CurrentFrame().view * instance.transform;
+    const float4x4 modelMatrix = instance.transform;
+    const float4x4 modelview = camera.CurrentFrame().view * modelMatrix;
     const float3 worldPos = (instance.transform * vertex.getPos()).xyz;
     const float4x4 previousFrameModelview = camera.PreviousFrame().view * instance.lastFrameTransform;
     const float4 viewPosition = modelview * vertex.getPos();
@@ -44,12 +45,12 @@ VSGBufferOutput vertex(in Input input, int drawID: SV_DrawIndex) {
         n = float3(0, 1, 0);
         t = float3(1, 0, 0);
     }
-    float3x3 normalMatrix = transpose(inverse(float3x3(modelview)));
+    float3x3 normalMatrix = transpose(inverse(float3x3(modelMatrix)));
     out.N = normalize(normalMatrix * n);
     out.T = normalize(normalMatrix * (t - dot(t, n) * n));
     out.bitangentSign = vertex.getTangent().w;
     out.uuid = instance.uuid;
-    out.inModelview = modelview;
+    out.inModelMatrix = modelMatrix;
 
     out.drawID = drawID;
 
@@ -91,8 +92,8 @@ GBuffer defaultGBuffer(VSGBufferOutput input, float4 fragCoords) {
     result.albedo = albedo + vec4(result.emissiveColor, 0);
     result.emissiveColor = output.emissive;
 
-    const mat3 toView = computeNormalMappingMatrix(input);
-    result.viewTBN = toView * mat3(vec3(1, 0, 0), vec3(0, 1, 0), output.normal);
+    const mat3 toWorld = computeNormalMappingMatrix(input);
+    result.worldTBN = toWorld * mat3(vec3(1, 0, 0), vec3(0, 1, 0), output.normal);
     result.metallicness = output.metallic;
     result.roughness = output.roughness;
     result.entityID = input.uuid;

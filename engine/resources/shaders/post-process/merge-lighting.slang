@@ -75,10 +75,10 @@ float4 debugRendering(in PixelInfo pixelInfo, float2 uv, in LightingPassUniforms
             return float4(pixelInfo.gBuffer.viewPosition, 1);
 
         case MergeLightingOutput::Normal:
-            return float4(pixelInfo.gBuffer.viewTBN[2], 1);
+            return float4(pixelInfo.gBuffer.worldTBN[2], 1);
 
         case MergeLightingOutput::Tangent:
-            return float4(pixelInfo.gBuffer.viewTBN[0], 1);
+            return float4(pixelInfo.gBuffer.worldTBN[0], 1);
 
         case MergeLightingOutput::Depth:
             return float4(pixelInfo.gBuffer.readDepth.rrr, 1);

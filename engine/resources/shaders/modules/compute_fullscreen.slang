@@ -41,9 +41,7 @@ public struct PixelInfo {
         const float4 hWorldPos = camera.inverseView * float4(gBuffer.viewPosition, 1);
         worldPosition = hWorldPos.xyz / hWorldPos.w;
 
-        const float3x3 cboNormalView = transpose(inverse(float3x3(camera.view)));
-        const float3x3 inverseNormalView = inverse(cboNormalView);
-        worldNormal = inverseNormalView * gBuffer.viewTBN[2];
-        worldTangent = inverseNormalView * gBuffer.viewTBN[0];
+        worldNormal = gBuffer.worldTBN[2];
+        worldTangent = gBuffer.worldTBN[0];
     }
 }

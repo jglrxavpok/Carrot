@@ -23,7 +23,7 @@ struct VertexOutput {
     float3 viewPosition;
     uint4 uuid;
     float3 previousFrameViewPosition;
-    nointerpolation float4x4 modelview;
+    nointerpolation float4x4 modelMatrix; // object to world matrix
     nointerpolation int drawID;
 
     float4 svPos : SV_Position;
@@ -40,7 +40,8 @@ VertexOutput vertex(in VertexInput input, int drawID: SV_DrawIndex, uniform TexR
     out.drawID = drawID;
     out.uv = (input.position.xy + float2(0.5)) * (region.halfSize * 2) + region.center - region.halfSize;
     out.uv.y *= -1;
-    const float4x4 modelview = camera.CurrentFrame().view * input.instance.transform;
+    const float4x4 modelMatrix = input.instance.transform;
+    const float4x4 modelview = camera.CurrentFrame().view * modelMatrix;
     const float4 viewPosition = modelview * float4(input.position, 1);
     const float4x4 prevFrameModelview = camera.CurrentFrame().view * input.instance.lastFrameTransform;
     const float4 previousFrameViewPosition = prevFrameModelview * float4(input.position, 1);
@@ -50,7 +51,7 @@ VertexOutput vertex(in VertexInput input, int drawID: SV_DrawIndex, uniform TexR
     out.instanceColor = input.instance.color;
     out.viewPosition = viewPosition.xyz;
     out.uuid = input.instance.uuid;
-    out.modelview = modelview;
+    out.modelMatrix = modelMatrix;
 
     return out;
 }
@@ -80,8 +81,8 @@ EncodedGBuffer pixel(in VertexOutput input, float4 fragCoords: SV_Position) {
     result.albedo = albedo + vec4(result.emissiveColor, 0);
     result.emissiveColor = output.emissive;
 
-    const mat3 toView = transpose(inverse(float3x3(input.modelview)));
-    result.viewTBN = toView;
+    const mat3 normalMatrix = transpose(inverse(float3x3(input.modelMatrix)));
+    result.worldTBN = normalMatrix;
     result.metallicness = output.metallic;
     result.roughness = output.roughness;
     result.entityID = input.uuid;

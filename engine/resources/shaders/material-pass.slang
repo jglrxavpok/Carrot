@@ -97,7 +97,8 @@ EncodedGBuffer main(in PixelIn input, out float outDepth : SV_Depth) {
 
     const float4x4 clusterTransform = transpose(float4x4(transpose(cluster.transform), float4(0,0,0,1)));
     const ClusterBasedModelData modelData = io.modelData[clusterInstance.instanceDataIndex];
-    const float4x4 modelview = cameras.CurrentFrame().view * modelData.instanceData.transform * clusterTransform;
+    const float4x4 modelMatrix = modelData.instanceData.transform * clusterTransform;
+    const float4x4 modelview = cameras.CurrentFrame().view * modelMatrix;
     
     const Interpolator interpolator = Interpolator(input.screenUV, vA, vB, vC, modelview, float(depth));
 
@@ -126,7 +127,7 @@ EncodedGBuffer main(in PixelIn input, out float outDepth : SV_Depth) {
         float3 N = interpolator.interpolate(vA.normal, vB.normal, vC.normal);
         float3 T = interpolator.interpolate(vA.tangent.xyz, vB.tangent.xyz, vC.tangent.xyz);
 
-        float3x3 normalMatrix = float3x3(modelview);
+        float3x3 normalMatrix = float3x3(modelMatrix);
         normalMatrix = transpose(inverse(normalMatrix));
         N = normalMatrix * N;
         T = normalMatrix * T;
@@ -144,10 +145,10 @@ EncodedGBuffer main(in PixelIn input, out float outDepth : SV_Depth) {
         T_ = normalize(T - dot(T, N_) * N_);
         B_ = normalize(bitangentSign * cross(N_, T_));
 
-        gbuffer.viewTBN = mat3(T_, B_, N_);
+        gbuffer.worldTBN = mat3(T_, B_, N_);
     }
-    
-    const float4x4 previousFrameModelView = cameras.PreviousFrame().view * modelData.instanceData.transform * clusterTransform;
+
+    const float4x4 previousFrameModelView = cameras.PreviousFrame().view * modelMatrix;
     float4 previousClipPos = cameras.PreviousFrame().nonJitteredProjection * previousFrameModelView * localSpacePos;
     previousClipPos.xy /= previousClipPos.w;
 

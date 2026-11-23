@@ -14,7 +14,7 @@ public struct VSGBufferOutput {
     public vec3 T;
     public vec3 N;
     public nointerpolation float bitangentSign;
-    public nointerpolation mat4 inModelview;
+    public nointerpolation mat4 inModelMatrix;
     public nointerpolation int drawID;
 
     public vec4 svPos: SV_Position;
@@ -52,7 +52,7 @@ public struct GBufferInputs {
 
         const uint16_t4 compressedTBN = viewNormalTangents.Load(int3(pixelCoords, 0));
         
-        decompressTBN(compressedTBN, result.viewTBN);
+        decompressTBN(compressedTBN, result.worldTBN);
 
         result.entityID = entityID.Load(int3(pixelCoords, 0));
 
@@ -99,7 +99,7 @@ public struct RWGBufferInputs {
 
         const uint16_t4 compressedTBN = viewNormalTangents.Load(coords);
         
-        decompressTBN(compressedTBN, result.viewTBN);
+        decompressTBN(compressedTBN, result.worldTBN);
 
         result.entityID = entityID.Load(coords);
 

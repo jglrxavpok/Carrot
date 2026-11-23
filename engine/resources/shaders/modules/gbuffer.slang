@@ -11,7 +11,7 @@ __include gbuffer.utils;
 public struct GBuffer {
     public vec4 albedo;
     public vec3 viewPosition;
-    public mat3 viewTBN;
+    public mat3 worldTBN;
 
     public uvec4 entityID;
 
@@ -27,7 +27,7 @@ public struct GBuffer {
     public __init() {
         albedo = vec4(0.0);
         viewPosition = vec3(0.0);
-        viewTBN = mat3(
+        worldTBN = mat3(
                         vec3(1.0, 0.0, 0.0),
                         vec3(0.0, 1.0, 0.0),
                         vec3(0.0, 0.0, 1.0));
@@ -74,7 +74,7 @@ public struct EncodedGBuffer {
 
         emissive = gbuffer.emissiveColor;
 
-        compressTBN(gbuffer.viewTBN, viewNormalTangent);
+        compressTBN(gbuffer.worldTBN, viewNormalTangent);
     }
 
 }
