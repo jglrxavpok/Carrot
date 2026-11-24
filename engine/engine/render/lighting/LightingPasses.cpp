@@ -862,10 +862,37 @@ namespace Carrot::Render {
                 cmds.dispatch(groupCountX, groupCountY, 1);
             });
 
+        struct DepthGradientAndExtractNormal {
+            PassData::GBuffer gBuffer;
+            FrameResource depthDepthGradientAndNormal;
+        };
+
+        auto& prepareDepthGradientAndNormal = graph.addPass<DepthGradientAndExtractNormal>("svgf-depth-depth-gradients-normal",
+            [&](GraphBuilder& graph, Pass<DepthGradientAndExtractNormal>& pass, DepthGradientAndExtractNormal& data) {
+                data.gBuffer.readFrom(graph, svgfVarianceEstimation.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.depthDepthGradientAndNormal = graph.createRenderTarget("DepthGradientAndExtractNormal",
+                    vk::Format::eR32G32B32A32Sfloat, framebufferSize, vk::AttachmentLoadOp::eClear,
+                    vk::ClearColorValue{0,0,0,0}, vk::ImageLayout::eGeneral);
+                // rasterized to use ddx/ddy
+            },
+            [](const CompiledPass& pass, const Context& frame, const DepthGradientAndExtractNormal& data, vk::CommandBuffer& cmds) {
+                GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "SVGF Generate depth gradients and extract normal from GBuffer");
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/svgf/depth-depth-gradients-normal", (u64)&pass);
+
+                // 0 is camera
+                data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current framess
+
+                pipeline->bind(pass, frame, cmds, vk::PipelineBindPoint::eGraphics);
+                const Mesh& fullScreenQuad = frame.renderer.getFullscreenQuad();
+                fullScreenQuad.bind(cmds);
+                fullScreenQuad.draw(cmds);
+            });
+
         struct SVGFIteration {
             PassData::GBuffer gBuffer;
             FrameResource previousPassColor;
             FrameResource currentPassColorOutput;
+            FrameResource depthDepthGradientAndNormal;
 
             FrameResource stats;
         };
@@ -911,8 +938,9 @@ namespace Carrot::Render {
 
         auto& svgfFirstIteration = graph.addPass<SVGFIteration>("svgf-iteration-1",
             [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
-                data.gBuffer.readFrom(graph, svgfVarianceEstimation.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.gBuffer.readFrom(graph, prepareDepthGradientAndNormal.getData().gBuffer, vk::ImageLayout::eGeneral);
                 data.previousPassColor = graph.read(svgfVarianceEstimation.getData().varianceOutput, vk::ImageLayout::eGeneral);
+                data.depthDepthGradientAndNormal = graph.read(prepareDepthGradientAndNormal.getData().depthDepthGradientAndNormal, vk::ImageLayout::eGeneral);
                 data.currentPassColorOutput = graph.createStorageTarget("filtered color 1", GetVulkanDriver().getHDRFormat(), framebufferSize, vk::ImageLayout::eGeneral);
                 pass.rasterized = false;
 
@@ -932,6 +960,7 @@ namespace Carrot::Render {
                 data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
 
+                pipeline->setSampledImage(frame, "depthDepthGradientAndNormal", pass.getGraph().getTexture(data.depthDepthGradientAndNormal, frame.frameNumber), vk::ImageLayout::eGeneral);
                 pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
                 pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
 
@@ -976,6 +1005,7 @@ namespace Carrot::Render {
                 [&](GraphBuilder& graph, Pass<SVGFIteration>& pass, SVGFIteration& data) {
                     data.gBuffer.readFrom(graph, previousPass.gBuffer, vk::ImageLayout::eGeneral);
                     data.previousPassColor = graph.read(previousPass.currentPassColorOutput, vk::ImageLayout::eGeneral);
+                    data.depthDepthGradientAndNormal = graph.read(prepareDepthGradientAndNormal.getData().depthDepthGradientAndNormal, vk::ImageLayout::eGeneral);
                     data.currentPassColorOutput = graph.createStorageTarget("filtered color", previousPass.currentPassColorOutput.format, framebufferSize, vk::ImageLayout::eGeneral);
 
                     data.stats = graph.createBuffer("stats", sizeof(SVGFIterationStats), vk::BufferUsageFlagBits::eStorageBuffer, false, true);
@@ -994,6 +1024,7 @@ namespace Carrot::Render {
                     data.gBuffer.bindLastFrameInputs(*pipeline, frame, pass.getGraph(), 1, vk::ImageLayout::eGeneral); // previous frame
                     data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eGeneral); // current frame
 
+                    pipeline->setSampledImage(frame, "depthDepthGradientAndNormal", pass.getGraph().getTexture(data.depthDepthGradientAndNormal, frame.frameNumber), vk::ImageLayout::eGeneral);
                     pipeline->setStorageImage(frame, "currentFrameColor", pass.getGraph().getTexture(data.previousPassColor, frame.frameNumber), vk::ImageLayout::eGeneral);
                     pipeline->setStorageImage(frame, "colorOutput", output, vk::ImageLayout::eGeneral);
 

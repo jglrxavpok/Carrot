@@ -243,6 +243,7 @@ set(PIPELINES
         lighting/reflections-raytracing
         lighting/temporal-denoise
 
+        lighting/svgf/depth-depth-gradients-normal
         lighting/svgf/svgf-template
         lighting/svgf/variance-estimation
         lighting/svgf/temporal

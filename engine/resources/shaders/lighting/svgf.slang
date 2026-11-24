@@ -27,6 +27,9 @@ RWTexture2D<float4> colorOutput;
 [[vk::binding(5, 3)]]
 RWTexture2D<float4> momentsOutput; // Encodes history length in 3rd channel // TODO: use proper type
 
+[[vk::binding(6, 3)]]
+Texture2D<float4> depthDepthGradientAndNormal;
+
 [[vk::binding(7, 3)]]
 RWTexture2D<float4> varianceOutput;
 
@@ -151,22 +154,22 @@ double powNormal128(double a) {
     return a128;
 }
 
-float weightFunc(float variance, float depthDivisor, float3 centerColor, PixelInfo centerInfo, float3 otherColor, PixelInfo otherInfo) {
-    const float sigmaDepth = 1;
+float weightFunc(float variance, float depthDivisor, float3 centerColor, float centerDepth, float3 centerNormal, float3 otherColor, float otherDepth, float3 otherNormal) {
+    const float sigmaDepth = 16;
     const float sigmaNormal = 128;
     const float sigmaLuminance = 4;
 
-    const float depthNumerator = abs(centerInfo.gBuffer.viewPosition.z - otherInfo.gBuffer.viewPosition.z);
+    const float depthNumerator = abs(otherDepth - centerDepth);
     const float depthDenominator = sigmaDepth * depthDivisor + 10e-12f;
     const float weightDepth = exp(-depthNumerator / depthDenominator);
-    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerInfo.gBuffer.worldTBN[2], otherInfo.gBuffer.worldTBN[2])))));
+    const float weightNormal = max(0.0f, float(powNormal128(double(dot(centerNormal, otherNormal)))));
 
     const float luminanceNumerator = abs(luminance(centerColor.rgb) - luminance(otherColor.rgb));
     const float luminanceDenominator = (sigmaLuminance * sqrt(variance)) + 10e-12f;
     const float weightLuminance = exp(-luminanceNumerator / luminanceDenominator);
 
-    // TODO: same mesh ID, weightDepth
-    return weightNormal * weightLuminance;
+    // TODO: same mesh ID
+    return weightNormal * weightLuminance * weightDepth;
 }
 
 [shader("compute")]
@@ -190,9 +193,10 @@ void estimateVariance(uint2 coords: SV_DispatchThreadID) {
         float2 moments = float2(0,0);
         float weightSum = 0.0f;
 
-        float2 depthGradient;
-        depthGradient.x = getDepth(coords, 1, 0, w, h) - getDepth(coords, -1, 0, w, h);
-        depthGradient.y = getDepth(coords, 0, 1, w, h) - getDepth(coords, 0, -1, w, h);
+        const float4 depthDepthGradientAndNormalValue = depthDepthGradientAndNormal.Load(int3(coords, 0));
+        const float centerDepth = depthDepthGradientAndNormalValue.x;
+        const float depthGradient = depthDepthGradientAndNormalValue.y;
+        const float3 centerNormal = unpackNormal(depthDepthGradientAndNormalValue.zw);
 
         for (int dy = -3; dy <= 3; dy++) {
             for (int dx = -3; dx <= 3; dx++) {
@@ -207,7 +211,12 @@ void estimateVariance(uint2 coords: SV_DispatchThreadID) {
                 const PixelInfo otherPixelInfo = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, (newCoords + 0.5f) / float2(w, h));
                 if (otherPixelInfo.isSky)
                     continue;
-                const float weight = weightFunc(1, length(dot(depthGradient, int2(dx, dy))), centerColor.rgb, centerPixelInfo, color, otherPixelInfo);
+
+                const float4 otherDepthDepthGradientAndNormalValue = depthDepthGradientAndNormal.Load(int3(newCoords, 0));
+                const float otherDepth = otherDepthDepthGradientAndNormalValue.x;
+                const float3 otherNormal = unpackNormal(otherDepthDepthGradientAndNormalValue.zw);
+
+                const float weight = weightFunc(1, depthGradient, centerColor.rgb, centerDepth, centerNormal, color, otherDepth, otherNormal);
                 const float l = luminanceValue;
                 moments += float2(l, l * l) * weight;
                 weightSum += weight;
@@ -234,6 +243,15 @@ float getDepth(int2 coords, int dx, int dy, int w, int h) {
     }
     PixelInfo pixel = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, otherCoords / float2(w, h));
     return pixel.gBuffer.viewPosition.z;
+}
+
+// writes to depthDepthGradientAndNormal
+[shader("pixel")]
+float4 computeDepthGradientAndNormals(in float2 uv) {
+    const float depth = currentFrameGBufferInputs.viewPos.SampleGrad(currentFrameGBufferInputs.gNearestSampler, uv, 0, 0).z;
+    const float depthGradient = max(abs(ddx(depth)), abs(ddy(depth)));
+    const float2 packedNormal = currentFrameGBufferInputs.readPackedNormal(uv);
+    return float4(depth, depthGradient, packedNormal);
 }
 
 [shader("compute")]
@@ -303,9 +321,10 @@ void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iteration
     InterlockedAdd(stats[0].blurVariance, clockARB() - blurVarianceStart);
 #endif
 
-    float2 depthGradient;
-    depthGradient.x = getDepth(coords, 1, 0, w, h) - getDepth(coords, -1, 0, w, h);
-    depthGradient.y = getDepth(coords, 0, 1, w, h) - getDepth(coords, 0, -1, w, h);
+    const float4 depthDepthGradientAndNormalValue = depthDepthGradientAndNormal.Load(int3(coords, 0));
+    const float centerDepth = depthDepthGradientAndNormalValue.x;
+    const float depthGradient = depthDepthGradientAndNormalValue.y;
+    const float3 centerNormal = unpackNormal(depthDepthGradientAndNormalValue.zw);
 
     int pixelIndex = 0;
     [loop] for (int dy = -2; dy <= 2; dy++) {
@@ -329,6 +348,10 @@ void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iteration
 #endif
             const PixelInfo otherPixel = PixelInfo(camera.CurrentFrame(), currentFrameGBufferInputs, otherUV);
 
+            const float4 otherDepthDepthGradientAndNormalValue = depthDepthGradientAndNormal.Load(int3(otherCoords, 0));
+            const float otherDepth = otherDepthDepthGradientAndNormalValue.x;
+            const float3 otherNormal = unpackNormal(otherDepthDepthGradientAndNormalValue.zw);
+
 #if PROFILE
             InterlockedAdd(stats[0].singlePixelFetchInfo[currentPixelIndex], clockARB() - fetchInfoStart);
 #endif
@@ -351,7 +374,7 @@ void waveletFilter(uint2 coords: SV_DispatchThreadID, uniform uint32_t iteration
 #endif
 
             float weight = kernel[abs(dx)] * kernel[abs(dy)];
-            weight *= weightFunc(gaussianBlurVariance, length(dot(depthGradient, int2(dx, dy))), centerColor, centerPixel, otherColor, otherPixel);
+            weight *= weightFunc(gaussianBlurVariance, depthGradient, centerColor, centerDepth, centerNormal, otherColor, otherDepth, otherNormal);
             accumulatedColor += float4(weight.xxx, weight * weight) * otherData;
             weightSum += weight;
 #if PROFILE

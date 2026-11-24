@@ -70,6 +70,11 @@ public struct GBufferInputs {
         const float4 metallicRoughnessVelocityXY = metallicRoughnessValuesVelocityXY.SampleGrad(gNearestSampler, at, float2(0), float2(0));
         return metallicRoughnessVelocityXY.zw;
     }
+
+    public float2 readPackedNormal(float2 at) {
+        const uint16_t2 compressedTBN = worldNormalTangents.SampleGrad(gNearestSampler, at, float2(0), float2(0)).xy;
+        return packedNormalToFloats(compressedTBN);
+    }
 }
 
 public struct RWGBufferInputs {

@@ -477,12 +477,16 @@ void Carrot::Pipeline::setStorageImage(const Carrot::Render::Context& renderCont
     setStorageImage(renderContext, slotName, texture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, textureLayout);
 }
 
-void Carrot::Pipeline::setSampledImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
+void Carrot::Pipeline::setSampledImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageLayout textureLayout) {
+    setSampledImage(renderContext, slotName, texture, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, textureLayout);
+}
+
+void Carrot::Pipeline::setSampledImage(const Carrot::Render::Context& renderContext, const std::string& slotName, const Carrot::Render::Texture& texture, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex, vk::ImageLayout textureLayout) {
     auto iter = description.descriptorReflection.find(slotName);
     if (iter != description.descriptorReflection.end()) {
         const ShaderCompiler::BindingSlot& slot = iter->second;
         verify(slot.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Carrot::sprintf("Wrong function, expected VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, got %s", ShaderCompiler::DescriptorTypeNames.at(slot.type)));
-        renderContext.renderer.bindTexture(*this, renderContext, texture, slot.setID, slot.bindingID, {}, aspect, viewType, arrayIndex);
+        renderContext.renderer.bindTexture(*this, renderContext, texture, slot.setID, slot.bindingID, {}, aspect, viewType, arrayIndex, textureLayout);
     }
 }
 

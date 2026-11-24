@@ -5,7 +5,7 @@ uint16_t2 toUints(float2 v) {
     return uint16_t2(round(clamp((v + 1) / 2, 0, 1) * 65535.0f));
 }
 
-float2 toFloats(uint16_t2 v) {
+public float2 packedNormalToFloats(uint16_t2 v) {
     return float2((v/65535.0f)*2-1);
 }
 
@@ -35,9 +35,13 @@ float3 Decode(float2 f)
     return normalize(n);
 }
 
+public float3 unpackNormal(float2 packed) {
+    return Decode(packed);
+}
+
 void decompressTBN(uint16_t4 compressed, out mat3 outTBN) {
-    outTBN[2] = Decode(toFloats(compressed.xy));  // normal
-    outTBN[0] = Decode(toFloats(compressed.zw)); // tangent
+    outTBN[2] = unpackNormal(packedNormalToFloats(compressed.xy)); // normal
+    outTBN[0] = unpackNormal(packedNormalToFloats(compressed.zw)); // tangent
 
     outTBN[1] = cross(outTBN[0], outTBN[2]);
 }
