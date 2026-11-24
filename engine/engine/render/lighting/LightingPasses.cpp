@@ -456,8 +456,8 @@ namespace Carrot::Render {
                        cmds.pipelineBarrier2KHR(dependencyInfo);
                    }
 
-                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionTemporal, 0, vk::ImageLayout::eGeneral, NeighborClampingType::e5x5, cmds);
-                   applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.viewSpaceNormalTangents, data.ambientOcclusionSpatial, 0, cmds);
+                   applyTemporalDenoising(pass, frame, data.gBuffer, data.gBuffer.positions, data.gBuffer.worldSpaceNormalTangents, data.ambientOcclusionTemporal, 0, vk::ImageLayout::eGeneral, NeighborClampingType::e5x5, cmds);
+                   applySpatialDenoising(pass, frame, "lighting/denoise-ao", data.gBuffer, data.gBuffer.positions, data.gBuffer.worldSpaceNormalTangents, data.ambientOcclusionSpatial, 0, cmds);
                }
         );
 
@@ -603,7 +603,7 @@ namespace Carrot::Render {
 
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eGeneral);
                 data.gbuffer.positions = graph.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eGeneral);
-                data.gbuffer.viewSpaceNormalTangents = graph.read(lightingPass.getData().gBuffer.viewSpaceNormalTangents, vk::ImageLayout::eGeneral);
+                data.gbuffer.worldSpaceNormalTangents = graph.read(lightingPass.getData().gBuffer.worldSpaceNormalTangents, vk::ImageLayout::eGeneral);
 
                 data.statsBuffer = graph.createBuffer("surface cache stats", sizeof(SurfaceCacheStats), vk::BufferUsageFlagBits::eStorageBuffer, false, true);
 
@@ -662,7 +662,7 @@ namespace Carrot::Render {
 
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eGeneral);
                 data.gbuffer.positions = graph.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eGeneral);
-                data.gbuffer.viewSpaceNormalTangents = graph.read(lightingPass.getData().gBuffer.viewSpaceNormalTangents, vk::ImageLayout::eGeneral);
+                data.gbuffer.worldSpaceNormalTangents = graph.read(lightingPass.getData().gBuffer.worldSpaceNormalTangents, vk::ImageLayout::eGeneral);
             },
             [bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 GPUZone(GetEngine().tracyCtx[frame.frameIndex], cmds, "accumulate surface cache");

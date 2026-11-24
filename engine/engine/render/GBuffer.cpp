@@ -52,7 +52,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                           positionClear,
                                                           vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.viewSpaceNormalTangents = graph.createRenderTarget("View space normals tangents",
+                data.worldSpaceNormalTangents = graph.createRenderTarget("World space normals tangents",
                                                         vk::Format::eR16G16B16A16Uint,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
@@ -94,7 +94,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                // used by editor & temporal algorithms
                graph.reuseResourceAcrossFrames(data.albedo, 1);
                graph.reuseResourceAcrossFrames(data.positions, 1);
-               graph.reuseResourceAcrossFrames(data.viewSpaceNormalTangents, 1);
+               graph.reuseResourceAcrossFrames(data.worldSpaceNormalTangents, 1);
                graph.reuseResourceAcrossFrames(data.entityID, 1);
                graph.reuseResourceAcrossFrames(data.metallicRoughnessVelocityXY, 1);
                graph.reuseResourceAcrossFrames(data.emissive, 1);
@@ -166,7 +166,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
 void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout) {
     albedo = graph.read(other.albedo, wantedLayout);
     positions = graph.read(other.positions, wantedLayout);
-    viewSpaceNormalTangents = graph.read(other.viewSpaceNormalTangents, wantedLayout);
+    worldSpaceNormalTangents = graph.read(other.worldSpaceNormalTangents, wantedLayout);
     entityID = graph.read(other.entityID, wantedLayout);
     metallicRoughnessVelocityXY = graph.read(other.metallicRoughnessVelocityXY, wantedLayout);
     emissive = graph.read(other.emissive, wantedLayout);
@@ -185,7 +185,7 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
 void Carrot::Render::PassData::GBuffer::writeTo(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout) {
     albedo = graph.write(other.albedo, vk::AttachmentLoadOp::eLoad, wantedLayout);
     positions = graph.write(other.positions, vk::AttachmentLoadOp::eLoad, wantedLayout);
-    viewSpaceNormalTangents = graph.write(other.viewSpaceNormalTangents, vk::AttachmentLoadOp::eLoad, wantedLayout);
+    worldSpaceNormalTangents = graph.write(other.worldSpaceNormalTangents, vk::AttachmentLoadOp::eLoad, wantedLayout);
     entityID = graph.write(other.entityID, vk::AttachmentLoadOp::eLoad, wantedLayout);
     metallicRoughnessVelocityXY = graph.write(other.metallicRoughnessVelocityXY, vk::AttachmentLoadOp::eLoad, wantedLayout);
     emissive = graph.write(other.emissive, vk::AttachmentLoadOp::eLoad, wantedLayout);
@@ -213,7 +213,7 @@ void Carrot::Render::PassData::GBuffer::bindInputsFromGivenFrame(Carrot::Pipelin
     auto& renderer = GetRenderer();
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frameNumber), setID, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frameNumber), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frameNumber), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(worldSpaceNormalTangents, frameNumber), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
@@ -242,7 +242,7 @@ void Carrot::Render::PassData::GBuffer::bindRW(Carrot::Pipeline& pipeline, const
     auto& renderer = GetRenderer();
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(albedo, frameNumber), setID, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(positions, frameNumber), setID, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
-    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frameNumber), setID, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(worldSpaceNormalTangents, frameNumber), setID, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(entityID, frameNumber), setID, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frameNumber), setID, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     renderer.bindStorageImage(pipeline, frame, renderGraph.getTexture(emissive, frameNumber), setID, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);

@@ -26,7 +26,7 @@ public struct VSGBufferOutput {
 public struct GBufferInputs {
     public Texture2D albedo;
     public Texture2D viewPos;
-    public Texture2D<uint16_t4> viewNormalTangents;
+    public Texture2D<uint16_t4> worldNormalTangents;
     public Texture2D<uvec4> entityID;
     public Texture2D metallicRoughnessValuesVelocityXY;
     public Texture2D emissiveValues;
@@ -50,7 +50,7 @@ public struct GBufferInputs {
         result.readIsSky = viewPosData.w < 0.5f;
         result.readDepth = depth.Load(int3(pixelCoords, 0)).r;
 
-        const uint16_t4 compressedTBN = viewNormalTangents.Load(int3(pixelCoords, 0));
+        const uint16_t4 compressedTBN = worldNormalTangents.Load(int3(pixelCoords, 0));
         
         decompressTBN(compressedTBN, result.worldTBN);
 
@@ -75,7 +75,7 @@ public struct GBufferInputs {
 public struct RWGBufferInputs {
     public RWTexture2D albedo;
     public RWTexture2D viewPos;
-    public RWTexture2D<uint16_t4> viewNormalTangents;
+    public RWTexture2D<uint16_t4> worldNormalTangents;
     public RWTexture2D<uvec4> entityID;
     public RWTexture2D metallicRoughnessValuesVelocityXY;
     public RWTexture2D emissiveValues;
@@ -97,7 +97,7 @@ public struct RWGBufferInputs {
         result.readIsSky = viewPosData.w < 0.5f;
         result.readDepth = depth.Load(float3(coords, 0)).r;
 
-        const uint16_t4 compressedTBN = viewNormalTangents.Load(coords);
+        const uint16_t4 compressedTBN = worldNormalTangents.Load(coords);
         
         decompressTBN(compressedTBN, result.worldTBN);
 

@@ -158,7 +158,7 @@ namespace Carrot::Render {
         struct GBuffer {
             FrameResource albedo;
             FrameResource positions;
-            FrameResource viewSpaceNormalTangents;
+            FrameResource worldSpaceNormalTangents;
             FrameResource entityID;
             FrameResource metallicRoughnessVelocityXY;
             FrameResource emissive;

@@ -51,7 +51,7 @@ public struct EncodedGBuffer {
 
     public vec4 color;
     public vec4 viewPosition;
-    public uint16_t4 viewNormalTangent;
+    public uint16_t4 worldNormalTangent;
     public uvec4 entityID;
     public vec4 metallicRoughnessVelocityXY;
     public float3 emissive;
@@ -59,7 +59,7 @@ public struct EncodedGBuffer {
     public __init() {
         color = vec4(0.0);
         viewPosition = vec4(0.0);
-        viewNormalTangent = uint16_t4(0);
+        worldNormalTangent = uint16_t4(0);
         entityID = uvec4(0);
         metallicRoughnessVelocityXY = vec4(0.0);
         emissive = float3(0.0);
@@ -68,13 +68,13 @@ public struct EncodedGBuffer {
     public __init(GBuffer gbuffer) {
         color = gbuffer.albedo;
         viewPosition = vec4(gbuffer.viewPosition, 1 /*not sky*/);
-        viewNormalTangent = vec4(1);
+        worldNormalTangent = vec4(1);
         entityID = gbuffer.entityID;
         metallicRoughnessVelocityXY = vec4(gbuffer.metallicness, gbuffer.roughness, gbuffer.motionVector.xy);
 
         emissive = gbuffer.emissiveColor;
 
-        compressTBN(gbuffer.worldTBN, viewNormalTangent);
+        compressTBN(gbuffer.worldTBN, worldNormalTangent);
     }
 
 }
